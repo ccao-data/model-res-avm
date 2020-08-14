@@ -1,0 +1,55 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+*.Rdata
+
+# R project files
+*.Rproj
+.Rproj.user/
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# knitr and R markdown default cache directories
+/*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# Other files
+/resources/*
+/code.r.old/*
+/code.sas/*
+code.stata/*
+lit/*
+results/graphs/*
+results/*
+
+# Result files
+*.dta
+*.ppt
+*.pptx
+*.html
+
+# Folders
+scratch/
+secrets/
+
+# Data
+output/*
+*.parquet
