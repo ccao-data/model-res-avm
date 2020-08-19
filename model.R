@@ -44,14 +44,10 @@ cknn_test <- testing(cknn_split)
 
 # Parameters
 cknn_var_weights <- c("char_bldg_sf" = 8, "char_age" = 4, "char_ext_wall" = 2)
-
-# cknn_param_k <- seq(5, 25, 5)
-# cknn_param_m <- seq(2, 12, 1)
-# cknn_param_l <- seq(0.1, 0.9, 0.1)
 cknn_param_grid <- expand_grid(
-  m = seq(2, 20, 2),
-  k = seq(5, 20, 5),
-  l = seq(0.1, 0.9, 0.2)
+  m = seq(6, 20, 2),
+  k = seq(8, 18, 2),
+  l = seq(0.3, 0.7, 0.1)
 )
 
 # recipe
@@ -79,7 +75,7 @@ cknn_fit1 <- cknn_folds %>%
     df_ass = map2(recipe, df_ass, ~ bake(.x, new_data = .y))
   ) 
 
-  # Actually run the models with different params for each fold
+# Actually run the models with different params for each fold
 tic()
 cknn_fit2 <- cknn_fit1 %>%
   mutate(
@@ -108,8 +104,9 @@ cknn_fit2 <- cknn_fit1 %>%
   )
 toc()
 
-  # Use the generated models to create predictions for each validation set
-cknn_fit3 <- cknn_fit2 %>%
+# Use the generated models to create predictions for each validation set
+tic()
+cknn_fit2 <- cknn_fit2 %>%
   mutate(
     cknn_predict = pmap(
       list(df_ana, df_ass, cknn_model),
@@ -133,10 +130,10 @@ cknn_fit3 <- cknn_fit2 %>%
       }
     )
   )
+toc()
 
-
-  # Calculate actual performance stats for each set of params/fold
-cknn_fit4 <- cknn_fit3 %>%
+# Calculate actual performance stats for each set of params/fold
+cknn_fit2 <- cknn_fit2 %>%
   mutate(
     cknn_out = pmap(
       list(df_ana, df_ass, cknn_predict),
@@ -151,6 +148,7 @@ cknn_fit4 <- cknn_fit3 %>%
               )) %>%
               summarize(
                 rmse = rmse_vec(actual, estimate),
+                rsq = rsq_trad_vec(actual, estimate),
                 cod = cod(estimate / actual),
                 prd = prd(estimate, actual),
                 prb = prb(estimate, actual),
@@ -166,10 +164,27 @@ cknn_fit4 <- cknn_fit3 %>%
 
 
 # Summarize results
-temp <- bind_rows(cknn_fit4$cknn_out) %>%
+temp <- bind_rows(cknn_fit2$cknn_out) %>%
   group_by(m, k, l) %>%
   summarize(across(everything(), mean)) %>%
-  arrange(rmse)
+  arrange(rmse) %>%
+  filter(!m == 2) %>%
+  mutate(m2 = factor(paste("m (num. clusters) =", m))) %>%
+  mutate(m2 = forcats::fct_reorder(m2, m)) %>%
 
+temp %>%
+  ggplot() +
+  geom_tile(aes(x = factor(k), y = factor(l), fill = cod)) +
+  viridis::scale_fill_viridis(name = "COD", option = "viridis") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  labs(x = "k (num. comparables)", y = "l (dist. trade-off)") +
+  facet_wrap(vars(m2)) +
+  theme_bw() +
+  theme(
+    legend.title = element_text(margin = margin(b = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10))
+  )
 
-# TODO: add meta_sale_price, geo_lat, geo_lon to clustering
+# TODO: add meta_sale_price, geo_lat, geo_lon to vars_dict
