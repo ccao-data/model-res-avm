@@ -10,11 +10,11 @@ library(furrr)
 library(purrr)
 library(tictoc)
 library(sf)
-source("R/cknn_fit.R")
+source("R/cknn_funs.R")
 
 # Set seed for reproducibility and set multiprocessing plan
 set.seed(27)
-plan("multiprocess", workers = 4)
+plan("multiprocess", workers = availableCores() - 2)
 
 
 
@@ -37,7 +37,6 @@ training_data <- read_parquet("data/modeldata.parquet") %>%
   
 ##### CkNN #####
 
-# Create a trained CkNN model using cross validation
 
 ### Step 1 - Determine variable weights and which vars to keep
 cknn_var_weights <- c("char_bldg_sf" = 8, "char_age" = 4, "char_ext_wall" = 2)
@@ -54,24 +53,31 @@ cknn_predictors <- vars_dict %>%
 
 ### Step 2 - Determine the optimal model
 
+# Set number of folds to use for CV
+cknn_num_folds <- 5
+
 # Create a grid of possible parameter values to loop through
-# cknn_param_grid <- expand_grid(
-#   m = seq(6, 20, 2),
-#   k = seq(8, 18, 2),
-#   l = seq(0.3, 0.7, 0.1)
-# )
-cknn_param_grid <- expand_grid(m = 8, k = 10, l = 0.5)
+cknn_param_grid <- expand_grid(
+  m = seq(5, 15, 1),
+  k = seq(8, 16, 2),
+  l = seq(0.3, 0.7, 0.1)
+)
 
 # Create the CkNN data as well as the train/CV/test split
 cknn_data <- training_data %>%
   select(any_of(cknn_predictors), meta_sale_date, meta_town_code) %>%
   arrange(meta_sale_date) %>%
+  select(
+    meta_sale_price, geo_longitude, geo_latitude, 
+    char_bldg_sf, char_age, char_bsmt, char_bsmt_fin, char_ext_wall,
+    char_air, char_heat, char_roof_cnst, meta_sale_date, meta_town_code
+  ) %>%
   filter(meta_town_code %in% c("17", "23"))
 
-cknn_split <- initial_time_split(cknn_data, prop = 0.85)
+cknn_split <- initial_time_split(cknn_data, prop = 0.80)
 cknn_train <- training(cknn_split)
 cknn_test <- testing(cknn_split)
-cknn_folds <- vfold_cv(cknn_train, v = 5)
+cknn_folds <- vfold_cv(cknn_train, v = cknn_num_folds)
 
 # For each CV fold, calculate the values for all hyperparameters in param_grid
 cknn_cv_fits <- cknn_folds %>%
@@ -80,7 +86,7 @@ cknn_cv_fits <- cknn_folds %>%
     df_ass = map(splits, assessment)
   ) %>%
   mutate(
-    recipe = map(df_ana, ~ prep(cknn_recp_prep(cknn_train), training = .x)),
+    recipe = map(df_ana, ~ prep(cknn_recp_prep(cknn_train, cknn_predictors), training = .x)),
     df_ana = map(recipe, juice),
     df_ass = map2(recipe, df_ass, ~ bake(.x, new_data = .y))
   ) %>%
@@ -90,16 +96,29 @@ cknn_cv_fits <- cknn_folds %>%
     cknn_results = cknn_eval(df_ana, df_ass, cknn_predict)
   )
 
+
 ### Step 3 - Summarize results to find best hyperparams
 
 # Summarize results by param, averaging across folds
 cknn_results <- bind_rows(cknn_cv_fits$cknn_results) %>%
   group_by(m, k, l) %>%
   summarize(across(everything(), mean)) %>%
-  arrange(rmse)
+  arrange(cod)
 
 # Print and plot results
 cknn_results
-cknn_grid_plot(cknn_results, m, k, l, rmse)
+cknn_grid_plot(cknn_results, m, k, l, cod)
+
+# Take the best params according to RMSE
+cknn_best_model <- cknn_results %>%
+  filter(rmse == max(rmse))
 
 
+
+##### Random Forest #####
+
+# TODO: Model cknn for whole county
+# TODO: integrate cknn results with RF
+# TODO: Figure out CV for two-stage model
+# TODO: try model stacking
+# TODO: figure out how to have a single model interface for training/prediction here

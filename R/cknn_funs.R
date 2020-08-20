@@ -1,9 +1,9 @@
 # Helper function to prep data for cknn
-cknn_recp_prep <- function(data) {
+cknn_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
-    step_rm(-any_of(cknn_predictors), -all_outcomes()) %>%
+    step_rm(-any_of(keep_vars), -all_outcomes()) %>%
     step_unknown(all_nominal()) %>%
-    step_other(all_nominal(), threshold = 0.05) %>%
+    step_other(all_nominal(), threshold = 0.005) %>%
     step_naomit(all_predictors())
 }
 
@@ -64,7 +64,7 @@ cknn_predict <- function(analysis, assessment, model, rm_vars) {
   
   # Map through and calc estimate values on validation set for each fold
   m_out <- purrr::pmap(list(analysis, assessment, model), function(og, new, modls) {
-    purrr::map(modls, function(obj) {
+    purrr:::map(modls, function(obj) {
       predict(
         object = obj,
         newdata = as.data.frame(dplyr::select(new, -dplyr::any_of(rm_vars))),
@@ -88,7 +88,7 @@ cknn_eval <- function(analysis, assessment, knn_preds) {
   tictoc::tic(msg = "CkNN CV model evaluation complete!")
 
   m_out <- purrr::pmap(list(analysis, assessment, knn_preds), function(og, new, knn_ps) {
-    purrr::map(knn_ps, function(knn_p) {
+    purrr:::map(knn_ps, function(knn_p) {
       dplyr::select(new, actual = meta_sale_price) %>%
       dplyr::mutate(
         estimate = purrr::map_dbl(knn_p$knn, ~ median(og$meta_sale_price[.x]))
