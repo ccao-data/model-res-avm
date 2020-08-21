@@ -1,21 +1,29 @@
 ##### Setup ####
 
 # Load the necessary libraries
+library(tidymodels)
+library(rlang)
 library(arrow)
+library(dplyr)
+library(purrr)
+library(sf)
 library(assessr)
 library(ccao)
-library(dplyr)
-library(tidymodels)
 library(furrr)
-library(purrr)
+library(parallel)
+library(doFuture)
 library(tictoc)
-library(sf)
 source("R/cknn_funs.R")
 source("R/rf_funs.R")
+source("R/metrics.R")
 
 # Set seed for reproducibility and set multiprocessing plan
 set.seed(27)
 plan("multiprocess", workers = availableCores())
+
+# Set number of folds to use for cknn CV
+cv_num_folds <- 5
+
 
 
 
@@ -37,11 +45,14 @@ full_data <- read_parquet("data/modeldata.parquet") %>%
 
 # Create train/test split by time, with most recent obs in the test set
 splits <- initial_time_split(full_data, prop = 0.80)
-train <- training(splits)
-test <- testing(splits)
+train <- training(splits) %>%
+  filter(meta_town_code %in% c("17"))  # temporary, for testing
+test <- testing(splits) %>%
+  filter(meta_town_code %in% c("17"))  # temporary, for testing
 
 
-  
+
+
 ##### CkNN #####
 
 ### Step 1 - Determine variable weights and which vars to keep
@@ -55,8 +66,8 @@ cknn_possible_vars <- vars_dict %>%
 
 # Create feature weights using feature importance
 cknn_var_weights <- c(
-  "char_bldg_sf" = 10, "char_age" = 5, "char_beds" = 4,
-  "char_bsmt" = 3, "char_gar1_size" = 3, "char_ext_wall" = 2.5
+  "char_bldg_sf" = 11, "char_age" = 5, "char_bsmt" = 3,
+  "char_gar1_size" = 3, "char_ext_wall" = 2.5, "char_air" = 2
 )
 
 # Get the set of variables to keep when clustering
@@ -73,9 +84,6 @@ cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
 
 ### Step 2 - Cross-validation
 
-# Set number of folds to use for cknn CV
-cknn_num_folds <- 5
-
 # Create a grid of possible parameter values to loop through
 cknn_param_grid <- expand_grid(
   m = seq(4, 13, 1),
@@ -83,11 +91,10 @@ cknn_param_grid <- expand_grid(
   l = seq(0.4, 0.8, 0.1)
 )
 
-# Create v folds in the training data and keep only clusering vars, then for
+# Create v folds in the training data and keep only clustering vars, then for
 # each CV fold, calculate the values for all hyperparameters in param_grid
 cknn_cv_fits <- train %>%
-  filter(meta_town_code %in% c("17")) %>%  # temporary, for testing
-  vfold_cv(v = cknn_num_folds) %>%
+  vfold_cv(v = cv_num_folds) %>%
   mutate(
     df_ana = map(splits, analysis),
     df_ass = map(splits, assessment)
@@ -123,133 +130,147 @@ cknn_grid_plot(cknn_results, m, k, l, rmse)
 
 # Take the best params according to RMSE
 cknn_best_params <- cknn_results %>%
-  filter(cod == min(cod))
+  filter(cod == min(cod, na.rm = TRUE))
+
+# Finalize best model
+cknn_best_model <- cknn(
+  data = juice(prep(cknn_recipe)) %>%
+    select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
+    as.data.frame(),
+  lon = train %>% pull(geo_longitude),
+  lat = train %>% pull(geo_latitude),
+  m = cknn_best_params$m,
+  k = cknn_best_params$k,
+  l = cknn_best_params$l,
+  keep_data = TRUE
+)
 
 
 ### Step 4 - Prediction using best model
-train_sub <- train %>%
-  filter(meta_town_code %in% c("70"))  # temporary, for testing
 
-# Train a new model on the full training set using the best found parameters
-cknn_full_train <- train_sub %>%
-  cknn_recp_prep(cknn_predictors) %>%
-  prep() %>%
-  juice()
+# Get predictions from cknn using the fully trained model
+train <- train %>%
+  mutate(cknn_sale_price = map_dbl(
+    cknn_best_model$knn,
+    ~ median(train$meta_sale_price[.x])
+  ))
 
-cknn_best_model <- cknn(
-    data = cknn_full_train %>%
-      select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
-      as.data.frame(),
-    lon = cknn_full_train %>% pull(geo_longitude),
-    lat = cknn_full_train %>% pull(geo_latitude),
-    m = cknn_best_params$m,
-    k = cknn_best_params$k,
-    l = cknn_best_params$l,
-    keep_data = TRUE
-  )
+# Get predictions on the test set using the fully trained model
+test <- test %>%
+  mutate(cknn_sale_price = map_dbl(
+    predict(
+      cknn_best_model, 
+      bake(prep(cknn_recipe), test) %>%
+        select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
+        as.data.frame(),
+      lon = test %>% pull(geo_longitude),
+      lat = test %>% pull(geo_latitude)
+    )$knn,
+    ~ median(train$meta_sale_price[.x])
+  ))
 
-# Use the model to extract the median sale price for obs. in the training set
-train_sub <- train_sub %>%
-  mutate( 
-    cknn_sale_price = map_dbl(
-      cknn_best_model$knn,
-      ~ median(train_sub$meta_sale_price[.x])
-    )
-  )
 
 
 
 ##### Random Forest #####
 
-rf_folds <- vfold_cv(train_sub, v = 5)
+### Step 0 - Initialize multiprocessing backend
+all_cores <- parallel::detectCores(logical = FALSE)
+registerDoFuture()
+plan(cluster, workers = parallel::makeCluster(all_cores))
 
+
+### Step 1 - Determine which vars to use and prep data
+
+# Get the full list of possible predictors from vars_dict
 rf_possible_vars <- vars_dict %>%
   filter(var_is_predictor) %>%
   pull(var_name_standard) %>%
   unique() %>%
   na.omit()
 
+# Include cknn prediction as predictor
 rf_predictors <- c(rf_possible_vars, "cknn_sale_price")
+rf_predictors <- rf_predictors[!rf_predictors %in% c("meta_nbhd")]
+
+# Create recipe containing the training data
+rf_recipe <- rf_recp_prep(train, rf_predictors)
 
 
-rf_model <- 
-  rand_forest(mtry = tune(), trees = tune()) %>%
+### Step 2 - Model initialization
+
+# Initialize random forest model
+rf_model <- rand_forest(mtry = tune(), trees = tune()) %>%
   set_mode("regression") %>%
   set_engine("ranger") 
 
-rf_wflow <-
-  workflow() %>%
-  add_model(rf_model) %>%
-  add_recipe(rf_recp_prep(train_sub, rf_predictors))
-
-
-
-rf_grid <- expand_grid(mtry = 3:5, trees = seq(1000, 2000, 1000))
-
-rf_search <- tune_grid(rf_wflow, grid = rf_grid, resamples = rf_folds, control = control_grid(verbose = TRUE, allow_par = TRUE))
-
-rf_param_final <- select_best(rf_search, mtry, trees,
-                                        metric = "rmse")
-
-rf_wflow_final <- finalize_workflow(rf_wflow, rf_param_final)
-
-rf_wflow_final_fit <- fit(rf_wflow_final, data = train_sub)
-
-dia_rec3     <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
-rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
-
-train_final <- train_sub %>%
-  select(meta_sale_price, meta_town_code, cknn_sale_price) %>%
-  mutate(
-    predicted = exp(predict(
-      rf_final_fit,
-      new_data = bake(dia_rec3, train_sub))$.pred
-    )
-  )
-train_final %>%
-  summarise(
-    rmse = rmse_vec(meta_sale_price, predicted),
-    cod = cod(predicted / meta_sale_price),
-    prd = prd(predicted, meta_sale_price),
-    prb = prb(predicted, meta_sale_price)
-  )
-
-#############
-
-test_sub <- test %>%
-  filter(meta_town_code == "70") 
-
-test_full_set <- test_sub %>%
-  cknn_recp_prep(., cknn_predictors) %>%
-  prep() %>%
-  juice() 
-
-# Use the model to extract the median sale price for obs. in the training set
-test_sub <- test_sub %>%
-  mutate( 
-    cknn_sale_price = map_dbl(
-      predict(
-        cknn_best_model, 
-        newdata = test_full_set %>% 
-          select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
-          as.data.frame(),
-        lon = test_full_set %>% pull(geo_longitude),
-        lat = test_full_set %>% pull(geo_latitude)
-      )$knn,
-      ~ median(train_sub$meta_sale_price[.x])
-    )
+# Initialize tuning parameters  
+rf_params <- rf_model %>%
+  parameters() %>%
+  update(
+    mtry = mtry(range = c(5, floor(ncol(juice(prep(rf_recipe))) / 3))),
+    trees = trees(range = c(500L, 2000L))
   ) 
 
-test_final <- test_sub %>%
-  select(meta_sale_price, meta_town_code, cknn_sale_price) %>%
+# Initialize RF workflow
+rf_wflow <- workflow() %>%
+  add_model(rf_model) %>%
+  add_recipe(rf_recipe) 
+
+# Initialize tuning grid
+rf_grid <- grid_regular(rf_params, levels = 4)
+
+
+### Step 3 - Model cross-validation
+
+# Begin CV tuning
+rf_search <- tune_grid(
+  object = rf_wflow, 
+  resamples = vfold_cv(train, v = cv_num_folds),
+  grid = rf_grid,
+  metrics = metric_set(rmse, rsq),
+  control = control_grid(verbose = TRUE, allow_par = TRUE)
+)
+
+# Visualize results
+autoplot(rf_search, metric = "rmse") +
+  labs(title = "RF Grid Search Results") +
+  theme_minimal()
+
+# Choose the best model using 1 sd heuristic
+rf_param_final <- select_by_one_std_err(rf_search, mtry, trees, metric = "rmse")
+
+# Fit the final model using the full training data
+rf_wflow_final_fit <- rf_wflow %>%
+  finalize_workflow(rf_param_final) %>%
+  fit(data = train)
+
+
+### Step 4 - Prediction using best model
+
+# Pull recipe and final fit. Kinda buggy, see:
+# https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
+rf_final_recp <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
+rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
+
+# Generate sale price predictions with the final model
+test <- test %>%
   mutate(
-    predicted = exp(predict(
+    rf_sale_price = exp(predict(
       rf_final_fit,
-      new_data = bake(dia_rec3, test_sub))$.pred
+      new_data = bake(rf_final_recp, test))$.pred
     )
   )
-test_final %>%
-  filter(!is_outlier(predicted / meta_sale_price)) %>%
+
+# Summarize test set results
+test %>%
+  pivot_longer(
+    cols = c(cknn_sale_price, rf_sale_price),
+    names_to = "model_type",
+    values_to = "predicted"
+  ) %>%
+  mutate(model_type = gsub("_sale_price", "", model_type)) %>%
+  group_by(model_type) %>%
   summarise(
     rmse = rmse_vec(meta_sale_price, predicted),
     cod = cod(predicted / meta_sale_price),
@@ -257,7 +278,7 @@ test_final %>%
     prb = prb(predicted, meta_sale_price)
   )
 
-# TODO: integrate cknn results with RF
+
 
 # TODO: Model cknn for whole county
 # TODO: try model stacking

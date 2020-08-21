@@ -5,6 +5,7 @@
 # Session Data files
 .RData
 *.Rdata
+*.rda
 
 # R project files
 *.Rproj

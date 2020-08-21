@@ -98,7 +98,6 @@ cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weigh
           estimate = purrr::map_dbl(preds$knn, ~ median(ana$meta_sale_price[.x]))
         ) %>%
         dplyr::summarize(
-          count = dplyr::n(),
           rmse = yardstick::rmse_vec(actual, estimate),
           rsq = yardstick::rsq_trad_vec(actual, estimate),
           cod = assessr::cod(estimate / actual),
