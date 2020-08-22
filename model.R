@@ -10,7 +10,6 @@ library(sf)
 library(assessr)
 library(ccao)
 library(furrr)
-library(parallel)
 library(doFuture)
 library(tictoc)
 source("R/cknn_funs.R")
@@ -19,7 +18,8 @@ source("R/metrics.R")
 
 # Set seed for reproducibility and set multiprocessing plan
 set.seed(27)
-plan("multiprocess", workers = availableCores())
+all_cores <- availableCores() - 1
+plan("multiprocess", workers = all_cores)
 
 # Set number of folds to use for cknn CV
 cv_num_folds <- 5
@@ -45,10 +45,8 @@ full_data <- read_parquet("data/modeldata.parquet") %>%
 
 # Create train/test split by time, with most recent obs in the test set
 splits <- initial_time_split(full_data, prop = 0.80)
-train <- training(splits) %>%
-  filter(meta_town_code %in% c("17"))  # temporary, for testing
-test <- testing(splits) %>%
-  filter(meta_town_code %in% c("17"))  # temporary, for testing
+train <- training(splits) 
+test <- testing(splits) 
 
 
 
@@ -86,9 +84,9 @@ cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
 
 # Create a grid of possible parameter values to loop through
 cknn_param_grid <- expand_grid(
-  m = seq(4, 13, 1),
-  k = seq(6, 14, 2),
-  l = seq(0.4, 0.8, 0.1)
+  m = seq(6, 14, 2),
+  k = seq(10, 16, 2),
+  l = seq(0.6, 0.9, 0.1)
 )
 
 # Create v folds in the training data and keep only clustering vars, then for
@@ -126,7 +124,7 @@ cknn_results <- bind_rows(cknn_cv_fits$cknn_results) %>%
 
 # Print and plot results
 cknn_results
-cknn_grid_plot(cknn_results, m, k, l, rmse)
+cknn_grid_plot(cknn_results, m, k, l, cod)
 
 # Take the best params according to RMSE
 cknn_best_params <- cknn_results %>%
@@ -174,12 +172,6 @@ test <- test %>%
 
 ##### Random Forest #####
 
-### Step 0 - Initialize multiprocessing backend
-all_cores <- parallel::detectCores(logical = FALSE)
-registerDoFuture()
-plan(cluster, workers = parallel::makeCluster(all_cores))
-
-
 ### Step 1 - Determine which vars to use and prep data
 
 # Get the full list of possible predictors from vars_dict
@@ -218,19 +210,21 @@ rf_wflow <- workflow() %>%
   add_recipe(rf_recipe) 
 
 # Initialize tuning grid
-rf_grid <- grid_regular(rf_params, levels = 4)
+rf_grid <- grid_regular(rf_params, levels = 3)
 
 
 ### Step 3 - Model cross-validation
 
 # Begin CV tuning
+tictoc::tic(msg = "RF CV model fitting complete!")
 rf_search <- tune_grid(
   object = rf_wflow, 
   resamples = vfold_cv(train, v = cv_num_folds),
   grid = rf_grid,
-  metrics = metric_set(rmse, rsq),
-  control = control_grid(verbose = TRUE, allow_par = TRUE)
+  metrics = metric_set(rmse, rsq, codm),
+  control = control_grid(verbose = TRUE, allow_par = FALSE)
 )
+tictoc::toc()
 
 # Visualize results
 autoplot(rf_search, metric = "rmse") +
@@ -263,14 +257,18 @@ test <- test %>%
   )
 
 # Summarize test set results
-test %>%
+test_long <- test %>%
   pivot_longer(
-    cols = c(cknn_sale_price, rf_sale_price),
+    cols = any_of(c("cknn_sale_price", "rf_sale_price")),
     names_to = "model_type",
     values_to = "predicted"
   ) %>%
-  mutate(model_type = gsub("_sale_price", "", model_type)) %>%
-  group_by(model_type) %>%
+  mutate(model_type = gsub("_sale_price", "", model_type)) 
+
+# Summarize by model type
+test_long %>%
+  mutate(town_name = town_convert(meta_town_code)) %>%
+  group_by(meta_town_code, model_type) %>%
   summarise(
     rmse = rmse_vec(meta_sale_price, predicted),
     cod = cod(predicted / meta_sale_price),
@@ -278,6 +276,15 @@ test %>%
     prb = prb(predicted, meta_sale_price)
   )
 
+# Ratio distribution by model type
+test_long %>%
+  mutate(ratio = predicted / meta_sale_price) %>%
+ggplot() +
+  geom_histogram(aes(x = ratio), binwidth = 0.1) +
+  facet_wrap(vars(model_type), ncol = 1) +
+  labs(title = "Distribution of Ratios by Model Type") +
+  lims(x = c(-1, 3)) +
+  theme_minimal() 
 
 
 # TODO: Model cknn for whole county
