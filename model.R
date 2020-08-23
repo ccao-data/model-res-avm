@@ -2,17 +2,18 @@
 ##### Setup ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-# Load the necessary libraries
-library(tidymodels)
-library(stringr)
+# Load modeling and data libs
 library(arrow)
+library(assessr)
+library(beepr)
+library(ccao)
 library(dplyr)
+library(furrr)
 library(purrr)
 library(sf)
-library(assessr)
-library(ccao)
-library(furrr)
+library(stringr)
 library(tictoc)
+library(tidymodels)
 source("R/cknn_funs.R")
 source("R/recipes.R")
 source("R/metrics.R")
@@ -30,6 +31,7 @@ mod_predictors <- ccao::vars_dict %>%
   pull(var_name_standard) %>%
   unique() %>%
   na.omit()
+
 
 
 
@@ -68,6 +70,8 @@ train_folds <- vfold_cv(train, v = cv_num_folds)
 
 # Setup training data recipe to remove unnecessary vars, log-log variables, etc
 train_recipe <- mod_recp_prep(train, mod_predictors) 
+train_p <- ncol(juice(prep(train_recipe))) - 1
+
 
 
 
@@ -83,7 +87,7 @@ lm_model <- linear_reg() %>%
 # Define basic linear model workflow
 lm_wflow <- workflow() %>%
   add_model(lm_model) %>%
-  add_recipe(train_recipe) 
+  add_recipe(train_recipe %>% lasso_recp_prep()) 
 
 # No CV for this linearmodel, just predict right away
 lm_final_fit <-  fit(lm_wflow, data = train)
@@ -92,10 +96,100 @@ lm_final_fit <-  fit(lm_wflow, data = train)
 lm_final_recp <- pull_workflow_prepped_recipe(lm_final_fit)
 lm_final_fit <- pull_workflow_fit(lm_final_fit)
 
-# Get predictions on the meta training set and test set
-train_meta <- model_fit(train_meta, lm_final_recp, lm_final_fit, lm_sale_price)
+# Get predictions on the test set
 test <- model_fit(test, lm_final_recp, lm_final_fit, lm_sale_price)
 
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+##### xgboost Model #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+### Step 1 - Model initialization
+
+# Initialize xgboost model
+xgb_model <- boost_tree(
+    trees = 500, tree_depth = tune(), min_n = tune(), 
+    loss_reduction = tune(), sample_size = tune(), mtry = tune(),         
+    learn_rate = tune()                     
+  ) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("regression")
+
+# Initialize xgb workflow
+xgb_wflow <- workflow() %>%
+  add_model(xgb_model) %>%
+  add_recipe(train_recipe %>% xgb_recp_prep()) 
+
+
+### Step 2 - Cross-validation
+
+# Begin CV tuning if enabled
+if (cv_enable) {
+  
+  xgb_grid <- grid_latin_hypercube(
+    tree_depth(),
+    min_n(),
+    loss_reduction(),
+    sample_size = sample_prop(),
+    mtry = mtry(c(5, floor(train_p / 3))),
+    learn_rate(),
+    size = 15
+  )
+  
+  # Loop through grid of tuning parameters
+  tictoc::tic(msg = "XGB CV model fitting complete!")
+  xgb_search <- tune_grid(
+    object = xgb_wflow, 
+    resamples = train_folds,
+    grid = xgb_grid,
+    metrics = metric_set(rmse, rsq, codm),
+    control = control_grid(verbose = TRUE, allow_par = FALSE)
+  )
+  tictoc::toc()
+  beepr::beep(2)
+  
+  # Save CV results to dataframe
+  xgb_search %>%
+    collect_metrics() %>%
+    write_parquet("data/models/xgb_results.parquet")
+  
+  # Choose the best model that minimizes COD
+  xgb_final_params <- select_best(xgb_search, metric = "codm")
+  
+} else {
+  
+  # Load best params from last file if they exists, otherwise use defaults
+  if (file.exists("data/models/xgb_results.parquet")) {
+    xgb_final_params <- read_parquet("data/models/xgb_results.parquet") %>%
+      filter(.metric == "codm") %>%
+      filter(mean == min(mean)) %>%
+      distinct(mean, .keep_all = TRUE)
+  } else {
+    xgb_final_params <- list(
+      tree_depth = 9, min_n = 12, loss_reduction = 0.0000146,
+      sample_size = 0.557, learn_rate = 4.31e-7
+    )
+  }
+}
+
+
+### Step 3 - Finalize model and predict
+
+# Fit the final model using the full training data
+xgb_wflow_final_fit <- xgb_wflow %>%
+  finalize_workflow(as.list(xgb_final_params)) %>%
+  fit(data = train)
+
+# Pull recipe and final fit. Kinda buggy, see:
+# https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
+xgb_final_recp <- pull_workflow_prepped_recipe(xgb_wflow_final_fit)
+xgb_final_fit <- pull_workflow_fit(xgb_wflow_final_fit)
+
+# Get predictions from on the meta training set and test set using RF
+train_meta <- model_fit(train_meta, xgb_final_recp, xgb_final_fit, xgb_sale_price)
+test <- model_fit(test, xgb_final_recp, xgb_final_fit, xgb_sale_price)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -109,14 +203,6 @@ rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
   set_mode("regression") %>%
   set_engine("ranger") 
 
-# Initialize tuning parameters  
-rf_params <- rf_model %>%
-  parameters() %>%
-  update(
-    mtry = mtry(range = c(5, floor((ncol(juice(prep(train_recipe))) - 1) / 3))),
-    min_n = min_n(range = c(5, 12))
-  ) 
-
 # Initialize RF workflow
 rf_wflow <- workflow() %>%
   add_model(rf_model) %>%
@@ -129,7 +215,11 @@ rf_wflow <- workflow() %>%
 if (cv_enable) {
   
   # Initialize tuning grid
-  rf_grid <- grid_regular(rf_params, levels = 3)
+  rf_grid <- grid_latin_hypercube(
+    mtry(range = c(5, floor(train_p / 3))),
+    min_n(),
+    size = 7
+  )
   
   # Loop through grid of tuning parameters
   tictoc::tic(msg = "RF CV model fitting complete!")
@@ -141,19 +231,27 @@ if (cv_enable) {
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
   tictoc::toc()
+  beepr::beep(2)
   
   # Save CV results to dataframe
   rf_search %>%
     collect_metrics() %>%
-    write_parquet("data/rf_results.parquet")
+    write_parquet("data/models/rf_results.parquet")
   
   # Choose the best model that minimizes COD
   rf_final_params <- select_best(rf_search, mtry, trees, metric = "codm")
   
 } else {
   
-  # If not running CV, set default rf params
-  rf_final_params <- list(mtry = 9, min_n = 12)
+  # Load best params from last file if they exists, otherwise use defaults
+  if (file.exists("data/models/rf_results.parquet")) {
+    rf_final_params <- read_parquet("data/models/rf_results.parquet") %>%
+      filter(.metric == "codm") %>%
+      filter(mean == min(mean)) %>%
+      distinct(mean, .keep_all = TRUE)
+  } else {
+    rf_final_params <- list(mtry = 9, min_n = 12)
+  }
   
 }
 
@@ -173,6 +271,7 @@ rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
 # Get predictions from on the meta training set and test set using RF
 train_meta <- model_fit(train_meta, rf_final_recp, rf_final_fit, rf_sale_price)
 test <- model_fit(test, rf_final_recp, rf_final_fit, rf_sale_price)
+
 
 
 
@@ -222,14 +321,14 @@ if (cv_enable) {
   
   # Create a grid of possible cknn parameter values to loop through
   cknn_param_grid <- expand_grid(
-    m = seq(6, 14, 2),
+    m = seq(6, 8, 2),
     k = seq(10, 16, 2),
     l = seq(0.6, 0.9, 0.1)
   )
   
   # Create v folds in the training data and keep only clustering vars, then for
   # each CV fold, calculate the values for all hyperparameters in param_grid
-  cknn_cv_fits <- train_folds %>%
+  cknn_search <- train_folds %>%
     mutate(
       df_ana = map(splits, analysis),
       df_ass = map(splits, assessment)
@@ -250,50 +349,57 @@ if (cv_enable) {
     )
   
   # Summarize results by parameter groups, averaging across folds
-  cknn_results <- bind_rows(cknn_cv_fits$cknn_results) %>%
+  cknn_results <- bind_rows(cknn_search$cknn_results) %>%
     group_by(m, k, l) %>%
     summarize(across(everything(), mean)) %>%
     ungroup() %>%
     arrange(cod) %>%
-    write_parquet("data/cknn_results.parquet")
+    write_parquet("data/models/cknn_results.parquet")
   
   # Take the best params according to lowest COD
-  cknn_best_params <- cknn_results %>%
+  cknn_final_params <- cknn_results %>%
     filter(cod == min(cod, na.rm = TRUE))
   
 } else {
-
-  # If not running CV, set default cknn params
-  cknn_best_params <- list(m = 8, k = 12, l = 0.8)
   
+  # Load best params from last file if they exists, otherwise use defaults
+  if (file.exists("data/models/rf_results.parquet")) {
+    cknn_final_params <- read_parquet("data/models/rf_results.parquet") %>%
+      filter(cod == min(cod)) %>%
+      distinct(cod, .keep_all = TRUE)
+  } else {
+    cknn_final_params <- list(m = 8, k = 12, l = 0.8)
+  }
+
 }
 
 
 ### Step 3 - Finalize model and predict
 
 # Finalize best model
-cknn_best_model <- cknn(
+cknn_final_fit <- cknn(
   data = juice(prep(cknn_recipe)) %>%
     select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
     as.data.frame(),
   lon = train %>% pull(geo_longitude),
   lat = train %>% pull(geo_latitude),
-  m = cknn_best_params$m,
-  k = cknn_best_params$k,
-  l = cknn_best_params$l,
+  m = cknn_final_params$m,
+  k = cknn_final_params$k,
+  l = cknn_final_params$l,
   keep_data = TRUE
 )
 
 # Get predictions from on the meta training set and test set using cknn
 train_meta <- cknn_fit(
-  train_meta, cknn_recipe, cknn_best_model,
+  train_meta, cknn_recipe, cknn_final_fit,
   train$meta_sale_price, cknn_sale_price
 )
 
 test <- cknn_fit(
-  test, cknn_recipe, cknn_best_model,
+  test, cknn_recipe, cknn_final_fit,
   train$meta_sale_price, cknn_sale_price
 )
+
 
 
 
@@ -326,6 +432,7 @@ test <- model_fit(test, stack_final_recp, stack_final_fit, stack_sale_price)
 
 
 
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ##### Finish Up #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -334,6 +441,8 @@ test <- model_fit(test, stack_final_recp, stack_final_fit, stack_sale_price)
 test %>%
   write_parquet("data/test_set.parquet")
 
+# BEEP!
+beepr::beep(3)
 
 
 # TODO: Feature importance vars

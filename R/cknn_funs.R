@@ -125,6 +125,7 @@ cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weigh
   
   # Stop timer
   tictoc::toc()
+  beepr::beep(2)
   return(m_out)
 }
 

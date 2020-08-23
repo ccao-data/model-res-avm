@@ -2,10 +2,7 @@
 model_fit <- function(data, recipe, model, col_name) {
   data <- data %>%
     mutate(
-        {{col_name}} := exp(predict(
-        model,
-        new_data = bake(recipe, data))$.pred
-      )
+      {{col_name}} := exp(predict(model, new_data = bake(recipe, data))$.pred)
     )
   
   return(data)
@@ -24,12 +21,25 @@ cknn_recp_prep <- function(data, keep_vars) {
 # Helper function to prep data for all non-cknn models
 mod_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
+    update_role(meta_pin, new_role = "ID") %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
     step_unknown(all_nominal()) %>%
     step_other(all_nominal(), -any_of("town_nbhd"), threshold = 0.005) %>%
     step_naomit(all_predictors()) %>%
-    step_log(all_outcomes(), ends_with("_price"))
-    # step_dummy(all_nominal())
+    step_zv(all_numeric(), -all_outcomes()) %>%
+    step_log(
+      all_outcomes(),
+      ends_with("_price"), ends_with("_sf"), ends_with("_amt_paid"),
+      offset = 1
+    )
+}
+
+
+# Dummy vars specifically for lasso
+xgb_recp_prep <- function(recipe) {
+  recipe %>%
+    step_mutate_at(starts_with("ind_"), fn = as.numeric) %>%
+    step_dummy(all_nominal(), -all_outcomes())
 }
 
 
