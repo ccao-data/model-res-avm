@@ -6,64 +6,62 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(arrow)
+library(dplyr)
+library(DT)
+library(ccao)
+library(assessr)
+source("cknn_funs.R")
 ```
 
+## Overall Results
 
-```{r}
+```{r, message=FALSE}
+# Load the test set results from file
+test <- read_parquet("data/test_results.parquet")
 
-# Print and plot results
-cknn_results
-cknn_grid_plot(cknn_results, m, k, l, cod)
-
-
-##### Summarize Results #####
-
-# Summarize test set results
+# Create a summary of test set results by township
 test_summary <- test %>%
+  select(meta_town_code, meta_sale_price, ends_with("sale_price")) %>%
   mutate(
     town_name = town_convert(meta_town_code),
-    outlier = is_outlier(rf_sale_price / meta_sale_price)
+    outlier = is_outlier(stack_sale_price / meta_sale_price)
+  ) %>%
+  rename_with(
+    ~ gsub("_sale_price", "", .x),
+    meta_sale_price:stack_sale_price
   ) %>%
   group_by(town_name) %>%
-  summarise(
+  summarize(
     count = n(),
-    cod_lm = cod(lm_sale_price / meta_sale_price),
-    cod_cknn = cod(cknn_sale_price / meta_sale_price),
-    cod_rf = cod(rf_sale_price / meta_sale_price),
-    cod_rf_trimmed = cod((rf_sale_price / meta_sale_price)[!outlier]),
-    rmse_rf_trimmed = rmse_vec(meta_sale_price[!outlier], rf_sale_price[!outlier]),
-    num_obs_trimmed = sum(outlier)
+    across(lm:stack, ~ cod(.x / meta), .names = "{.col}_cod"),
+    across(stack, ~ cod((.x / meta)[!outlier]), .names = "{.col}_cod_trim")
   ) %>%
-  arrange(cod_rf_trimmed) 
+  arrange(stack_cod)
 
-test_summary %>%
-  print(n = 100)
 
+
+
+```
+
+## Township Map
+
+```{r, message = FALSE, out.width='100%'}
 ccao::town_shp %>%
   left_join(test_summary, by = c("township_name" = "town_name")) %>%
   ggplot() +
-  geom_sf(aes(fill = cod_rf_trimmed)) +
+  geom_sf(aes(fill = stack_cod_trim)) +
   scale_fill_distiller(name = "COD", palette = "Spectral") +
-  labs(title = "COD by Township for Trimmed RF Model") +
+  labs(title = "COD by Township for Trimmed Stacked Model") +
   theme_void()
+```
 
-# Ratio distribution by model type
-test %>%
-  pivot_longer(
-    cknn_sale_price:rf_sale_price,
-    names_to = "model_type",
-    values_to = "predicted"
-  ) %>%
-  mutate(
-    ratio = predicted / meta_sale_price,
-    model_type = gsub("_sale_price", "", model_type)
-  ) %>%
-ggplot() +
-  geom_histogram(aes(x = ratio), binwidth = 0.1) +
-  facet_wrap(vars(model_type), ncol = 1) +
-  labs(title = "Distribution of Ratios by Model Type") +
-  lims(x = c(-1, 3)) +
-  theme_minimal() 
+## CkNN Grid Search
+
+```{r, message = FALSE, out.width='100%'}
+# Load and plot CkNN grid search results
+cknn_results <- read_parquet("../data/cknn_results.parquet")
+cknn_grid_plot(cknn_results, m, k, l, cod)
+
 ```
 

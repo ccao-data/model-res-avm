@@ -99,6 +99,84 @@ test <- model_fit(test, lm_final_recp, lm_final_fit, lm_sale_price)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+##### Random Forest #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+### Step 1 - Model initialization
+
+# Initialize random forest model
+rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
+  set_mode("regression") %>%
+  set_engine("ranger") 
+
+# Initialize tuning parameters  
+rf_params <- rf_model %>%
+  parameters() %>%
+  update(
+    mtry = mtry(range = c(5, floor((ncol(juice(prep(train_recipe))) - 1) / 3))),
+    min_n = min_n(range = c(5, 12))
+  ) 
+
+# Initialize RF workflow
+rf_wflow <- workflow() %>%
+  add_model(rf_model) %>%
+  add_recipe(train_recipe) 
+
+
+### Step 2 - Cross-validation
+
+# Begin CV tuning if enabled
+if (cv_enable) {
+  
+  # Initialize tuning grid
+  rf_grid <- grid_regular(rf_params, levels = 3)
+  
+  # Loop through grid of tuning parameters
+  tictoc::tic(msg = "RF CV model fitting complete!")
+  rf_search <- tune_grid(
+    object = rf_wflow, 
+    resamples = train_folds,
+    grid = rf_grid,
+    metrics = metric_set(rmse, rsq, codm),
+    control = control_grid(verbose = TRUE, allow_par = FALSE)
+  )
+  tictoc::toc()
+  
+  # Save CV results to dataframe
+  rf_search %>%
+    collect_metrics() %>%
+    write_parquet("data/rf_results.parquet")
+  
+  # Choose the best model that minimizes COD
+  rf_final_params <- select_best(rf_search, mtry, trees, metric = "codm")
+  
+} else {
+  
+  # If not running CV, set default rf params
+  rf_final_params <- list(mtry = 9, min_n = 12)
+  
+}
+
+
+### Step 3 - Finalize model and predict
+
+# Fit the final model using the full training data
+rf_wflow_final_fit <- rf_wflow %>%
+  finalize_workflow(as.list(rf_final_params)) %>%
+  fit(data = train)
+
+# Pull recipe and final fit. Kinda buggy, see:
+# https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
+rf_final_recp <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
+rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
+
+# Get predictions from on the meta training set and test set using RF
+train_meta <- model_fit(train_meta, rf_final_recp, rf_final_fit, rf_sale_price)
+test <- model_fit(test, rf_final_recp, rf_final_fit, rf_sale_price)
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ##### CkNN #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -220,79 +298,6 @@ test <- cknn_fit(
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-##### Random Forest #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-### Step 1 - Model initialization
-
-# Initialize random forest model
-rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
-  set_mode("regression") %>%
-  set_engine("ranger") 
-
-# Initialize tuning parameters  
-rf_params <- rf_model %>%
-  parameters() %>%
-  update(
-    mtry = mtry(range = c(5, floor((ncol(juice(prep(train_recipe))) - 1) / 3))),
-    min_n = min_n(range = c(5, 12))
-  ) 
-
-# Initialize RF workflow
-rf_wflow <- workflow() %>%
-  add_model(rf_model) %>%
-  add_recipe(train_recipe) 
-
-
-### Step 2 - Cross-validation
-
-# Begin CV tuning if enabled
-if (cv_enable) {
-  
-  # Initialize tuning grid
-  rf_grid <- grid_regular(rf_params, levels = 3)
-  
-  # Loop through grid of tuning parameters
-  tictoc::tic(msg = "RF CV model fitting complete!")
-  rf_search <- tune_grid(
-    object = rf_wflow, 
-    resamples = train_folds,
-    grid = rf_grid,
-    metrics = metric_set(rmse, rsq, codm),
-    control = control_grid(verbose = TRUE, allow_par = FALSE)
-  )
-  tictoc::toc()
-
-  # Choose the best model that minimizes COD
-  rf_final_params <- select_best(rf_search, mtry, trees, metric = "codm")
-  
-} else {
-  
-  # If not running CV, set default rf params
-  rf_final_params <- list(mtry = 9, min_n = 12)
-  
-}
-
-
-### Step 3 - Finalize model and predict
-
-# Fit the final model using the full training data
-rf_wflow_final_fit <- rf_wflow %>%
-  finalize_workflow(c(as.list(rf_final_params), trees = 1000)) %>%
-  fit(data = train)
-
-# Pull recipe and final fit. Kinda buggy, see:
-# https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
-rf_final_recp <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
-rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
-
-# Get predictions from on the meta training set and test set using RF
-train_meta <- model_fit(train_meta, rf_final_recp, rf_final_fit, rf_sale_price)
-test <- model_fit(test, rf_final_recp, rf_final_fit, rf_sale_price)
-
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ##### Meta Model (LM) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -321,38 +326,20 @@ test <- model_fit(test, stack_final_recp, stack_final_fit, stack_sale_price)
 
 
 
-##### Summarize Results #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+##### Finish Up #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-# Summarize test set results
-test_summary <- test %>%
-  select(meta_town_code, meta_sale_price, ends_with("sale_price")) %>%
-  mutate(town_name = town_convert(meta_town_code)) %>%
-  rename_with(~ gsub("_sale_price", "", .x), lm_sale_price:stack_sale_price) %>%
-  group_by(town_name) %>%
-  summarize(
-    count = n(),
-    across(lm:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    across(stack, ~ cod((.x / meta_sale_price)[
-      !is_outlier(.x / meta_sale_price)
-    ]), .names = "{.col}_cod_trim")
-  ) %>%
-  arrange(stack_cod)
-
-test_summary %>%
-  print(n = 100)
-
-ccao::town_shp %>%
-  left_join(test_summary, by = c("township_name" = "town_name")) %>%
-  ggplot() +
-  geom_sf(aes(fill = stack_cod_trim)) +
-  scale_fill_distiller(name = "COD", palette = "Spectral") +
-  labs(title = "COD by Township for Trimmed RF Model") +
-  theme_void()
+# Save test set results to file then generate report
+test %>%
+  write_parquet("data/test_set.parquet")
 
 
 
 # TODO: Feature importance vars
-# TODO: Try xgboost based model + lasso
-# TODO: try model stacking
-# TODO: Caution on selection of time data for
+
+# TODO: Save params for RF
+# TODO: Add xgboost based model + lasso
+# TODO: Caution on selection of time data for cknn
+
 # TODO: figure out how to have a single model interface for training/prediction here

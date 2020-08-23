@@ -19,8 +19,8 @@ cknn_grid_plot <- function(data, m, k, l, metric) {
 
 # Helper to fit cknn models
 cknn_fit <- function(data, recipe, model, sale_prices, col_name) {
-  data %>%
-  mutate(col_name := map_dbl(
+  data <- data %>%
+  mutate({{col_name}} := map_dbl(
     predict(
       model, 
       bake(prep(recipe), data) %>%
@@ -31,6 +31,8 @@ cknn_fit <- function(data, recipe, model, sale_prices, col_name) {
     )$knn,
     ~ median(sale_prices[.x])
   ))
+  
+  return(data)
 }
 
 

@@ -1,12 +1,14 @@
 # Helper to return prediction from a model and recipe
 model_fit <- function(data, recipe, model, col_name) {
-  data %>%
+  data <- data %>%
     mutate(
-        col_name := exp(predict(
+        {{col_name}} := exp(predict(
         model,
-        new_data = bake(recipe, df))$.pred
+        new_data = bake(recipe, data))$.pred
       )
     )
+  
+  return(data)
 }
 
 # Helper function to prep data for cknn
@@ -23,11 +25,6 @@ cknn_recp_prep <- function(data, keep_vars) {
 mod_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
-    step_mutate(town_nbhd = paste0(
-      meta_town_code,
-      str_pad(meta_nbhd, 3, "left", "0")
-    )) %>%
-    step_rm(any_of(c("meta_town_code", "meta_nbhd"))) %>%
     step_unknown(all_nominal()) %>%
     step_other(all_nominal(), -any_of("town_nbhd"), threshold = 0.005) %>%
     step_naomit(all_predictors()) %>%
