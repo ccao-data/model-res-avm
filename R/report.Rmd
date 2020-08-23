@@ -1,0 +1,69 @@
+---
+title: "Model Summary"
+author: "Cook County Assessor's Office"
+date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+# Print and plot results
+cknn_results
+cknn_grid_plot(cknn_results, m, k, l, cod)
+
+
+##### Summarize Results #####
+
+# Summarize test set results
+test_summary <- test %>%
+  mutate(
+    town_name = town_convert(meta_town_code),
+    outlier = is_outlier(rf_sale_price / meta_sale_price)
+  ) %>%
+  group_by(town_name) %>%
+  summarise(
+    count = n(),
+    cod_lm = cod(lm_sale_price / meta_sale_price),
+    cod_cknn = cod(cknn_sale_price / meta_sale_price),
+    cod_rf = cod(rf_sale_price / meta_sale_price),
+    cod_rf_trimmed = cod((rf_sale_price / meta_sale_price)[!outlier]),
+    rmse_rf_trimmed = rmse_vec(meta_sale_price[!outlier], rf_sale_price[!outlier]),
+    num_obs_trimmed = sum(outlier)
+  ) %>%
+  arrange(cod_rf_trimmed) 
+
+test_summary %>%
+  print(n = 100)
+
+ccao::town_shp %>%
+  left_join(test_summary, by = c("township_name" = "town_name")) %>%
+  ggplot() +
+  geom_sf(aes(fill = cod_rf_trimmed)) +
+  scale_fill_distiller(name = "COD", palette = "Spectral") +
+  labs(title = "COD by Township for Trimmed RF Model") +
+  theme_void()
+
+# Ratio distribution by model type
+test %>%
+  pivot_longer(
+    cknn_sale_price:rf_sale_price,
+    names_to = "model_type",
+    values_to = "predicted"
+  ) %>%
+  mutate(
+    ratio = predicted / meta_sale_price,
+    model_type = gsub("_sale_price", "", model_type)
+  ) %>%
+ggplot() +
+  geom_histogram(aes(x = ratio), binwidth = 0.1) +
+  facet_wrap(vars(model_type), ncol = 1) +
+  labs(title = "Distribution of Ratios by Model Type") +
+  lims(x = c(-1, 3)) +
+  theme_minimal() 
+```
+

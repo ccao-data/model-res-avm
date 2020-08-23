@@ -1,13 +1,3 @@
-# Helper function to prep data for cknn
-cknn_recp_prep <- function(data, keep_vars) {
-  recipe(meta_sale_price ~ ., data = data) %>%
-    step_rm(-any_of(keep_vars), -all_outcomes()) %>%
-    step_unknown(all_nominal()) %>%
-    step_other(all_nominal(), threshold = 0.005) %>%
-    step_naomit(all_predictors())
-}
-
-
 # Helper function to create CV grid search plot
 cknn_grid_plot <- function(data, m, k, l, metric) {
   clst_lab <- as_labeller(function(x) paste("m =", x))
@@ -27,8 +17,25 @@ cknn_grid_plot <- function(data, m, k, l, metric) {
 }
 
 
+# Helper to fit cknn models
+cknn_fit <- function(data, recipe, model, sale_prices, col_name) {
+  data %>%
+  mutate(col_name := map_dbl(
+    predict(
+      model, 
+      bake(prep(recipe), data) %>%
+        select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
+        as.data.frame(),
+      lon = data %>% pull(geo_longitude),
+      lat = data %>% pull(geo_latitude)
+    )$knn,
+    ~ median(sale_prices[.x])
+  ))
+}
+
+
 # Helper function to fit a cknn model then return predicted values
-cknn_fit <- function(data, dlon, dlat, newdata, nlon, nlat, m, k, l, weights) {
+cknn_fit_fold <- function(data, dlon, dlat, newdata, nlon, nlat, m, k, l, weights) {
   
   # Create initial cknn model
   model <- assessr::cknn(
@@ -85,7 +92,7 @@ cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weigh
     results <- furrr::future_pmap(param_grid, function(m, k, l) {
       
       # Return predictions for validation data
-      preds <- cknn_fit(
+      preds <- cknn_fit_fold(
         ana_cv, ana_lon, ana_lat,
         ass_cv, ass_lon, ass_lat,
         m, k, l, weights

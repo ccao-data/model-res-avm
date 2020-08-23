@@ -11,7 +11,7 @@ codm <- new_numeric_metric(
 codm.data.frame <- function(data, truth, estimate, na_rm = TRUE, ...) {
   
   metric_summarizer(
-    metric_nm = "cod",
+    metric_nm = "codm",
     metric_fn = codm_vec,
     data = data,
     truth = !!enquo(truth),
