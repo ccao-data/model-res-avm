@@ -22,7 +22,7 @@ source("R/metrics.R")
 set.seed(27)
 
 # Set number of folds to use for all cross validation
-cv_enable <- FALSE
+cv_enable <- TRUE
 cv_num_folds <- 5
 
 # Get the full list of possible RHS predictors from ccao::vars_dict
@@ -87,7 +87,7 @@ lm_model <- linear_reg() %>%
 # Define basic linear model workflow
 lm_wflow <- workflow() %>%
   add_model(lm_model) %>%
-  add_recipe(train_recipe %>% lasso_recp_prep()) 
+  add_recipe(train_recipe) 
 
 # No CV for this linearmodel, just predict right away
 lm_final_fit <-  fit(lm_wflow, data = train)
@@ -108,7 +108,7 @@ test <- model_fit(test, lm_final_recp, lm_final_fit, lm_sale_price)
 
 ### Step 1 - Model initialization
 
-# Initialize xgboost model
+# Initialize xgboost model specification
 xgb_model <- boost_tree(
     trees = 500, tree_depth = tune(), min_n = tune(), 
     loss_reduction = tune(), sample_size = tune(), mtry = tune(),         
@@ -117,10 +117,10 @@ xgb_model <- boost_tree(
   set_engine("xgboost") %>% 
   set_mode("regression")
 
-# Initialize xgb workflow
+# Initialize xgb workflow, note the added recipe for formatting factors
 xgb_wflow <- workflow() %>%
   add_model(xgb_model) %>%
-  add_recipe(train_recipe %>% xgb_recp_prep()) 
+  add_recipe(train_recipe %>% xgb_recp_prep())
 
 
 ### Step 2 - Cross-validation
@@ -128,6 +128,7 @@ xgb_wflow <- workflow() %>%
 # Begin CV tuning if enabled
 if (cv_enable) {
   
+  # Create grid search space for xgb
   xgb_grid <- grid_latin_hypercube(
     tree_depth(),
     min_n(),
@@ -150,7 +151,7 @@ if (cv_enable) {
   tictoc::toc()
   beepr::beep(2)
   
-  # Save CV results to dataframe
+  # Save CV results to data frame and file
   xgb_search %>%
     collect_metrics() %>%
     write_parquet("data/models/xgb_results.parquet")
@@ -169,7 +170,7 @@ if (cv_enable) {
   } else {
     xgb_final_params <- list(
       tree_depth = 9, min_n = 12, loss_reduction = 0.0000146,
-      sample_size = 0.557, learn_rate = 4.31e-7
+      mtry = 10, sample_size = 0.557, learn_rate = 0.001
     )
   }
 }
@@ -190,6 +191,7 @@ xgb_final_fit <- pull_workflow_fit(xgb_wflow_final_fit)
 # Get predictions from on the meta training set and test set using RF
 train_meta <- model_fit(train_meta, xgb_final_recp, xgb_final_fit, xgb_sale_price)
 test <- model_fit(test, xgb_final_recp, xgb_final_fit, xgb_sale_price)
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

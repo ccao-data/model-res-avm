@@ -2,7 +2,10 @@
 model_fit <- function(data, recipe, model, col_name) {
   data <- data %>%
     mutate(
-      {{col_name}} := exp(predict(model, new_data = bake(recipe, data))$.pred)
+      {{col_name}} := exp(predict(
+        model,
+        new_data = bake(recipe, data) %>% select(-any_of("meta_sale_price"))
+      )$.pred)
     )
   
   return(data)
@@ -21,7 +24,6 @@ cknn_recp_prep <- function(data, keep_vars) {
 # Helper function to prep data for all non-cknn models
 mod_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
-    update_role(meta_pin, new_role = "ID") %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
     step_unknown(all_nominal()) %>%
     step_other(all_nominal(), -any_of("town_nbhd"), threshold = 0.005) %>%
