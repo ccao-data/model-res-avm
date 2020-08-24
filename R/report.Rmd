@@ -62,17 +62,15 @@ test_summary %>%
       info = FALSE
     )
   ) %>%
-  formatRound(c(2:7, 9))
+  formatRound(2, digits = 0) %>%
+  formatRound(c(3:7, 9))
 
 ```
 
 ### Map of COD by Township by Model Type
 
-```{r, message = FALSE, out.width='100%'}
-
-model_order <- c("lasso", "xgb", "rf", "cknn", "stack", "stack_trim")
-
-# Generate township map of each model
+```{r}
+# Generate triad-level map of outlier
 test_summary %>%
   pivot_longer(c(lasso:stack, stack_trim)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
@@ -85,27 +83,62 @@ ggplot() +
   theme_void()
 ```
 
+### Outliers by Triad
+
+```{r, message = FALSE, out.width='100%'}
+# Generate township map of each model
+test %>%
+  select(
+    meta_town_code, meta_sale_price, stack_sale_price,
+    geo_longitude, geo_latitude
+  ) %>%
+  mutate(outlier = is_outlier(stack_sale_price / meta_sale_price)) %>%
+  filter(outlier) %>%
+  st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 3435) %>%
+ggplot() +
+  geom_sf(data = ccao::town_shp, aes(geometry = geometry)) +
+  geom_sf() +
+  theme_void()
+```
+
 ## Model Results
 
 ---
 
-### Lasso Best Parameters
+### Best Parameters
 
 ```{r}
-lasso_results <- read_parquet("../data/models/lasso_results.parquet")
 
-# Print best results
-lasso_results %>%
+# Load individual model results from file
+lasso_results <- read_parquet("../data/models/lasso_results.parquet")
+xgb_results <- read_parquet("../data/models/xgb_results.parquet")
+rf_results <- read_parquet("../data/models/rf_results.parquet")
+cknn_results <- read_parquet("../data/models/cknn_results.parquet") %>%
+  mutate(model = "cknn", log_cod = log(cod)) %>%
+  filter(cod == min(cod)) %>%
+  select(m:l, log_cod, model) 
+
+# Bind results together and print
+bind_rows(
+  lasso_results %>% mutate(model = "lasso"),
+  xgb_results %>% mutate(model = "xgb"),
+  rf_results  %>% mutate(model = "rf")
+) %>%
+  group_by(model) %>%
   filter(.metric == "codm") %>%
   filter(mean == min(mean)) %>%
   distinct(mean, .keep_all = TRUE) %>%
-  select(-.metric, -mean, -n, -std_err) %>%
+  select(-.metric, -.estimator, -n, -.config) %>%
+  select(model, log_cod = mean, std_err, everything()) %>%
+  bind_rows(cknn_results) %>%
   knitr::kable(digits = 4)
+
+
 ```
 
 ### Lasso Grid Search
 
-```{r, warning=FALSE, out.width='100%'}
+```{r, warning=FALSE}
 # Load and plot lasso grid search results
 lasso_results %>%
   ggplot(aes(penalty, mean, color = .metric)) +
@@ -121,23 +154,7 @@ lasso_results %>%
     theme_minimal()
 ```
 
----
-
-### xgb Best Parameters
-
-```{r}
-xgb_results <- read_parquet("../data/models/xgb_results.parquet")
-
-# Print best results
-xgb_results %>%
-  filter(.metric == "codm") %>%
-  filter(mean == min(mean)) %>%
-  distinct(mean, .keep_all = TRUE) %>%
-  select(-.metric, -mean, -n, -std_err) %>%
-  knitr::kable(digits = 4)
-```
-
-## CkNN Grid Search
+### CkNN Grid Search
 
 ```{r, message = FALSE}
 # Load and plot CkNN grid search results

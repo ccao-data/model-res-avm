@@ -19,11 +19,14 @@ source("R/recipes.R")
 source("R/metrics.R")
 source("R/utils.R")
 
+# Start full script timer
+tictoc::tic(msg = "Modeling Complete!")
+
 # Set seed for reproducibility 
 set.seed(27)
 
 # Set number of folds to use for all cross validation
-cv_enable <- FALSE
+cv_enable <- TRUE
 cv_num_folds <- 5
 
 # Get the full list of possible RHS predictors from ccao::vars_dict
@@ -89,7 +92,7 @@ rm(full_data, split_train_test, split_train_meta)
 lasso_params_path <- "data/models/lasso_results.parquet"
 
 # Setup basic linear model specification
-lasso_model <- linear_reg(penalty = tune()) %>%
+lasso_model <- linear_reg(penalty = tune(), mixture = 1) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
@@ -116,7 +119,7 @@ if (cv_enable) {
     metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
-  tictoc::toc()
+  tictoc::toc(log = TRUE)
   beepr::beep(2)
   
   # Save CV results to data frame and file
@@ -193,7 +196,7 @@ if (cv_enable) {
     sample_size = sample_prop(),
     mtry = mtry(c(5, floor(train_p / 3))),
     learn_rate(),
-    size = 15
+    size = 20
   )
   
   # Loop through grid of tuning parameters
@@ -205,7 +208,7 @@ if (cv_enable) {
     metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
-  tictoc::toc()
+  tictoc::toc(log = TRUE)
   beepr::beep(2)
   
   # Save CV results to data frame and file
@@ -278,7 +281,7 @@ if (cv_enable) {
   rf_grid <- grid_latin_hypercube(
     mtry(range = c(5, floor(train_p / 3))),
     min_n(),
-    size = 7
+    size = 10
   )
   
   # Loop through grid of tuning parameters
@@ -290,7 +293,7 @@ if (cv_enable) {
     metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
-  tictoc::toc()
+  tictoc::toc(log = TRUE)
   beepr::beep(2)
   
   # Save CV results to dataframe
@@ -380,14 +383,15 @@ cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
 if (cv_enable) {
   
   # Create a grid of possible cknn parameter values to loop through
-  cknn_param_grid <- expand_grid(
+  cknn_grid <- expand_grid(
     m = seq(7, 15, 2),
-    k = seq(10, 19, 3),
-    l = seq(0.6, 0.9, 0.1)
+    k = seq(7, 19, 3),
+    l = seq(0.5, 0.9, 0.1)
   )
   
   # Create v folds in the training data and keep only clustering vars, then for
   # each CV fold, calculate the values for all hyperparameters in param_grid
+  tictoc::tic(msg = "CkNN CV model fitting complete!")
   cknn_search <- train_folds %>%
     mutate(
       df_ana = map(splits, analysis),
@@ -402,11 +406,13 @@ if (cv_enable) {
       cknn_results = cknn_search(
         analysis = df_ana, 
         assessment = df_ass, 
-        param_grid = cknn_param_grid, 
+        param_grid = cknn_grid, 
         noncluster_vars = cknn_noncluster_vars,
         weights = cknn_var_weights
       )
     )
+  tictoc::toc(log = TRUE)
+  beepr::beep(2)
   
   # Summarize results by parameter groups, averaging across folds
   cknn_results <- bind_rows(cknn_search$cknn_results) %>%
@@ -498,8 +504,7 @@ test <- model_fit(test, stack_final_recp, stack_final_fit, stack_sale_price)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # Save test set results to file then generate report
-test %>%
-  write_parquet("data/testdata.parquet")
+write_parquet(test, "data/testdata.parquet")
 
 # Generate modeling report
 rmarkdown::render(
@@ -508,11 +513,17 @@ rmarkdown::render(
   output_dir = "data/models"
 )
 
+# Stop all timers and write CV timers to log file
+tictoc::toc(log = TRUE)
+model_timings <- tictoc::tic.log()
+if (cv_enable) write_parquet(model_timings, "data/models/model_timings.parquet")
+
 # BEEP!
-beepr::beep(3)
+beepr::beep(8)
 
 
+# TODO: Set default params to best CV outcomes
 # TODO: Create interaction terms: step_interact().
 # TODO: Feature importance vars
 # TODO: Caution on selection of time data for cknn
-# TODO: figure out how to have a single model interface for training/prediction here
+# TODO: figure out how to have a single model interface for training/prediction
