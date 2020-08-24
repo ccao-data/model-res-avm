@@ -48,7 +48,7 @@ xgb_recp_prep <- function(recipe) {
 # Function to create recipe for stacking model
 stack_recp_prep <- function(data) {
   recipe(meta_sale_price ~ ., data = data) %>%
-    step_rm(-ends_with("_sale_price"), -all_outcomes()) %>%
+    step_rm(-ends_with("_sale_price"), starts_with("stack_"), -all_outcomes()) %>%
     step_naomit(all_predictors()) %>%
     step_log(all_predictors(), all_outcomes())
 }

@@ -108,6 +108,9 @@ test <- model_fit(test, lm_final_recp, lm_final_fit, lm_sale_price)
 
 ### Step 1 - Model initialization
 
+# Set model params save path
+xgb_params_path <- "data/models/xgb_results.parquet"
+
 # Initialize xgboost model specification
 xgb_model <- boost_tree(
     trees = 500, tree_depth = tune(), min_n = tune(), 
@@ -154,7 +157,7 @@ if (cv_enable) {
   # Save CV results to data frame and file
   xgb_search %>%
     collect_metrics() %>%
-    write_parquet("data/models/xgb_results.parquet")
+    write_parquet(xgb_params_path)
   
   # Choose the best model that minimizes COD
   xgb_final_params <- select_best(xgb_search, metric = "codm")
@@ -162,8 +165,8 @@ if (cv_enable) {
 } else {
   
   # Load best params from last file if they exists, otherwise use defaults
-  if (file.exists("data/models/xgb_results.parquet")) {
-    xgb_final_params <- read_parquet("data/models/xgb_results.parquet") %>%
+  if (file.exists(xgb_params_path)) {
+    xgb_final_params <- read_parquet(xgb_params_path) %>%
       filter(.metric == "codm") %>%
       filter(mean == min(mean)) %>%
       distinct(mean, .keep_all = TRUE)
@@ -199,6 +202,9 @@ test <- model_fit(test, xgb_final_recp, xgb_final_fit, xgb_sale_price)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 ### Step 1 - Model initialization
+
+# Model results file path
+rf_params_path <- "data/models/rf_results.parquet"
 
 # Initialize random forest model
 rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
@@ -238,7 +244,7 @@ if (cv_enable) {
   # Save CV results to dataframe
   rf_search %>%
     collect_metrics() %>%
-    write_parquet("data/models/rf_results.parquet")
+    write_parquet(rf_params_path)
   
   # Choose the best model that minimizes COD
   rf_final_params <- select_best(rf_search, mtry, trees, metric = "codm")
@@ -246,8 +252,8 @@ if (cv_enable) {
 } else {
   
   # Load best params from last file if they exists, otherwise use defaults
-  if (file.exists("data/models/rf_results.parquet")) {
-    rf_final_params <- read_parquet("data/models/rf_results.parquet") %>%
+  if (file.exists(rf_params_path)) {
+    rf_final_params <- read_parquet(rf_params_path) %>%
       filter(.metric == "codm") %>%
       filter(mean == min(mean)) %>%
       distinct(mean, .keep_all = TRUE)
@@ -287,6 +293,9 @@ if (cv_enable) {
   plan("multiprocess", workers = all_cores)
 }
 
+# Setup model results path
+cknn_params_path <- "data/models/cknn_results.parquet"
+
 
 ### Step 1 - Determine variable weights and which vars to keep
 
@@ -323,8 +332,8 @@ if (cv_enable) {
   
   # Create a grid of possible cknn parameter values to loop through
   cknn_param_grid <- expand_grid(
-    m = seq(6, 8, 2),
-    k = seq(10, 16, 2),
+    m = seq(7, 15, 2),
+    k = seq(10, 19, 3),
     l = seq(0.6, 0.9, 0.1)
   )
   
@@ -356,7 +365,7 @@ if (cv_enable) {
     summarize(across(everything(), mean)) %>%
     ungroup() %>%
     arrange(cod) %>%
-    write_parquet("data/models/cknn_results.parquet")
+    write_parquet(cknn_params_path)
   
   # Take the best params according to lowest COD
   cknn_final_params <- cknn_results %>%
@@ -365,8 +374,8 @@ if (cv_enable) {
 } else {
   
   # Load best params from last file if they exists, otherwise use defaults
-  if (file.exists("data/models/rf_results.parquet")) {
-    cknn_final_params <- read_parquet("data/models/rf_results.parquet") %>%
+  if (file.exists(cknn_params_path)) {
+    cknn_final_params <- read_parquet(cknn_params_path) %>%
       filter(cod == min(cod)) %>%
       distinct(cod, .keep_all = TRUE)
   } else {
@@ -447,10 +456,18 @@ test %>%
 beepr::beep(3)
 
 
+# TODO: Remove covarying vars
+# TODO: Feature engineering (step_part1())
+# Collapsing a few very infrequent categories (step_part2())
+# Create an interaction variable (step_part3())
+# Variable transformation (i.e., step_YeoJohnson(), step_normalize())
+# Create a few higher-order terms for potentially non-linear relationships (step_poly())
+# Remove predictors suffering from multicollinearity:step_corr()
+# Collapsing infrequent categories: step_other()
+# Create interaction terms: step_interact().
+# Combine variables using principal component analysis: step_pca()
+
+
 # TODO: Feature importance vars
-
-# TODO: Save params for RF
-# TODO: Add xgboost based model + lasso
 # TODO: Caution on selection of time data for cknn
-
 # TODO: figure out how to have a single model interface for training/prediction here

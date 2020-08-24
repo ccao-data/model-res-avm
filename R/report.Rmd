@@ -39,6 +39,7 @@ test_summary <- test %>%
   ) %>%
   arrange(stack_cod)
 
+test_summary
 
 ```
 
