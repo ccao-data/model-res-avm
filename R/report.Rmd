@@ -9,6 +9,8 @@ output: html_document
 library(arrow)
 library(dplyr)
 library(DT)
+library(sf)
+library(ggplot2)
 library(ccao)
 library(assessr)
 source("cknn_funs.R")
@@ -18,7 +20,7 @@ source("cknn_funs.R")
 
 ```{r, message=FALSE}
 # Load the test set results from file
-test <- read_parquet("../data/test_set.parquet")
+test <- read_parquet("../data/testdata.parquet")
 
 # Create a summary of test set results by township
 test_summary <- test %>%

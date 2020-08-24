@@ -17,12 +17,13 @@ library(tidymodels)
 source("R/cknn_funs.R")
 source("R/recipes.R")
 source("R/metrics.R")
+source("R/utils.R")
 
 # Set seed for reproducibility 
 set.seed(27)
 
 # Set number of folds to use for all cross validation
-cv_enable <- TRUE
+cv_enable <- FALSE
 cv_num_folds <- 5
 
 # Get the full list of possible RHS predictors from ccao::vars_dict
@@ -72,32 +73,85 @@ train_folds <- vfold_cv(train, v = cv_num_folds)
 train_recipe <- mod_recp_prep(train, mod_predictors) 
 train_p <- ncol(juice(prep(train_recipe))) - 1
 
+# Remove unnecessary data
+rm(full_data, split_train_test, split_train_meta)
+
 
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-##### Baseline Linear Model #####
+##### Lasso Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+### Step 1 - Model initialization
+
+# Set model params save path
+lasso_params_path <- "data/models/lasso_results.parquet"
 
 # Setup basic linear model specification
-lm_model <- linear_reg() %>%
-  set_engine("lm") %>%
+lasso_model <- linear_reg(penalty = tune()) %>%
+  set_engine("glmnet") %>%
   set_mode("regression")
 
 # Define basic linear model workflow
-lm_wflow <- workflow() %>%
-  add_model(lm_model) %>%
-  add_recipe(train_recipe) 
+lasso_wflow <- workflow() %>%
+  add_model(lasso_model) %>%
+  add_recipe(train_recipe %>% dummy_recp_prep()) 
 
-# No CV for this linearmodel, just predict right away
-lm_final_fit <-  fit(lm_wflow, data = train)
+
+### Step 2 - Cross-validation
+
+# Begin CV tuning if enabled
+if (cv_enable) {
+  
+  # Create grid search space for lasso params
+  lasso_grid <- grid_regular(penalty(), levels = 50)
+  
+  # Loop through grid of tuning parameters
+  tictoc::tic(msg = "Lasso CV model fitting complete!")
+  lasso_search <- tune_grid(
+    object = lasso_wflow, 
+    resamples = train_folds,
+    grid = lasso_grid,
+    metrics = metric_set(rmse, rsq, codm),
+    control = control_grid(verbose = TRUE, allow_par = FALSE)
+  )
+  tictoc::toc()
+  beepr::beep(2)
+  
+  # Save CV results to data frame and file
+  lasso_search %>%
+    collect_metrics() %>%
+    write_parquet(lasso_params_path)
+  
+  # Choose the best model that minimizes COD
+  lasso_final_params <- select_best(lasso_search, metric = "codm")
+  
+} else {
+  
+  # Load best params from last file if they exists, otherwise use defaults
+  if (file.exists(lasso_params_path)) {
+    lasso_final_params <- model_get_stored_params(lasso_params_path)
+  } else {
+    lasso_final_params <- list(penalty = 0)
+  }
+}
+
+
+### Step 3 - Finalize model and predict
+
+# Fit the final model using the full training data
+lasso_final_fit <-  lasso_wflow %>%
+  finalize_workflow(as.list(lasso_final_params)) %>%
+  fit(data = train)
 
 # Extract steps from the fit necessary to predict on the test set
-lm_final_recp <- pull_workflow_prepped_recipe(lm_final_fit)
-lm_final_fit <- pull_workflow_fit(lm_final_fit)
+lasso_final_recp <- pull_workflow_prepped_recipe(lasso_final_fit)
+lasso_final_fit <- pull_workflow_fit(lasso_final_fit)
 
-# Get predictions on the test set
-test <- model_fit(test, lm_final_recp, lm_final_fit, lm_sale_price)
+# Get predictions on the training meta set and test set
+train_meta <- model_fit(train_meta, lasso_final_recp, lasso_final_fit, lasso_sale_price)
+test <- model_fit(test, lasso_final_recp, lasso_final_fit, lasso_sale_price)
 
 
 
@@ -123,7 +177,7 @@ xgb_model <- boost_tree(
 # Initialize xgb workflow, note the added recipe for formatting factors
 xgb_wflow <- workflow() %>%
   add_model(xgb_model) %>%
-  add_recipe(train_recipe %>% xgb_recp_prep())
+  add_recipe(train_recipe %>% dummy_recp_prep())
 
 
 ### Step 2 - Cross-validation
@@ -166,10 +220,7 @@ if (cv_enable) {
   
   # Load best params from last file if they exists, otherwise use defaults
   if (file.exists(xgb_params_path)) {
-    xgb_final_params <- read_parquet(xgb_params_path) %>%
-      filter(.metric == "codm") %>%
-      filter(mean == min(mean)) %>%
-      distinct(mean, .keep_all = TRUE)
+    xgb_final_params <- model_get_stored_params(xgb_params_path)
   } else {
     xgb_final_params <- list(
       tree_depth = 9, min_n = 12, loss_reduction = 0.0000146,
@@ -197,8 +248,9 @@ test <- model_fit(test, xgb_final_recp, xgb_final_fit, xgb_sale_price)
 
 
 
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-##### Random Forest #####
+##### Random Forest Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 ### Step 1 - Model initialization
@@ -253,10 +305,7 @@ if (cv_enable) {
   
   # Load best params from last file if they exists, otherwise use defaults
   if (file.exists(rf_params_path)) {
-    rf_final_params <- read_parquet(rf_params_path) %>%
-      filter(.metric == "codm") %>%
-      filter(mean == min(mean)) %>%
-      distinct(mean, .keep_all = TRUE)
+    rf_final_params <- model_get_stored_params(rf_params_path)
   } else {
     rf_final_params <- list(mtry = 9, min_n = 12)
   }
@@ -284,7 +333,7 @@ test <- model_fit(test, rf_final_recp, rf_final_fit, rf_sale_price)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-##### CkNN #####
+##### CkNN Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 ### Step 0 - Initialize parallel backend for furrr functions used by cknn
@@ -415,7 +464,7 @@ test <- cknn_fit(
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-##### Meta Model (LM) #####
+##### Meta Model (Linear) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # Setup basic linear model specification for stacking
@@ -450,23 +499,14 @@ test <- model_fit(test, stack_final_recp, stack_final_fit, stack_sale_price)
 
 # Save test set results to file then generate report
 test %>%
-  write_parquet("data/test_set.parquet")
+  write_parquet("data/testdata.parquet")
 
 # BEEP!
 beepr::beep(3)
 
 
-# TODO: Remove covarying vars
 # TODO: Feature engineering (step_part1())
-# Collapsing a few very infrequent categories (step_part2())
-# Create an interaction variable (step_part3())
-# Variable transformation (i.e., step_YeoJohnson(), step_normalize())
-# Create a few higher-order terms for potentially non-linear relationships (step_poly())
-# Remove predictors suffering from multicollinearity:step_corr()
-# Collapsing infrequent categories: step_other()
 # Create interaction terms: step_interact().
-# Combine variables using principal component analysis: step_pca()
-
 
 # TODO: Feature importance vars
 # TODO: Caution on selection of time data for cknn

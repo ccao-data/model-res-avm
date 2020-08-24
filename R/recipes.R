@@ -1,16 +1,3 @@
-# Helper to return prediction from a model and recipe
-model_fit <- function(data, recipe, model, col_name) {
-  data <- data %>%
-    mutate(
-      {{col_name}} := exp(predict(
-        model,
-        new_data = bake(recipe, data) %>% select(-any_of("meta_sale_price"))
-      )$.pred)
-    )
-  
-  return(data)
-}
-
 # Helper function to prep data for cknn
 cknn_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
@@ -26,22 +13,32 @@ mod_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
     step_unknown(all_nominal()) %>%
-    step_other(all_nominal(), -any_of("town_nbhd"), threshold = 0.005) %>%
-    step_naomit(all_predictors()) %>%
-    step_zv(all_numeric(), -all_outcomes()) %>%
+    step_other(all_nominal(), threshold = 0.005) %>%
+    step_naomit(all_predictors(), all_outcomes()) %>%
     step_log(
       all_outcomes(),
       ends_with("_price"), ends_with("_sf"), ends_with("_amt_paid"),
       offset = 1
-    )
+    ) %>%
+    step_zv(all_numeric(), -all_outcomes()) %>%
+    step_corr(all_numeric(), -all_outcomes()) %>%
+    step_poly(ends_with("_age"), ends_with("_sf"), degree = 2)
 }
 
 
-# Dummy vars specifically for lasso
-xgb_recp_prep <- function(recipe) {
+# Dummy vars specifically for xgb and lasso
+dummy_recp_prep <- function(recipe) {
   recipe %>%
     step_mutate_at(starts_with("ind_"), fn = as.numeric) %>%
     step_dummy(all_nominal(), -all_outcomes())
+}
+
+
+# Scale vars to between 1 and 0
+scale_recp_prep <- function(recipe) {
+  recipe %>%
+    step_range(all_numeric(), min = 0, max = 1) %>%
+    step_zv(all_numeric())
 }
 
 
@@ -52,4 +49,3 @@ stack_recp_prep <- function(data) {
     step_naomit(all_predictors()) %>%
     step_log(all_predictors(), all_outcomes())
 }
-
