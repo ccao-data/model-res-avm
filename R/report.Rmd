@@ -8,12 +8,17 @@ output: html_document
 ```{r setup, include=FALSE}
 library(arrow)
 library(dplyr)
+library(tidyr)
 library(DT)
 library(sf)
 library(ggplot2)
+library(stringr)
 library(ccao)
 library(assessr)
 source("cknn_funs.R")
+source("utils.R")
+
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ## Overall Results
@@ -36,40 +41,72 @@ test_summary <- test %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
-    across(lm:stack, ~ cod(.x / meta), .names = "{.col}_cod"),
+    across(lasso:stack, ~ cod(.x / meta), .names = "{.col}_cod"),
+    num_trimmed = sum(outlier),
     across(stack, ~ cod((.x / meta)[!outlier]), .names = "{.col}_cod_trim")
   ) %>%
-  arrange(stack_cod)
+  arrange(stack_cod_trim) %>%
+  rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod"), ends_with("_trim")))
 
-test_summary
+# Create an interactive table of the test set results by township
+test_summary %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    autoHideNavigation = TRUE,
+    selection = "none",
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c(2:7, 9))
 
 ```
 
-## Township Map
+### Map of COD by Township by Model Type
 
 ```{r, message = FALSE, out.width='100%'}
-ccao::town_shp %>%
-  left_join(test_summary, by = c("township_name" = "town_name")) %>%
-  ggplot() +
-  geom_sf(aes(fill = stack_cod_trim)) +
+
+model_order <- c("lasso", "xgb", "rf", "cknn", "stack", "stack_trim")
+
+# Generate township map of each model
+test_summary %>%
+  pivot_longer(c(lasso:stack, stack_trim)) %>%
+  left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
+  st_set_geometry("geometry") %>%
+  mutate(name = factor(name, levels = model_order)) %>%
+ggplot() +
+  geom_sf(aes(fill = value, geometry = geometry)) +
   scale_fill_distiller(name = "COD", palette = "Spectral") +
-  labs(title = "COD by Township for Trimmed Stacked Model") +
+  facet_wrap(vars(name)) +
   theme_void()
 ```
 
-## CkNN Grid Search
+## Model Results
 
-```{r, message = FALSE, out.width='100%'}
-# Load and plot CkNN grid search results
-cknn_results <- read_parquet("../data/models/cknn_results.parquet")
-cknn_grid_plot(cknn_results, m, k, l, cod) 
+---
+
+### Lasso Best Parameters
+
+```{r}
+lasso_results <- read_parquet("../data/models/lasso_results.parquet")
+
+# Print best results
+lasso_results %>%
+  filter(.metric == "codm") %>%
+  filter(mean == min(mean)) %>%
+  distinct(mean, .keep_all = TRUE) %>%
+  select(-.metric, -mean, -n, -std_err) %>%
+  knitr::kable(digits = 4)
 ```
 
-## Lasso Grid Search
+### Lasso Grid Search
 
-```{r, message = FALSE, out.width='100%'}
+```{r, warning=FALSE, out.width='100%'}
 # Load and plot lasso grid search results
-lasso_results <- read_parquet("../data/models/lasso_results.parquet")
 lasso_results %>%
   ggplot(aes(penalty, mean, color = .metric)) +
     geom_errorbar(
@@ -77,10 +114,36 @@ lasso_results %>%
       alpha = 0.5
     ) +
     geom_line(size = 1.5) +
-    facet_wrap(vars(.metric), scales = "free", nrow = 2) +
+    facet_wrap(vars(.metric), scales = "free", ncol = 1) +
     scale_x_log10() +
     guides(color = guide_legend(title = "Metric")) +
     theme(legend.position = "none") +
     theme_minimal()
 ```
+
+---
+
+### xgb Best Parameters
+
+```{r}
+xgb_results <- read_parquet("../data/models/xgb_results.parquet")
+
+# Print best results
+xgb_results %>%
+  filter(.metric == "codm") %>%
+  filter(mean == min(mean)) %>%
+  distinct(mean, .keep_all = TRUE) %>%
+  select(-.metric, -mean, -n, -std_err) %>%
+  knitr::kable(digits = 4)
+```
+
+## CkNN Grid Search
+
+```{r, message = FALSE}
+# Load and plot CkNN grid search results
+cknn_results <- read_parquet("../data/models/cknn_results.parquet")
+cknn_grid_plot(cknn_results, m, k, l, cod) 
+```
+
+
 

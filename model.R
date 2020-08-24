@@ -113,7 +113,7 @@ if (cv_enable) {
     object = lasso_wflow, 
     resamples = train_folds,
     grid = lasso_grid,
-    metrics = metric_set(rmse, rsq, codm),
+    metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
   tictoc::toc()
@@ -202,7 +202,7 @@ if (cv_enable) {
     object = xgb_wflow, 
     resamples = train_folds,
     grid = xgb_grid,
-    metrics = metric_set(rmse, rsq, codm),
+    metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
   tictoc::toc()
@@ -287,7 +287,7 @@ if (cv_enable) {
     object = rf_wflow, 
     resamples = train_folds,
     grid = rf_grid,
-    metrics = metric_set(rmse, rsq, codm),
+    metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
   tictoc::toc()
@@ -501,13 +501,18 @@ test <- model_fit(test, stack_final_recp, stack_final_fit, stack_sale_price)
 test %>%
   write_parquet("data/testdata.parquet")
 
+# Generate modeling report
+rmarkdown::render(
+  input = "R/report.Rmd",
+  output_file = "report.html",
+  output_dir = "data/models"
+)
+
 # BEEP!
 beepr::beep(3)
 
 
-# TODO: Feature engineering (step_part1())
-# Create interaction terms: step_interact().
-
+# TODO: Create interaction terms: step_interact().
 # TODO: Feature importance vars
 # TODO: Caution on selection of time data for cknn
 # TODO: figure out how to have a single model interface for training/prediction here
