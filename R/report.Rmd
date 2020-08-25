@@ -41,7 +41,7 @@ test_summary <- test %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
-    across(lasso:stack, ~ cod(.x / meta), .names = "{.col}_cod"),
+    across(enet:stack, ~ cod(.x / meta), .names = "{.col}_cod"),
     num_trimmed = sum(outlier),
     across(stack, ~ cod((.x / meta)[!outlier]), .names = "{.col}_cod_trim")
   ) %>%
@@ -72,7 +72,7 @@ test_summary %>%
 ```{r}
 # Generate triad-level map of outlier
 test_summary %>%
-  pivot_longer(c(lasso:stack, stack_trim)) %>%
+  pivot_longer(c(enet:stack, stack_trim)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
   mutate(name = factor(name, levels = model_order)) %>%
@@ -110,7 +110,7 @@ ggplot() +
 ```{r}
 
 # Load individual model results from file
-lasso_results <- read_parquet("../data/models/lasso_results.parquet")
+enet_results <- read_parquet("../data/models/enet_results.parquet")
 xgb_results <- read_parquet("../data/models/xgb_results.parquet")
 rf_results <- read_parquet("../data/models/rf_results.parquet")
 cknn_results <- read_parquet("../data/models/cknn_results.parquet") %>%
@@ -120,7 +120,7 @@ cknn_results <- read_parquet("../data/models/cknn_results.parquet") %>%
 
 # Bind results together and print
 bind_rows(
-  lasso_results %>% mutate(model = "lasso"),
+  enet_results %>% mutate(model = "enet"),
   xgb_results %>% mutate(model = "xgb"),
   rf_results  %>% mutate(model = "rf")
 ) %>%
@@ -136,11 +136,11 @@ bind_rows(
 
 ```
 
-### Lasso Grid Search
+### ElasticNet Grid Search
 
 ```{r, warning=FALSE}
-# Load and plot lasso grid search results
-lasso_results %>%
+# Load and plot ElasticNet grid search results
+enet_results %>%
   ggplot(aes(penalty, mean, color = .metric)) +
     geom_errorbar(
       aes(ymin = mean - std_err, ymax = mean + std_err),

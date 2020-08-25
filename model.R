@@ -2,7 +2,7 @@
 ##### Setup ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-# Load modeling and data libs
+# Load modeling and data libraries
 library(arrow)
 library(assessr)
 library(beepr)
@@ -12,6 +12,7 @@ library(furrr)
 library(purrr)
 library(sf)
 library(stringr)
+library(doFuture)
 library(tictoc)
 library(tidymodels)
 source("R/cknn_funs.R")
@@ -20,13 +21,14 @@ source("R/metrics.R")
 source("R/utils.R")
 
 # Start full script timer
-tictoc::tic(msg = "Modeling Complete!")
+tictoc::tic(msg = "Full Modeling Complete!")
 
 # Set seed for reproducibility 
 set.seed(27)
 
-# Set number of folds to use for all cross validation
-cv_enable <- TRUE
+# Toggle cross validation and set number of folds to use
+cv_env_var <- as.logical(Sys.getenv("R_CV_ENABLE"))
+cv_enable <- ifelse(!is.na(cv_env_var), cv_env_var, TRUE)
 cv_num_folds <- 5
 
 # Get the full list of possible RHS predictors from ccao::vars_dict
@@ -83,22 +85,22 @@ rm(full_data, split_train_test, split_train_meta)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-##### Lasso Model #####
+##### ElasticNet Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 ### Step 1 - Model initialization
 
 # Set model params save path
-lasso_params_path <- "data/models/lasso_results.parquet"
+enet_params_path <- "data/models/enet_results.parquet"
 
 # Setup basic linear model specification
-lasso_model <- linear_reg(penalty = tune(), mixture = 1) %>%
+enet_model <- linear_reg(penalty = tune(), mixture = tune()) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
 # Define basic linear model workflow
-lasso_wflow <- workflow() %>%
-  add_model(lasso_model) %>%
+enet_wflow <- workflow() %>%
+  add_model(enet_model) %>%
   add_recipe(train_recipe %>% dummy_recp_prep()) 
 
 
@@ -107,15 +109,15 @@ lasso_wflow <- workflow() %>%
 # Begin CV tuning if enabled
 if (cv_enable) {
   
-  # Create grid search space for lasso params
-  lasso_grid <- grid_regular(penalty(), levels = 50)
+  # Create grid search space for ElasticNet params
+  enet_grid <- grid_regular(penalty(), mixture(), levels = 40)
   
   # Loop through grid of tuning parameters
-  tictoc::tic(msg = "Lasso CV model fitting complete!")
-  lasso_search <- tune_grid(
-    object = lasso_wflow, 
+  tictoc::tic(msg = "ElasticNet CV model fitting complete!")
+  enet_search <- tune_grid(
+    object = enet_wflow, 
     resamples = train_folds,
-    grid = lasso_grid,
+    grid = enet_grid,
     metrics = metric_set(rmse, codm),
     control = control_grid(verbose = TRUE, allow_par = FALSE)
   )
@@ -123,20 +125,20 @@ if (cv_enable) {
   beepr::beep(2)
   
   # Save CV results to data frame and file
-  lasso_search %>%
+  enet_search %>%
     collect_metrics() %>%
-    write_parquet(lasso_params_path)
+    write_parquet(enet_params_path)
   
   # Choose the best model that minimizes COD
-  lasso_final_params <- select_best(lasso_search, metric = "codm")
+  enet_final_params <- select_best(enet_search, metric = "codm")
   
 } else {
   
   # Load best params from last file if they exists, otherwise use defaults
-  if (file.exists(lasso_params_path)) {
-    lasso_final_params <- model_get_stored_params(lasso_params_path)
+  if (file.exists(enet_params_path)) {
+    enet_final_params <- model_get_stored_params(enet_params_path)
   } else {
-    lasso_final_params <- list(penalty = 0)
+    enet_final_params <- list(penalty = 0, mixture = 1)
   }
 }
 
@@ -144,17 +146,17 @@ if (cv_enable) {
 ### Step 3 - Finalize model and predict
 
 # Fit the final model using the full training data
-lasso_final_fit <-  lasso_wflow %>%
-  finalize_workflow(as.list(lasso_final_params)) %>%
+enet_final_fit <-  enet_wflow %>%
+  finalize_workflow(as.list(enet_final_params)) %>%
   fit(data = train)
 
 # Extract steps from the fit necessary to predict on the test set
-lasso_final_recp <- pull_workflow_prepped_recipe(lasso_final_fit)
-lasso_final_fit <- pull_workflow_fit(lasso_final_fit)
+enet_final_recp <- pull_workflow_prepped_recipe(enet_final_fit)
+enet_final_fit <- pull_workflow_fit(enet_final_fit)
 
 # Get predictions on the training meta set and test set
-train_meta <- model_fit(train_meta, lasso_final_recp, lasso_final_fit, lasso_sale_price)
-test <- model_fit(test, lasso_final_recp, lasso_final_fit, lasso_sale_price)
+train_meta <- model_fit(train_meta, enet_final_recp, enet_final_fit, enet_sale_price)
+test <- model_fit(test, enet_final_recp, enet_final_fit, enet_sale_price)
 
 
 
@@ -342,7 +344,7 @@ test <- model_fit(test, rf_final_recp, rf_final_fit, rf_sale_price)
 ### Step 0 - Initialize parallel backend for furrr functions used by cknn
 if (cv_enable) {
   all_cores <- availableCores() - 1
-  plan("multiprocess", workers = all_cores)
+  plan(multiprocess, workers = all_cores)
 }
 
 # Setup model results path
@@ -515,8 +517,9 @@ rmarkdown::render(
 
 # Stop all timers and write CV timers to log file
 tictoc::toc(log = TRUE)
-model_timings <- tictoc::tic.log()
-if (cv_enable) write_parquet(model_timings, "data/models/model_timings.parquet")
+if (cv_enable) bind_rows(tic.log(format = FALSE)) %>%
+  mutate(elapsed = toc - tic, model = tolower(word(msg, 1))) %>%
+  write_parquet("data/models/model_timings.parquet")
 
 # BEEP!
 beepr::beep(8)
