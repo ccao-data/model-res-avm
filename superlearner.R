@@ -3,19 +3,6 @@
 
 # Currently WAY too memory intensive to actually be useful
 
-library(dplyr)
-library(furrr)
-library(purrr)
-library(doFuture)
-library(tictoc)
-library(tidymodels)
-
-
-
-all_cores <- availableCores() - 1
-plan(multiprocess, workers = all_cores)
-
-
 expand_model_grid <- function(models, params) {
 
   future_map2(models, params, merge) %>%
@@ -40,7 +27,10 @@ expand_fold_grid <- function(recipes, folds) {
       recursive = FALSE
     ),
     assessment = rep(map(folds$splits, assessment), length(recipes)),
-    idx = rep(map(folds$splits, ~ as.integer(.x, data = "assessment")), length(recipes))
+    idx = rep(
+      map(folds$splits, ~ as.integer(.x, data = "assessment")),
+      length(recipes)
+    )
   )
 }
 
@@ -129,6 +119,7 @@ super_learner <- function(models, params, recipes, data, meta_spec, meta_recipe)
   sl
 }
 
+
 predict.super_learner <- function(x, new_data) {
   
   idx <- seq_len(nrow(new_data))
@@ -143,51 +134,4 @@ predict.super_learner <- function(x, new_data) {
     unlist() %>%
     as.numeric()
 }
-
-
-
-# Models
-
-enet_model <- linear_reg(penalty = tune(), mixture = tune()) %>%
-  set_engine("glmnet") %>%
-  set_mode("regression")
-
-enet_grid <- grid_latin_hypercube(penalty(), mixture(), size = 20)
-
-rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
-  set_mode("regression") %>%
-  set_engine("ranger") 
-
-rf_grid <- grid_latin_hypercube(
-  mtry(range = c(1, 5)),
-  min_n(),
-  size = 8
-)
-
-# Other setup
-
-recipe <- iris %>% 
-  recipe(Petal.Width ~ .) %>%
-  step_dummy(all_nominal(), -all_outcomes()) 
-
-metalearner <- linear_reg(penalty = 0.01, mixture = 0) %>% 
-  set_engine("glmnet")
-
-
-# Create learner
-
-temp <- super_learner(
-  models  = list("rf" = rf_model, "enet" = enet_model),
-  params  = list("rf" = rf_grid, "enet" = enet_grid),
-  recipes = list("rf" = recipe, "enet" = recipe),
-  iris,
-  metalearner,
-  recipe
-)
-
-
-iris <- iris %>%
-  mutate(prediction = predict(temp, .)) 
-
-
 
