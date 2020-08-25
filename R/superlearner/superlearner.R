@@ -5,7 +5,7 @@
 
 expand_model_grid <- function(models, params) {
 
-  future_map2(models, params, merge) %>%
+  map2(models, params, merge) %>%
     bind_rows() %>%
     rename(spec = x) %>%
     mutate(model_id = rep(x = names(models), times = sapply(params, nrow))) %>%
@@ -47,16 +47,14 @@ fit_on_fold <- function(spec, prepped) {
 predict_helper <- function(fit, new_data, idx, recipe) {
   
   new_data <- bake(recipe, new_data %>% select(-outcome_names(recipe)))
-  
   predict(fit, new_data, type = "numeric") %>% 
     tibble::add_column(idx = idx, .before = TRUE)
 }
 
 
 spread_nested_predictions <- function(data) {
-  if (any(map_lgl(data$preds, ~ !is_tibble(.x)))) {
-    data <- data %>% unnest(preds)
-  }
+  
+  if (any(map_lgl(data$preds, ~ !is_tibble(.x)))) data <- data %>% unnest(preds)
   data %>% 
     unnest(preds) %>%
     pivot_wider(

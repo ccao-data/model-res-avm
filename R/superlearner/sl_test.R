@@ -39,7 +39,7 @@ mod_predictors <- ccao::vars_dict %>%
   na.omit()
 
 
-
+plan(multiprocess, workers = 6)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ##### Loading/Splitting Data #####
@@ -90,7 +90,7 @@ enet_model <- linear_reg(penalty = tune(), mixture = tune()) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
-enet_grid <- grid_latin_hypercube(penalty(), mixture(), size = 10)
+enet_grid <- grid_latin_hypercube(penalty(), mixture(), size = 2)
 
 rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
   set_mode("regression") %>%
@@ -99,7 +99,7 @@ rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
 rf_grid <- grid_latin_hypercube(
   mtry(range = c(5, floor(train_p / 3))),
   min_n(),
-  size = 5
+  size = 1
 )
 
 metalearner <- linear_reg(penalty = 0.01, mixture = 0) %>% 
@@ -108,18 +108,52 @@ metalearner <- linear_reg(penalty = 0.01, mixture = 0) %>%
 
 # Create learner
 
-temp <- super_learner(
-  models  = list("rf" = rf_model, "enet" = enet_model),
-  params  = list("rf" = rf_grid, "enet" = enet_grid),
-  recipes = list(
-    "rf" = train_recipe %>% dummy_recp_prep(),
-    "enet" = train_recipe %>% dummy_recp_prep()
-  ),
-  train,
-  metalearner,
-  train_recipe
-)
+# temp <- super_learner(
+  models  = list(
+    "rf" = rf_model,
+    "enet" = enet_model
+  )
+  params  = list(
+    "rf" = rf_grid,
+    "enet" = enet_grid
+  )
+#   recipes = list(
+#     "rf" = train_recipe %>% dummy_recp_prep(),
+#     "enet" = train_recipe %>% dummy_recp_prep()
+#   ),
+#   train,
+#   metalearner,
+#   train_recipe
+# )
+
+recipes = list(
+      "rf" = train_recipe %>% dummy_recp_prep(),
+      "enet" = train_recipe %>% dummy_recp_prep()
+    )
+
+full <- map(recipes, ~ prep(.x, training = train))
+folds <- expand_fold_grid(recipes, vfold_cv(train, v = 5))
+specs <- expand_model_grid(models, params)
+
+tictoc::tic()
+with_progress({
+  cv_fits <- specs %>%
+    mutate(
+      fold_id = map(model_id, function(id) {
+        folds %>% filter(model_id == id) %>% pull(fold_id)
+      }),
+      fit = pmap(list(spec, model_id), function(spec, id) {
+        p <- progressor(steps = nrow(folds))
+        folds %>%
+          filter(model_id == id) %>%
+          pull(prepped) %>%
+          future_map(~ fit_on_fold(spec, .x))
+      })
+    )
+})
+tictoc::toc()
 
 
-iris <- iris %>%
-  mutate(prediction = predict(temp, .)) 
+# TODO: test superlearner
+# TODO: Add progress bars
+# TODO: Add Cknn

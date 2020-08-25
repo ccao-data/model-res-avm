@@ -525,8 +525,8 @@ if (cv_enable) bind_rows(tic.log(format = FALSE)) %>%
 beepr::beep(8)
 
 
+# TODO: Feature importance vars
 # TODO: Set default params to best CV outcomes
 # TODO: Create interaction terms: step_interact().
-# TODO: Feature importance vars
 # TODO: Caution on selection of time data for cknn
 # TODO: figure out how to have a single model interface for training/prediction
