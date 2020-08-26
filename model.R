@@ -266,7 +266,7 @@ rf_params_path <- "data/models/rf_results.parquet"
 # Initialize random forest model
 rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
   set_mode("regression") %>%
-  set_engine("ranger") 
+  set_engine("ranger")
 
 # Initialize RF workflow
 rf_wflow <- workflow() %>%
@@ -322,6 +322,7 @@ if (cv_enable) {
 
 # Fit the final model using the full training data
 rf_wflow_final_fit <- rf_wflow %>%
+  update_model(rf_model %>% set_args(importance = "impurity")) %>%
   finalize_workflow(as.list(rf_final_params)) %>%
   fit(data = train)
 
@@ -347,31 +348,24 @@ if (cv_enable) {
   plan(multiprocess, workers = all_cores)
 }
 
+
+### Step 1 - Model initialization and determine variable weights
+
 # Setup model results path
 cknn_params_path <- "data/models/cknn_results.parquet"
 
-
-### Step 1 - Determine variable weights and which vars to keep
-
-# Get the set of variables to keep for clustering from ccao::vars_dict
+# Get the set of possible vars for clustering from ccao::vars_dict
 cknn_possible_vars <- ccao::vars_dict %>%
   filter(var_is_clustered) %>%
   pull(var_name_standard) %>%
   unique() %>%
   na.omit()
 
-# Create feature weights using feature importance
-cknn_var_weights <- c(
-  "char_bldg_sf" = 11, "char_age" = 5, "char_bsmt" = 3,
-  "char_gar1_size" = 3, "char_ext_wall" = 2.5, "char_air" = 2
-)
-
-# Get the set of variables to keep when clustering
+# Create feature weights using feature importance metric from random forest
+# keeping the top N weights
 cknn_noncluster_vars <- c("geo_longitude", "geo_latitude", "meta_sale_price")
-cknn_predictors <- c(
-  intersect(cknn_possible_vars, names(cknn_var_weights)),
-  cknn_noncluster_vars
-)
+cknn_var_weights <- cknn_rel_importance(rf_final_fit, cknn_possible_vars, 9)
+cknn_predictors <- c(cknn_noncluster_vars, names(cknn_var_weights))
 
 # Create a recipe using cknn predictors which removes unnecessary vars, 
 # collapses rare factors, and converts NA in factors to "unknown"
@@ -525,8 +519,7 @@ if (cv_enable) bind_rows(tic.log(format = FALSE)) %>%
 beepr::beep(8)
 
 
-# TODO: Feature importance vars
+# TODO: Add median income, check in data report and clustering
 # TODO: Set default params to best CV outcomes
 # TODO: Create interaction terms: step_interact().
-# TODO: Caution on selection of time data for cknn
 # TODO: figure out how to have a single model interface for training/prediction

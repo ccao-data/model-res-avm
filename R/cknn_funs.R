@@ -129,3 +129,30 @@ cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weigh
   return(m_out)
 }
 
+
+# Get variable importance metrics from ranger object
+cknn_rel_importance <- function(rf_model, possible_vars, n = 8) {
+  default_weights <- c(
+    "char_bldg_sf" = 11, "char_frpl" = 6, "char_age" = 5,
+    "time_sale_quarter" = 3, "char_hd_sf" = 2, "char_fbath" = 2, "char_air" = 2
+  )
+  
+  arg <- quo_name(enquo(rf_model))
+  if (exists(arg, where = .GlobalEnv)) {
+    if (!is.null(rf_model$fit$variable.importance)) {
+      enframe(rf_model$fit$variable.importance) %>%
+        arrange(desc(value)) %>%
+        filter(!str_detect(name, "_poly_2")) %>%
+        mutate(name = gsub("_poly_[0-9]", "", name)) %>%
+        filter(name %in% possible_vars) %>%
+        slice_head(n = n) %>%
+        mutate(value = rescale(value) * 10) %>%
+        filter(value > 1e-4) %>%
+        deframe()
+    } else {
+      default_weights
+    }
+  } else {
+    default_weights
+  }
+}
