@@ -19,3 +19,10 @@ model_get_stored_params <- function(file) {
     filter(mean == min(mean)) %>%
     distinct(mean, .keep_all = TRUE)
 }
+
+
+# Get environmental variable else default value
+model_get_env <- function(x, default) {
+  env <- Sys.getenv(x, unset = NA)
+  ifelse(!is.na(env), env, default)
+} 

@@ -132,6 +132,7 @@ cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weigh
 
 # Get variable importance metrics from ranger object
 cknn_rel_importance <- function(rf_model, possible_vars, n = 8) {
+  
   default_weights <- c(
     "char_bldg_sf" = 11, "char_frpl" = 6, "char_age" = 5,
     "time_sale_quarter" = 3, "char_hd_sf" = 2, "char_fbath" = 2, "char_air" = 2

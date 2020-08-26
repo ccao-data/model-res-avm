@@ -23,13 +23,16 @@ source("R/utils.R")
 # Start full script timer
 tictoc::tic(msg = "Full Modeling Complete!")
 
+# Get number of available cores
+all_cores <- availableCores() - 1
+
 # Set seed for reproducibility 
 set.seed(27)
 
 # Toggle cross validation and set number of folds to use
-cv_env_var <- as.logical(Sys.getenv("R_CV_ENABLE"))
-cv_enable <- ifelse(!is.na(cv_env_var), cv_env_var, TRUE)
-cv_num_folds <- 5
+cv_enable <- model_get_env("R_CV_ENABLE", FALSE)
+cv_write_results <- model_get_env("R_CV_WRITE_RESULTS", FALSE)
+cv_num_folds <- model_get_env("R_CV_NUM_FOLDS", 5)
 
 # Get the full list of possible RHS predictors from ccao::vars_dict
 mod_predictors <- ccao::vars_dict %>%
@@ -101,7 +104,7 @@ enet_model <- linear_reg(penalty = tune(), mixture = tune()) %>%
 # Define basic linear model workflow
 enet_wflow <- workflow() %>%
   add_model(enet_model) %>%
-  add_recipe(train_recipe %>% dummy_recp_prep()) 
+  add_recipe(train_recipe %>% dummy_recp_prep())
 
 
 ### Step 2 - Cross-validation
@@ -125,9 +128,11 @@ if (cv_enable) {
   beepr::beep(2)
   
   # Save CV results to data frame and file
-  enet_search %>%
-    collect_metrics() %>%
-    write_parquet(enet_params_path)
+  if (cv_write_results) {
+    enet_search %>%
+      collect_metrics() %>%
+      write_parquet(enet_params_path)
+  }
   
   # Choose the best model that minimizes COD
   enet_final_params <- select_best(enet_search, metric = "codm")
@@ -214,9 +219,11 @@ if (cv_enable) {
   beepr::beep(2)
   
   # Save CV results to data frame and file
-  xgb_search %>%
-    collect_metrics() %>%
-    write_parquet(xgb_params_path)
+  if (cv_write_results) {
+    xgb_search %>%
+      collect_metrics() %>%
+      write_parquet(xgb_params_path)
+  }
   
   # Choose the best model that minimizes COD
   xgb_final_params <- select_best(xgb_search, metric = "codm")
@@ -266,7 +273,8 @@ rf_params_path <- "data/models/rf_results.parquet"
 # Initialize random forest model
 rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
   set_mode("regression") %>%
-  set_engine("ranger")
+  set_engine("ranger") %>%
+  set_args(num_threads = all_cores, verbose = TRUE)
 
 # Initialize RF workflow
 rf_wflow <- workflow() %>%
@@ -299,9 +307,11 @@ if (cv_enable) {
   beepr::beep(2)
   
   # Save CV results to dataframe
-  rf_search %>%
-    collect_metrics() %>%
-    write_parquet(rf_params_path)
+  if (cv_write_results) {
+    rf_search %>%
+      collect_metrics() %>%
+      write_parquet(rf_params_path)
+  }
   
   # Choose the best model that minimizes COD
   rf_final_params <- select_best(rf_search, mtry, trees, metric = "codm")
@@ -343,16 +353,14 @@ test <- model_fit(test, rf_final_recp, rf_final_fit, rf_sale_price)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 ### Step 0 - Initialize parallel backend for furrr functions used by cknn
-if (cv_enable) {
-  all_cores <- availableCores() - 1
-  plan(multiprocess, workers = all_cores)
-}
+if (cv_enable) plan(multiprocess, workers = all_cores)
 
 
 ### Step 1 - Model initialization and determine variable weights
 
 # Setup model results path
 cknn_params_path <- "data/models/cknn_results.parquet"
+cknn_weights_path <- "data/models/cknn_weights.parquet"
 
 # Get the set of possible vars for clustering from ccao::vars_dict
 cknn_possible_vars <- ccao::vars_dict %>%
@@ -367,6 +375,12 @@ cknn_noncluster_vars <- c("geo_longitude", "geo_latitude", "meta_sale_price")
 cknn_var_weights <- cknn_rel_importance(rf_final_fit, cknn_possible_vars, 9)
 cknn_predictors <- c(cknn_noncluster_vars, names(cknn_var_weights))
 
+# Save variable weights used to file
+if (cv_write_results) {
+  enframe(cknn_var_weights) %>%
+    write_parquet(cknn_weights_path)
+}
+
 # Create a recipe using cknn predictors which removes unnecessary vars, 
 # collapses rare factors, and converts NA in factors to "unknown"
 cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
@@ -374,7 +388,7 @@ cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
 
 ### Step 2 - Cross-validation
 
-# If cross validating, manually cycle through a grid of tuning paramerters to
+# If cross validating, manually cycle through a grid of tuning parameters to
 # find the best ones
 if (cv_enable) {
   
@@ -415,8 +429,13 @@ if (cv_enable) {
     group_by(m, k, l) %>%
     summarize(across(everything(), mean)) %>%
     ungroup() %>%
-    arrange(cod) %>%
-    write_parquet(cknn_params_path)
+    arrange(cod)
+  
+  # Write results to file
+  if (cv_write_results) {
+    cknn_results %>%
+      write_parquet(cknn_params_path)
+  }
   
   # Take the best params according to lowest COD
   cknn_final_params <- cknn_results %>%
@@ -511,15 +530,20 @@ rmarkdown::render(
 
 # Stop all timers and write CV timers to log file
 tictoc::toc(log = TRUE)
-if (cv_enable) bind_rows(tic.log(format = FALSE)) %>%
+if (cv_enable & cv_write_results) {
+  bind_rows(tic.log(format = FALSE)) %>%
   mutate(elapsed = toc - tic, model = tolower(word(msg, 1))) %>%
   write_parquet("data/models/model_timings.parquet")
+}
 
 # BEEP!
 beepr::beep(8)
 
 
-# TODO: Add median income, check in data report and clustering
+# TODO: Save features weights from RF
 # TODO: Set default params to best CV outcomes
+
+# TODO: Look into tune_bayes instead of grid search
+# TODO: Add median income, check in data report and clustering
 # TODO: Create interaction terms: step_interact().
 # TODO: figure out how to have a single model interface for training/prediction
