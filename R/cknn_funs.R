@@ -1,38 +1,16 @@
-# Helper function to create CV grid search plot
-cknn_grid_plot <- function(data, m, k, l, metric) {
-  clst_lab <- as_labeller(function(x) paste("m =", x))
-  ggplot(data) +
-    geom_tile(aes(x = factor({{k}}), y = factor({{l}}), fill = {{metric}})) +
-    viridis::scale_fill_viridis(option = "viridis") +
-    scale_x_discrete(expand = c(0, 0)) +
-    scale_y_discrete(expand = c(0, 0)) +
-    labs(x = "k (num. comparables)", y = "l (distance trade-off)") +
-    facet_wrap(vars({{m}}), labeller = clst_lab) +
-    theme_bw() +
-    theme(
-      legend.title = element_text(margin = margin(b = 10)),
-      axis.title.x = element_text(margin = margin(t = 10)),
-      axis.title.y = element_text(margin = margin(r = 10))
-    )
-}
-
-
 # Helper to fit cknn models
-cknn_fit <- function(data, recipe, model, sale_prices, col_name) {
-  data <- data %>%
-  mutate({{col_name}} := map_dbl(
-    predict(
-      model, 
-      bake(prep(recipe), data) %>%
-        select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
-        as.data.frame(),
-      lon = data %>% pull(geo_longitude),
-      lat = data %>% pull(geo_latitude)
-    )$knn,
-    ~ median(sale_prices[.x])
-  ))
-  
-  return(data)
+cknn_predict <- function(model, recipe, data, sales) {
+    map_dbl(
+      predict(
+        model, 
+        newdata = bake(prep(recipe), data) %>%
+          select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
+          as.data.frame(),
+        lon = data %>% pull(geo_longitude),
+        lat = data %>% pull(geo_latitude)
+      )$knn,
+      ~ median(sales[.x])
+    )
 }
 
 
@@ -156,4 +134,23 @@ cknn_rel_importance <- function(rf_model, possible_vars, n = 8) {
   } else {
     default_weights
   }
+}
+
+
+# Helper function to create CV grid search plot
+cknn_grid_plot <- function(data, m, k, l, metric) {
+  clst_lab <- as_labeller(function(x) paste("m =", x))
+  ggplot(data) +
+    geom_tile(aes(x = factor({{k}}), y = factor({{l}}), fill = {{metric}})) +
+    viridis::scale_fill_viridis(option = "viridis") +
+    scale_x_discrete(expand = c(0, 0)) +
+    scale_y_discrete(expand = c(0, 0)) +
+    labs(x = "k (num. comparables)", y = "l (distance trade-off)") +
+    facet_wrap(vars({{m}}), labeller = clst_lab) +
+    theme_bw() +
+    theme(
+      legend.title = element_text(margin = margin(b = 10)),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10))
+    )
 }

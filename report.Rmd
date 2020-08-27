@@ -15,8 +15,7 @@ library(ggplot2)
 library(stringr)
 library(ccao)
 library(assessr)
-source("cknn_funs.R")
-source("utils.R")
+source("R/cknn_funs.R")
 
 knitr::opts_chunk$set(echo = FALSE)
 ```
@@ -24,26 +23,20 @@ knitr::opts_chunk$set(echo = FALSE)
 ## Overall Results
 
 ```{r, message=FALSE}
-# Load the test set results from file
-test <- read_parquet("../data/testdata.parquet")
 
 # Create a summary of test set results by township
-test_summary <- test %>%
-  select(meta_town_code, meta_sale_price, ends_with("sale_price")) %>%
+test_summary <- read_parquet("data/testdata.parquet") %>%
+  select(meta_town_code, meta_sale_price, enet:stack) %>%
   mutate(
     town_name = town_convert(meta_town_code),
-    outlier = is_outlier(stack_sale_price / meta_sale_price)
-  ) %>%
-  rename_with(
-    ~ gsub("_sale_price", "", .x),
-    meta_sale_price:stack_sale_price
+    outlier = is_outlier(stack / meta_sale_price)
   ) %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
-    across(enet:stack, ~ cod(.x / meta), .names = "{.col}_cod"),
+    across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
     num_trimmed = sum(outlier),
-    across(stack, ~ cod((.x / meta)[!outlier]), .names = "{.col}_cod_trim")
+    across(stack, ~ cod((.x / meta_sale_price)[!outlier]), .names = "{.col}_cod_trim")
   ) %>%
   arrange(stack_cod_trim) %>%
   rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod"), ends_with("_trim")))
