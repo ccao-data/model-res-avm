@@ -38,10 +38,10 @@ dummy_recp_prep <- function(recipe) {
 # values with township variable
 stack_recp_prep <- function(data, keep_vars = NULL) {
   recipe(meta_sale_price ~ ., data = data) %>%
-    update_role(all_numeric(), new_role = "model") %>%
+    add_role(all_numeric(), -all_outcomes(), new_role = "model") %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
     step_naomit(all_predictors()) %>%
     step_log(all_numeric(), all_outcomes()) %>%
     step_dummy(all_nominal(), -all_outcomes()) %>%
-    step_interact(~ has_role("model"):matches(".X\\d+"))
+    step_interact(~ has_role("model") * matches(".X\\d+"))
 }

@@ -271,7 +271,7 @@ xgb_final_recp <- pull_workflow_prepped_recipe(xgb_wflow_final_fit)
 xgb_final_fit <- pull_workflow_fit(xgb_wflow_final_fit)
 
 # Remove unnecessary objects
-rm_intermediate("enet")
+rm_intermediate("xgb")
 
 
 
@@ -493,13 +493,13 @@ cknn_final_fit <- cknn(
 )
 
 # Remove unnecessary objects
-rm_intermediate("cknn", c("cknn_recipe", "cknn_var_weights"))
+rm_intermediate("cknn", c("cknn_recipe", "cknn_var_weights", "cknn_predict"))
 
 
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Meta Model (Linear Regression) #####
+##### Meta Model (Regularized Regression) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Initialize model specification for meta model
@@ -557,6 +557,8 @@ if (cv_enable & cv_write_params) {
 
 # BEEP!
 beepr::beep(8)
+
+
 
 # NOW
 # TODO: Re-run all CV

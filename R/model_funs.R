@@ -1,7 +1,11 @@
 # Remove intermediate objects from model creation
 rm_intermediate <- function(x, keep = NULL) {
   env <- ls(envir = .GlobalEnv)
-  rm_list <- env[str_starts(env, x) & !str_detect(env, "final") & !env %in% keep]
+  rm_list <- env[
+    str_starts(env, x) &
+    (!str_detect(env, "final") | str_detect(env, "wflow")) &
+    !env %in% keep
+  ]
   if (length(rm_list) > 0) {
     message(paste(
       "Removing intermediate objects:",
