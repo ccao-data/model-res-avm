@@ -1,4 +1,4 @@
-# Helper function to prep data for cknn
+# Recipe for CKNN prep, keep only clustering vars
 cknn_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
@@ -8,7 +8,7 @@ cknn_recp_prep <- function(data, keep_vars) {
 }
 
 
-# Helper function to prep data for all non-cknn models
+# Prep data for all non-cknn models
 mod_recp_prep <- function(data, keep_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
     step_rm(-any_of(keep_vars), -all_outcomes()) %>%
@@ -17,7 +17,7 @@ mod_recp_prep <- function(data, keep_vars) {
     step_naomit(all_predictors(), all_outcomes()) %>%
     step_log(
       all_outcomes(),
-      ends_with("_price"), ends_with("_sf"), ends_with("_amt_paid"),
+      ends_with("_price"), ends_with("_sf"), contains("income"),
       offset = 1
     ) %>%
     step_zv(all_numeric(), -all_outcomes()) %>%
@@ -26,7 +26,7 @@ mod_recp_prep <- function(data, keep_vars) {
 }
 
 
-# Dummy vars specifically for xgb and lasso
+# Dummy vars specifically for xgb and enet, not necessary for RF
 dummy_recp_prep <- function(recipe) {
   recipe %>%
     step_mutate_at(starts_with("ind_"), fn = as.numeric) %>%
@@ -34,18 +34,14 @@ dummy_recp_prep <- function(recipe) {
 }
 
 
-# Function to create recipe for stacking model
+# Recipe for stacking/meta model, goal here is to interact each fitted model
+# values with township variable
 stack_recp_prep <- function(data, keep_vars = NULL) {
   recipe(meta_sale_price ~ ., data = data) %>%
-    step_rm(
-      -c(meta_town_code, meta_sale_price), 
-      -any_of(keep_vars), 
-      -all_outcomes()
-    ) %>%
+    update_role(all_numeric(), new_role = "model") %>%
+    step_rm(-any_of(keep_vars), -all_outcomes()) %>%
     step_naomit(all_predictors()) %>%
-    step_log(all_numeric(), all_outcomes())
-    # step_dummy(meta_town_code) %>%
-    # step_interact(
-    #   ~ any_of(c("enet", "xgb", "rf")):starts_with("meta_town_code")
-    # )
+    step_log(all_numeric(), all_outcomes()) %>%
+    step_dummy(all_nominal(), -all_outcomes()) %>%
+    step_interact(~ has_role("model"):matches(".X\\d+"))
 }

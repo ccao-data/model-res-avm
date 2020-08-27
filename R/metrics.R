@@ -1,4 +1,5 @@
 # Custom yardstick package metric for COD
+# See: https://yardstick.tidymodels.org/articles/custom-metrics.html
 codm <- function(data, ...) {
   UseMethod("codm")
 }
@@ -8,6 +9,7 @@ codm <- new_numeric_metric(
 )
 
 
+# Method for data frame calculation of COD
 codm.data.frame <- function(data, truth, estimate, na_rm = TRUE, ...) {
   
   metric_summarizer(
@@ -22,6 +24,7 @@ codm.data.frame <- function(data, truth, estimate, na_rm = TRUE, ...) {
 }
 
 
+# Vector version of COD calculation
 codm_vec <- function(truth, estimate, na_rm = TRUE, ...) {
   
   codm_impl <- function(truth, estimate) {

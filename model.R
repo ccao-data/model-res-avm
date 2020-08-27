@@ -32,9 +32,9 @@ set.seed(27)
 
 # Toggle cross validation and set number of folds to use
 cv_enable <- as.logical(model_get_env("R_CV_ENABLE", FALSE))
-cv_write_results <- as.logical(model_get_env("R_CV_WRITE_RESULTS", FALSE))
+cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", FALSE))
 cv_num_folds <- as.numeric(model_get_env("R_CV_NUM_FOLDS", 5))
-cv_control <- control_bayes(verbose = TRUE, no_improve = 5, seed = 27)
+cv_control <- control_bayes(verbose = TRUE, no_improve = 7, seed = 27)
 
 # Get the full list of possible RHS predictors from ccao::vars_dict
 mod_predictors <- ccao::vars_dict %>%
@@ -79,7 +79,7 @@ train_recipe <- mod_recp_prep(train, mod_predictors)
 train_p <- ncol(juice(prep(train_recipe))) - 1
 
 # Remove unnecessary data
-rm(full_data, time_split)
+rm(full_data, time_split); gc()
 
 
 
@@ -91,7 +91,7 @@ rm(full_data, time_split)
 ### Step 1 - Model initialization
 
 # Set model params save path
-enet_params_path <- "data/models/enet_results.rds"
+enet_params_path <- "data/models/enet_params.rds"
 
 # Setup basic ElasticNet model specification
 enet_model <- linear_reg(penalty = tune(), mixture = tune()) %>%
@@ -129,7 +129,7 @@ if (cv_enable) {
   beepr::beep(2)
 
   # Save tuning results to file
-  if (cv_write_results) {
+  if (cv_write_params) {
     enet_search %>%
       model_strip_data() %>%
       saveRDS(enet_params_path)
@@ -156,14 +156,17 @@ if (cv_enable) {
 ### Step 3 - Finalize model
 
 # Fit the final model using the full training data
-enet_final_fit <- enet_wflow %>%
+enet_wflow_final_fit <- enet_wflow %>%
   finalize_workflow(as.list(enet_final_params)) %>%
   fit(data = train)
 
 # Extract steps from the fit necessary to predict on the test set
 # https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
-enet_final_recp <- pull_workflow_prepped_recipe(enet_final_fit)
-enet_final_fit <- pull_workflow_fit(enet_final_fit)
+enet_final_recp <- pull_workflow_prepped_recipe(enet_wflow_final_fit)
+enet_final_fit <- pull_workflow_fit(enet_wflow_final_fit)
+
+# Remove unnecessary objects
+rm_intermediate("enet")
 
 
 
@@ -175,7 +178,7 @@ enet_final_fit <- pull_workflow_fit(enet_final_fit)
 ### Step 1 - Model initialization
 
 # Set model params save path
-xgb_params_path <- "data/models/xgb_results.rds"
+xgb_params_path <- "data/models/xgb_params.rds"
 
 # Initialize xgboost model specification
 xgb_model <- boost_tree(
@@ -224,7 +227,7 @@ if (cv_enable) {
   beepr::beep(2)
 
   # Save tuning results to file
-  if (cv_write_results) {
+  if (cv_write_params) {
     xgb_search %>%
       model_strip_data() %>%
       saveRDS(xgb_params_path)
@@ -267,6 +270,9 @@ xgb_wflow_final_fit <- xgb_wflow %>%
 xgb_final_recp <- pull_workflow_prepped_recipe(xgb_wflow_final_fit)
 xgb_final_fit <- pull_workflow_fit(xgb_wflow_final_fit)
 
+# Remove unnecessary objects
+rm_intermediate("enet")
+
 
 
 
@@ -277,10 +283,10 @@ xgb_final_fit <- pull_workflow_fit(xgb_wflow_final_fit)
 ### Step 1 - Model initialization
 
 # Set model params save path
-rf_params_path <- "data/models/rf_results.rds"
+rf_params_path <- "data/models/rf_params.rds"
 
 # Initialize RF model specification
-rf_model <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
+rf_model <- rand_forest(trees = tune(), mtry = tune(), min_n = tune()) %>%
   set_mode("regression") %>%
   set_engine("ranger") %>%
   set_args(num.threads = all_cores, verbose = TRUE)
@@ -300,6 +306,7 @@ if (cv_enable) {
   rf_params <- rf_model %>%
     parameters() %>%
     update(
+      trees = trees(range = c(500, 1000)),
       mtry = mtry(range = c(5, floor(train_p / 3))),
       min_n = min_n()
     ) %>%
@@ -319,7 +326,7 @@ if (cv_enable) {
   beepr::beep(2)
 
   # Save tuning results to file
-  if (cv_write_results) {
+  if (cv_write_params) {
     rf_search %>%
       model_strip_data() %>%
       saveRDS(rf_params_path)
@@ -335,7 +342,7 @@ if (cv_enable) {
     rf_final_params <- readRDS(rf_params_path) %>%
       select_by_one_std_err(mtry, min_n, metric = "codm")
   } else {
-    rf_final_params <- list(mtry = 12, min_n = 13)
+    rf_final_params <- list(trees = 1000, mtry = 12, min_n = 13)
   }
 }
 
@@ -344,13 +351,22 @@ if (cv_enable) {
 
 # Fit the final model using the full training data
 rf_wflow_final_fit <- rf_wflow %>%
-  update_model(rf_model %>% set_args(importance = "impurity")) %>%
   finalize_workflow(as.list(rf_final_params)) %>%
   fit(data = train)
 
 # Extract steps from the fit necessary to predict on the test set
 rf_final_recp <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
 rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
+
+# Grow a separate forest with variable importance metric
+rf_final_var_imp <- rf_wflow %>%
+  update_model(rf_model %>% set_args(importance = "impurity_corrected")) %>%
+  finalize_workflow(as.list(rf_final_params)) %>%
+  fit(data = train) %>%
+  pull_workflow_fit()
+
+# Remove unnecessary objects
+rm_intermediate("rf")
 
 
 
@@ -366,7 +382,7 @@ if (cv_enable) plan(multiprocess, workers = all_cores)
 ### Step 1 - Model initialization and determine variable weights
 
 # Setup model results path
-cknn_params_path <- "data/models/cknn_results.rds"
+cknn_params_path <- "data/models/cknn_params.rds"
 cknn_weights_path <- "data/models/cknn_weights.rds"
 
 # Get the set of possible vars for clustering from ccao::vars_dict
@@ -379,11 +395,11 @@ cknn_possible_vars <- ccao::vars_dict %>%
 # Create feature weights using feature importance metric from random forest
 # keeping the top N weights
 cknn_noncluster_vars <- c("geo_longitude", "geo_latitude", "meta_sale_price")
-cknn_var_weights <- cknn_rel_importance(rf_final_fit, cknn_possible_vars, 10)
+cknn_var_weights <- cknn_rel_importance(rf_final_var_imp, cknn_possible_vars, 10)
 cknn_predictors <- c(cknn_noncluster_vars, names(cknn_var_weights))
 
 # Save variable weights used to file
-if (cv_write_results) {
+if (cv_write_params) {
   enframe(cknn_var_weights) %>%
     saveRDS(cknn_weights_path)
 }
@@ -401,7 +417,7 @@ if (cv_enable) {
 
   # Create a grid of possible cknn parameter values to loop through
   cknn_grid <- expand_grid(
-    m = seq(7, 16, 2),
+    m = seq(6, 15, 2),
     k = seq(7, 19, 3),
     l = seq(0.5, 0.9, 0.1)
   ) %>%
@@ -421,7 +437,7 @@ if (cv_enable) {
       df_ass = map2(recipe, df_ass, ~ bake(.x, new_data = .y))
     ) %>%
     mutate(
-      cknn_results = cknn_search(
+      cknn_params = cknn_search(
         analysis = df_ana,
         assessment = df_ass,
         param_grid = cknn_grid,
@@ -433,20 +449,20 @@ if (cv_enable) {
   beepr::beep(2)
 
   # Summarize results by parameter groups, averaging across folds
-  cknn_results <- bind_rows(cknn_search$cknn_results) %>%
+  cknn_params <- bind_rows(cknn_search$cknn_params) %>%
     group_by(m, k, l) %>%
     summarize(across(everything(), mean)) %>%
     ungroup() %>%
     arrange(cod)
 
   # Write grid search results to file
-  if (cv_write_results) {
-    cknn_results %>%
+  if (cv_write_params) {
+    cknn_params %>%
       saveRDS(cknn_params_path)
   }
 
   # Take the best params according to lowest COD
-  cknn_final_params <- cknn_results %>%
+  cknn_final_params <- cknn_params %>%
     filter(cod == min(cod, na.rm = TRUE))
 } else {
 
@@ -476,6 +492,9 @@ cknn_final_fit <- cknn(
   keep_data = TRUE
 )
 
+# Remove unnecessary objects
+rm_intermediate("cknn", c("cknn_recipe", "cknn_var_weights"))
+
 
 
 
@@ -483,10 +502,12 @@ cknn_final_fit <- cknn(
 ##### Meta Model (Linear Regression) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-meta_model <- linear_reg() %>%
-  set_engine("lm") %>%
+# Initialize model specification for meta model
+meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
+  set_engine("glmnet") %>%
   set_mode("regression")
 
+# Create stacked model object with all final fitted models
 stacked_model <- stack_model(
   models = list(
     "enet" = enet_final_fit,
@@ -501,9 +522,11 @@ stacked_model <- stack_model(
     "cknn" = cknn_recipe
   ),
   meta_spec = meta_model,
+  add_vars = "meta_town_code",
   data = train
 )
 
+# Get predictions on the test set using the stacked model
 stacked_preds <- predict(stacked_model, test)
 
 
@@ -524,9 +547,9 @@ rmarkdown::render(
   output_file = "report.html"
 )
 
-# Stop all timers and write CV timers to log file
+# Stop all timers and write CV timers to file
 tictoc::toc(log = TRUE)
-if (cv_enable & cv_write_results) {
+if (cv_enable & cv_write_params) {
   bind_rows(tic.log(format = FALSE)) %>%
     mutate(elapsed = toc - tic, model = tolower(word(msg, 1))) %>%
     saveRDS("data/models/model_timings.rds")
@@ -535,15 +558,15 @@ if (cv_enable & cv_write_results) {
 # BEEP!
 beepr::beep(8)
 
+# NOW
+# TODO: Re-run all CV
 
-# TODO: CHECK/FINISH STACKED MODEL INTERFACE, ADD CKNN
-# TODO: Switch Cknn to random grid search
-
-# TODO: Save features weights and tuning params
+# REPORT
 # TODO: Add autoplots to report, add outlier analysis
 # TODO: Add correlation between models
+# TODO: Boxplots by decile
+
+# MORE MODELING
 # TODO: Test log transforming cknn continuous vars
-
-
+# TODO: Add keras-based nnet?
 # TODO: Create interaction terms: step_interact().
-# TODO: figure out how to have a single model interface for training/prediction

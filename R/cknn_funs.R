@@ -1,4 +1,4 @@
-# Helper to fit cknn models
+# Predict with a fitted cknn model
 cknn_predict <- function(model, recipe, data, sales) {
     map_dbl(
       predict(
@@ -14,7 +14,7 @@ cknn_predict <- function(model, recipe, data, sales) {
 }
 
 
-# Helper function to fit a cknn model then return predicted values
+# Intermediate function to fit cknn on individual folds
 cknn_fit_fold <- function(data, dlon, dlat, newdata, nlon, nlat, m, k, l, weights) {
   
   # Create initial cknn model
@@ -42,13 +42,13 @@ cknn_fit_fold <- function(data, dlon, dlat, newdata, nlon, nlat, m, k, l, weight
 }
 
 
-# Helper function to fit cknn model to a set of CV folds and grid of parameters
+# Fit a cknn model on a set of folds
 cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weights) {
   
-  # Start the full timer
+  # Start the timer for the full CV fitting
   tictoc::tic(msg = "CkNN CV model fitting complete!")
   
-  # Map through and calc full param grid for each fold, evaluate against the
+  # Map through and calc full predictions for each fold, evaluate against the
   # holdout set, then calc summary stats
   m_out <- purrr::pmap(list(analysis, assessment), function(ana, ass) {
       
@@ -111,11 +111,13 @@ cknn_search <- function(analysis, assessment, param_grid, noncluster_vars, weigh
 # Get variable importance metrics from ranger object
 cknn_rel_importance <- function(rf_model, possible_vars, n = 8) {
   
+  # Default weights to return if no RF model exists
   default_weights <- c(
     "char_bldg_sf" = 11, "char_frpl" = 6, "char_age" = 5,
     "time_sale_quarter" = 3, "char_hd_sf" = 2, "char_fbath" = 2, "char_air" = 2
   )
   
+  # Get the subset of RF model vars and format as list
   arg <- quo_name(enquo(rf_model))
   if (exists(arg, where = .GlobalEnv)) {
     if (!is.null(rf_model$fit$variable.importance)) {
