@@ -79,7 +79,7 @@ train_recipe <- mod_recp_prep(train, mod_predictors)
 train_p <- ncol(juice(prep(train_recipe))) - 1
 
 # Remove unnecessary data
-rm(full_data, time_split); gc()
+rm(time_split); gc()
 
 
 
@@ -141,6 +141,7 @@ if (cv_enable) {
       penalty, mixture,
       metric = "codm"
     )
+  
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
@@ -240,6 +241,7 @@ if (cv_enable) {
       learn_rate, sample_size,
       metric = "codm"
     )
+  
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
@@ -335,6 +337,7 @@ if (cv_enable) {
   # Choose the best model that minimizes COD
   rf_final_params <- rf_search %>%
     select_by_one_std_err(mtry, min_n, metric = "codm")
+  
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
@@ -464,6 +467,7 @@ if (cv_enable) {
   # Take the best params according to lowest COD
   cknn_final_params <- cknn_params %>%
     filter(cod == min(cod, na.rm = TRUE))
+  
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
@@ -542,10 +546,10 @@ test %>%
   write_parquet("data/testdata.parquet")
 
 # Generate modeling report
-rmarkdown::render(
-  input = "report.Rmd",
-  output_file = "report.html"
-)
+# rmarkdown::render(
+#   input = "report.Rmd",
+#   output_file = "report.html"
+# )
 
 # Stop all timers and write CV timers to file
 tictoc::toc(log = TRUE)
@@ -561,12 +565,11 @@ beepr::beep(8)
 
 
 # NOW
+# TODO: outlier analysis
 # TODO: Re-run all CV
 
 # REPORT
-# TODO: Add autoplots to report, add outlier analysis
-# TODO: Add correlation between models
-# TODO: Boxplots by decile
+# TODO: Add autoplots to report, 
 
 # MORE MODELING
 # TODO: Test log transforming cknn continuous vars

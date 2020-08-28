@@ -13,24 +13,27 @@ library(DT)
 library(sf)
 library(ggplot2)
 library(stringr)
+library(forcats)
+library(scales)
 library(ccao)
 library(assessr)
 source("R/cknn_funs.R")
 
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
 ```
 
 ## Overall Results
 
 ```{r, message=FALSE}
-
-# Create a summary of test set results by township
-test_summary <- read_parquet("data/testdata.parquet") %>%
-  select(meta_town_code, meta_sale_price, enet:stack) %>%
+# Load test set results
+test_res <- read_parquet("data/testdata.parquet") %>%
   mutate(
     town_name = town_convert(meta_town_code),
     outlier = is_outlier(stack / meta_sale_price)
-  ) %>%
+  )
+
+# Create a summary of test set results by township
+test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
@@ -57,12 +60,16 @@ test_summary %>%
   ) %>%
   formatRound(2, digits = 0) %>%
   formatRound(c(3:7, 9))
-
 ```
+
+<br>
 
 ### Map of COD by Township by Model Type
 
 ```{r}
+# Vector of model name order
+model_order <- c("enet", "xgb", "rf", "cknn", "stack", "stack_trim")
+
 # Generate triad-level map of outlier
 test_summary %>%
   pivot_longer(c(enet:stack, stack_trim)) %>%
@@ -76,84 +83,160 @@ ggplot() +
   theme_void()
 ```
 
-### Outliers by Triad
+<br>
 
-```{r, message = FALSE, out.width='100%'}
-# Generate township map of each model
-test %>%
-  select(
-    meta_town_code, meta_sale_price, stack_sale_price,
-    geo_longitude, geo_latitude
+### Ratio Distribution by Triad by Sale Price Decile
+
+```{r, warning=FALSE}
+decile_data <- test_res %>%
+  mutate(
+    triad = factor(town_get_triad(town_name, name = TRUE), levels = c("North", "City", "South")),
+    decile = ntile(meta_sale_price, 10),
+    across(enet:stack, ~ .x / meta_sale_price)
   ) %>%
-  mutate(outlier = is_outlier(stack_sale_price / meta_sale_price)) %>%
-  filter(outlier) %>%
-  st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 3435) %>%
-ggplot() +
-  geom_sf(data = ccao::town_shp, aes(geometry = geometry)) +
-  geom_sf() +
-  theme_void()
+  group_by(decile) %>%
+  mutate(decile_label = paste(
+    dollar(min(meta_sale_price), 1, scale = 1/1000, suffix = "K"),
+    dollar(max(meta_sale_price), 1, scale = 1/1000, suffix = "K"),
+    sep = " - ")
+  ) %>%
+  ungroup() %>%
+  mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
+  pivot_longer(enet:stack, names_to = "model", values_to = "ratio") %>%
+  mutate(model = factor(model, levels = model_order)) %>%
+  group_by(triad, decile_label) %>%
+  mutate(count = n()) 
+
+decile_plot <- function(data, col_var) {
+  ggplot(decile_data) +
+    geom_boxplot(aes(x = ratio), outlier.alpha = 0.01) +
+    geom_text(
+      aes(x = 3, y = -0.25, label = count),
+      size = 3,
+      check_overlap = T,
+      hjust = 1
+    ) +
+    scale_y_continuous(position = "right") +
+    facet_grid(
+      rows = vars(decile_label),
+      cols = vars({{col_var}}),
+      switch = "y"
+    ) +
+    xlim(0, 3) +
+    labs(x = "Sale Ratio", y = "") +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(margin = margin(t = 10), size = 10),
+      axis.text.y = element_blank(),
+      strip.text = element_text(size = 12),
+      strip.text.y.left = element_text(angle = 0, hjust = 1),
+      strip.text.x = element_text(margin = margin(b = 10)),
+      panel.grid.minor = element_blank()
+    )
+}
+
+decile_plot(decile_data, triad)
+```
+
+<br>
+
+### Ratio Distribution by Model Type by Sale Price Decile
+
+```{r, warning=FALSE}
+decile_plot(decile_data, model)
 ```
 
 ## Model Results
 
 ---
 
-### Best Parameters
+### Model Correlation (Spearman)
 
 ```{r}
+# Prepare correlation data matrix
+model_cor <- as_tibble(cor(select(test_res, enet:stack), method = "spearman")) %>%
+  mutate(name2 = names(.)) %>%
+  pivot_longer(-name2) %>%
+  mutate(
+    across(contains("name"), ~ factor(.x, levels = model_order)),
+    name2 = fct_rev(name2),
+    value = round(value, 3)
+  )
 
-# Load individual model results from file
-enet_results <- read_parquet("../data/models/enet_results.parquet")
-xgb_results <- read_parquet("../data/models/xgb_results.parquet")
-rf_results <- read_parquet("../data/models/rf_results.parquet")
-cknn_results <- read_parquet("../data/models/cknn_results.parquet") %>%
-  mutate(model = "cknn", log_cod = log(cod)) %>%
-  filter(cod == min(cod)) %>%
-  select(m:l, log_cod, model) 
-
-# Bind results together and print
-bind_rows(
-  enet_results %>% mutate(model = "enet"),
-  xgb_results %>% mutate(model = "xgb"),
-  rf_results  %>% mutate(model = "rf")
-) %>%
-  group_by(model) %>%
-  filter(.metric == "codm") %>%
-  filter(mean == min(mean)) %>%
-  distinct(mean, .keep_all = TRUE) %>%
-  select(-.metric, -.estimator, -n, -.config) %>%
-  select(model, log_cod = mean, std_err, everything()) %>%
-  bind_rows(cknn_results) %>%
-  knitr::kable(digits = 4)
-
-
-```
-
-### ElasticNet Grid Search
-
-```{r, warning=FALSE}
-# Load and plot ElasticNet grid search results
-enet_results %>%
-  ggplot(aes(penalty, mean, color = .metric)) +
-    geom_errorbar(
-      aes(ymin = mean - std_err, ymax = mean + std_err),
-      alpha = 0.5
-    ) +
-    geom_line(size = 1.5) +
-    facet_wrap(vars(.metric), scales = "free", ncol = 1) +
-    scale_x_log10() +
-    guides(color = guide_legend(title = "Metric")) +
-    theme(legend.position = "none") +
-    theme_minimal()
-```
-
-### CkNN Grid Search
-
-```{r, message = FALSE}
-# Load and plot CkNN grid search results
-cknn_results <- read_parquet("../data/models/cknn_results.parquet")
-cknn_grid_plot(cknn_results, m, k, l, cod) 
+# Plot model correlation
+ggplot(model_cor) +
+  geom_tile(aes(x = name, y = name2, fill = value)) +
+  geom_text(aes(x = name, y = name2, label = value, color = value > 0.98)) +
+  scale_x_discrete(expand = c(0, 0), position = "top") +
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_fill_distiller(palette = "RdBu", name = "Correlation") +
+  scale_color_manual(
+    values = c("TRUE" = "white", "FALSE" = "black"),
+    guide = FALSE
+  ) +
+  labs(x = "", y = "") +
+  theme_minimal() +
+  theme(
+    legend.title = element_text(margin = margin(b = 6)),
+    axis.text = element_text(size = 14)
+  )
 ```
 
 
+<!-- ### Best Parameters -->
+
+<!-- ```{r} -->
+
+<!-- # Load individual model results from file -->
+<!-- enet_results <- read_parquet("data/models/enet_results.parquet") -->
+<!-- xgb_results <- read_parquet("data/models/xgb_results.parquet") -->
+<!-- rf_results <- read_parquet("data/models/rf_results.parquet") -->
+<!-- cknn_results <- read_parquet("data/models/cknn_results.parquet") %>% -->
+<!--   mutate(model = "cknn", log_cod = log(cod)) %>% -->
+<!--   filter(cod == min(cod)) %>% -->
+<!--   select(m:l, log_cod, model)  -->
+
+<!-- # Bind results together and print -->
+<!-- bind_rows( -->
+<!--   enet_results %>% mutate(model = "enet"), -->
+<!--   xgb_results %>% mutate(model = "xgb"), -->
+<!--   rf_results  %>% mutate(model = "rf") -->
+<!-- ) %>% -->
+<!--   group_by(model) %>% -->
+<!--   filter(.metric == "codm") %>% -->
+<!--   filter(mean == min(mean)) %>% -->
+<!--   distinct(mean, .keep_all = TRUE) %>% -->
+<!--   select(-.metric, -.estimator, -n, -.config) %>% -->
+<!--   select(model, log_cod = mean, std_err, everything()) %>% -->
+<!--   bind_rows(cknn_results) %>% -->
+<!--   knitr::kable(digits = 4) -->
+
+
+<!-- ``` -->
+
+<!-- ### ElasticNet Grid Search -->
+
+<!-- ```{r, warning=FALSE} -->
+<!-- # Load and plot ElasticNet grid search results -->
+<!-- enet_results %>% -->
+<!--   ggplot(aes(penalty, mean, color = .metric)) + -->
+<!--     geom_errorbar( -->
+<!--       aes(ymin = mean - std_err, ymax = mean + std_err), -->
+<!--       alpha = 0.5 -->
+<!--     ) + -->
+<!--     geom_line(size = 1.5) + -->
+<!--     facet_wrap(vars(.metric), scales = "free", ncol = 1) + -->
+<!--     scale_x_log10() + -->
+<!--     guides(color = guide_legend(title = "Metric")) + -->
+<!--     theme(legend.position = "none") + -->
+<!--     theme_minimal() -->
+<!-- ``` -->
+
+<!-- ### CkNN Grid Search -->
+
+<!-- ```{r, message = FALSE} -->
+<!-- # Load and plot CkNN grid search results -->
+<!-- cknn_results <- read_parquet("../data/models/cknn_results.parquet") -->
+<!-- cknn_grid_plot(cknn_results, m, k, l, cod)  -->
+<!-- ``` -->
 
