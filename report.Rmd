@@ -3,6 +3,8 @@ title: "Model Summary"
 author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
+params:
+  triad: "City"
 ---
 
 ```{r setup, include=FALSE}
@@ -20,6 +22,8 @@ library(assessr)
 source("R/cknn_funs.R")
 
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
+report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
+report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
 ## Overall Results
@@ -29,8 +33,12 @@ knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
 test_res <- read_parquet("data/testdata.parquet") %>%
   mutate(
     town_name = town_convert(meta_town_code),
-    outlier = is_outlier(stack / meta_sale_price)
-  )
+    triad = factor(
+      town_get_triad(meta_town_code, name = TRUE),
+      levels = c("North", "City", "South")
+    )
+  ) %>%
+  filter(triad == report_triad)
 
 # Create a summary of test set results by township
 test_summary <- test_res %>%
@@ -38,8 +46,8 @@ test_summary <- test_res %>%
   summarize(
     count = n(),
     across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    num_trimmed = sum(outlier),
-    across(stack, ~ cod((.x / meta_sale_price)[!outlier]), .names = "{.col}_cod_trim")
+    num_trimmed = sum(is_outlier(stack / meta_sale_price, method = "quantile")),
+    stack_cod_trim = ccao_cod(stack / meta_sale_price)$COD
   ) %>%
   arrange(stack_cod_trim) %>%
   rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod"), ends_with("_trim")))
@@ -85,12 +93,11 @@ ggplot() +
 
 <br>
 
-### Ratio Distribution by Triad by Sale Price Decile
+### Ratio Distribution by Model Type by Sale Price Decile
 
 ```{r, warning=FALSE}
 decile_data <- test_res %>%
   mutate(
-    triad = factor(town_get_triad(town_name, name = TRUE), levels = c("North", "City", "South")),
     decile = ntile(meta_sale_price, 10),
     across(enet:stack, ~ .x / meta_sale_price)
   ) %>%
@@ -103,19 +110,16 @@ decile_data <- test_res %>%
   ungroup() %>%
   mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
   pivot_longer(enet:stack, names_to = "model", values_to = "ratio") %>%
-  mutate(model = factor(model, levels = model_order)) %>%
-  group_by(triad, decile_label) %>%
-  mutate(count = n()) 
+  mutate(model = factor(model, levels = model_order))
+
 
 decile_plot <- function(data, col_var) {
-  ggplot(decile_data) +
-    geom_boxplot(aes(x = ratio), outlier.alpha = 0.01) +
-    geom_text(
-      aes(x = 3, y = -0.25, label = count),
-      size = 3,
-      check_overlap = T,
-      hjust = 1
-    ) +
+  
+  data %>%
+    group_by({{col_var}}, decile_label) %>%
+    mutate(count = n()) %>%
+  ggplot() +
+    geom_boxplot(aes(x = ratio), outlier.alpha = 0.05) +
     scale_y_continuous(position = "right") +
     facet_grid(
       rows = vars(decile_label),
@@ -135,16 +139,9 @@ decile_plot <- function(data, col_var) {
     )
 }
 
-decile_plot(decile_data, triad)
-```
-
-<br>
-
-### Ratio Distribution by Model Type by Sale Price Decile
-
-```{r, warning=FALSE}
 decile_plot(decile_data, model)
 ```
+
 
 ## Model Results
 

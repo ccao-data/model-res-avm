@@ -503,35 +503,38 @@ rm_intermediate("cknn", c("cknn_recipe", "cknn_var_weights", "cknn_predict"))
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Meta Model (Regularized Regression) #####
+##### Stacked Model (Regularized Regression) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Initialize model specification for meta model
-meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
+sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
-# Create stacked model object with all final fitted models
-stacked_model <- stack_model(
-  models = list(
-    "enet" = enet_final_fit,
-    "xgb" = xgb_final_fit,
-    "rf" = rf_final_fit,
-    "cknn" = cknn_final_fit
-  ),
-  recipes = list(
-    "enet" = enet_final_recp,
-    "xgb" = xgb_final_recp,
-    "rf" = rf_final_recp,
-    "cknn" = cknn_recipe
-  ),
-  meta_spec = meta_model,
+# Prepare lists of final fitted models and recipes for input to stacked model
+sm_models = list(
+  "enet" = enet_final_fit, "xgb" = xgb_final_fit,
+  "rf" = rf_final_fit, "cknn" = cknn_final_fit
+)
+sm_recipes = list(
+  "enet" = enet_final_recp, "xgb" = xgb_final_recp,
+  "rf" = rf_final_recp, "cknn" = cknn_recipe
+)
+
+# Create stacked model object with training data
+# This model is used to evaluate performance on the test set
+sm_final_fit_test <- stack_model(
+  models = sm_models,
+  recipes = sm_recipes,
+  meta_spec = sm_meta_model,
   add_vars = "meta_town_code",
   data = train
 )
 
-# Get predictions on the test set using the stacked model
-stacked_preds <- predict(stacked_model, test)
+# Get predictions on the test set using the stacked model then save to file
+test %>%
+  bind_cols(predict(sm_final_fit_test, test)) %>%
+  write_parquet("data/testdata.parquet")
 
 
 
@@ -540,16 +543,11 @@ stacked_preds <- predict(stacked_model, test)
 ##### Finish Up #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Save test set results to file then generate report
-test %>%
-  bind_cols(stacked_preds) %>%
-  write_parquet("data/testdata.parquet")
-
-# Generate modeling report
-# rmarkdown::render(
-#   input = "report.Rmd",
-#   output_file = "report.html"
-# )
+# Generate modeling diagnostic/performance report
+rmarkdown::render(
+  input = "report.Rmd",
+  output_file = "report.html"
+)
 
 # Stop all timers and write CV timers to file
 tictoc::toc(log = TRUE)
@@ -559,14 +557,17 @@ if (cv_enable & cv_write_params) {
     saveRDS("data/models/model_timings.rds")
 }
 
-# BEEP!
+# BIG BEEP
 beepr::beep(8)
 
 
 
 # NOW
+# TODO: Check prep again kg
 # TODO: outlier analysis
+# TODO: finish data report
 # TODO: Re-run all CV
+
 
 # REPORT
 # TODO: Add autoplots to report, 
