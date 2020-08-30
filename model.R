@@ -565,7 +565,6 @@ beepr::beep(8)
 
 # NOW
 # TODO: Check prep again kg
-# TODO: outlier analysis
 # TODO: finish data report
 
 # MORE MODELING

@@ -4,8 +4,8 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "FALSE"
-  triad: "North"
+  filter: "TRUE"
+  triad: "City"
 ---
 
 ```{r setup, include=FALSE}
@@ -103,7 +103,10 @@ ggplot() +
   geom_sf(aes(fill = value, geometry = geometry)) +
   scale_fill_distiller(name = "COD", palette = "Spectral") +
   facet_wrap(vars(name)) +
-  theme_void()
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 12)
+  )
 ```
 
 <br>
@@ -182,6 +185,145 @@ lapply(towns, function(chunk) decile_plot(
 decile_plot(decile_data, model)
 ```
 
+<br>
+
+# Outlier Analysis
+
+---
+
+## Overall Ratio Distribution (Stack Model Pred. / Sale Price)
+
+```{r outlier_dist, warning=FALSE, message=FALSE}
+# Get the overall distribution for stack model trimmed and untrimmed
+outlier_dist <- test_res %>%
+  group_by(town_name) %>%
+  mutate(
+    outlier = is_outlier(stack / meta_sale_price, method = "quantile"),
+    trimmed = "Trimmed"
+  ) %>%
+  filter(!outlier) %>%
+  bind_rows(test_res %>% mutate(trimmed = "Not Trimmed")) %>%
+  mutate(ratio = stack / meta_sale_price) 
+
+# Find 1st and 99th percentile for trimmed and untrimmed ratios
+quantiles <- outlier_dist %>%
+  group_by(trimmed) %>%
+  summarize(q01 = quantile(ratio, 0.01), q99 = quantile(ratio, 0.99))
+
+# Plot histogram of ratios
+ggplot(outlier_dist) +
+  geom_histogram(aes(x = ratio), binwidth = 0.05) +
+  geom_rect(
+    data = quantiles,
+    aes(xmin = -Inf, xmax = q01, ymin = -Inf, ymax = Inf, fill = trimmed),
+    alpha = 0.3
+  ) +
+  geom_rect(
+    data = quantiles,
+    aes(xmin = q99, xmax = Inf, ymin = -Inf, ymax = Inf, fill = trimmed),
+    alpha = 0.3
+  ) +
+  scale_x_continuous(breaks = breaks_extended(10), limits = c(0, 4)) +
+  guides(fill = FALSE) +
+  labs(
+    x = "Sale Ratio",
+    y = "Number of Properties",
+    caption = "*Colored regions represent < 1st and > 99th percentile"
+  ) +
+  facet_wrap(vars(trimmed), ncol = 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 12),
+    axis.title.x = element_text(margin = margin(t = 6), size = 10),
+    axis.title.y = element_text(margin = margin(r = 10), size = 10),
+    panel.grid.minor = element_blank()
+  ) +
+  theme(
+    strip.text = element_text(size = 12)
+  )
+
+```
+
+<br>
+
+## Spatial Distribution of Outliers
+
+```{r outlier_map, message=FALSE}
+
+outlier_dist %>%
+  left_join(quantiles, by = "trimmed") %>%
+  filter(ratio < q01 | ratio > q99) %>%
+  ungroup() %>%
+  st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 3435) %>%
+  st_transform(4326) %>%
+ggplot() +
+  geom_sf(data = town_shp %>% filter(township_name %in% test_res$town_name)) +
+  geom_sf(aes(geometry = geometry, color = trimmed)) +
+  facet_wrap(vars(trimmed), nrow = 1) +
+  guides(color = FALSE) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 12)
+  )
+
+```
+
+<br>
+
+## Outlier Table
+
+Table shows only observations less than the 0.1 percentile and greater than the 99.9 percentile.
+
+```{r outlier_table}
+# Create a table of outliers from the 0.01 and 99.9 percentiles
+outlier_dist %>%
+  group_by(trimmed) %>%
+  mutate(q01 = quantile(ratio, 0.001), q99 = quantile(ratio, 0.999)) %>%
+  ungroup() %>%
+  filter(ratio < q01 | ratio > q99) %>%
+  mutate(
+    meta_pin = pin_format_pretty(meta_pin),
+    econ_tax_rate = econ_tax_rate / 100,
+    Address = paste(geo_property_address, geo_property_zip, sep = ", ")
+  ) %>%
+  select(
+    Trimmed = trimmed, Township = town_name, PIN = meta_pin, Address,
+    `Sale Price` = meta_sale_price, `Stacked Model` = stack,
+    any_of(vars_dict %>% filter(var_is_predictor) %>% pull(var_name_standard)),
+    -meta_town_code
+  ) %>%
+  vars_recode(type = "short", as_factor = FALSE) %>%
+  vars_rename(names_from = "standard", names_to = "pretty") %>%
+  datatable(
+    rownames = FALSE,
+    autoHideNavigation = TRUE,
+    selection = "none",
+    options = list(
+      scrollX = TRUE,
+      autoWidth = TRUE,
+      searchHighlight = TRUE,
+      paging = TRUE,
+      columnDefs = list(list(targets = c(2, 3), width = "100px"))
+    )
+  ) %>%
+  formatStyle(
+    "Trimmed",
+    target = "row",
+    backgroundColor = styleEqual(
+      c("Trimmed", "Not Trimmed"),
+      c("#ace2e3", "#f2b1ac")
+    )
+  ) %>%
+  formatCurrency(
+    c("Sale Price", "Stacked Model", "Median Income"),
+    digits = 0
+  ) %>%
+  formatPercentage(
+    c("Tax Rate"), digits = 2
+  )
+```
+
+<br>
 
 # Model Tuning
 
@@ -358,7 +500,7 @@ cknn_var_weights %>%
 
 <br>
 
-# Model Training Time
+## Model Training Time
 
 ```{r timings, fig.height=2}
 model_timings_path <- "data/models/model_timings.rds"
@@ -373,7 +515,7 @@ if (file.exists(model_timings_path)) {
     geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
     scale_x_continuous(expand = c(0, 0), breaks = extended_breaks(18)) +
     scale_y_continuous(expand = c(0, 0)) +
-    scale_fill_brewer(name = "Model Training", palette = "Set1") +
+    guides(fill = guide_legend(title = "Model")) +
     labs(x = "Number of Hours Elapsed While Training") +
     theme(
       axis.ticks.y = element_blank(),
