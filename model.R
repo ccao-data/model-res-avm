@@ -43,7 +43,8 @@ mod_predictors <- ccao::vars_dict %>%
   unique() %>%
   na.omit()
 
-
+cv_enable <- TRUE
+cv_write_params <- TRUE
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -566,11 +567,6 @@ beepr::beep(8)
 # TODO: Check prep again kg
 # TODO: outlier analysis
 # TODO: finish data report
-# TODO: Re-run all CV
-
-
-# REPORT
-# TODO: Add autoplots to report, 
 
 # MORE MODELING
 # TODO: Test log transforming cknn continuous vars

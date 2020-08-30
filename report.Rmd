@@ -4,7 +4,8 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  triad: "City"
+  filter: "FALSE"
+  triad: "North"
 ---
 
 ```{r setup, include=FALSE}
@@ -17,18 +18,27 @@ library(ggplot2)
 library(stringr)
 library(forcats)
 library(scales)
+library(tune)
 library(ccao)
 library(assessr)
 source("R/cknn_funs.R")
 
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
+
+# Filter to specific triad. Set with system variable else param defined in yaml
+report_filter <- Sys.getenv("R_REPORT_FILTER", unset = NA)
+report_filter <- as.logical(ifelse(
+  !is.na(report_filter),
+  report_filter,
+  params$filter
+))
+
+# Triad to use for report. Set with system variable else param defined in yaml
 report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
-## Overall Results
-
-```{r, message=FALSE}
+```{r summary, message=FALSE}
 # Load test set results
 test_res <- read_parquet("data/testdata.parquet") %>%
   mutate(
@@ -37,10 +47,15 @@ test_res <- read_parquet("data/testdata.parquet") %>%
       town_get_triad(meta_town_code, name = TRUE),
       levels = c("North", "City", "South")
     )
-  ) %>%
-  filter(triad == report_triad)
+  )
 
-# Create a summary of test set results by township
+# Filter to specific triad based on report param
+if (report_filter) {
+test_res <- test_res %>%
+  filter(triad == report_triad)
+}
+
+# Summarize test set results by township
 test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
@@ -72,13 +87,13 @@ test_summary %>%
 
 <br>
 
-### Map of COD by Township by Model Type
+## Map of COD by Township by Model Type
 
-```{r}
-# Vector of model name order
+```{r map}
+# Vector of model name order (in the order run in model.R)
 model_order <- c("enet", "xgb", "rf", "cknn", "stack", "stack_trim")
 
-# Generate triad-level map of outlier
+# Generate township level map of COD
 test_summary %>%
   pivot_longer(c(enet:stack, stack_trim)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
@@ -93,9 +108,11 @@ ggplot() +
 
 <br>
 
-### Ratio Distribution by Model Type by Sale Price Decile
+## Ratio Distribution by Township by Sale Price Decile
 
-```{r, warning=FALSE}
+```{r ratio_decile, warning=FALSE, message=FALSE, results='hide'}
+# Split test data into sale price decile, then calculate distribution of 
+# ratios for each decile
 decile_data <- test_res %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
@@ -112,7 +129,7 @@ decile_data <- test_res %>%
   pivot_longer(enet:stack, names_to = "model", values_to = "ratio") %>%
   mutate(model = factor(model, levels = model_order))
 
-
+# Function to create decile plot based on a grouping variable
 decile_plot <- function(data, col_var) {
   
   data %>%
@@ -120,6 +137,12 @@ decile_plot <- function(data, col_var) {
     mutate(count = n()) %>%
   ggplot() +
     geom_boxplot(aes(x = ratio), outlier.alpha = 0.05) +
+    geom_text(
+      aes(x = 3, y = 0.25, label = count),
+      size = 3,
+      hjust = 1,
+      check_overlap = TRUE
+    ) +
     scale_y_continuous(position = "right") +
     facet_grid(
       rows = vars(decile_label),
@@ -139,17 +162,34 @@ decile_plot <- function(data, col_var) {
     )
 }
 
+# Split into a separate decile plot for every 4 townships
+chunk <- function(x, n) split(x, sort(rank(x) %% n))
+towns <- sort(unique(decile_data$town_name))
+towns <- chunk(towns, ceiling(length(towns) / 4))
+
+lapply(towns, function(chunk) decile_plot(
+  decile_data %>% filter(town_name %in% chunk),
+  town_name
+))
+
+```
+
+<br>
+
+## Ratio Distribution by Model Type by Sale Price Decile
+
+```{r ratio_model, warning=FALSE}
 decile_plot(decile_data, model)
 ```
 
 
-## Model Results
+# Model Tuning
 
 ---
 
-### Model Correlation (Spearman)
+## Model Correlation (Spearman)
 
-```{r}
+```{r corr}
 # Prepare correlation data matrix
 model_cor <- as_tibble(cor(select(test_res, enet:stack), method = "spearman")) %>%
   mutate(name2 = names(.)) %>%
@@ -179,61 +219,167 @@ ggplot(model_cor) +
   )
 ```
 
+<br>
 
-<!-- ### Best Parameters -->
+## Final Hyperparameters
 
-<!-- ```{r} -->
+```{r params}
+# Load model results for each model and append to data frame
+model_results <- tibble()
 
-<!-- # Load individual model results from file -->
-<!-- enet_results <- read_parquet("data/models/enet_results.parquet") -->
-<!-- xgb_results <- read_parquet("data/models/xgb_results.parquet") -->
-<!-- rf_results <- read_parquet("data/models/rf_results.parquet") -->
-<!-- cknn_results <- read_parquet("data/models/cknn_results.parquet") %>% -->
-<!--   mutate(model = "cknn", log_cod = log(cod)) %>% -->
-<!--   filter(cod == min(cod)) %>% -->
-<!--   select(m:l, log_cod, model)  -->
+enet_params_path <- "data/models/enet_params.rds"
+if (file.exists(enet_params_path)) {
+  enet_params <- readRDS(enet_params_path)
+  enet_final_params <- enet_params %>%
+    mutate(Iterations = max(.iter)) %>%
+    select_by_one_std_err(penalty, mixture, metric = "codm") %>%
+    mutate(Model = "enet")
+  
+  model_results <- bind_rows(model_results, enet_final_params)
+}
 
-<!-- # Bind results together and print -->
-<!-- bind_rows( -->
-<!--   enet_results %>% mutate(model = "enet"), -->
-<!--   xgb_results %>% mutate(model = "xgb"), -->
-<!--   rf_results  %>% mutate(model = "rf") -->
-<!-- ) %>% -->
-<!--   group_by(model) %>% -->
-<!--   filter(.metric == "codm") %>% -->
-<!--   filter(mean == min(mean)) %>% -->
-<!--   distinct(mean, .keep_all = TRUE) %>% -->
-<!--   select(-.metric, -.estimator, -n, -.config) %>% -->
-<!--   select(model, log_cod = mean, std_err, everything()) %>% -->
-<!--   bind_rows(cknn_results) %>% -->
-<!--   knitr::kable(digits = 4) -->
+xgb_params_path <- "data/models/xgb_params.rds"
+if (file.exists(xgb_params_path)) {
+  xgb_params <- readRDS(xgb_params_path)
+  xgb_final_params <- xgb_params %>%
+    mutate(Iterations = max(.iter)) %>%
+    select_by_one_std_err(
+      mtry, min_n, tree_depth, loss_reduction,
+      learn_rate, sample_size, metric = "codm"
+    ) %>%
+    mutate(Model = "xgb")
 
+  model_results <- bind_rows(model_results, xgb_final_params)
+}
 
-<!-- ``` -->
+rf_params_path <- "data/models/rf_params.rds"
+if (file.exists(rf_params_path)) {
+  rf_params <- readRDS(rf_params_path)
+  rf_final_params <- rf_params %>%
+    mutate(Iterations = max(.iter)) %>%
+    select_by_one_std_err(mtry, min_n, metric = "codm") %>%
+    mutate(Model = "rf")
+  
+  model_results <- bind_rows(model_results, rf_final_params)
+}
 
-<!-- ### ElasticNet Grid Search -->
+cknn_params_path <- "data/models/cknn_params.rds"
+if (file.exists(cknn_params_path)) {
+  cknn_params <- readRDS(cknn_params_path)
+  cknn_final_params <- cknn_params %>%
+    filter(cod == min(cod, na.rm = TRUE)) %>%
+    mutate(Model = "cknn")
+  
+  model_results <- bind_rows(model_results, cknn_final_params)
+}
 
-<!-- ```{r, warning=FALSE} -->
-<!-- # Load and plot ElasticNet grid search results -->
-<!-- enet_results %>% -->
-<!--   ggplot(aes(penalty, mean, color = .metric)) + -->
-<!--     geom_errorbar( -->
-<!--       aes(ymin = mean - std_err, ymax = mean + std_err), -->
-<!--       alpha = 0.5 -->
-<!--     ) + -->
-<!--     geom_line(size = 1.5) + -->
-<!--     facet_wrap(vars(.metric), scales = "free", ncol = 1) + -->
-<!--     scale_x_log10() + -->
-<!--     guides(color = guide_legend(title = "Metric")) + -->
-<!--     theme(legend.position = "none") + -->
-<!--     theme_minimal() -->
-<!-- ``` -->
+# Table of all final model parameters
+model_results %>%
+  select(-any_of(c(
+    "n", "std_err", ".iter", ".config", ".metric", ".estimator",
+    ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb"
+  ))) %>%
+  rename(Performance = mean) %>%
+  relocate(c(Model, Performance, Iterations), .before = NULL) %>%
+  pivot_longer(
+    cols = -(Model:Iterations),
+    names_to = "Param Name",
+    values_to = "Param Value",
+    values_drop_na = TRUE
+  ) %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    autoHideNavigation = TRUE,
+    selection = "none",
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c(2, 5), digits = 3)
 
-<!-- ### CkNN Grid Search -->
+```
 
-<!-- ```{r, message = FALSE} -->
-<!-- # Load and plot CkNN grid search results -->
-<!-- cknn_results <- read_parquet("../data/models/cknn_results.parquet") -->
-<!-- cknn_grid_plot(cknn_results, m, k, l, cod)  -->
-<!-- ``` -->
+<br>
+
+## Hyperparameter Tuning
+
+```{r param_plots, warning=FALSE}
+# Create autoplot of model params for those that exist
+if (exists("enet_params")) {
+  autoplot(enet_params, metric = "codm", type = "marginals") +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = F) +
+    labs(title = "ElasticNet Tuning Results") +
+    theme_minimal()
+}
+
+if (exists("xgb_params")) {
+  autoplot(xgb_params, metric = "codm", type = "marginals") +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = F) +
+    labs(title = "XGBoost Tuning Results") +
+    theme_minimal()
+}
+
+if (exists("rf_params")) {
+  autoplot(rf_params, metric = "codm", type = "marginals") +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = F) +
+    labs(title = "Random Forest Tuning Results") +
+    theme_minimal()
+}
+
+if (exists("cknn_params")) {
+  cknn_grid_plot(cknn_params, m, k, l, cod) +
+    labs(title = "CkNN Tuning Results")
+}
+```
+
+<br>
+
+## CkNN Variable Weights
+
+```{r cknn_weights}
+cknn_var_weights_path <- "data/models/cknn_weights.rds"
+if (file.exists(cknn_var_weights_path)) {
+cknn_var_weights <- readRDS(cknn_var_weights_path)
+names_pretty <- cknn_var_weights %>%
+    pivot_wider() %>%
+    vars_rename(names_from = "standard", names_to = "pretty",type = "vector")
+    
+cknn_var_weights %>%
+  mutate("Variable Full Name" = names_pretty) %>%
+  rename("Variable Name" = name, "Relative Weight" = value) %>%
+  relocate(`Variable Full Name`, .before = NULL) %>%
+  knitr::kable(digits = 3)
+}
+```
+
+<br>
+
+# Model Training Time
+
+```{r timings, fig.height=2}
+model_timings_path <- "data/models/model_timings.rds"
+if (file.exists(model_timings_path)) {
+  readRDS(model_timings_path) %>%
+    filter(model != "full") %>%
+    mutate(
+      across(c(tic:toc, elapsed), ~ .x / 3600),
+      model = factor(model, levels = c("elasticnet", "xgb", "rf", "cknn"))
+    ) %>%
+  ggplot() +
+    geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
+    scale_x_continuous(expand = c(0, 0), breaks = extended_breaks(18)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_fill_brewer(name = "Model Training", palette = "Set1") +
+    labs(x = "Number of Hours Elapsed While Training") +
+    theme(
+      axis.ticks.y = element_blank(),
+      axis.text.y = element_blank(),
+      axis.title.x = element_text(margin = margin(t = 6))
+    )
+}
+```
 
