@@ -253,12 +253,14 @@ ggplot(outlier_dist) +
 outlier_dist %>%
   left_join(quantiles, by = "trimmed") %>%
   filter(ratio < q01 | ratio > q99) %>%
+  mutate(above_1 = ifelse(ratio > 1, "Above 1", "Below 1")) %>%
   ungroup() %>%
   st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 3435) %>%
   st_transform(4326) %>%
 ggplot() +
   geom_sf(data = town_shp %>% filter(township_name %in% test_res$town_name)) +
-  geom_sf(aes(geometry = geometry, color = trimmed)) +
+  geom_sf(aes(geometry = geometry, color = trimmed, shape = above_1)) +
+  scale_shape_manual(name = "Ratio is:", values = c("Above 1" = 0, "Below 1" = 16)) +
   facet_wrap(vars(trimmed), nrow = 1) +
   guides(color = FALSE) +
   theme_void() +
@@ -284,11 +286,12 @@ outlier_dist %>%
   mutate(
     meta_pin = pin_format_pretty(meta_pin),
     econ_tax_rate = econ_tax_rate / 100,
-    Address = paste(geo_property_address, geo_property_zip, sep = ", ")
+    Address = paste(geo_property_address, geo_property_zip, sep = ", "),
+    ratio = round(ratio, 2)
   ) %>%
   select(
-    Trimmed = trimmed, Township = town_name, PIN = meta_pin, Address,
-    `Sale Price` = meta_sale_price, `Stacked Model` = stack,
+    Trimmed = trimmed, Township = town_name, PIN = meta_pin, Address, 
+    `Stacked Model` = stack, `Sale Price` = meta_sale_price, Ratio = ratio, meta_class,
     any_of(vars_dict %>% filter(var_is_predictor) %>% pull(var_name_standard)),
     -meta_town_code
   ) %>%
@@ -453,21 +456,21 @@ model_results %>%
 # Create autoplot of model params for those that exist
 if (exists("enet_params")) {
   autoplot(enet_params, metric = "codm", type = "marginals") +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = F) +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     labs(title = "ElasticNet Tuning Results") +
     theme_minimal()
 }
 
 if (exists("xgb_params")) {
   autoplot(xgb_params, metric = "codm", type = "marginals") +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = F) +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     labs(title = "XGBoost Tuning Results") +
     theme_minimal()
 }
 
 if (exists("rf_params")) {
   autoplot(rf_params, metric = "codm", type = "marginals") +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = F) +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     labs(title = "Random Forest Tuning Results") +
     theme_minimal()
 }

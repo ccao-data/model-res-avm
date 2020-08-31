@@ -565,9 +565,10 @@ beepr::beep(8)
 
 # NOW
 # TODO: Check prep again kg
-# TODO: finish data report
+# TODO: Create finalized model for actual assessment
+
+# TODO: finish data ingest report
 
 # MORE MODELING
 # TODO: Test log transforming cknn continuous vars
-# TODO: Add keras-based nnet?
 # TODO: Create interaction terms: step_interact().
