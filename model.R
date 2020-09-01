@@ -36,15 +36,14 @@ cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", FALSE))
 cv_num_folds <- as.numeric(model_get_env("R_CV_NUM_FOLDS", 5))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 7, seed = 27)
 
-# Get the full list of possible RHS predictors from ccao::vars_dict
+# Get the full list of right-hand side predictors from ccao::vars_dict
 mod_predictors <- ccao::vars_dict %>%
   filter(var_is_predictor) %>%
   pull(var_name_standard) %>%
   unique() %>%
   na.omit()
 
-cv_enable <- TRUE
-cv_write_params <- TRUE
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -53,7 +52,7 @@ cv_write_params <- TRUE
 
 # Load the full set of training data, keep only good, complete observations
 full_data <- read_parquet("data/modeldata.parquet") %>%
-  filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
+filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
 
   # Transform from lat/lon to planar coordinates in meters, necessary for
   # spatial clustering
@@ -560,15 +559,3 @@ if (cv_enable & cv_write_params) {
 
 # BIG BEEP
 beepr::beep(8)
-
-
-
-# NOW
-# TODO: Check prep again kg
-# TODO: Create finalized model for actual assessment
-
-# TODO: finish data ingest report
-
-# MORE MODELING
-# TODO: Test log transforming cknn continuous vars
-# TODO: Create interaction terms: step_interact().

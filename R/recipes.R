@@ -6,8 +6,7 @@ mod_recp_prep <- function(data, keep_vars) {
     step_other(all_nominal(), threshold = 0.005) %>%
     step_naomit(all_predictors(), all_outcomes()) %>%
     step_log(
-      all_outcomes(),
-      ends_with("_price"), ends_with("_sf"), contains("income"),
+      all_outcomes(), ends_with("_sf"), contains("income"),
       offset = 1
     ) %>%
     step_zv(all_numeric(), -all_outcomes()) %>%
@@ -23,17 +22,6 @@ dummy_recp_prep <- function(recipe) {
     step_dummy(all_nominal(), -all_outcomes())
 }
 
-
-# Recipe for kknn prep, keep only clustering vars + lat/lon
-kknn_recp_prep <- function(data, keep_vars) {
-  recipe(meta_sale_price ~ ., data = data) %>%
-    step_rm(-any_of(keep_vars), all_nominal(), -all_outcomes()) %>%
-    step_naomit(all_predictors()) %>%
-    step_zv(all_numeric(), -all_outcomes()) %>%
-    step_corr(all_numeric(), -all_outcomes()) %>%
-    step_normalize(all_numeric(), -all_outcomes()) %>%
-    step_log(all_outcomes())
-}
 
 # Recipe for CKNN prep, keep only clustering vars
 cknn_recp_prep <- function(data, keep_vars) {
