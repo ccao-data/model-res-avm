@@ -50,21 +50,16 @@ stack_model <- function(models, recipes, meta_spec, data, add_vars = NULL) {
   # Check that names match for models and recipes
   stopifnot(
     all(names(models) %in% names(recipes)),
-    all(names(recipes) %in% names(models))
+    all(names(recipes) %in% names(models)),
+    "cknn" %in% names(models)
   )
 
   # Get index of non-cknn models
   non_cknn <- !names(models) %in% c("cknn")
   
-  # Get predictions only for cknn model
-  if ("cknn" %in% names(models)) {
-    sales <- pull(juice(prep(recipes$cknn), all_outcomes()))
-    cknn_preds <- map_dbl(models$cknn$knn, ~ median(sales[.x]))
-  } else {
-    sales <- NULL
-    cknn_preds <- NULL
-  }
-  
+  # Extract sales used by cknn model
+  sales <- pull(juice(prep(recipes$cknn), all_outcomes()))
+
   # Get full fits for all non-cknn models
   meta_train <- pmap(
     list(models[non_cknn], recipes[non_cknn]),
@@ -73,7 +68,7 @@ stack_model <- function(models, recipes, meta_spec, data, add_vars = NULL) {
   
   # Create a recipe for the meta model
   meta_recipe <- stack_recp_prep(
-    bind_cols(meta_train, data, cknn = cknn_preds),
+    bind_cols(meta_train, data),
     keep_vars = c(names(models), add_vars)
   )
  
@@ -104,22 +99,17 @@ predict.stack_model <- function(object, new_data) {
   # Get index of non-cknn models
   non_cknn <- !names(object$models) %in% c("cknn")
   
+  # Get cknn predictions
+  cknn_preds <- unname(unlist(cknn_predict(
+    object$models$cknn, object$recipes$cknn, new_data, object$sale_prices
+  )))
+
   # Predict new data using previously fitted models
   new_preds <- pmap(
     list(object$models[non_cknn], object$recipes[non_cknn]),
-    ~ model_predict(.x, .y, new_data)
+    ~ model_predict(.x, .y, new_data %>% mutate(cknn_preds = cknn_preds))
   )
-  
-  # Get cknn predictions
-  if ("cknn" %in% names(object$models)) {
-    cknn_preds <- list(unname(cknn_predict(
-      object$models$cknn, object$recipes$cknn, new_data, object$sale_prices
-    )))
-  } else {
-    cknn_preds <- NULL
-  }
-  new_preds <- c(new_preds, cknn = cknn_preds)
-   
+
   # Get predictions from all other models
   stack_preds <- exp(predict(
     object$meta_fit,
@@ -128,5 +118,5 @@ predict.stack_model <- function(object, new_data) {
   ))
   
   # Output other model predictions + stacked preds
-  c(new_preds, stack = list(stack_preds$.pred))
+  c(cknn = list(cknn_preds), new_preds, stack = list(stack_preds$.pred))
 }

@@ -60,7 +60,7 @@ test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
-    across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
+    across(cknn:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
     num_trimmed = sum(is_outlier(stack / meta_sale_price, method = "quantile")),
     stack_cod_trim = ccao_cod(stack / meta_sale_price)$COD
   ) %>%
@@ -91,11 +91,11 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("enet", "xgb", "rf", "cknn", "stack", "stack_trim")
+model_order <- c("cknn", "enet", "xgb", "rf", "stack", "stack_trim")
 
 # Generate township level map of COD
 test_summary %>%
-  pivot_longer(c(enet:stack, stack_trim)) %>%
+  pivot_longer(c(cknn:stack, stack_trim)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
   mutate(name = factor(name, levels = model_order)) %>%
@@ -119,7 +119,7 @@ ggplot() +
 decile_data <- test_res %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
-    across(enet:stack, ~ .x / meta_sale_price)
+    across(cknn:stack, ~ .x / meta_sale_price)
   ) %>%
   group_by(decile) %>%
   mutate(decile_label = paste(
@@ -129,7 +129,7 @@ decile_data <- test_res %>%
   ) %>%
   ungroup() %>%
   mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
-  pivot_longer(enet:stack, names_to = "model", values_to = "ratio") %>%
+  pivot_longer(cknn:stack, names_to = "model", values_to = "ratio") %>%
   mutate(model = factor(model, levels = model_order))
 
 # Function to create decile plot based on a grouping variable
@@ -336,7 +336,7 @@ outlier_dist %>%
 
 ```{r corr}
 # Prepare correlation data matrix
-model_cor <- as_tibble(cor(select(test_res, enet:stack), method = "spearman")) %>%
+model_cor <- as_tibble(cor(select(test_res, cknn:stack), method = "spearman")) %>%
   mutate(name2 = names(.)) %>%
   pivot_longer(-name2) %>%
   mutate(

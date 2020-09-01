@@ -74,12 +74,148 @@ train <- training(time_split)
 # Create v-fold CV splits for the main training set
 train_folds <- vfold_cv(train, v = cv_num_folds)
 
-# Setup training data recipe to remove unnecessary vars, log-log variables, etc
-train_recipe <- mod_recp_prep(train, mod_predictors)
-train_p <- ncol(juice(prep(train_recipe))) - 1
-
 # Remove unnecessary data
 rm(time_split); gc()
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### CkNN Model #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+### Step 0 - Initialize parallel backend for furrr functions used by cknn
+if (cv_enable) plan(multiprocess, workers = all_cores)
+
+
+### Step 1 - Model initialization and determine variable weights
+
+# Setup model results path
+cknn_params_path <- "data/models/cknn_params.rds"
+cknn_weights_path <- "data/models/cknn_weights.rds"
+
+# Get the set of possible vars for clustering from ccao::vars_dict
+cknn_possible_vars <- ccao::vars_dict %>%
+  filter(var_is_clustered) %>%
+  pull(var_name_standard) %>%
+  unique() %>%
+  na.omit()
+
+# Create feature weights using feature importance metric from random forest
+# keeping the top N weights
+cknn_noncluster_vars <- c("geo_longitude", "geo_latitude", "meta_sale_price")
+cknn_var_weights <- cknn_rel_importance(rf_final_var_imp, cknn_possible_vars, 10)
+cknn_predictors <- c(cknn_noncluster_vars, names(cknn_var_weights))
+
+# Save variable weights used to file
+if (cv_write_params) {
+  enframe(cknn_var_weights) %>%
+    saveRDS(cknn_weights_path)
+}
+
+# Create a recipe using cknn predictors which removes unnecessary vars,
+# collapses rare factors, and converts NA in factors to "unknown"
+cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
+
+
+### Step 2 - Cross-validation
+
+# If cross validating, manually cycle through a grid of tuning parameters to
+# find the best ones
+if (cv_enable) {
+  
+  # Create a grid of possible cknn parameter values to loop through
+  cknn_grid <- expand_grid(
+    m = seq(6, 15, 2),
+    k = seq(7, 19, 3),
+    l = seq(0.5, 0.9, 0.1)
+  ) %>%
+    sample_n(60)
+  
+  # Create v folds in the training data and keep only clustering vars, then for
+  # each CV fold, calculate the values for all hyperparameters in cknn_grid
+  tictoc::tic(msg = "CkNN CV model fitting complete!")
+  cknn_search <- train_folds %>%
+    mutate(
+      df_ana = map(splits, analysis),
+      df_ass = map(splits, assessment)
+    ) %>%
+    mutate(
+      recipe = map(df_ana, ~ prep(cknn_recipe, training = .x)),
+      df_ana = map(recipe, juice),
+      df_ass = map2(recipe, df_ass, ~ bake(.x, new_data = .y))
+    ) %>%
+    mutate(
+      cknn_params = cknn_search(
+        analysis = df_ana,
+        assessment = df_ass,
+        param_grid = cknn_grid,
+        noncluster_vars = cknn_noncluster_vars,
+        weights = cknn_var_weights
+      )
+    )
+  tictoc::toc(log = TRUE)
+  beepr::beep(2)
+  
+  # Summarize results by parameter groups, averaging across folds
+  cknn_params <- bind_rows(cknn_search$cknn_params) %>%
+    group_by(m, k, l) %>%
+    summarize(across(everything(), mean)) %>%
+    ungroup() %>%
+    arrange(cod)
+  
+  # Write grid search results to file
+  if (cv_write_params) {
+    cknn_params %>%
+      saveRDS(cknn_params_path)
+  }
+  
+  # Take the best params according to lowest COD
+  cknn_final_params <- cknn_params %>%
+    filter(cod == min(cod, na.rm = TRUE))
+  
+} else {
+  
+  # If no CV, load best params from file if exists, otherwise use defaults
+  if (file.exists(cknn_params_path)) {
+    cknn_final_params <- readRDS(cknn_params_path) %>%
+      filter(cod == min(cod, na.rm = TRUE))
+  } else {
+    cknn_final_params <- list(m = 8, k = 12, l = 0.8)
+  }
+}
+
+
+### Step 3 - Finalize model
+
+# Fit the final model using the full training data
+cknn_final_fit <- cknn(
+  data = juice(prep(cknn_recipe)) %>%
+    select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
+    as.data.frame(),
+  lon = train %>% pull(geo_longitude),
+  lat = train %>% pull(geo_latitude),
+  m = cknn_final_params$m,
+  k = cknn_final_params$k,
+  l = cknn_final_params$l,
+  var_weights = cknn_var_weights,
+  keep_data = TRUE
+)
+
+# Extract CkNN predicted values and append them to the training data
+# These values serve as a sort of spatial lag variable
+sales <- pull(juice(prep(cknn_recipe), all_outcomes()))
+train <- train %>%
+  mutate(cknn_preds = map_dbl(cknn_final_fit$knn, ~ median(sales[.x])))
+
+
+# Create a recipe for the training data which removes non-predictor columns,
+# normalizes/logs data, and deals with missing values
+train_recipe <- mod_recp_prep(train, c(mod_predictors, "cknn_preds"))
+train_p <- ncol(juice(prep(train_recipe))) - 1
+
+# Remove unnecessary objects
+rm_intermediate("cknn", c("cknn_recipe", "cknn_var_weights", "cknn_predict"))
 
 
 
@@ -361,143 +497,8 @@ rf_wflow_final_fit <- rf_wflow %>%
 rf_final_recp <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
 rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
 
-# Grow a separate forest with variable importance metric
-rf_final_var_imp <- rf_wflow %>%
-  update_model(rf_model %>% set_args(importance = "impurity_corrected")) %>%
-  finalize_workflow(as.list(rf_final_params)) %>%
-  fit(data = train) %>%
-  pull_workflow_fit()
-
 # Remove unnecessary objects
 rm_intermediate("rf")
-
-
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### CkNN Model #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-### Step 0 - Initialize parallel backend for furrr functions used by cknn
-if (cv_enable) plan(multiprocess, workers = all_cores)
-
-
-### Step 1 - Model initialization and determine variable weights
-
-# Setup model results path
-cknn_params_path <- "data/models/cknn_params.rds"
-cknn_weights_path <- "data/models/cknn_weights.rds"
-
-# Get the set of possible vars for clustering from ccao::vars_dict
-cknn_possible_vars <- ccao::vars_dict %>%
-  filter(var_is_clustered) %>%
-  pull(var_name_standard) %>%
-  unique() %>%
-  na.omit()
-
-# Create feature weights using feature importance metric from random forest
-# keeping the top N weights
-cknn_noncluster_vars <- c("geo_longitude", "geo_latitude", "meta_sale_price")
-cknn_var_weights <- cknn_rel_importance(rf_final_var_imp, cknn_possible_vars, 10)
-cknn_predictors <- c(cknn_noncluster_vars, names(cknn_var_weights))
-
-# Save variable weights used to file
-if (cv_write_params) {
-  enframe(cknn_var_weights) %>%
-    saveRDS(cknn_weights_path)
-}
-
-# Create a recipe using cknn predictors which removes unnecessary vars,
-# collapses rare factors, and converts NA in factors to "unknown"
-cknn_recipe <- cknn_recp_prep(train, cknn_predictors)
-
-
-### Step 2 - Cross-validation
-
-# If cross validating, manually cycle through a grid of tuning parameters to
-# find the best ones
-if (cv_enable) {
-
-  # Create a grid of possible cknn parameter values to loop through
-  cknn_grid <- expand_grid(
-    m = seq(6, 15, 2),
-    k = seq(7, 19, 3),
-    l = seq(0.5, 0.9, 0.1)
-  ) %>%
-    sample_n(60)
-
-  # Create v folds in the training data and keep only clustering vars, then for
-  # each CV fold, calculate the values for all hyperparameters in cknn_grid
-  tictoc::tic(msg = "CkNN CV model fitting complete!")
-  cknn_search <- train_folds %>%
-    mutate(
-      df_ana = map(splits, analysis),
-      df_ass = map(splits, assessment)
-    ) %>%
-    mutate(
-      recipe = map(df_ana, ~ prep(cknn_recipe, training = .x)),
-      df_ana = map(recipe, juice),
-      df_ass = map2(recipe, df_ass, ~ bake(.x, new_data = .y))
-    ) %>%
-    mutate(
-      cknn_params = cknn_search(
-        analysis = df_ana,
-        assessment = df_ass,
-        param_grid = cknn_grid,
-        noncluster_vars = cknn_noncluster_vars,
-        weights = cknn_var_weights
-      )
-    )
-  tictoc::toc(log = TRUE)
-  beepr::beep(2)
-
-  # Summarize results by parameter groups, averaging across folds
-  cknn_params <- bind_rows(cknn_search$cknn_params) %>%
-    group_by(m, k, l) %>%
-    summarize(across(everything(), mean)) %>%
-    ungroup() %>%
-    arrange(cod)
-
-  # Write grid search results to file
-  if (cv_write_params) {
-    cknn_params %>%
-      saveRDS(cknn_params_path)
-  }
-
-  # Take the best params according to lowest COD
-  cknn_final_params <- cknn_params %>%
-    filter(cod == min(cod, na.rm = TRUE))
-  
-} else {
-
-  # If no CV, load best params from file if exists, otherwise use defaults
-  if (file.exists(cknn_params_path)) {
-    cknn_final_params <- readRDS(cknn_params_path) %>%
-      filter(cod == min(cod, na.rm = TRUE))
-  } else {
-    cknn_final_params <- list(m = 8, k = 12, l = 0.8)
-  }
-}
-
-
-### Step 3 - Finalize model
-
-# Fit the final model using the full training data
-cknn_final_fit <- cknn(
-  data = juice(prep(cknn_recipe)) %>%
-    select(-meta_sale_price, -geo_longitude, -geo_latitude) %>%
-    as.data.frame(),
-  lon = train %>% pull(geo_longitude),
-  lat = train %>% pull(geo_latitude),
-  m = cknn_final_params$m,
-  k = cknn_final_params$k,
-  l = cknn_final_params$l,
-  var_weights = cknn_var_weights,
-  keep_data = TRUE
-)
-
-# Remove unnecessary objects
-rm_intermediate("cknn", c("cknn_recipe", "cknn_var_weights", "cknn_predict"))
 
 
 
@@ -513,12 +514,12 @@ sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
 
 # Prepare lists of final fitted models and recipes for input to stacked model
 sm_models = list(
-  "enet" = enet_final_fit, "xgb" = xgb_final_fit,
-  "rf" = rf_final_fit, "cknn" = cknn_final_fit
+  "cknn" = cknn_final_fit, "enet" = enet_final_fit,
+  "xgb" = xgb_final_fit, "rf" = rf_final_fit
 )
 sm_recipes = list(
-  "enet" = enet_final_recp, "xgb" = xgb_final_recp,
-  "rf" = rf_final_recp, "cknn" = cknn_recipe
+  "cknn" = cknn_recipe, "enet" = enet_final_recp,
+  "xgb" = xgb_final_recp, "rf" = rf_final_recp
 )
 
 # Create stacked model object with training data
