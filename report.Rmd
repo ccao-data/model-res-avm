@@ -22,6 +22,7 @@ library(tune)
 library(ccao)
 library(assessr)
 
+# Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
 
 # Filter to specific triad. Set with system variable else param defined in yaml
@@ -111,7 +112,7 @@ test_summary %>%
   formatCurrency(2, digits = 0) %>%
   formatRound(3, digits = 0) %>%
   formatRound(c(4:10)) %>%
-  formatStyle(
+  formatStyle(  
     c("final", "final_prd", "final_prb"),
     c("final_cod_met", "final_prd_met", "final_prb_met"),
     backgroundColor = styleEqual(
@@ -129,7 +130,7 @@ test_summary %>%
 # Vector of model name order (in the order run in model.R)
 model_order <- c("enet", "xgb", "rf", "stack", "final")
 
-# Generate township level map of COD
+# Generate township-level map of COD
 test_summary %>%
   pivot_longer(c(enet:stack, final)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
@@ -285,7 +286,8 @@ ggplot(outlier_dist) +
 ## Spatial Distribution of Outliers
 
 ```{r outlier_map, message=FALSE}
-
+# Create a township level map showing the location of individual outliers from
+# the ratio plot above
 outlier_dist %>%
   left_join(quantiles, by = "trimmed") %>%
   filter(ratio < q01 | ratio > q99) %>%

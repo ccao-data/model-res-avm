@@ -140,15 +140,15 @@ if (cv_enable) {
 
 ### Step 3 - Finalize model
 
-# Fit the final model using the full training data
+# Fit the final model using the training data
 enet_wflow_final_fit <- enet_wflow %>%
   finalize_workflow(as.list(enet_final_params)) %>%
   fit(data = train)
 
-# Extract steps from the fit necessary to predict on the test set
-# https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
-enet_final_recp <- pull_workflow_prepped_recipe(enet_wflow_final_fit)
-enet_final_fit <- pull_workflow_fit(enet_wflow_final_fit)
+# Fit the final model using the full data, this is the model used for assessment
+enet_wflow_final_full_fit <- enet_wflow %>%
+  finalize_workflow(as.list(enet_final_params)) %>%
+  fit(data = full_data)
 
 # Remove unnecessary objects
 rm_intermediate("enet")
@@ -236,14 +236,15 @@ if (cv_enable) {
 
 ### Step 3 - Finalize model
 
-# Fit the final model using the full training data
+# Fit the final model using the training data
 xgb_wflow_final_fit <- xgb_wflow %>%
   finalize_workflow(as.list(xgb_final_params)) %>%
   fit(data = train)
 
-# Extract steps from the fit necessary to predict on the test set
-xgb_final_recp <- pull_workflow_prepped_recipe(xgb_wflow_final_fit)
-xgb_final_fit <- pull_workflow_fit(xgb_wflow_final_fit)
+# Fit the final model using the full data, this is the model used for assessment
+xgb_wflow_final_full_fit <- xgb_wflow %>%
+  finalize_workflow(as.list(xgb_final_params)) %>%
+  fit(data = full_data)
 
 # Remove unnecessary objects
 rm_intermediate("xgb")
@@ -322,14 +323,15 @@ if (cv_enable) {
 
 ### Step 3 - Finalize model
 
-# Fit the final model using the full training data
+# Fit the final model using the training data
 rf_wflow_final_fit <- rf_wflow %>%
   finalize_workflow(as.list(rf_final_params)) %>%
   fit(data = train)
 
-# Extract steps from the fit necessary to predict on the test set
-rf_final_recp <- pull_workflow_prepped_recipe(rf_wflow_final_fit)
-rf_final_fit <- pull_workflow_fit(rf_wflow_final_fit)
+# Fit the final model using the full data, this is the model used for assessment
+rf_wflow_final_full_fit <- rf_wflow %>%
+  finalize_workflow(as.list(rf_final_params)) %>%
+  fit(data = full_data)
 
 # Remove unnecessary objects
 rm_intermediate("rf")
@@ -341,28 +343,31 @@ rm_intermediate("rf")
 ##### Stacked Model (Regularized Regression) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+### Step 1 - Model initialization
+
 # Initialize model specification for meta model
 sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
-# Prepare lists of final fitted models and recipes for input to stacked model
-sm_models = list(
-  "enet" = enet_final_fit,
-  "xgb" = xgb_final_fit,
-  "rf" = rf_final_fit
-)
-sm_recipes = list(
-  "enet" = enet_final_recp,
-  "xgb" = xgb_final_recp,
-  "rf" = rf_final_recp
-)
+
+### Step 2 - Predict on test set
 
 # Create stacked model object with training data
 # This model is used to evaluate performance on the test set
-sm_final_fit_test <- stack_model(
-  models = sm_models,
-  recipes = sm_recipes,
+# Fit models and recipes are extracted from the final saved workflow
+# https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
+sm_final_fit <- stack_model(
+  models = list(
+    "enet" = enet_wflow_final_fit %>% pull_workflow_fit(),
+    "xgb" = xgb_wflow_final_fit %>% pull_workflow_fit(),
+    "rf" = rf_wflow_final_fit %>% pull_workflow_fit()
+  ),
+  recipes = list(
+    "enet" = enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+    "xgb" = xgb_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+    "rf" = rf_wflow_final_fit %>% pull_workflow_prepped_recipe()
+  ),
   meta_spec = sm_meta_model,
   add_vars = "meta_town_code",
   data = train
@@ -370,8 +375,34 @@ sm_final_fit_test <- stack_model(
 
 # Get predictions on the test set using the stacked model then save to file
 test %>%
-  bind_cols(predict(sm_final_fit_test, test)) %>%
+  bind_cols(predict(sm_final_fit, test)) %>%
   write_parquet("data/testdata.parquet")
+
+
+### Step 3 - Create final/assessment model
+
+# Create a model fit from the full sales dataset using hyperparameters
+# discovered during the cross-validation process. This is the model used to
+# actually created initial assessed values
+sm_final_full_fit <- stack_model(
+  models = list(
+    "enet" = enet_wflow_final_full_fit %>% pull_workflow_fit(),
+    "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_fit(),
+    "rf" = rf_wflow_final_full_fit %>% pull_workflow_fit()
+  ),
+  recipes = list(
+    "enet" = enet_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
+    "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
+    "rf" = rf_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
+  ),
+  meta_spec = sm_meta_model,
+  add_vars = "meta_town_code",
+  data = full_data
+)
+
+# Save the finalized model object to file so it can be used elsewhere
+sm_final_full_fit %>%
+  saveRDS("data/models/stacked_model.rds")
 
 
 
