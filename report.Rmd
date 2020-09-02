@@ -21,7 +21,6 @@ library(scales)
 library(tune)
 library(ccao)
 library(assessr)
-source("R/cknn_funs.R")
 
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
 
@@ -60,7 +59,7 @@ test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
-    across(cknn:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
+    across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
     num_trimmed = sum(is_outlier(stack / meta_sale_price, method = "quantile")),
     stack_cod_trim = ccao_cod(stack / meta_sale_price)$COD
   ) %>%
@@ -82,7 +81,7 @@ test_summary %>%
     )
   ) %>%
   formatRound(2, digits = 0) %>%
-  formatRound(c(3:7, 9))
+  formatRound(c(3:6, 8))
 ```
 
 <br>
@@ -91,11 +90,11 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("cknn", "enet", "xgb", "rf", "stack", "stack_trim")
+model_order <- c("enet", "xgb", "rf", "stack", "stack_trim")
 
 # Generate township level map of COD
 test_summary %>%
-  pivot_longer(c(cknn:stack, stack_trim)) %>%
+  pivot_longer(c(enet:stack, stack_trim)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
   mutate(name = factor(name, levels = model_order)) %>%
@@ -119,7 +118,7 @@ ggplot() +
 decile_data <- test_res %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
-    across(cknn:stack, ~ .x / meta_sale_price)
+    across(enet:stack, ~ .x / meta_sale_price)
   ) %>%
   group_by(decile) %>%
   mutate(decile_label = paste(
@@ -129,7 +128,7 @@ decile_data <- test_res %>%
   ) %>%
   ungroup() %>%
   mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
-  pivot_longer(cknn:stack, names_to = "model", values_to = "ratio") %>%
+  pivot_longer(enet:stack, names_to = "model", values_to = "ratio") %>%
   mutate(model = factor(model, levels = model_order))
 
 # Function to create decile plot based on a grouping variable
@@ -255,8 +254,7 @@ outlier_dist %>%
   filter(ratio < q01 | ratio > q99) %>%
   mutate(above_1 = ifelse(ratio > 1, "Above 1", "Below 1")) %>%
   ungroup() %>%
-  st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 3435) %>%
-  st_transform(4326) %>%
+  st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 4326) %>%
 ggplot() +
   geom_sf(data = town_shp %>% filter(township_name %in% test_res$town_name)) +
   geom_sf(aes(geometry = geometry, color = trimmed, shape = above_1)) +
@@ -336,7 +334,7 @@ outlier_dist %>%
 
 ```{r corr}
 # Prepare correlation data matrix
-model_cor <- as_tibble(cor(select(test_res, cknn:stack), method = "spearman")) %>%
+model_cor <- as_tibble(cor(select(test_res, enet:stack), method = "spearman")) %>%
   mutate(name2 = names(.)) %>%
   pivot_longer(-name2) %>%
   mutate(
@@ -408,16 +406,6 @@ if (file.exists(rf_params_path)) {
   model_results <- bind_rows(model_results, rf_final_params)
 }
 
-cknn_params_path <- "data/models/cknn_params.rds"
-if (file.exists(cknn_params_path)) {
-  cknn_params <- readRDS(cknn_params_path)
-  cknn_final_params <- cknn_params %>%
-    filter(cod == min(cod, na.rm = TRUE)) %>%
-    mutate(Model = "cknn")
-  
-  model_results <- bind_rows(model_results, cknn_final_params)
-}
-
 # Table of all final model parameters
 model_results %>%
   select(-any_of(c(
@@ -474,31 +462,6 @@ if (exists("rf_params")) {
     labs(title = "Random Forest Tuning Results") +
     theme_minimal()
 }
-
-if (exists("cknn_params")) {
-  cknn_grid_plot(cknn_params, m, k, l, cod) +
-    labs(title = "CkNN Tuning Results")
-}
-```
-
-<br>
-
-## CkNN Variable Weights
-
-```{r cknn_weights}
-cknn_var_weights_path <- "data/models/cknn_weights.rds"
-if (file.exists(cknn_var_weights_path)) {
-cknn_var_weights <- readRDS(cknn_var_weights_path)
-names_pretty <- cknn_var_weights %>%
-    pivot_wider() %>%
-    vars_rename(names_from = "standard", names_to = "pretty",type = "vector")
-    
-cknn_var_weights %>%
-  mutate("Variable Full Name" = names_pretty) %>%
-  rename("Variable Name" = name, "Relative Weight" = value) %>%
-  relocate(`Variable Full Name`, .before = NULL) %>%
-  knitr::kable(digits = 3)
-}
 ```
 
 <br>
@@ -512,7 +475,7 @@ if (file.exists(model_timings_path)) {
     filter(model != "full") %>%
     mutate(
       across(c(tic:toc, elapsed), ~ .x / 3600),
-      model = factor(model, levels = c("elasticnet", "xgb", "rf", "cknn"))
+      model = factor(model, levels = c("elasticnet", "xgb", "rf"))
     ) %>%
   ggplot() +
     geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +

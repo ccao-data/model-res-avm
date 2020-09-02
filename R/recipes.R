@@ -23,16 +23,6 @@ dummy_recp_prep <- function(recipe) {
 }
 
 
-# Recipe for CKNN prep, keep only clustering vars
-cknn_recp_prep <- function(data, keep_vars) {
-  recipe(meta_sale_price ~ ., data = data) %>%
-    step_rm(-any_of(keep_vars), -all_outcomes()) %>%
-    step_unknown(all_nominal()) %>%
-    step_other(all_nominal(), threshold = 0.005) %>%
-    step_naomit(all_predictors())
-}
-
-
 # Recipe for stacking/meta model, goal here is to interact each fitted model
 # values with township variable
 stack_recp_prep <- function(data, keep_vars = NULL) {
