@@ -4,7 +4,7 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "TRUE"
+  filter: "FALSE"
   triad: "City"
 ---
 
@@ -58,16 +58,20 @@ test_res <- test_res %>%
 test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
-    count = n(),
+    Count = n(),
     across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
     num_trimmed = sum(is_outlier(stack / meta_sale_price, method = "quantile")),
-    stack_cod_trim = ccao_cod(stack / meta_sale_price)$COD
+    final = ccao_cod(stack / meta_sale_price)$COD,
+    `Final PRD` = ccao_prd(stack, meta_sale_price)$PRD,
+    `Final PRB` = ccao_prb(stack, meta_sale_price)$PRB
   ) %>%
-  arrange(stack_cod_trim) %>%
-  rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod"), ends_with("_trim")))
+  arrange(final) %>%
+  rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod")))
 
 # Create an interactive table of the test set results by township
 test_summary %>%
+  rename(Township = town_name, `Num. Trimmed` = num_trimmed, Final = final) %>%
+  rename_with(~ paste(.x, "COD"), .cols = c(enet:stack, Final)) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -81,7 +85,7 @@ test_summary %>%
     )
   ) %>%
   formatRound(2, digits = 0) %>%
-  formatRound(c(3:6, 8))
+  formatRound(c(3:6, 8:10))
 ```
 
 <br>
@@ -90,11 +94,11 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("enet", "xgb", "rf", "stack", "stack_trim")
+model_order <- c("enet", "xgb", "rf", "stack", "final")
 
 # Generate township level map of COD
 test_summary %>%
-  pivot_longer(c(enet:stack, stack_trim)) %>%
+  pivot_longer(c(enet:stack, final)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
   mutate(name = factor(name, levels = model_order)) %>%
@@ -316,7 +320,8 @@ outlier_dist %>%
     )
   ) %>%
   formatCurrency(
-    c("Sale Price", "Stacked Model", "Median Income"),
+    c("Sale Price", "Stacked Model", "Median Income",
+      "Neighborhood Mean Sale Price", "Neighborhood Median Sale Price"),
     digits = 0
   ) %>%
   formatPercentage(
@@ -436,25 +441,25 @@ model_results %>%
 
 ## Hyperparameter Tuning
 
-```{r param_plots, warning=FALSE}
+```{r param_plots, warning=FALSE, message=FALSE}
 # Create autoplot of model params for those that exist
 if (exists("enet_params")) {
   autoplot(enet_params, metric = "rmse", type = "marginals") +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
+    geom_smooth(se = F) +
     labs(title = "ElasticNet Tuning Results") +
     theme_minimal()
 }
 
 if (exists("xgb_params")) {
   autoplot(xgb_params, metric = "rmse", type = "marginals") +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
+    geom_smooth(se = F) +
     labs(title = "XGBoost Tuning Results") +
     theme_minimal()
 }
 
 if (exists("rf_params")) {
   autoplot(rf_params, metric = "rmse", type = "marginals") +
-    geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
+    geom_smooth(se = F) +
     labs(title = "Random Forest Tuning Results") +
     theme_minimal()
 }
