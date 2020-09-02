@@ -167,7 +167,7 @@ xgb_params_path <- "data/models/xgb_params.rds"
 
 # Initialize xgboost model specification
 xgb_model <- boost_tree(
-  trees = 1000, tree_depth = tune(), min_n = tune(),
+  trees = 2000, tree_depth = tune(), min_n = tune(),
   loss_reduction = tune(), sample_size = tune(), mtry = tune(),
   learn_rate = tune()
 ) %>%
@@ -281,7 +281,7 @@ if (cv_enable) {
   rf_params <- rf_model %>%
     parameters() %>%
     update(
-      trees = trees(range = c(500, 1000)),
+      trees = trees(range = c(500, 2000)),
       mtry = mtry(range = c(5, floor(train_p / 3))),
       min_n = min_n()
     )

@@ -58,34 +58,67 @@ test_res <- test_res %>%
 test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
-    Count = n(),
+    med_sp = median(meta_sale_price),
+    count = n(),
     across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    num_trimmed = sum(is_outlier(stack / meta_sale_price, method = "quantile")),
     final = ccao_cod(stack / meta_sale_price)$COD,
-    `Final PRD` = ccao_prd(stack, meta_sale_price)$PRD,
-    `Final PRB` = ccao_prb(stack, meta_sale_price)$PRB
+    final_prd = ccao_prd(stack, meta_sale_price)$PRD,
+    final_prb = ccao_prb(stack, meta_sale_price)$PRB,
+  ) %>%
+  mutate(
+    final_cod_met = cod_met(final),
+    final_prd_met = prd_met(final_prd),
+    final_prb_met = prb_met(final_prb)
   ) %>%
   arrange(final) %>%
   rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod")))
 
+# Create a container with custom column headers for model summary table
+headers <- htmltools::withTags(table(
+  class="display", 
+  thead(
+    tr(
+      th(rowspan=2, "Township"),
+      th(rowspan=2, "Median Sale Price"),
+      th(rowspan=2, "Count"),
+      th(colspan=4, "Model CODs"),
+      th(colspan=4, "Final Model Stats"),
+    ),
+    tr(
+      th("enet"), th("xgb"), th("rf"), th("stack"),
+      th("COD"), th("PRD"), th("PRB")
+    )
+  )
+))
+
 # Create an interactive table of the test set results by township
 test_summary %>%
-  rename(Township = town_name, `Num. Trimmed` = num_trimmed, Final = final) %>%
-  rename_with(~ paste(.x, "COD"), .cols = c(enet:stack, Final)) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
     autoHideNavigation = TRUE,
     selection = "none",
+    container = headers,
+    escape = FALSE,
     options = list(
       autoWidth = TRUE,
       paging = FALSE,
       searching = FALSE,
-      info = FALSE
+      info = FALSE,
+      columnDefs = list(list(targets = 10:12, visible = FALSE))
     )
   ) %>%
-  formatRound(2, digits = 0) %>%
-  formatRound(c(3:6, 8:10))
+  formatCurrency(2, digits = 0) %>%
+  formatRound(3, digits = 0) %>%
+  formatRound(c(4:10)) %>%
+  formatStyle(
+    c("final", "final_prd", "final_prb"),
+    c("final_cod_met", "final_prd_met", "final_prb_met"),
+    backgroundColor = styleEqual(
+      c(0, 1),
+      c("transparent", "#81ca9c")
+    )
+  )
 ```
 
 <br>
