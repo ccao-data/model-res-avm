@@ -54,7 +54,8 @@ full_data <- read_parquet("data/modeldata.parquet") %>%
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
-# We want our best model(s) to be predictive of the future
+# We want our best model(s) to be predictive of the future, since properties are
+# assessed on the basis of past sales
 time_split <- initial_time_split(full_data, prop = 0.90)
 test <- testing(time_split)
 train <- training(time_split)
@@ -63,7 +64,7 @@ train <- training(time_split)
 train_folds <- vfold_cv(train, v = cv_num_folds)
 
 # Create a recipe for the training data which removes non-predictor columns,
-# normalizes/logs data, and deals with missing values
+# normalizes/logs data, and removes/imputes with missing values
 train_recipe <- mod_recp_prep(train, mod_predictors)
 train_p <- ncol(juice(prep(train_recipe))) - 1
 
@@ -101,8 +102,7 @@ if (cv_enable) {
   # Create parameter space to search through
   enet_params <- enet_model %>%
     parameters() %>%
-    update(penalty = penalty(), mixture = mixture()) %>%
-    finalize(select(train, -meta_sale_price))
+    update(penalty = penalty(), mixture = mixture())
 
   # Use Bayesian tuning to find best performing params
   tictoc::tic(msg = "ElasticNet CV model fitting complete!")
@@ -124,19 +124,14 @@ if (cv_enable) {
       saveRDS(enet_params_path)
   }
 
-  # Choose the best model that minimizes COD
-  enet_final_params <- enet_search %>%
-    select_by_one_std_err(
-      penalty, mixture,
-      metric = "rmse"
-    )
+  # Choose the best model that minimizes RMSE
+  enet_final_params <- select_best(enet_search, metric = "rmse")
   
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
   if (file.exists(enet_params_path)) {
-    enet_final_params <- readRDS(enet_params_path) %>%
-      select_by_one_std_err(penalty, mixture, metric = "rmse")
+    enet_final_params <- select_best(readRDS(enet_params_path), metric = "rmse")
   } else {
     enet_final_params <- list(penalty = 1e-10, mixture = 0.3)
   }
@@ -162,7 +157,7 @@ rm_intermediate("enet")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### xgboost Model #####
+##### XGBoost Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ### Step 1 - Model initialization
@@ -172,7 +167,7 @@ xgb_params_path <- "data/models/xgb_params.rds"
 
 # Initialize xgboost model specification
 xgb_model <- boost_tree(
-  trees = 500, tree_depth = tune(), min_n = tune(),
+  trees = 1000, tree_depth = tune(), min_n = tune(),
   loss_reduction = tune(), sample_size = tune(), mtry = tune(),
   learn_rate = tune()
 ) %>%
@@ -198,10 +193,9 @@ if (cv_enable) {
       min_n = min_n(c(5L, 20L)),
       tree_depth = tree_depth(c(1L, 5L)),
       loss_reduction = loss_reduction(),
-      learn_rate = learn_rate(),
+      learn_rate = learn_rate(c(1e-4, 0.5)),
       sample_size = sample_prop()
-    ) %>%
-    finalize(select(train, -meta_sale_price))
+    )
 
   # Use Bayesian tuning to find best performing params
   tictoc::tic(msg = "XGB CV model fitting complete!")
@@ -223,24 +217,14 @@ if (cv_enable) {
       saveRDS(xgb_params_path)
   }
 
-  # Choose the best model that minimizes COD
-  xgb_final_params <- xgb_search %>%
-    select_by_one_std_err(
-      mtry, min_n, tree_depth, loss_reduction,
-      learn_rate, sample_size,
-      metric = "rmse"
-    )
+  # Choose the best model that minimizes RMSE
+  xgb_final_params <- select_best(xgb_search, metric = "rmse")
   
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
   if (file.exists(xgb_params_path)) {
-    xgb_final_params <- readRDS(xgb_params_path) %>%
-      select_by_one_std_err(
-        mtry, min_n, tree_depth, loss_reduction,
-        learn_rate, sample_size,
-        metric = "rmse"
-      )
+    xgb_final_params <- select_best(readRDS(xgb_params_path), metric = "rmse")
   } else {
     xgb_final_params <- list(
       tree_depth = 13, min_n = 9, loss_reduction = 0.0125,
@@ -300,8 +284,7 @@ if (cv_enable) {
       trees = trees(range = c(500, 1000)),
       mtry = mtry(range = c(5, floor(train_p / 3))),
       min_n = min_n()
-    ) %>%
-    finalize(select(train, -meta_sale_price))
+    )
 
   # Use Bayesian tuning to find best performing params
   tictoc::tic(msg = "RF CV model fitting complete!")
@@ -323,16 +306,14 @@ if (cv_enable) {
       saveRDS(rf_params_path)
   }
 
-  # Choose the best model that minimizes COD
-  rf_final_params <- rf_search %>%
-    select_by_one_std_err(mtry, min_n, metric = "rmse")
+  # Choose the best model that minimizes RMSE
+  rf_final_params <- select_best(rf_search, metric = "rmse")
   
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
   if (file.exists(rf_params_path)) {
-    rf_final_params <- readRDS(rf_params_path) %>%
-      select_by_one_std_err(mtry, min_n, metric = "rmse")
+    rf_final_params <-select_best(readRDS(rf_params_path), metric = "rmse")
   } else {
     rf_final_params <- list(trees = 1000, mtry = 12, min_n = 13)
   }

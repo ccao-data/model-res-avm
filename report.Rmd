@@ -4,7 +4,7 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "FALSE"
+  filter: "TRUE"
   triad: "City"
 ---
 
@@ -375,7 +375,7 @@ if (file.exists(enet_params_path)) {
   enet_params <- readRDS(enet_params_path)
   enet_final_params <- enet_params %>%
     mutate(Iterations = max(.iter)) %>%
-    select_by_one_std_err(penalty, mixture, metric = "codm") %>%
+    select_best(metric = "rmse") %>%
     mutate(Model = "enet")
   
   model_results <- bind_rows(model_results, enet_final_params)
@@ -386,10 +386,7 @@ if (file.exists(xgb_params_path)) {
   xgb_params <- readRDS(xgb_params_path)
   xgb_final_params <- xgb_params %>%
     mutate(Iterations = max(.iter)) %>%
-    select_by_one_std_err(
-      mtry, min_n, tree_depth, loss_reduction,
-      learn_rate, sample_size, metric = "codm"
-    ) %>%
+    select_best(metric = "rmse") %>%
     mutate(Model = "xgb")
 
   model_results <- bind_rows(model_results, xgb_final_params)
@@ -400,7 +397,7 @@ if (file.exists(rf_params_path)) {
   rf_params <- readRDS(rf_params_path)
   rf_final_params <- rf_params %>%
     mutate(Iterations = max(.iter)) %>%
-    select_by_one_std_err(mtry, min_n, metric = "codm") %>%
+    select_best(metric = "rmse") %>%
     mutate(Model = "rf")
   
   model_results <- bind_rows(model_results, rf_final_params)
@@ -412,8 +409,7 @@ model_results %>%
     "n", "std_err", ".iter", ".config", ".metric", ".estimator",
     ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb"
   ))) %>%
-  rename(Performance = mean) %>%
-  relocate(c(Model, Performance, Iterations), .before = NULL) %>%
+  relocate(c(Model, Iterations), .before = NULL) %>%
   pivot_longer(
     cols = -(Model:Iterations),
     names_to = "Param Name",
@@ -432,7 +428,7 @@ model_results %>%
       info = FALSE
     )
   ) %>%
-  formatRound(c(2, 5), digits = 3)
+  formatRound(c(2, 4), digits = 3)
 
 ```
 
@@ -443,21 +439,21 @@ model_results %>%
 ```{r param_plots, warning=FALSE}
 # Create autoplot of model params for those that exist
 if (exists("enet_params")) {
-  autoplot(enet_params, metric = "codm", type = "marginals") +
+  autoplot(enet_params, metric = "rmse", type = "marginals") +
     geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     labs(title = "ElasticNet Tuning Results") +
     theme_minimal()
 }
 
 if (exists("xgb_params")) {
-  autoplot(xgb_params, metric = "codm", type = "marginals") +
+  autoplot(xgb_params, metric = "rmse", type = "marginals") +
     geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     labs(title = "XGBoost Tuning Results") +
     theme_minimal()
 }
 
 if (exists("rf_params")) {
-  autoplot(rf_params, metric = "codm", type = "marginals") +
+  autoplot(rf_params, metric = "rmse", type = "marginals") +
     geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = F) +
     labs(title = "Random Forest Tuning Results") +
     theme_minimal()
