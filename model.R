@@ -150,11 +150,6 @@ enet_wflow_final_fit <- enet_wflow %>%
   finalize_workflow(as.list(enet_final_params)) %>%
   fit(data = train)
 
-# Fit the final model using the full data, this is the model used for assessment
-enet_wflow_final_full_fit <- enet_wflow %>%
-  finalize_workflow(as.list(enet_final_params)) %>%
-  fit(data = full_data)
-
 # Remove unnecessary objects
 rm_intermediate("enet")
 
@@ -412,7 +407,7 @@ if (cv_enable) {
   cat_search <- tune_bayes(
     object = cat_wflow,
     resamples = train_folds,
-    initial = 5, iter = 1,
+    initial = 5, iter = 50,
     param_info = cat_params,
     metrics = metric_set(rmse, codm, rsq),
     control = cv_control
@@ -477,19 +472,17 @@ sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
 
 ### Step 2 - Predict on test set
 
-# Create stacked model object with training data
+# Create stacked model object with training data, including only btree models
 # This model is used to evaluate performance on the test set
 # Fit models and recipes are extracted from the final saved workflow
 # https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
 sm_final_fit <- stack_model(
   models = list(
-    "enet" = enet_wflow_final_fit %>% pull_workflow_fit(),
     "xgb" = xgb_wflow_final_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_fit(),
     "cat" = cat_wflow_final_fit %>% pull_workflow_fit()
   ),
   recipes = list(
-    "enet" = enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "xgb" = xgb_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "cat" = cat_wflow_final_fit %>% pull_workflow_prepped_recipe()
@@ -500,7 +493,13 @@ sm_final_fit <- stack_model(
 )
 
 # Get predictions on the test set using the stacked model then save to file
+# Also predict using the baseline linear model
 test %>%
+  mutate(enet = model_predict(
+    enet_wflow_final_fit %>% pull_workflow_fit(),
+    enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+    test
+  )) %>%
   bind_cols(predict(sm_final_fit, test)) %>%
   write_parquet("data/testdata.parquet")
 
@@ -512,13 +511,11 @@ test %>%
 # actually created initial assessed values
 sm_final_full_fit <- stack_model(
   models = list(
-    "enet" = enet_wflow_final_full_fit %>% pull_workflow_fit(),
     "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_fit(),
     "cat" = cat_wflow_final_full_fit %>% pull_workflow_fit()
   ),
   recipes = list(
-    "enet" = enet_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "cat" = cat_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
@@ -540,10 +537,10 @@ sm_final_full_fit %>%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate modeling diagnostic/performance report
-# rmarkdown::render(
-#   input = "report.Rmd",
-#   output_file = "report.html"
-# )
+rmarkdown::render(
+  input = "report.Rmd",
+  output_file = "report.html"
+)
 
 # Stop all timers and write CV timers to file
 tictoc::toc(log = TRUE)

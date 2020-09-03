@@ -56,3 +56,6 @@ secrets/
 output/*
 *.parquet
 data/*
+
+# CatBoost results
+catboost_info/

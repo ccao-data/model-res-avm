@@ -4,7 +4,7 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "FALSE"
+  filter: "TRUE"
   triad: "City"
 ---
 
@@ -82,11 +82,13 @@ headers <- htmltools::withTags(table(
       th(rowspan = 2, "Township"),
       th(rowspan = 2, "Median Sale Price"),
       th(rowspan = 2, "Count"),
-      th(colspan = 5, "Model CODs"),
+      th(rowspan = 2, "Baseline (enet)"),
+      th(colspan = 3, "Stacked Models"),
+      th(rowspan = 2, "Stack Result"),
       th(colspan = 4, "Final Model Stats")
     ),
     tr(
-      th("enet"), th("lgbm"), th("cat"), th("rf"), th("stack"),
+      th("xgb"), th("lgbm"), th("cat"),
       th("COD"), th("PRD"), th("PRB")
     )
   )
@@ -410,15 +412,15 @@ ggplot(model_cor) +
 # Load model results for each model and append to data frame
 model_results <- tibble()
 
-enet_params_path <- "data/models/enet_params.rds"
-if (file.exists(enet_params_path)) {
-  enet_params <- readRDS(enet_params_path)
-  enet_final_params <- enet_params %>%
+xgb_params_path <- "data/models/xgb_params.rds"
+if (file.exists(xgb_params_path)) {
+  xgb_params <- readRDS(xgb_params_path)
+  xgb_final_params <- xgb_params %>%
     mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    mutate(model = "enet")
+    mutate(model = "xgb")
   
-  model_results <- bind_rows(model_results, enet_final_params)
+  model_results <- bind_rows(model_results, xgb_final_params)
 }
 
 lgbm_params_path <- "data/models/lgbm_params.rds"
@@ -432,15 +434,15 @@ if (file.exists(lgbm_params_path)) {
   model_results <- bind_rows(model_results, lgbm_final_params)
 }
 
-rf_params_path <- "data/models/rf_params.rds"
-if (file.exists(rf_params_path)) {
-  rf_params <- readRDS(rf_params_path)
-  rf_final_params <- rf_params %>%
+cat_params_path <- "data/models/cat_params.rds"
+if (file.exists(cat_params_path)) {
+  cat_params <- readRDS(cat_params_path)
+  cat_final_params <- cat_params %>%
     mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    mutate(model = "rf")
-  
-  model_results <- bind_rows(model_results, rf_final_params)
+    mutate(model = "cat")
+
+  model_results <- bind_rows(model_results, cat_final_params)
 }
 
 # Custom headers for parameter results table
@@ -453,7 +455,7 @@ param_headers <- htmltools::withTags(table(
       th(colspan = 9, "Parameters"),
     ),
     tr(
-      th("penalty"), th("mixture"), th("mtry"), th("trees"), th("tree_depth"),
+      th("mtry"), th("trees"), th("tree_depth"),
       th("min_n"), th("learn_rate"), th("loss_reduction"), th("sample_size")
     )
   )
@@ -481,7 +483,7 @@ model_results %>%
       info = FALSE
     )
   ) %>%
-  formatRound(c(3:4, 9:11), digits = 4)
+  formatRound(c(7:9), digits = 4)
 
 ```
 
@@ -491,8 +493,8 @@ model_results %>%
 
 ```{r param_plots, warning=FALSE, message=FALSE}
 # Create autoplot of model params for those that exist
-if (exists("enet_params")) {
-  autoplot(enet_params, metric = "rmse", type = "marginals") +
+if (exists("xgb_params")) {
+  autoplot(xgb_params, metric = "rmse", type = "marginals") +
     geom_smooth(se = F) +
     labs(title = "ElasticNet Tuning Results") +
     theme_minimal()
@@ -505,10 +507,10 @@ if (exists("lgbm_params")) {
     theme_minimal()
 }
 
-if (exists("rf_params")) {
-  autoplot(rf_params, metric = "rmse", type = "marginals") +
+if (exists("cat_params")) {
+  autoplot(cat_params, metric = "rmse", type = "marginals") +
     geom_smooth(se = F) +
-    labs(title = "Random Forest Tuning Results") +
+    labs(title = "CatBoost Tuning Results") +
     theme_minimal()
 }
 ```
@@ -524,7 +526,7 @@ if (file.exists(model_timings_path)) {
     filter(model != "full") %>%
     mutate(
       across(c(tic:toc, elapsed), ~ .x / 3600),
-      model = factor(model, levels = c("elasticnet", "lgbm", "rf"))
+      model = factor(model, levels = c("elasticnet", "xgboost", "lightgbm", "catboost"))
     ) %>%
   ggplot() +
     geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
@@ -532,8 +534,10 @@ if (file.exists(model_timings_path)) {
     scale_y_continuous(expand = c(0, 0)) +
     guides(fill = guide_legend(title = "Model")) +
     labs(x = "Number of Hours Elapsed While Training") +
+    theme_minimal() + 
     theme(
       axis.ticks.y = element_blank(),
+      axis.ticks.x = element_line(),
       axis.text.y = element_blank(),
       axis.title.x = element_text(margin = margin(t = 6))
     )
