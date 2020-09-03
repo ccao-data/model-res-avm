@@ -9,7 +9,7 @@ mod_recp_prep <- function(data, keep_vars) {
       all_outcomes(), ends_with("_sf"), contains("income"),
       offset = 1
     ) %>%
-    step_zv(all_numeric(), -all_outcomes()) %>%
+    step_nzv(all_predictors(), -all_outcomes()) %>%
     step_corr(all_numeric(), -all_outcomes()) %>%
     step_poly(ends_with("_age"), ends_with("_sf"), degree = 2)
 }

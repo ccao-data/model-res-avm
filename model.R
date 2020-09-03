@@ -2,9 +2,13 @@
 ##### Setup ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Load modeling and data libraries
+# Install lightgbm backend
+# remotes::install_github("curso-r/rightgbm")
+# rightgbm::install_lightgbm()
+
+# Load R libraries
 options(tidymodels.dark = TRUE)
-library(arrow)
+library(arrow) 
 library(assessr)
 library(beepr)
 library(ccao)
@@ -14,6 +18,7 @@ library(sf)
 library(stringr)
 library(tictoc)
 library(tidymodels)
+library(treesnip)
 source("R/recipes.R")
 source("R/metrics.R")
 source("R/model_funs.R")
@@ -22,7 +27,7 @@ source("R/model_funs.R")
 tictoc::tic(msg = "Full Modeling Complete!")
 
 # Get number of available cores
-all_cores <- parallel::detectCores() - 1
+all_cores <- parallel::detectCores(logical = TRUE) - 1
 
 # Set seed for reproducibility
 set.seed(27)
@@ -66,10 +71,14 @@ train_folds <- vfold_cv(train, v = cv_num_folds)
 # Create a recipe for the training data which removes non-predictor columns,
 # normalizes/logs data, and removes/imputes with missing values
 train_recipe <- mod_recp_prep(train, mod_predictors)
-train_p <- ncol(juice(prep(train_recipe))) - 1
+juiced_train <- juice(prep(train_recipe))
+train_p <- ncol(juiced_train) - 1
+train_cat_vars <- juiced_train %>%
+  select(where(is.factor)) %>%
+  colnames()
 
 # Remove unnecessary data
-rm(time_split); gc()
+rm(time_split, juiced_train); gc()
 
 
 
@@ -111,7 +120,7 @@ if (cv_enable) {
     resamples = train_folds,
     initial = 5, iter = 50,
     param_info = enet_params,
-    metrics = metric_set(rmse, codm),
+    metrics = metric_set(rmse, codm, rsq),
     control = cv_control
   )
   tictoc::toc(log = TRUE)
@@ -133,7 +142,7 @@ if (cv_enable) {
   if (file.exists(enet_params_path)) {
     enet_final_params <- select_best(readRDS(enet_params_path), metric = "rmse")
   } else {
-    enet_final_params <- list(penalty = 1e-10, mixture = 0.3)
+    enet_final_params <- list(penalty = 1e-10, mixture = 0.2)
   }
 }
 
@@ -157,27 +166,28 @@ rm_intermediate("enet")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### XGBoost Model #####
+##### LightGBM Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ### Step 1 - Model initialization
 
 # Set model params save path
-xgb_params_path <- "data/models/xgb_params.rds"
+lgbm_params_path <- "data/models/lgbm_params.rds"
 
-# Initialize xgboost model specification
-xgb_model <- boost_tree(
-  trees = 2000, tree_depth = tune(), min_n = tune(),
+# Initialize lightbgm model specification
+lgbm_model <- boost_tree(
+  trees = tune(), tree_depth = tune(), min_n = tune(),
   loss_reduction = tune(), sample_size = tune(), mtry = tune(),
   learn_rate = tune()
 ) %>%
-  set_engine("xgboost") %>%
-  set_mode("regression")
+  set_engine("lightgbm") %>%
+  set_mode("regression") %>%
+  set_args(num_threads = all_cores, categorical_feature = train_cat_vars)
 
-# Initialize xgb workflow, note the added recipe for formatting factors
-xgb_wflow <- workflow() %>%
-  add_model(xgb_model) %>%
-  add_recipe(train_recipe %>% dummy_recp_prep())
+# Initialize lightgbm workflow, note the added recipe for formatting factors
+lgbm_wflow <- workflow() %>%
+  add_model(lgbm_model) %>%
+  add_recipe(train_recipe)
 
 
 ### Step 2 - Cross-validation
@@ -185,26 +195,27 @@ xgb_wflow <- workflow() %>%
 # Begin CV tuning if enabled
 if (cv_enable) {
 
-  # Create param search space for xgb
-  xgb_params <- xgb_model %>%
+  # Create param search space for lgbm
+  lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
+      trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
       min_n = min_n(c(5L, 20L)),
-      tree_depth = tree_depth(c(1L, 5L)),
+      tree_depth = tree_depth(c(3L, 15L)),
       loss_reduction = loss_reduction(),
-      learn_rate = learn_rate(c(1e-4, 0.5)),
+      learn_rate = learn_rate(),
       sample_size = sample_prop()
     )
 
   # Use Bayesian tuning to find best performing params
-  tictoc::tic(msg = "XGB CV model fitting complete!")
-  xgb_search <- tune_bayes(
-    object = xgb_wflow,
+  tictoc::tic(msg = "LGBM CV model fitting complete!")
+  lgbm_search <- tune_bayes(
+    object = lgbm_wflow,
     resamples = train_folds,
     initial = 5, iter = 50,
-    param_info = xgb_params,
-    metrics = metric_set(rmse, codm),
+    param_info = lgbm_params,
+    metrics = metric_set(rmse, codm, rsq),
     control = cv_control
   )
   tictoc::toc(log = TRUE)
@@ -212,23 +223,23 @@ if (cv_enable) {
 
   # Save tuning results to file
   if (cv_write_params) {
-    xgb_search %>%
+    lgbm_search %>%
       model_strip_data() %>%
-      saveRDS(xgb_params_path)
+      saveRDS(lgbm_params_path)
   }
 
   # Choose the best model that minimizes RMSE
-  xgb_final_params <- select_best(xgb_search, metric = "rmse")
+  lgbm_final_params <- select_best(lgbm_search, metric = "rmse")
   
 } else {
 
   # If no CV, load best params from file if exists, otherwise use defaults
-  if (file.exists(xgb_params_path)) {
-    xgb_final_params <- select_best(readRDS(xgb_params_path), metric = "rmse")
+  if (file.exists(lgbm_params_path)) {
+    lgbm_final_params <- select_best(readRDS(lgbm_params_path), metric = "rmse")
   } else {
-    xgb_final_params <- list(
-      tree_depth = 13, min_n = 9, loss_reduction = 0.0125,
-      mtry = 10, sample_size = 0.5, learn_rate = 0.05
+    lgbm_final_params <- list(
+      trees = 1500, tree_depth = 4, min_n = 15, loss_reduction = 0.00125,
+      mtry = 10, sample_size = 0.66, learn_rate = 0.02
     )
   }
 }
@@ -237,17 +248,17 @@ if (cv_enable) {
 ### Step 3 - Finalize model
 
 # Fit the final model using the training data
-xgb_wflow_final_fit <- xgb_wflow %>%
-  finalize_workflow(as.list(xgb_final_params)) %>%
+lgbm_wflow_final_fit <- lgbm_wflow %>%
+  finalize_workflow(as.list(lgbm_final_params)) %>%
   fit(data = train)
 
 # Fit the final model using the full data, this is the model used for assessment
-xgb_wflow_final_full_fit <- xgb_wflow %>%
-  finalize_workflow(as.list(xgb_final_params)) %>%
+lgbm_wflow_final_full_fit <- lgbm_wflow %>%
+  finalize_workflow(as.list(lgbm_final_params)) %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-rm_intermediate("xgb")
+rm_intermediate("lgbm")
 
 
 
@@ -282,7 +293,7 @@ if (cv_enable) {
   rf_params <- rf_model %>%
     parameters() %>%
     update(
-      trees = trees(range = c(500, 2000)),
+      trees = trees(range = c(500, 1500)),
       mtry = mtry(range = c(5, floor(train_p / 3))),
       min_n = min_n()
     )
@@ -294,7 +305,7 @@ if (cv_enable) {
     resamples = train_folds,
     initial = 5, iter = 50,
     param_info = rf_params,
-    metrics = metric_set(rmse, codm),
+    metrics = metric_set(rmse, codm, rsq),
     control = cv_control
   )
   tictoc::toc(log = TRUE)
@@ -314,9 +325,9 @@ if (cv_enable) {
 
   # If no CV, load best params from file if exists, otherwise use defaults
   if (file.exists(rf_params_path)) {
-    rf_final_params <-select_best(readRDS(rf_params_path), metric = "rmse")
+    rf_final_params <- select_best(readRDS(rf_params_path), metric = "rmse")
   } else {
-    rf_final_params <- list(trees = 1000, mtry = 12, min_n = 13)
+    rf_final_params <- list(trees = 1000, mtry = 13, min_n = 32)
   }
 }
 
@@ -360,12 +371,12 @@ sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
 sm_final_fit <- stack_model(
   models = list(
     "enet" = enet_wflow_final_fit %>% pull_workflow_fit(),
-    "xgb" = xgb_wflow_final_fit %>% pull_workflow_fit(),
+    "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_fit(),
     "rf" = rf_wflow_final_fit %>% pull_workflow_fit()
   ),
   recipes = list(
     "enet" = enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
-    "xgb" = xgb_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+    "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "rf" = rf_wflow_final_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,
@@ -387,12 +398,12 @@ test %>%
 sm_final_full_fit <- stack_model(
   models = list(
     "enet" = enet_wflow_final_full_fit %>% pull_workflow_fit(),
-    "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_fit(),
+    "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_fit(),
     "rf" = rf_wflow_final_full_fit %>% pull_workflow_fit()
   ),
   recipes = list(
     "enet" = enet_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
-    "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
+    "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "rf" = rf_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,

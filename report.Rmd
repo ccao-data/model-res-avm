@@ -76,17 +76,17 @@ test_summary <- test_res %>%
 
 # Create a container with custom column headers for model summary table
 headers <- htmltools::withTags(table(
-  class="display", 
+  class = "display", 
   thead(
     tr(
-      th(rowspan=2, "Township"),
-      th(rowspan=2, "Median Sale Price"),
-      th(rowspan=2, "Count"),
-      th(colspan=4, "Model CODs"),
-      th(colspan=4, "Final Model Stats"),
+      th(rowspan = 2, "Township"),
+      th(rowspan = 2, "Median Sale Price"),
+      th(rowspan = 2, "Count"),
+      th(colspan = 4, "Model CODs"),
+      th(colspan = 4, "Final Model Stats")
     ),
     tr(
-      th("enet"), th("xgb"), th("rf"), th("stack"),
+      th("enet"), th("lgbm"), th("rf"), th("stack"),
       th("COD"), th("PRD"), th("PRB")
     )
   )
@@ -128,7 +128,7 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("enet", "xgb", "rf", "stack", "final")
+model_order <- c("enet", "lgbm", "rf", "stack", "final")
 
 # Generate township-level map of COD
 test_summary %>%
@@ -142,7 +142,7 @@ ggplot() +
   facet_wrap(vars(name)) +
   theme_void() +
   theme(
-    strip.text = element_text(size = 12)
+    strip.text = element_text(size = 12, margin = margin(b = 3))
   )
 ```
 
@@ -414,34 +414,50 @@ enet_params_path <- "data/models/enet_params.rds"
 if (file.exists(enet_params_path)) {
   enet_params <- readRDS(enet_params_path)
   enet_final_params <- enet_params %>%
-    mutate(Iterations = max(.iter)) %>%
+    mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    mutate(Model = "enet")
+    mutate(model = "enet")
   
   model_results <- bind_rows(model_results, enet_final_params)
 }
 
-xgb_params_path <- "data/models/xgb_params.rds"
-if (file.exists(xgb_params_path)) {
-  xgb_params <- readRDS(xgb_params_path)
-  xgb_final_params <- xgb_params %>%
-    mutate(Iterations = max(.iter)) %>%
+lgbm_params_path <- "data/models/lgbm_params.rds"
+if (file.exists(lgbm_params_path)) {
+  lgbm_params <- readRDS(lgbm_params_path)
+  lgbm_final_params <- lgbm_params %>%
+    mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    mutate(Model = "xgb")
+    mutate(model = "lgbm")
 
-  model_results <- bind_rows(model_results, xgb_final_params)
+  model_results <- bind_rows(model_results, lgbm_final_params)
 }
 
 rf_params_path <- "data/models/rf_params.rds"
 if (file.exists(rf_params_path)) {
   rf_params <- readRDS(rf_params_path)
   rf_final_params <- rf_params %>%
-    mutate(Iterations = max(.iter)) %>%
+    mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    mutate(Model = "rf")
+    mutate(model = "rf")
   
   model_results <- bind_rows(model_results, rf_final_params)
 }
+
+# Custom headers for parameter results table
+param_headers <- htmltools::withTags(table(
+  class = "display", 
+  thead(
+    tr(
+      th(rowspan = 2, "Model"),
+      th(rowspan = 2, "Iterations"),
+      th(colspan = 9, "Parameters"),
+    ),
+    tr(
+      th("penalty"), th("mixture"), th("mtry"), th("trees"), th("tree_depth"),
+      th("min_n"), th("learn_rate"), th("loss_reduction"), th("sample_size")
+    )
+  )
+))
 
 # Table of all final model parameters
 model_results %>%
@@ -449,18 +465,14 @@ model_results %>%
     "n", "std_err", ".iter", ".config", ".metric", ".estimator",
     ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb"
   ))) %>%
-  relocate(c(Model, Iterations), .before = NULL) %>%
-  pivot_longer(
-    cols = -(Model:Iterations),
-    names_to = "Param Name",
-    values_to = "Param Value",
-    values_drop_na = TRUE
-  ) %>%
+  relocate(c(model, iterations), .before = NULL) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
     autoHideNavigation = TRUE,
     selection = "none",
+    container = param_headers,
+    escape = FALSE,
     options = list(
       autoWidth = TRUE,
       paging = FALSE,
@@ -468,7 +480,7 @@ model_results %>%
       info = FALSE
     )
   ) %>%
-  formatRound(c(2, 4), digits = 3)
+  formatRound(c(3:4, 9:11), digits = 4)
 
 ```
 
@@ -485,10 +497,10 @@ if (exists("enet_params")) {
     theme_minimal()
 }
 
-if (exists("xgb_params")) {
-  autoplot(xgb_params, metric = "rmse", type = "marginals") +
+if (exists("lgbm_params")) {
+  autoplot(lgbm_params, metric = "rmse", type = "marginals") +
     geom_smooth(se = F) +
-    labs(title = "XGBoost Tuning Results") +
+    labs(title = "LightGBM Tuning Results") +
     theme_minimal()
 }
 
@@ -511,7 +523,7 @@ if (file.exists(model_timings_path)) {
     filter(model != "full") %>%
     mutate(
       across(c(tic:toc, elapsed), ~ .x / 3600),
-      model = factor(model, levels = c("elasticnet", "xgb", "rf"))
+      model = factor(model, levels = c("elasticnet", "lgbm", "rf"))
     ) %>%
   ggplot() +
     geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
