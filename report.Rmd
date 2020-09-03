@@ -4,7 +4,7 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "TRUE"
+  filter: "FALSE"
   triad: "City"
 ---
 
@@ -67,9 +67,9 @@ test_summary <- test_res %>%
     final_prb = ccao_prb(stack, meta_sale_price)$PRB,
   ) %>%
   mutate(
-    final_cod_met = cod_met(final),
-    final_prd_met = prd_met(final_prd),
-    final_prb_met = prb_met(final_prb)
+    final_cod_met = cod_met(round(final, 2)),
+    final_prd_met = prd_met(round(final_prd, 2)),
+    final_prb_met = prb_met(round(final_prb, 2))
   ) %>%
   arrange(final) %>%
   rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod")))
@@ -451,12 +451,12 @@ param_headers <- htmltools::withTags(table(
   thead(
     tr(
       th(rowspan = 2, "Model"),
-      th(rowspan = 2, "Iterations"),
-      th(colspan = 9, "Parameters"),
+      th(rowspan = 2, "Iters"),
+      th(colspan = 7, "Parameters"),
     ),
     tr(
-      th("mtry"), th("trees"), th("tree_depth"),
-      th("min_n"), th("learn_rate"), th("loss_reduction"), th("sample_size")
+      th("mtry"), th("trees"), th("min_n"), th("tree_depth"),
+      th("learn_rate"), th("loss_reduction"), th("sample_size")
     )
   )
 ))
@@ -477,7 +477,7 @@ model_results %>%
     escape = FALSE,
     options = list(
       scrollX = TRUE,
-      autoWidth = TRUE,
+      # autoWidth = TRUE,
       paging = FALSE,
       searching = FALSE,
       info = FALSE
@@ -526,7 +526,7 @@ if (file.exists(model_timings_path)) {
     filter(model != "full") %>%
     mutate(
       across(c(tic:toc, elapsed), ~ .x / 3600),
-      model = factor(model, levels = c("xgboost", "lightgbm", "catboost"))
+      model = factor(model, levels = c("elasticnet", "xgboost", "lightgbm", "catboost"))
     ) %>%
   ggplot() +
     geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
