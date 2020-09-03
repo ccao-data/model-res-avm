@@ -82,11 +82,11 @@ headers <- htmltools::withTags(table(
       th(rowspan = 2, "Township"),
       th(rowspan = 2, "Median Sale Price"),
       th(rowspan = 2, "Count"),
-      th(colspan = 4, "Model CODs"),
+      th(colspan = 5, "Model CODs"),
       th(colspan = 4, "Final Model Stats")
     ),
     tr(
-      th("enet"), th("lgbm"), th("rf"), th("stack"),
+      th("enet"), th("lgbm"), th("cat"), th("rf"), th("stack"),
       th("COD"), th("PRD"), th("PRB")
     )
   )
@@ -106,12 +106,12 @@ test_summary %>%
       paging = FALSE,
       searching = FALSE,
       info = FALSE,
-      columnDefs = list(list(targets = 10:12, visible = FALSE))
+      columnDefs = list(list(targets = 11:13, visible = FALSE))
     )
   ) %>%
   formatCurrency(2, digits = 0) %>%
   formatRound(3, digits = 0) %>%
-  formatRound(c(4:10)) %>%
+  formatRound(c(4:12)) %>%
   formatStyle(  
     c("final", "final_prd", "final_prb"),
     c("final_cod_met", "final_prd_met", "final_prb_met"),
@@ -128,7 +128,7 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("enet", "lgbm", "rf", "stack", "final")
+model_order <- c("enet", "lgbm", "cat", "rf", "stack", "final")
 
 # Generate township-level map of COD
 test_summary %>%
@@ -474,6 +474,7 @@ model_results %>%
     container = param_headers,
     escape = FALSE,
     options = list(
+      scrollX = TRUE,
       autoWidth = TRUE,
       paging = FALSE,
       searching = FALSE,

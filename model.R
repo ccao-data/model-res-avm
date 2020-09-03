@@ -142,7 +142,7 @@ if (cv_enable) {
   if (file.exists(enet_params_path)) {
     enet_final_params <- select_best(readRDS(enet_params_path), metric = "rmse")
   } else {
-    enet_final_params <- list(penalty = 1e-10, mixture = 0.2)
+    enet_final_params <- list(penalty = 1e-10, mixture = 0.16)
   }
 }
 
@@ -182,7 +182,11 @@ lgbm_model <- boost_tree(
 ) %>%
   set_engine("lightgbm") %>%
   set_mode("regression") %>%
-  set_args(num_threads = all_cores, categorical_feature = train_cat_vars)
+  set_args(
+    num_threads = all_cores,
+    categorical_feature = train_cat_vars,
+    verbose = 0
+  )
 
 # Initialize lightgbm workflow, note the added recipe for formatting factors
 lgbm_wflow <- workflow() %>%
@@ -201,8 +205,8 @@ if (cv_enable) {
     update(
       trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
-      min_n = min_n(c(5L, 20L)),
-      tree_depth = tree_depth(c(3L, 15L)),
+      min_n = min_n(),
+      tree_depth = tree_depth(c(3L, 10L)),
       loss_reduction = loss_reduction(),
       learn_rate = learn_rate(),
       sample_size = sample_prop()
@@ -238,8 +242,8 @@ if (cv_enable) {
     lgbm_final_params <- select_best(readRDS(lgbm_params_path), metric = "rmse")
   } else {
     lgbm_final_params <- list(
-      trees = 1500, tree_depth = 4, min_n = 15, loss_reduction = 0.00125,
-      mtry = 10, sample_size = 0.66, learn_rate = 0.02
+      trees = 1500, tree_depth = 5, min_n = 8, loss_reduction = 0.2613,
+      mtry = 8, sample_size = 0.66, learn_rate = 0.0175
     )
   }
 }
@@ -259,6 +263,104 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 
 # Remove unnecessary objects
 rm_intermediate("lgbm")
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### CatBoost Model #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+### Step 1 - Model initialization
+
+# Set model params save path
+cat_params_path <- "data/models/cat_params.rds"
+
+# Initialize catboost model specification
+# CatBoost treesnip implementation detects categorical columns automatically
+# https://github.com/curso-r/treesnip/blob/master/R/catboost.R#L237 
+cat_model <- boost_tree(
+  trees = tune(), tree_depth = tune(), min_n = tune(),
+  sample_size = tune(), mtry = tune(), learn_rate = tune()
+) %>%
+  set_engine("catboost") %>%
+  set_mode("regression") %>%
+  set_args(nthread = all_cores * 2)
+
+# Initialize catboost workflow, note the added recipe for formatting factors
+cat_wflow <- workflow() %>%
+  add_model(cat_model) %>%
+  add_recipe(train_recipe)
+
+
+### Step 2 - Cross-validation
+
+# Begin CV tuning if enabled
+if (cv_enable) {
+  
+  # Create param search space for catboost
+  cat_params <- cat_model %>%
+    parameters() %>%
+    update(
+      trees = trees(range = c(500, 1500)),
+      mtry = mtry(c(5L, floor(train_p / 3))),
+      min_n = min_n(),
+      tree_depth = tree_depth(c(3L, 10L)),
+      learn_rate = learn_rate(),
+      sample_size = sample_prop()
+    )
+  
+  # Use Bayesian tuning to find best performing params
+  tictoc::tic(msg = "CatBoost CV model fitting complete!")
+  cat_search <- tune_bayes(
+    object = cat_wflow,
+    resamples = train_folds,
+    initial = 5, iter = 1,
+    param_info = cat_params,
+    metrics = metric_set(rmse, codm),
+    control = cv_control
+  )
+  tictoc::toc(log = TRUE)
+  beepr::beep(2)
+  
+  # Save tuning results to file
+  if (cv_write_params) {
+    cat_search %>%
+      model_strip_data() %>%
+      saveRDS(cat_params_path)
+  }
+  
+  # Choose the best model that minimizes RMSE
+  cat_final_params <- select_best(cat_search, metric = "rmse")
+  
+} else {
+  
+  # If no CV, load best params from file if exists, otherwise use defaults
+  if (file.exists(cat_params_path)) {
+    cat_final_params <- select_best(readRDS(cat_params_path), metric = "rmse")
+  } else {
+    cat_final_params <- list(
+      trees = 1500, tree_depth = 5, min_n = 8,
+      mtry = 8, sample_size = 0.66, learn_rate = 0.0175
+    )
+  }
+}
+
+
+### Step 3 - Finalize model
+
+# Fit the final model using the training data
+cat_wflow_final_fit <- cat_wflow %>%
+  finalize_workflow(as.list(cat_final_params)) %>%
+  fit(data = train)
+
+# Fit the final model using the full data, this is the model used for assessment
+cat_wflow_final_full_fit <- cat_wflow %>%
+  finalize_workflow(as.list(cat_final_params)) %>%
+  fit(data = full_data)
+
+# Remove unnecessary objects
+rm_intermediate("cat")
 
 
 
@@ -327,7 +429,7 @@ if (cv_enable) {
   if (file.exists(rf_params_path)) {
     rf_final_params <- select_best(readRDS(rf_params_path), metric = "rmse")
   } else {
-    rf_final_params <- list(trees = 1000, mtry = 13, min_n = 32)
+    rf_final_params <- list(trees = 1500, mtry = 13, min_n = 32)
   }
 }
 
@@ -372,12 +474,12 @@ sm_final_fit <- stack_model(
   models = list(
     "enet" = enet_wflow_final_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_fit(),
-    "rf" = rf_wflow_final_fit %>% pull_workflow_fit()
+    "cat" = cat_wflow_final_fit %>% pull_workflow_fit()
   ),
   recipes = list(
     "enet" = enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_prepped_recipe(),
-    "rf" = rf_wflow_final_fit %>% pull_workflow_prepped_recipe()
+    "cat" = cat_wflow_final_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,
   add_vars = "meta_town_code",
@@ -399,12 +501,12 @@ sm_final_full_fit <- stack_model(
   models = list(
     "enet" = enet_wflow_final_full_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_fit(),
-    "rf" = rf_wflow_final_full_fit %>% pull_workflow_fit()
+    "cat" = cat_wflow_final_full_fit %>% pull_workflow_fit()
   ),
   recipes = list(
     "enet" = enet_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
-    "rf" = rf_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
+    "cat" = cat_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,
   add_vars = "meta_town_code",
