@@ -2,10 +2,6 @@
 ##### Setup ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Install lightgbm backend
-# remotes::install_github("curso-r/rightgbm")
-# rightgbm::install_lightgbm()
-
 # Load R libraries
 options(tidymodels.dark = TRUE)
 library(arrow) 
@@ -23,11 +19,11 @@ source("R/recipes.R")
 source("R/metrics.R")
 source("R/model_funs.R")
 
+# Get number of available cores and number of threads to use per core
+num_threads <- parallel::detectCores(logical = TRUE) - 1
+
 # Start full script timer
 tictoc::tic(msg = "Full Modeling Complete!")
-
-# Get number of available cores
-all_cores <- parallel::detectCores(logical = TRUE) - 1
 
 # Set seed for reproducibility
 set.seed(27)
@@ -38,19 +34,19 @@ cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", FALSE))
 cv_num_folds <- as.numeric(model_get_env("R_CV_NUM_FOLDS", 5))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 10, seed = 27)
 
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Preparing Data #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 # Get the full list of right-hand side predictors from ccao::vars_dict
 mod_predictors <- ccao::vars_dict %>%
   filter(var_is_predictor) %>%
   pull(var_name_standard) %>%
   unique() %>%
   na.omit()
-
-
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Loading/Splitting Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the full set of training data, keep only good, complete observations
 # Arrange by sale date in order to facilitate out-of-time sampling/validation
@@ -197,7 +193,7 @@ xgb_wflow <- workflow() %>%
 # Begin CV tuning if enabled
 if (cv_enable) {
   
-  # Create param search space for lgbm
+  # Create param search space for xgboost
   xgb_params <- xgb_model %>%
     parameters() %>%
     update(
@@ -240,8 +236,8 @@ if (cv_enable) {
     xgb_final_params <- select_best(readRDS(xgb_params_path), metric = "rmse")
   } else {
     xgb_final_params <- list(
-      trees = 1500, tree_depth = 5, min_n = 8, loss_reduction = 0.2613,
-      mtry = 8, sample_size = 0.66, learn_rate = 0.0175
+      trees = 1500, tree_depth = 13, min_n = 9, loss_reduction = 0.0125,
+      mtry = 10, sample_size = 0.5, learn_rate = 0.05
     )
   }
 }
@@ -275,10 +271,11 @@ rm_intermediate("xgb")
 lgbm_params_path <- "data/models/lgbm_params.rds"
 
 # Initialize lightbgm model specification
+# Note that categorical vars must be explicitly specified for lightgbm
 lgbm_model <- boost_tree(
   trees = tune(), tree_depth = tune(), min_n = tune(),
-  loss_reduction = tune(), sample_size = tune(), mtry = tune(),
-  learn_rate = tune()
+  loss_reduction = tune(), sample_size = tune(),
+  mtry = tune(), learn_rate = tune()
 ) %>%
   set_engine("lightgbm") %>%
   set_mode("regression") %>%
@@ -466,12 +463,13 @@ rm_intermediate("cat")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Stacked Model (Regularized Regression) #####
+##### Stacked Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ### Step 1 - Model initialization
 
-# Initialize model specification for meta model
+# Initialize model specification for meta model. In this case we're using a
+# simple regularized (ridge) regression
 sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
@@ -507,7 +505,7 @@ test %>%
   write_parquet("data/testdata.parquet")
 
 
-### Step 3 - Create final/assessment model
+### Step 3 - Create finalized assessment model
 
 # Create a model fit from the full sales dataset using hyperparameters
 # discovered during the cross-validation process. This is the model used to
@@ -542,10 +540,10 @@ sm_final_full_fit %>%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate modeling diagnostic/performance report
-rmarkdown::render(
-  input = "report.Rmd",
-  output_file = "report.html"
-)
+# rmarkdown::render(
+#   input = "report.Rmd",
+#   output_file = "report.html"
+# )
 
 # Stop all timers and write CV timers to file
 tictoc::toc(log = TRUE)

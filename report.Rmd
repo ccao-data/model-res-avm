@@ -128,7 +128,7 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("enet", "lgbm", "cat", "rf", "stack", "final")
+model_order <- c("enet", "xgb", "lgbm", "cat", "stack", "final")
 
 # Generate township-level map of COD
 test_summary %>%
