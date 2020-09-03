@@ -89,7 +89,7 @@ rm(time_split, juiced_train); gc()
 enet_params_path <- "data/models/enet_params.rds"
 
 # Setup basic ElasticNet model specification
-enet_model <- linear_reg(penalty = tune(), mixture = tune()) %>%
+enet_model <- linear_reg(penalty = 1e-7, mixture = 0.16) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
@@ -99,51 +99,7 @@ enet_wflow <- workflow() %>%
   add_recipe(train_recipe %>% dummy_recp_prep())
 
 
-### Step 2 - Cross-validation
-
-# Begin CV tuning if enabled
-if (cv_enable) {
-
-  # Create parameter space to search through
-  enet_params <- enet_model %>%
-    parameters() %>%
-    update(penalty = penalty(), mixture = mixture())
-
-  # Use Bayesian tuning to find best performing params
-  tictoc::tic(msg = "ElasticNet CV model fitting complete!")
-  enet_search <- tune_bayes(
-    object = enet_wflow,
-    resamples = train_folds,
-    initial = 5, iter = 50,
-    param_info = enet_params,
-    metrics = metric_set(rmse, codm, rsq),
-    control = cv_control
-  )
-  tictoc::toc(log = TRUE)
-  beepr::beep(2)
-
-  # Save tuning results to file
-  if (cv_write_params) {
-    enet_search %>%
-      model_strip_data() %>%
-      saveRDS(enet_params_path)
-  }
-
-  # Choose the best model that minimizes RMSE
-  enet_final_params <- select_best(enet_search, metric = "rmse")
-  
-} else {
-
-  # If no CV, load best params from file if exists, otherwise use defaults
-  if (file.exists(enet_params_path)) {
-    enet_final_params <- select_best(readRDS(enet_params_path), metric = "rmse")
-  } else {
-    enet_final_params <- list(penalty = 1e-10, mixture = 0.16)
-  }
-}
-
-
-### Step 3 - Finalize model
+### Step 2 - Fit the model
 
 # Fit the final model using the training data
 enet_wflow_final_fit <- enet_wflow %>%
@@ -495,11 +451,13 @@ sm_final_fit <- stack_model(
 # Get predictions on the test set using the stacked model then save to file
 # Also predict using the baseline linear model
 test %>%
-  mutate(enet = model_predict(
-    enet_wflow_final_fit %>% pull_workflow_fit(),
-    enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
-    test
-  )) %>%
+  mutate(
+    enet = model_predict(
+      enet_wflow_final_fit %>% pull_workflow_fit(),
+      enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+      test
+    )
+  ) %>%
   bind_cols(predict(sm_final_fit, test)) %>%
   write_parquet("data/testdata.parquet")
 

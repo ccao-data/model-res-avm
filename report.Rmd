@@ -496,7 +496,7 @@ model_results %>%
 if (exists("xgb_params")) {
   autoplot(xgb_params, metric = "rmse", type = "marginals") +
     geom_smooth(se = F) +
-    labs(title = "ElasticNet Tuning Results") +
+    labs(title = "XGBoost Tuning Results") +
     theme_minimal()
 }
 
@@ -526,7 +526,7 @@ if (file.exists(model_timings_path)) {
     filter(model != "full") %>%
     mutate(
       across(c(tic:toc, elapsed), ~ .x / 3600),
-      model = factor(model, levels = c("elasticnet", "xgboost", "lightgbm", "catboost"))
+      model = factor(model, levels = c("xgboost", "lightgbm", "catboost"))
     ) %>%
   ggplot() +
     geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
