@@ -166,6 +166,106 @@ rm_intermediate("enet")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### XGBoost Model #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+### Step 1 - Model initialization
+
+# Set model params save path
+xgb_params_path <- "data/models/xgb_params.rds"
+
+# Initialize xgboost model specification
+xgb_model <- boost_tree(
+  trees = tune(), tree_depth = tune(), min_n = tune(),
+  loss_reduction = tune(), sample_size = tune(), 
+  mtry = tune(), learn_rate = tune()
+) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression") %>%
+  set_args(nthread = num_threads)
+
+# Initialize xgboost workflow, note the added recipe for formatting factors
+# Here categoricals are explicitly converted to one-hot encoding, since xgboost
+# doesn't have built in categorical handling like lightgbm and catboost
+xgb_wflow <- workflow() %>%
+  add_model(xgb_model) %>%
+  add_recipe(train_recipe %>% dummy_recp_prep())
+
+
+### Step 2 - Cross-validation
+
+# Begin CV tuning if enabled
+if (cv_enable) {
+  
+  # Create param search space for lgbm
+  xgb_params <- xgb_model %>%
+    parameters() %>%
+    update(
+      trees = trees(range = c(500, 1500)),
+      mtry = mtry(c(5L, floor(train_p / 3))),
+      min_n = min_n(),
+      tree_depth = tree_depth(c(3L, 12L)),
+      loss_reduction = loss_reduction(c(-3, 0.5)),
+      learn_rate = learn_rate(c(-3, -0.3)),
+      sample_size = sample_prop()
+    )
+  
+  # Use Bayesian tuning to find best performing params
+  tictoc::tic(msg = "XGBoost CV model fitting complete!")
+  xgb_search <- tune_bayes(
+    object = xgb_wflow,
+    resamples = train_folds,
+    initial = 5, iter = 50,
+    param_info = xgb_params,
+    metrics = metric_set(rmse, codm, rsq),
+    control = cv_control
+  )
+  tictoc::toc(log = TRUE)
+  beepr::beep(2)
+  
+  # Save tuning results to file
+  if (cv_write_params) {
+    xgb_search %>%
+      model_strip_data() %>%
+      saveRDS(xgb_params_path)
+  }
+  
+  # Choose the best model that minimizes RMSE
+  xgb_final_params <- select_best(xgb_search, metric = "rmse")
+  
+} else {
+  
+  # If no CV, load best params from file if exists, otherwise use defaults
+  if (file.exists(xgb_params_path)) {
+    xgb_final_params <- select_best(readRDS(xgb_params_path), metric = "rmse")
+  } else {
+    xgb_final_params <- list(
+      trees = 1500, tree_depth = 5, min_n = 8, loss_reduction = 0.2613,
+      mtry = 8, sample_size = 0.66, learn_rate = 0.0175
+    )
+  }
+}
+
+
+### Step 3 - Finalize model
+
+# Fit the final model using the training data
+xgb_wflow_final_fit <- xgb_wflow %>%
+  finalize_workflow(as.list(xgb_final_params)) %>%
+  fit(data = train)
+
+# Fit the final model using the full data, this is the model used for assessment
+xgb_wflow_final_full_fit <- xgb_wflow %>%
+  finalize_workflow(as.list(xgb_final_params)) %>%
+  fit(data = full_data)
+
+# Remove unnecessary objects
+rm_intermediate("xgb")
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### LightGBM Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -183,7 +283,7 @@ lgbm_model <- boost_tree(
   set_engine("lightgbm") %>%
   set_mode("regression") %>%
   set_args(
-    num_threads = all_cores,
+    num_threads = num_threads,
     categorical_feature = train_cat_vars,
     verbose = 0
   )
@@ -206,14 +306,14 @@ if (cv_enable) {
       trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
       min_n = min_n(),
-      tree_depth = tree_depth(c(3L, 10L)),
-      loss_reduction = loss_reduction(),
-      learn_rate = learn_rate(),
+      tree_depth = tree_depth(c(3L, 12L)),
+      loss_reduction = loss_reduction(c(-3, 0.5)),
+      learn_rate = learn_rate(c(-3, -0.3)),
       sample_size = sample_prop()
     )
 
   # Use Bayesian tuning to find best performing params
-  tictoc::tic(msg = "LGBM CV model fitting complete!")
+  tictoc::tic(msg = "LightGBM CV model fitting complete!")
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
@@ -277,7 +377,7 @@ rm_intermediate("lgbm")
 cat_params_path <- "data/models/cat_params.rds"
 
 # Initialize catboost model specification
-# CatBoost treesnip implementation detects categorical columns automatically
+# treesnip CatBoost implementation detects categorical columns automatically
 # https://github.com/curso-r/treesnip/blob/master/R/catboost.R#L237 
 cat_model <- boost_tree(
   trees = tune(), tree_depth = tune(), min_n = tune(),
@@ -285,7 +385,7 @@ cat_model <- boost_tree(
 ) %>%
   set_engine("catboost") %>%
   set_mode("regression") %>%
-  set_args(nthread = all_cores * 2)
+  set_args(nthread = num_threads)
 
 # Initialize catboost workflow, note the added recipe for formatting factors
 cat_wflow <- workflow() %>%
@@ -305,8 +405,8 @@ if (cv_enable) {
       trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
       min_n = min_n(),
-      tree_depth = tree_depth(c(3L, 10L)),
-      learn_rate = learn_rate(),
+      tree_depth = tree_depth(c(3L, 12L)),
+      learn_rate = learn_rate(c(-3, -0.3)),
       sample_size = sample_prop()
     )
   
@@ -317,7 +417,7 @@ if (cv_enable) {
     resamples = train_folds,
     initial = 5, iter = 1,
     param_info = cat_params,
-    metrics = metric_set(rmse, codm),
+    metrics = metric_set(rmse, codm, rsq),
     control = cv_control
   )
   tictoc::toc(log = TRUE)
@@ -366,93 +466,6 @@ rm_intermediate("cat")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Random Forest Model #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-### Step 1 - Model initialization
-
-# Set model params save path
-rf_params_path <- "data/models/rf_params.rds"
-
-# Initialize RF model specification
-rf_model <- rand_forest(trees = tune(), mtry = tune(), min_n = tune()) %>%
-  set_mode("regression") %>%
-  set_engine("ranger") %>%
-  set_args(num.threads = all_cores, verbose = TRUE)
-
-# Initialize RF workflow
-rf_wflow <- workflow() %>%
-  add_model(rf_model) %>%
-  add_recipe(train_recipe)
-
-
-### Step 2 - Cross-validation
-
-# Begin CV tuning if enabled
-if (cv_enable) {
-
-  # Create param search space for RF
-  rf_params <- rf_model %>%
-    parameters() %>%
-    update(
-      trees = trees(range = c(500, 1500)),
-      mtry = mtry(range = c(5, floor(train_p / 3))),
-      min_n = min_n()
-    )
-
-  # Use Bayesian tuning to find best performing params
-  tictoc::tic(msg = "RF CV model fitting complete!")
-  rf_search <- tune_bayes(
-    object = rf_wflow,
-    resamples = train_folds,
-    initial = 5, iter = 50,
-    param_info = rf_params,
-    metrics = metric_set(rmse, codm, rsq),
-    control = cv_control
-  )
-  tictoc::toc(log = TRUE)
-  beepr::beep(2)
-
-  # Save tuning results to file
-  if (cv_write_params) {
-    rf_search %>%
-      model_strip_data() %>%
-      saveRDS(rf_params_path)
-  }
-
-  # Choose the best model that minimizes RMSE
-  rf_final_params <- select_best(rf_search, metric = "rmse")
-  
-} else {
-
-  # If no CV, load best params from file if exists, otherwise use defaults
-  if (file.exists(rf_params_path)) {
-    rf_final_params <- select_best(readRDS(rf_params_path), metric = "rmse")
-  } else {
-    rf_final_params <- list(trees = 1500, mtry = 13, min_n = 32)
-  }
-}
-
-
-### Step 3 - Finalize model
-
-# Fit the final model using the training data
-rf_wflow_final_fit <- rf_wflow %>%
-  finalize_workflow(as.list(rf_final_params)) %>%
-  fit(data = train)
-
-# Fit the final model using the full data, this is the model used for assessment
-rf_wflow_final_full_fit <- rf_wflow %>%
-  finalize_workflow(as.list(rf_final_params)) %>%
-  fit(data = full_data)
-
-# Remove unnecessary objects
-rm_intermediate("rf")
-
-
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### Stacked Model (Regularized Regression) #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -473,11 +486,13 @@ sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
 sm_final_fit <- stack_model(
   models = list(
     "enet" = enet_wflow_final_fit %>% pull_workflow_fit(),
+    "xgb" = xgb_wflow_final_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_fit(),
     "cat" = cat_wflow_final_fit %>% pull_workflow_fit()
   ),
   recipes = list(
     "enet" = enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+    "xgb" = xgb_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_prepped_recipe(),
     "cat" = cat_wflow_final_fit %>% pull_workflow_prepped_recipe()
   ),
@@ -500,11 +515,13 @@ test %>%
 sm_final_full_fit <- stack_model(
   models = list(
     "enet" = enet_wflow_final_full_fit %>% pull_workflow_fit(),
+    "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_fit(),
     "cat" = cat_wflow_final_full_fit %>% pull_workflow_fit()
   ),
   recipes = list(
     "enet" = enet_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
+    "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_prepped_recipe(),
     "cat" = cat_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
   ),
