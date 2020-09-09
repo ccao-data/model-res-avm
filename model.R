@@ -103,7 +103,6 @@ enet_wflow <- workflow() %>%
 
 # Fit the final model using the training data
 enet_wflow_final_fit <- enet_wflow %>%
-  finalize_workflow(as.list(enet_final_params)) %>%
   fit(data = train)
 
 # Remove unnecessary objects
