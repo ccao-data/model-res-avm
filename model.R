@@ -9,6 +9,7 @@ library(assessr)
 library(beepr)
 library(ccao)
 library(dplyr)
+library(here)
 library(purrr)
 library(sf)
 library(stringr)
@@ -50,7 +51,7 @@ mod_predictors <- ccao::vars_dict %>%
 
 # Load the full set of training data, keep only good, complete observations
 # Arrange by sale date in order to facilitate out-of-time sampling/validation
-full_data <- read_parquet("input/modeldata.parquet") %>%
+full_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
   arrange(meta_sale_date)
 
@@ -86,7 +87,7 @@ rm(time_split, juiced_train); gc()
 ### Step 1 - Model initialization
 
 # Set model params save path
-enet_params_path <- "output/params/enet_params.rds"
+enet_params_path <- here("output", "params", "enet_params.rds")
 
 # Setup basic ElasticNet model specification
 enet_model <- linear_reg(penalty = 1e-7, mixture = 0.16) %>%
@@ -118,7 +119,7 @@ rm_intermediate("enet")
 ### Step 1 - Model initialization
 
 # Set model params save path
-xgb_params_path <- "output/params/xgb_params.rds"
+xgb_params_path <- here("output", "params", "xgb_params.rds")
 
 # Initialize xgboost model specification
 xgb_model <- boost_tree(
@@ -218,7 +219,7 @@ rm_intermediate("xgb")
 ### Step 1 - Model initialization
 
 # Set model params save path
-lgbm_params_path <- "output/params/lgbm_params.rds"
+lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 
 # Initialize lightbgm model specification
 # Note that categorical vars must be explicitly specified for lightgbm
@@ -321,7 +322,7 @@ rm_intermediate("lgbm")
 ### Step 1 - Model initialization
 
 # Set model params save path
-cat_params_path <- "output/params/cat_params.rds"
+cat_params_path <- here("output", "params", "cat_params.rds")
 
 # Initialize catboost model specification
 # treesnip CatBoost implementation detects categorical columns automatically
@@ -458,7 +459,7 @@ test %>%
     )
   ) %>%
   bind_cols(predict(sm_final_fit, test)) %>%
-  write_parquet("output/data/testdata.parquet")
+  write_parquet(here("output", "data", "testdata.parquet"))
 
 
 ### Step 3 - Create finalized assessment model
@@ -484,7 +485,7 @@ sm_final_full_fit <- stack_model(
 
 # Save the finalized model object to file so it can be used elsewhere
 sm_final_full_fit %>%
-  saveRDS("output/models/stacked_model.rds")
+  saveRDS(here("output", "models", "stacked_model.rds"))
 
 
 
@@ -495,8 +496,8 @@ sm_final_full_fit %>%
 
 # Generate modeling diagnostic/performance report
 rmarkdown::render(
-  input = "report.Rmd",
-  output_file = "output/reports/modeling_report.html"
+  input = here("reports", "model_report.Rmd"),
+  output_file = here("output", "reports", "model_report.html")
 )
 
 # Stop all timers and write CV timers to file
@@ -504,7 +505,7 @@ tictoc::toc(log = TRUE)
 if (cv_enable & cv_write_params) {
   bind_rows(tic.log(format = FALSE)) %>%
     mutate(elapsed = toc - tic, model = tolower(word(msg, 1))) %>%
-    saveRDS("output/params/model_timings.rds")
+    saveRDS(here("output", "params", "model_timings.rds"))
 }
 
 # BIG BEEP
