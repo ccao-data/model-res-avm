@@ -40,7 +40,7 @@ report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 
 ```{r summary, message=FALSE}
 # Load test set results
-test_res <- read_parquet("data/testdata.parquet") %>%
+test_res <- read_parquet("output/data/testdata.parquet") %>%
   mutate(
     town_name = town_convert(meta_town_code),
     triad = factor(
@@ -412,7 +412,7 @@ ggplot(model_cor) +
 # Load model results for each model and append to data frame
 model_results <- tibble()
 
-xgb_params_path <- "data/models/xgb_params.rds"
+xgb_params_path <- "output/params/xgb_params.rds"
 if (file.exists(xgb_params_path)) {
   xgb_params <- readRDS(xgb_params_path)
   xgb_final_params <- xgb_params %>%
@@ -423,7 +423,7 @@ if (file.exists(xgb_params_path)) {
   model_results <- bind_rows(model_results, xgb_final_params)
 }
 
-lgbm_params_path <- "data/models/lgbm_params.rds"
+lgbm_params_path <- "output/params/lgbm_params.rds"
 if (file.exists(lgbm_params_path)) {
   lgbm_params <- readRDS(lgbm_params_path)
   lgbm_final_params <- lgbm_params %>%
@@ -434,7 +434,7 @@ if (file.exists(lgbm_params_path)) {
   model_results <- bind_rows(model_results, lgbm_final_params)
 }
 
-cat_params_path <- "data/models/cat_params.rds"
+cat_params_path <- "output/params/cat_params.rds"
 if (file.exists(cat_params_path)) {
   cat_params <- readRDS(cat_params_path)
   cat_final_params <- cat_params %>%
@@ -520,7 +520,7 @@ if (exists("cat_params")) {
 ## Model Training Time
 
 ```{r timings, fig.height=2}
-model_timings_path <- "data/models/model_timings.rds"
+model_timings_path <- "output/params/model_timings.rds"
 if (file.exists(model_timings_path)) {
   readRDS(model_timings_path) %>%
     filter(model != "full") %>%

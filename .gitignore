@@ -53,9 +53,8 @@ scratch/
 secrets/
 
 # Data
-output/*
 *.parquet
-data/*
+*.rds
 
 # CatBoost results
 catboost_info/
