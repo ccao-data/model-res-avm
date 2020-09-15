@@ -16,9 +16,9 @@ rm_intermediate <- function(x, keep = NULL) {
 }
 
 # Return prediction from a model and recipe
-model_predict <- function(model, recipe, data) {
+model_predict <- function(spec, recipe, data) {
   exp(predict(
-    model,
+    spec,
     new_data = bake(recipe, data) %>%
       select(-ends_with("_sale_price"))
   )$.pred)
@@ -45,21 +45,21 @@ model_strip_data <- function(x) {
 
 # Create a stacked model object containing each fitted model, its corresponding
 # recipe, a metamodel, and the training data
-stack_model <- function(models, recipes, meta_spec, data, add_vars = NULL) {
+stack_model <- function(specs, recipes, meta_spec, meta_keep_vars = NULL, data) {
   
-  # Check that names match for models and recipes
+  # Check that names match for specs and recipes
   stopifnot(
-    all(names(models) %in% names(recipes)),
-    all(names(recipes) %in% names(models))
+    all(names(specs) %in% names(recipes)),
+    all(names(recipes) %in% names(specs))
   )
 
-  # Get fits for all models
-  meta_train <- pmap(list(models, recipes), ~ model_predict(.x, .y, data))
+  # Get fits for all specs
+  meta_train_fits <- pmap(list(specs, recipes), ~ model_predict(.x, .y, data))
   
   # Create a recipe for the meta model
   meta_recipe <- stack_recp_prep(
-    bind_cols(meta_train, data),
-    keep_vars = c(names(models), add_vars)
+    bind_cols(meta_train_fits, data),
+    keep_vars = c(names(specs), meta_keep_vars)
   )
  
   # Prep the data for fitting in the meta model
@@ -67,15 +67,19 @@ stack_model <- function(models, recipes, meta_spec, data, add_vars = NULL) {
   x <- juice(prepped, all_predictors())
   y <- juice(prepped, all_outcomes())
   
-  # Fit the meta model on the predictions of the other models + town_code
+  # Fit the meta model on the predictions of the other specs + town_code
   meta_fit <-  fit_xy(meta_spec, x = x, y = y)
+  
+  # Prep meta recipe for export with model and remove training data
+  meta_recipe_prepped <- prep(meta_recipe, retain = FALSE)
+  meta_recipe_prepped$template <- NULL
 
-  # Return original models, recipes, and meta fit
+  # Return original specs, recipes, and meta fit
   meta <- list(
-    models = models,
+    specs = specs,
     recipes = recipes,
     meta_fit = meta_fit,
-    meta_recipe = meta_recipe
+    meta_recipe = meta_recipe_prepped
   )
   class(meta) <- "stack_model"
   meta
@@ -85,15 +89,15 @@ stack_model <- function(models, recipes, meta_spec, data, add_vars = NULL) {
 # S3 predict method for stack model object
 predict.stack_model <- function(object, new_data) {
   
-  # Predict on new data using previously fitted models
+  # Predict on new data using previously fitted specs
   new_preds <- pmap(
-    list(object$models, object$recipes), ~ model_predict(.x, .y, new_data)
+    list(object$specs, object$recipes), ~ model_predict(.x, .y, new_data)
   )
 
   # Get predictions from the stacked model using predictions as inputs
   stack_preds <- exp(predict(
     object$meta_fit,
-    bake(prep(object$meta_recipe), bind_cols(new_preds, new_data)) %>%
+    bake(object$meta_recipe, bind_cols(new_preds, new_data)) %>%
       select(-ends_with("_sale_price")) # Fix glmnet not removing outcome var
   ))
   

@@ -428,12 +428,12 @@ sm_meta_model <- linear_reg(penalty = 0.01, mixture = 0) %>%
 
 ### Step 2 - Predict on test set
 
-# Create stacked model object with training data, including only btree models
+# Create stacked model object with training data, including only gbm models
 # This model is used to evaluate performance on the test set
 # Fit models and recipes are extracted from the final saved workflow
 # https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
 sm_final_fit <- stack_model(
-  models = list(
+  specs = list(
     "xgb" = xgb_wflow_final_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_fit %>% pull_workflow_fit(),
     "cat" = cat_wflow_final_fit %>% pull_workflow_fit()
@@ -444,7 +444,7 @@ sm_final_fit <- stack_model(
     "cat" = cat_wflow_final_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,
-  add_vars = "meta_town_code",
+  meta_keep_vars = "meta_town_code",
   data = train
 )
 
@@ -468,7 +468,7 @@ test %>%
 # discovered during the cross-validation process. This is the model used to
 # actually created initial assessed values
 sm_final_full_fit <- stack_model(
-  models = list(
+  specs = list(
     "xgb" = xgb_wflow_final_full_fit %>% pull_workflow_fit(),
     "lgbm" = lgbm_wflow_final_full_fit %>% pull_workflow_fit(),
     "cat" = cat_wflow_final_full_fit %>% pull_workflow_fit()
@@ -479,7 +479,7 @@ sm_final_full_fit <- stack_model(
     "cat" = cat_wflow_final_full_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,
-  add_vars = "meta_town_code",
+  meta_keep_vars = "meta_town_code",
   data = full_data
 )
 
