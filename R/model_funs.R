@@ -15,15 +15,6 @@ rm_intermediate <- function(x, keep = NULL) {
   }
 }
 
-# Return prediction from a model and recipe
-model_predict <- function(spec, recipe, data) {
-  exp(predict(
-    spec,
-    new_data = bake(recipe, data) %>%
-      select(-ends_with("_sale_price"))
-  )$.pred)
-}
-
 
 # Get environmental variable else a specified default value
 model_get_env <- function(x, default) {
@@ -40,6 +31,12 @@ model_strip_data <- function(x) {
     purrr::list_modify("names" = names(stripped))
   attributes(stripped) <- attrs
   stripped
+}
+
+
+# Return prediction from a model and recipe
+model_predict <- function(spec, recipe, data) {
+  exp(predict(spec, new_data = bake(recipe, data, all_predictors()))$.pred)
 }
 
 
@@ -73,8 +70,8 @@ stack_model <- function(specs, recipes, meta_spec, meta_keep_vars = NULL, data) 
   # Prep meta recipe for export with model and remove training data
   meta_recipe_prepped <- prep(meta_recipe, retain = FALSE)
   meta_recipe_prepped$template <- NULL
-
-  # Return original specs, recipes, and meta fit
+  
+  # Return original specs, recipes, and meta fit + recipe
   meta <- list(
     specs = specs,
     recipes = recipes,
@@ -87,20 +84,27 @@ stack_model <- function(specs, recipes, meta_spec, meta_keep_vars = NULL, data) 
 
 
 # S3 predict method for stack model object
-predict.stack_model <- function(object, new_data) {
+predict.stack_model <- function(object, new_data, prepped_recipe = NULL) {
   
   # Predict on new data using previously fitted specs
   new_preds <- pmap(
     list(object$specs, object$recipes), ~ model_predict(.x, .y, new_data)
   )
+  
+  # Run an optional recipe to preprocess new_data. This is useful as sometimes
+  # the number of rows in new_preds will be different from the number in new_data
+  # as applying recipes will remove rows with NAs
+  if (!is.null(prepped_recipe)) {
+    new_data <- bake(prepped_recipe, new_data)
+  }
 
   # Get predictions from the stacked model using predictions as inputs
   stack_preds <- exp(predict(
     object$meta_fit,
-    bake(object$meta_recipe, bind_cols(new_preds, new_data)) %>%
-      select(-ends_with("_sale_price")) # Fix glmnet not removing outcome var
+    bake(object$meta_recipe, bind_cols(new_preds, new_data), all_predictors())
   ))
   
   # Output other model predictions + stacked predictions in a single list
   c(new_preds, stack = list(stack_preds$.pred))
 }
+

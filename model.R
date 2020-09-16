@@ -233,7 +233,7 @@ lgbm_model <- boost_tree(
   set_args(
     num_threads = num_threads,
     categorical_feature = train_cat_vars,
-    verbose = -1
+    verbose = -1 
   )
 
 # Initialize lightgbm workflow, note the added recipe for formatting factors
