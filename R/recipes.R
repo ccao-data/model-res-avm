@@ -1,12 +1,12 @@
 # Main data prep recipe, removes unnecessary variables, cleans up factors,
 # removes low/no variance and highly correlated vars, log + polynomial trans
-mod_recp_prep <- function(data, keep_vars) {
+mod_recp_prep <- function(data, keep_vars, id_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
     
     # Convert PIN to numeric so it's not set to NA by missing factor levels
     # Set PIN role to "id" so it's not included in the actual fit
-    step_mutate_at(any_of(c("meta_pin", "PIN")), fn = ~ as.numeric(as.character(.))) %>%
-    update_role(any_of(c("meta_pin", "PIN")), new_role = "id") %>%
+    update_role(any_of(id_vars), new_role = "id") %>%
+    step_mutate_at(has_role("id"), fn = ~ as.numeric(as.character(.))) %>%
     step_rm(-any_of(keep_vars), -all_outcomes(), -has_role("id")) %>%
     
     # Preprocessing for all predictors and outcome

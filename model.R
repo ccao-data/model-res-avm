@@ -42,6 +42,9 @@ cv_control <- control_bayes(verbose = TRUE, no_improve = 10, seed = 27)
 ##### Preparing Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# List of variables that uniquely identify each structure
+mod_id_vars <- c("meta_pin", "meta_class", "meta_multi_code")
+
 # Get the full list of right-hand side predictors from ccao::vars_dict
 mod_predictors <- ccao::vars_dict %>%
   filter(var_is_predictor) %>%
@@ -67,9 +70,17 @@ train_folds <- vfold_cv(train, v = cv_num_folds)
 
 # Create a recipe for the training data which removes non-predictor columns,
 # normalizes/logs data, and removes/imputes with missing values
-train_recipe <- mod_recp_prep(train, mod_predictors)
-juiced_train <- juice(prep(train_recipe))
-train_p <- ncol(juiced_train) - 1
+train_recipe <- mod_recp_prep(
+  data = train,
+  keep_vars = mod_predictors, 
+  id_vars = mod_id_vars
+)
+
+# Extract number of cols used in model (P) and categorical column names
+juiced_train <- juice(prep(train_recipe)) %>% 
+  select(-any_of(c(mod_id_vars, "meta_sale_price")))
+
+train_p <- ncol(juiced_train)
 train_cat_vars <- juiced_train %>%
   select(where(is.factor)) %>%
   colnames()

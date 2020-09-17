@@ -79,7 +79,8 @@ stack_model <- function(specs, recipes, meta_spec, meta_keep_vars = NULL, data) 
     meta_recipe = meta_recipe_prepped
   )
   class(meta) <- "stack_model"
-  meta
+  
+  return(meta)
 }
 
 

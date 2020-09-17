@@ -27,15 +27,22 @@ set.seed(27)
 ##### Valuation ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Load the full set of residential properties that need values, dummy var for 
-# sale price is added because it's necessary to work with recipes
-assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
-  mutate(meta_sale_price = 0)
+# Load the final stacked model object from file
+sm_final_full_fit <- readRDS(here("output", "models", "stacked_model.rds"))
 
-# Load the final stacked model object if not already loaded
-if (!exists("sm_final_full_fit")) {
-  sm_final_full_fit <- readRDS(here("output", "models", "stacked_model.rds"))
-}
+# Get the most recent arms length sale for each property in the training dataset
+sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
+  filter(ind_arms_length) %>%
+  group_by(meta_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date)) %>%
+  select(meta_pin, meta_sale_price)
+
+# Load the full set of residential properties that need values, join the most
+# recent sale and fill all missing saleswith 0. This is a workaround to prevent
+# missing sales values from being removed when baking recipes for prediction
+assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
+  left_join(sales_data, by = "meta_pin") %>%
+  mutate(meta_sale_price = ifelse(!is.na(meta_sale_price), meta_sale_price, 0))
 
 # Get the subset of PINs that actually can be valued by the model (no missing
 # or strange data). PINs that can't be modeled are removed via the prepped 
@@ -48,15 +55,52 @@ assmntdata_preds <- bind_cols(
     prepped_recipe = sm_final_full_fit$recipes$lgbm
   )
 ) %>%
-  mutate(meta_pin = str_pad(meta_pin, 14, "left", "0"))
+  mutate(
+    meta_pin = str_pad(meta_pin, 14, "left", "0"),
+    meta_class = str_pad(meta_class, 3, "left", "0"),
+    meta_multi_code = as.character(meta_multi_code)
+  )
 
-
-# Join predicted values back onto the original data
+# Join predicted values back onto the assessment data and cleanup
 assmntdata <- assmntdata %>%
-  left_join(assmntdata_preds, by = "meta_pin")
+  left_join(
+    assmntdata_preds,
+    by = c("meta_pin", "meta_class", "meta_multi_code")
+  ) %>%
+  mutate(
+    meta_nbhd = str_pad(meta_nbhd, 3, "left", "0"),
+    meta_sale_price = na_if(meta_sale_price, 0)
+  )
 
 
+test <- postval_model(
+  data = assmntdata,
+  truth = meta_sale_price, 
+  estimate = stack, 
+  meta_town_code, meta_nbhd
+)
 
+assmntdata2 <- assmntdata %>%
+  mutate(town_name = town_convert(meta_town_code)) %>%
+  mutate(adjusted = predict(test, ., meta_sale_price, stack)) %>%
+  select(
+    meta_pin, meta_town_code, meta_nbhd, meta_class, meta_sale_price,
+    xgb:adjusted
+  ) 
+
+temp <- assmntdata2 %>%
+  group_by(town_name, name) %>%
+  summarize(
+    median_ratio = median(value / meta_sale_price, na.rm = TRUE),
+    cod = cod(value / meta_sale_price, na.rm = TRUE)
+  )
+
+assmntdata2 %>%
+  # filter(meta_town_code %in% c("77", "37", "31", "17")) %>%
+  ggplot() +
+  geom_boxplot(aes(x = value / meta_sale_price, color = name), alpha = 0.5) +
+  facet_wrap(vars(town_name)) +
+  xlim(0, 3)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### Post-Modeling ####
@@ -80,5 +124,6 @@ assmntdata <- assmntdata %>%
 ### Step 6 - Identify historic/affordable housing
 
 
+# TODO: NBHD avg and median to most recent sale for each prop
 # TODO: Fix missing data in predictions and from meta model
 # TODO: Adjust multi-property PINS
