@@ -24,13 +24,64 @@ model_get_env <- function(x, default) {
 
 
 # Remove data from iteration results objects created by tune_grid and tune_bayes
-model_strip_data <- function(x) {
+model_axe_tune_data <- function(x) {
   stripped <- x %>% select(-any_of("splits"))
   
   attrs <- attributes(x) %>%
     purrr::list_modify("names" = names(stripped))
   attributes(stripped) <- attrs
   stripped
+}
+
+
+# Strip environments created by quosures from recipes, as well as original lvls 
+# column and all data not necessary to use predict()
+model_axe_recipe <- function(x) {
+  axed <- rapply(x, butcher::butcher, how = "replace") %>%
+    purrr::list_modify(orig_lvls = NULL)
+
+  class(axed) <- "recipe"
+  
+  return(axed)
+}
+
+
+# Strip unnecessary data from final model object that isn't needed for predict()
+model_axe_stack <- function(model) {
+  
+  model$recipes <- map(model$recipes , model_axe_recipe)
+  model$meta_spec <- butcher::butcher(model$meta_spec)
+  model$meta_recipe <- model_axe_recipe(model$meta_recipe)
+  
+  return(model)
+}
+
+
+# Save finale model object. This is basically a workaround to split the 
+# LightGBM fit into a separate file since it REALLY doesn't like being saved
+# as a RDS
+model_save <- function(model, zipfile) {
+  
+  file_lgbm <- file.path(tempdir(), "lgbm.model")
+  lightgbm::lgb.save(model$spec$lgbm$fit, file_lgbm)
+  model$specs$lgbm$fit <- NULL
+  
+  file_meta <- file.path(tempdir(), "meta.model")
+  saveRDS(model, file_meta)
+
+  zip::zipr(zipfile, files = c(file_meta, file_lgbm))
+}
+
+
+# Load model fits from a zip file and combine into one object
+model_load <- function(zipfile) {
+  ex_dir <- tempdir()
+  zip::unzip(zipfile, exdir = ex_dir)
+  
+  model <- readRDS(file.path(ex_dir, "meta.model"))
+  model$specs$lgbm$fit <- lightgbm::lgb.load(file.path(ex_dir, "lgbm.model"))
+  
+  return(model)
 }
 
 

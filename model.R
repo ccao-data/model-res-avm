@@ -7,6 +7,7 @@ options(tidymodels.dark = TRUE)
 library(arrow) 
 library(assessr)
 library(beepr)
+library(butcher)
 library(ccao)
 library(dplyr)
 library(here)
@@ -184,7 +185,7 @@ if (cv_enable) {
   # Save tuning results to file
   if (cv_write_params) {
     xgb_search %>%
-      model_strip_data() %>%
+      model_axe_tune_data() %>%
       saveRDS(xgb_params_path)
   }
   
@@ -287,7 +288,7 @@ if (cv_enable) {
   # Save tuning results to file
   if (cv_write_params) {
     lgbm_search %>%
-      model_strip_data() %>%
+      model_axe_tune_data() %>%
       saveRDS(lgbm_params_path)
   }
 
@@ -385,7 +386,7 @@ if (cv_enable) {
   # Save tuning results to file
   if (cv_write_params) {
     cat_search %>%
-      model_strip_data() %>%
+      model_axe_tune_data() %>%
       saveRDS(cat_params_path)
   }
   
@@ -496,7 +497,8 @@ sm_final_full_fit <- stack_model(
 
 # Save the finalized model object to file so it can be used elsewhere
 sm_final_full_fit %>%
-  saveRDS(here("output", "models", "stacked_model.rds"))
+  model_axe_stack() %>%
+  model_save(here("output", "models", "stacked_model.zip"))
 
 
 

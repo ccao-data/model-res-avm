@@ -55,6 +55,7 @@ secrets/
 # Data
 *.parquet
 *.rds
+*.zip
 
 # CatBoost results
 catboost_info/

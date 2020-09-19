@@ -41,7 +41,7 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
 # (Converts categorical vars to one-hot encoding)
 dummy_recp_prep <- function(recipe) {
   recipe %>%
-    step_mutate_at(starts_with("ind_"), fn = as.numeric) %>%
+    step_mutate_at(starts_with("ind_"), fn = ~ as.numeric(.)) %>%
     step_dummy(all_nominal(), -all_outcomes(), -has_role("id"))
 }
 

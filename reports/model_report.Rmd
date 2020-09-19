@@ -4,7 +4,7 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "FALSE"
+  filter: "TRUE"
   triad: "City"
 ---
 
@@ -62,6 +62,7 @@ test_summary <- test_res %>%
   summarize(
     med_sp = median(meta_sale_price),
     count = n(),
+    prop = n() / nrow(.),
     across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
     final = ccao_cod(stack / meta_sale_price)$COD,
     final_prd = ccao_prd(stack, meta_sale_price)$PRD,
@@ -82,7 +83,8 @@ headers <- htmltools::withTags(table(
     tr(
       th(rowspan = 2, "Township"),
       th(rowspan = 2, "Median Sale Price"),
-      th(rowspan = 2, "Count"),
+      th(rowspan = 2, "Number of Sales"),
+      th(rowspan = 2, "Proportion of Total Sales"),
       th(rowspan = 2, "Baseline (enet)"),
       th(colspan = 3, "Stacked Models"),
       th(rowspan = 2, "Stack Result"),
@@ -109,12 +111,13 @@ test_summary %>%
       paging = FALSE,
       searching = FALSE,
       info = FALSE,
-      columnDefs = list(list(targets = 11:13, visible = FALSE))
+      columnDefs = list(list(targets = 12:14, visible = FALSE))
     )
   ) %>%
   formatCurrency(2, digits = 0) %>%
   formatRound(3, digits = 0) %>%
-  formatRound(c(4:12)) %>%
+  formatPercentage(4, digits = 1) %>%
+  formatRound(c(5:13)) %>%
   formatStyle(  
     c("final", "final_prd", "final_prb"),
     c("final_cod_met", "final_prd_met", "final_prb_met"),
