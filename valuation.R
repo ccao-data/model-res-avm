@@ -89,7 +89,7 @@ rm(assmntdata_preds, sales_data)
 ##### Post-Modeling ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
+# Create post-valuation model object that saves aggregate adjustments
 pv_model <- postval_model(
   data = assmntdata,
   truth = meta_sale_price, 
@@ -97,13 +97,17 @@ pv_model <- postval_model(
   meta_town_code, meta_nbhd
 )
 
-assmntdata2 <- assmntdata %>%
-  mutate(town_name = town_convert(meta_town_code)) %>%
-  mutate(adjusted = predict(test, ., meta_sale_price, stack)) %>%
-  select(
-    meta_pin, meta_town_code, meta_nbhd, meta_class, meta_sale_price,
-    xgb:adjusted
-  ) 
+# Get adjusted values for assessment data 
+assmntdata <- assmntdata %>%
+  mutate(
+    town_name = town_convert(meta_town_code),
+    adjusted = predict(pv_model, ., meta_sale_price, stack)
+  )
+
+
+
+
+
 
 temp <- assmntdata2 %>%
   group_by(town_name, name) %>%
@@ -112,7 +116,8 @@ temp <- assmntdata2 %>%
     cod = cod(value / meta_sale_price, na.rm = TRUE)
   )
 
-assmntdata2 %>%
+assmntdata %>%
+  pivot_longer(c(stack, adjusted)) %>%
   # filter(meta_town_code %in% c("77", "37", "31", "17")) %>%
   ggplot() +
   geom_boxplot(aes(x = value / meta_sale_price, color = name), alpha = 0.5) +
@@ -124,20 +129,9 @@ assmntdata2 %>%
 
 
 
-### Step 2 - Adjust townhomes to ensure identical townhomes have same value
+# TODO: investigate missing vals in river forest, calument
+# TODO: Add townhome adjustments
 
 
-### Step 3 - Adjust median ratio of group by neighborhood
 
 
-### Step 4 - Regressivity adjustment?
-
-
-### Step 5 - Limit excessive ratios
-
-
-### Step 6 - Identify historic/affordable housing
-
-
-# TODO: Fix missing data in predictions and from meta model
-# TODO: Adjust multi-property PINS

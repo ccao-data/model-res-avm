@@ -163,7 +163,7 @@ ggplot() +
 
 <br>
 
-## Variables Used in Stacked Model
+## Variables Used in Final Model
 
 ```{r vars}
 
