@@ -17,11 +17,14 @@ library(DT)
 library(forcats)
 library(ggplot2)
 library(here)
+library(purrr)
+library(recipes)
 library(scales)
 library(sf)
 library(stringr)
 library(tidyr)
 library(tune)
+source(here("R", "model_funs.R"))
 
 # Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
@@ -67,6 +70,11 @@ test_summary <- test_res %>%
     final = ccao_cod(stack / meta_sale_price)$COD,
     final_prd = ccao_prd(stack, meta_sale_price)$PRD,
     final_prb = ccao_prb(stack, meta_sale_price)$PRB,
+    final_med_ratio = median(
+      (stack / meta_sale_price)[
+        !assessr::is_outlier(stack / meta_sale_price, method = "quantile")
+      ]
+    )
   ) %>%
   mutate(
     final_cod_met = cod_met(round(final, 2)),
@@ -86,19 +94,20 @@ headers <- htmltools::withTags(table(
       th(rowspan = 2, "Number of Sales"),
       th(rowspan = 2, "Proportion of Total Sales"),
       th(rowspan = 2, "Baseline (enet)"),
-      th(colspan = 3, "Stacked Models"),
+      # th(colspan = 3, "Stacked Models"),
       th(rowspan = 2, "Stack Result"),
       th(colspan = 4, "Final Model Stats")
     ),
     tr(
-      th("xgb"), th("lgbm"), th("cat"),
-      th("COD"), th("PRD"), th("PRB")
+      # th("xgb"), th("lgbm"), th("cat"),
+      th("COD"), th("PRD"), th("PRB"), th("Med. Ratio")
     )
   )
 ))
 
 # Create an interactive table of the test set results by township
 test_summary %>%
+  select(-any_of(c("xgb", "lgbm", "cat"))) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -111,13 +120,13 @@ test_summary %>%
       paging = FALSE,
       searching = FALSE,
       info = FALSE,
-      columnDefs = list(list(targets = 12:14, visible = FALSE))
+      columnDefs = list(list(targets = 10:12, visible = FALSE))
     )
   ) %>%
   formatCurrency(2, digits = 0) %>%
   formatRound(3, digits = 0) %>%
   formatPercentage(4, digits = 1) %>%
-  formatRound(c(5:13)) %>%
+  formatRound(c(5:10)) %>%
   formatStyle(  
     c("final", "final_prd", "final_prb"),
     c("final_cod_met", "final_prd_met", "final_prb_met"),
@@ -150,6 +159,36 @@ ggplot() +
   theme(
     strip.text = element_text(size = 12, margin = margin(b = 3))
   )
+```
+
+<br>
+
+## Variables Used in Stacked Model
+
+```{r vars}
+
+# Load the saved model from file so we can use its recipe to extract the 
+# modeling variables
+sm_final_full_fit <- model_load(here("output", "models", "stacked_model.zip"))
+
+# Get the predictors used in the model and rename them to human-readable
+test_vars <- bake(sm_final_full_fit$recipes$lgbm, test_res, all_predictors()) %>%
+  vars_rename(names_from = "standard", names_to = "pretty") %>%
+  rename(
+    "Age" = char_age_poly_1, "Age ^ 2" = char_age_poly_2,
+    "Building Sqft." = char_bldg_sf_poly_1, "Building Sqft. ^ 2" = char_bldg_sf_poly_2,
+    "Land Sqft." = char_hd_sf_poly_1, "Land Sqft. ^ 2" = char_hd_sf_poly_2
+  )
+
+# Create a table of var name and attributes
+tibble(
+  "Variable Name" = names(test_vars),
+  "Variable Type" = map_chr(test_vars, class),
+  "Number of Categories" = na_if(map_int(test_vars, ~ length(levels(.x))), 0),
+  "Median Value" = map_dbl(test_vars, ~ ifelse(is.factor(.x), NA, median(.x)))
+) %>%
+  knitr::kable(digits = 3)
+
 ```
 
 <br>

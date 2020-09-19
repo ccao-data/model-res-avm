@@ -79,8 +79,18 @@ assmntdata <- assmntdata %>%
     meta_sale_price = na_if(meta_sale_price, 0)
   )
 
+# Remove unnecessary objects
+rm(assmntdata_preds, sales_data)
 
-test <- postval_model(
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Post-Modeling ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+pv_model <- postval_model(
   data = assmntdata,
   truth = meta_sale_price, 
   estimate = stack, 
@@ -109,9 +119,7 @@ assmntdata2 %>%
   facet_wrap(vars(town_name)) +
   xlim(0, 3)
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Post-Modeling ####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
 
 
