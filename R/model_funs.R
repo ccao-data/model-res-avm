@@ -93,7 +93,7 @@ model_predict <- function(spec, recipe, data) {
 
 # Create a stacked model object containing each fitted model, its corresponding
 # recipe, a metamodel, and the training data
-stack_model <- function(specs, recipes, meta_spec, meta_keep_vars = NULL, data) {
+stack_model <- function(specs, recipes, meta_spec, meta_group_vars = NULL, data) {
   
   # Check that names match for specs and recipes
   stopifnot(
@@ -107,7 +107,7 @@ stack_model <- function(specs, recipes, meta_spec, meta_keep_vars = NULL, data) 
   # Create a recipe for the meta model
   meta_recipe <- stack_recp_prep(
     bind_cols(meta_train_fits, data),
-    keep_vars = c(names(specs), meta_keep_vars)
+    group_vars = c(names(specs), meta_group_vars)
   )
  
   # Prep the data for fitting in the meta model

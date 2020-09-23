@@ -129,7 +129,6 @@ assmntdata %>%
 
 
 
-# TODO: investigate missing vals in river forest, calument
 # TODO: Add townhome adjustments (210, 295)
 
 # TODO: Add valuation report

@@ -12,7 +12,7 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
     # Preprocessing for all predictors and outcome
     step_unknown(all_nominal(), -has_role("id")) %>%
     step_other(
-      all_nominal(), -has_role("id"),
+      all_nominal(), -has_role("id"), -any_of(c("meta_town_code", "meta_nbhd")),
       threshold = 0.005
     ) %>%
     step_naomit(
@@ -48,10 +48,10 @@ dummy_recp_prep <- function(recipe) {
 
 # Recipe for stacking/meta model, goal here is to interact each vector of fitted
 # model values with spatial regimes variable
-stack_recp_prep <- function(data, keep_vars = NULL) {
+stack_recp_prep <- function(data, group_vars = NULL) {
   recipe(meta_sale_price ~ ., data = data) %>%
     add_role(all_numeric(), -all_outcomes(), new_role = "model") %>%
-    step_rm(-any_of(keep_vars), -all_outcomes()) %>%
+    step_rm(-any_of(group_vars), -all_outcomes()) %>%
     step_naomit(all_predictors()) %>%
     step_log(all_numeric(), all_outcomes()) %>%
     step_dummy(all_nominal(), -all_outcomes()) %>%
