@@ -94,11 +94,11 @@ pv_model <- postval_model(
   data = assmntdata,
   truth = meta_sale_price, 
   estimate = stack, 
-  meta_town_code, meta_nbhd
+  med_adj_cols = c("meta_town_code", "meta_nbhd")
 )
 
 # Get adjusted values for assessment data 
-assmntdata <- assmntdata %>%
+assmntdata2 <- assmntdata %>%
   mutate(
     town_name = town_convert(meta_town_code),
     adjusted = predict(pv_model, ., meta_sale_price, stack)
@@ -121,7 +121,7 @@ assmntdata %>%
   # filter(meta_town_code %in% c("77", "37", "31", "17")) %>%
   ggplot() +
   geom_boxplot(aes(x = value / meta_sale_price, color = name), alpha = 0.5) +
-  facet_wrap(vars(town_name)) +
+  # facet_wrap(vars(town_name)) +
   xlim(0, 3)
 
 
@@ -130,7 +130,9 @@ assmntdata %>%
 
 
 # TODO: investigate missing vals in river forest, calument
-# TODO: Add townhome adjustments
+# TODO: Add townhome adjustments (210, 295)
+
+# TODO: Add valuation report
 
 
 

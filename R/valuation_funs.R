@@ -31,19 +31,23 @@ val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
 }
 
 
+# Within the same developments, townhomes with the same age and building size
+# should have the same value.
+val_group_townhomes <- function(data)
+
+
 # Postvaluation adjustment object that saves adjustments and can be called to
 # predict new values
-postval_model <- function(data, truth, estimate, ...) {
+postval_model <- function(data, truth, estimate, med_adj_cols) {
   
   med_adjustments <- data %>%
-    group_by(...) %>%
+    group_by(across(all_of(med_adj_cols))) %>%
     summarize(
       med_pct_adj = val_med_pct_adj({{truth}}, {{estimate}}),
       num_sales = sum(!is.na({{truth}}))
     )
   
   output <- list(
-    grouping_vars = lapply(substitute(list(...))[-1], deparse),
     med_adjustments = med_adjustments
   )
   class(output) <- "postval_model"
@@ -52,14 +56,13 @@ postval_model <- function(data, truth, estimate, ...) {
 }
 
 
-# Predict method for S3 pv_model object
+# Predict method for S3 postval_model object
 predict.postval_model <- function(object, new_data, truth, estimate) {
   
   new_data %>%
     left_join(object$med_adjustments) %>%
-    rowwise() %>%
     mutate(
-      {{estimate}} := sum({{estimate}}, {{estimate}} * med_pct_adj, na.rm = T),
+      {{estimate}} := rowSums(tibble({{estimate}}, {{estimate}} * med_pct_adj), na.rm = T),
       {{estimate}} := na_if({{estimate}}, 0),
       {{estimate}} := val_limit_ratios({{truth}}, {{estimate}})
     ) %>%
