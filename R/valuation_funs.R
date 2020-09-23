@@ -33,22 +33,42 @@ val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
 
 # Within the same developments, townhomes with the same age and building size
 # should have the same value.
-val_group_townhomes <- function(data)
+val_townhomes_by_group <- function(data, class, estimate, townhome_adj_cols) {
+  
+  data %>%
+    filter({{class}} %in% c("210", "295")) %>%
+    group_by(across(all_of(townhome_adj_cols))) %>%
+    summarize(
+      med_townhome_adj = median({{estimate}}, na.rm = TRUE),
+      num_in_group = n()
+    ) %>%
+    filter(num_in_group > 1)
+}
 
 
-# Postvaluation adjustment object that saves adjustments and can be called to
+# Post-valuation adjustment object that saves adjustments and can be called to
 # predict new values
-postval_model <- function(data, truth, estimate, med_adj_cols) {
+postval_model <- function(data, truth, class, estimate, med_adj_cols, townhome_adj_cols) {
   
   med_adjustments <- data %>%
     group_by(across(all_of(med_adj_cols))) %>%
     summarize(
       med_pct_adj = val_med_pct_adj({{truth}}, {{estimate}}),
       num_sales = sum(!is.na({{truth}}))
-    )
+    ) %>%
+    ungroup()
+  
+  townhome_adjustments <- data %>%
+    val_townhomes_by_group(
+      class = meta_class,
+      estimate = stack,
+      townhome_adj_cols = townhome_adj_cols
+    ) %>%
+    ungroup()
   
   output <- list(
-    med_adjustments = med_adjustments
+    med_adjustments = med_adjustments,
+    townhome_adjustments = townhome_adjustments
   )
   class(output) <- "postval_model"
   
@@ -60,6 +80,10 @@ postval_model <- function(data, truth, estimate, med_adj_cols) {
 predict.postval_model <- function(object, new_data, truth, estimate) {
   
   new_data %>%
+    left_join(object$townhome_adjustments) %>%
+    mutate(
+      {{estimate}} := ifelse(!is.na(med_townhome_adj), med_townhome_adj, {{estimate}})
+    ) %>%
     left_join(object$med_adjustments) %>%
     mutate(
       {{estimate}} := rowSums(tibble({{estimate}}, {{estimate}} * med_pct_adj), na.rm = T),

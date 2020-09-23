@@ -40,7 +40,7 @@ cv_control <- control_bayes(verbose = TRUE, no_improve = 10, seed = 27)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Preparing Data #####
+##### Prepare Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # List of variables that uniquely identify each structure

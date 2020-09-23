@@ -86,7 +86,7 @@ rm(assmntdata_preds, sales_data)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Post-Modeling ####
+##### Post-Valuation Model ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Create post-valuation model object that saves aggregate adjustments
@@ -94,45 +94,31 @@ pv_model <- postval_model(
   data = assmntdata,
   truth = meta_sale_price, 
   estimate = stack, 
-  med_adj_cols = c("meta_town_code", "meta_nbhd")
+  class = meta_class,
+  med_adj_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
+  townhome_adj_cols = c(
+    "meta_town_code", "char_age", "char_bsmt", "char_rooms",
+    "char_attic_fnsh", "char_bldg_sf", "char_beds"
+  )
 )
 
+# Save postval model to file so it can be loaded later for prediction
+pv_model %>%
+  saveRDS(here("output", "models", "postval_model.rds"))
+
 # Get adjusted values for assessment data 
-assmntdata2 <- assmntdata %>%
+pv_final_values <- assmntdata %>%
   mutate(
-    town_name = town_convert(meta_town_code),
-    adjusted = predict(pv_model, ., meta_sale_price, stack)
-  )
+    meta_town_name = town_convert(meta_town_code),
+    final_value = predict(pv_model, ., meta_sale_price, stack)
+  ) %>%
+  select(
+    meta_pin, meta_year, meta_class, meta_town_code, meta_nbhd, 
+    meta_modeling_group, meta_multi_code, meta_sale_price,
+    stack_value = stack, final_value
+  ) 
 
-
-
-
-
-
-temp <- assmntdata2 %>%
-  group_by(town_name, name) %>%
-  summarize(
-    median_ratio = median(value / meta_sale_price, na.rm = TRUE),
-    cod = cod(value / meta_sale_price, na.rm = TRUE)
-  )
-
-assmntdata %>%
-  pivot_longer(c(stack, adjusted)) %>%
-  # filter(meta_town_code %in% c("77", "37", "31", "17")) %>%
-  ggplot() +
-  geom_boxplot(aes(x = value / meta_sale_price, color = name), alpha = 0.5) +
-  # facet_wrap(vars(town_name)) +
-  xlim(0, 3)
-
-
-
-
-
-
-# TODO: Add townhome adjustments (210, 295)
-
-# TODO: Add valuation report
-
-
-
+# Save final values to file so they can be uploaded to AS/400
+pv_final_values %>%
+  write_parquet(here("output", "data", "finalvalues.parquet"))
 
