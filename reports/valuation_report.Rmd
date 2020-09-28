@@ -3,6 +3,9 @@ title: "Valuation Summary"
 author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
+params:
+  filter: "TRUE"
+  triad: "City"
 ---
 
 ```{r setup, include=FALSE}
@@ -22,10 +25,22 @@ library(tidyr)
 
 # Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
+
+# Filter to specific triad. Set with system variable else param defined in yaml
+report_filter <- Sys.getenv("R_REPORT_FILTER", unset = NA)
+report_filter <- as.logical(ifelse(
+  !is.na(report_filter),
+  report_filter,
+  params$filter
+))
+
+# Triad to use for report. Set with system variable else param defined in yaml
+report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
+report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
 ```{r summary, message=FALSE}
-# Load final assessment values
+# Load final assessment values from file (created by valuation.R)
 pv_final_values <- read_parquet(
     here("output", "data", "finalvalues.parquet")
   ) %>%
@@ -42,6 +57,12 @@ pv_final_values <- read_parquet(
       "Multi-Family" = "MF"
     )
   )
+
+# Filter to specific triad based on report params
+if (report_filter) {
+pv_final_values <- pv_final_values %>%
+  filter(triad == report_triad)
+}
 
 # Summarize pipeline results by township
 pv_summary <- pv_final_values %>%
@@ -126,8 +147,7 @@ ggplot() +
 ## Overall Ratio Distribution
 
 ```{r outlier_dist, warning=FALSE, message=FALSE}
-
-# Plot histogram of ratios
+# Plot histogram of ratios by modeling class (single-family vs multi-family)
 pv_final_values %>%
   pivot_longer(c(stack_value, final_value)) %>%
   mutate(
@@ -166,8 +186,8 @@ ggplot() +
 ## Ratio Distribution by Township by Sale Price Decile
 
 ```{r ratio_decile, warning=FALSE, message=FALSE, results='hide'}
-# Split test data into sale price decile, then calculate distribution of 
-# ratios for each decile
+# Split final values into decile by sale price, get count and distribution for
+# each decile
 decile_data_ratio <- pv_final_values %>%
   filter(
     !is.na(meta_sale_price), !is.na(final_value),
@@ -250,7 +270,7 @@ lapply(towns, function(chunk) decile_plot_ratio(
 ## Distribution of YoY Percent Change by Township by Prior Year Value Decile
 
 ```{r yoy_decile, warning=FALSE, message=FALSE, results='hide'}
-# ratios for each decile
+# Split YoY percent change by PRIOR YEAR fair-market value
 decile_data_yoy <- pv_final_values %>%
   filter(!is.na(yoy_pct_change), !is.na(prior_value)) %>%
   mutate(
@@ -332,9 +352,8 @@ lapply(towns, function(chunk) decile_plot_yoy(
 ## Spatial Distribution of Largest YoY Changes
 
 ```{r outlier_map, message=FALSE}
-# Create a township level map showing the location of individual outliers from
-# the ratio plot above
-
+# Create a township level map showing the location of individual outliers for
+# YoY percentage change
 pv_final_values %>%
   filter(!is.infinite(yoy_pct_change)) %>%
   mutate(
@@ -359,7 +378,7 @@ pv_final_values %>%
   ungroup() %>%
   st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 4326) %>%
 ggplot() +
-  geom_sf(data = town_shp) +
+  geom_sf(data = town_shp %>% filter(township_name %in% pv_final_values$town_name)) +
   geom_sf(
     aes(geometry = geometry, color = fct_rev(decile_label)),
     size = 0.7,
