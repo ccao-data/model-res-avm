@@ -110,15 +110,21 @@ pv_model %>%
 pv_final_values <- assmntdata %>%
   mutate(
     meta_town_name = town_convert(meta_town_code),
-    final_value = predict(pv_model, ., meta_sale_price, stack)
+    final_value = predict(pv_model, ., meta_sale_price, stack),
+    prior_value = meta_est_land + meta_est_bldg
   ) %>%
   select(
     meta_pin, meta_year, meta_class, meta_town_code, meta_nbhd, 
-    meta_modeling_group, meta_multi_code, meta_sale_price,
-    stack_value = stack, final_value
+    meta_modeling_group, meta_multi_code, geo_latitude, geo_longitude,
+    meta_sale_price, prior_value, stack_value = stack, final_value
   ) 
 
 # Save final values to file so they can be uploaded to AS/400
 pv_final_values %>%
   write_parquet(here("output", "data", "finalvalues.parquet"))
 
+# Generate valuation diagnostic/performance report
+rmarkdown::render(
+  input = here("reports", "valuation_report.Rmd"),
+  output_file = here("output", "reports", "valuation_report.html")
+)

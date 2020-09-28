@@ -4,7 +4,7 @@ author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "TRUE"
+  filter: "FALSE"
   triad: "City"
 ---
 
@@ -228,7 +228,6 @@ decile_plot <- function(data, col_var) {
       hjust = 1,
       check_overlap = TRUE
     ) +
-    scale_y_continuous(position = "right") +
     facet_grid(
       rows = vars(decile_label),
       cols = vars({{col_var}}),
@@ -240,6 +239,8 @@ decile_plot <- function(data, col_var) {
     theme(
       axis.title.x = element_text(margin = margin(t = 10), size = 10),
       axis.text.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
       strip.text = element_text(size = 12),
       strip.text.y.left = element_text(angle = 0, hjust = 1),
       strip.text.x = element_text(margin = margin(b = 10)),

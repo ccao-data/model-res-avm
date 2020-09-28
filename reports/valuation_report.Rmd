@@ -1,0 +1,375 @@
+---
+title: "Valuation Summary"
+author: "Cook County Assessor's Office"
+date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(arrow)
+library(assessr)
+library(ccao)
+library(dplyr)
+library(DT)
+library(forcats)
+library(ggplot2)
+library(here)
+library(purrr)
+library(scales)
+library(sf)
+library(stringr)
+library(tidyr)
+
+# Hide code output and make plots take 100% of page width
+knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
+```
+
+```{r summary, message=FALSE}
+# Load final assessment values
+pv_final_values <- read_parquet(
+    here("output", "data", "finalvalues.parquet")
+  ) %>%
+  mutate(
+    town_name = town_convert(meta_town_code),
+    triad = factor(
+      town_get_triad(meta_town_code, name = TRUE),
+      levels = c("North", "City", "South")
+    ),
+    yoy_pct_change = (final_value - prior_value) / prior_value,
+    meta_modeling_group = fct_recode(
+      factor(meta_modeling_group, levels = c("SF", "MF")),
+      "Single-Family" = "SF",
+      "Multi-Family" = "MF"
+    )
+  )
+
+# Summarize pipeline results by township
+pv_summary <- pv_final_values %>%
+  group_by(town_name) %>%
+  summarize(
+    triad = first(triad),
+    num_props = n(),
+    num_missing_vals = sum(is.na(final_value)),
+    median_prior_value = median(prior_value, na.rm = TRUE),
+    median_sale_price = median(meta_sale_price, na.rm = TRUE),
+    median_model_value = median(stack_value, na.rm = TRUE),
+    median_final_value = median(final_value, na.rm = TRUE),
+    median_ratio = median(final_value / meta_sale_price, na.rm = TRUE),
+    med_yoy_pct_change = median(yoy_pct_change, na.rm = T)
+  )
+
+# Create a container with custom column headers for summary table
+headers <- htmltools::withTags(table(
+  class = "display", 
+  thead(
+    tr(
+      th(rowspan = 2, "Township"),
+      th(rowspan = 2, "Triad"),
+      th(rowspan = 2, "Num. of Properties"),
+      th(rowspan = 2, "Num. Missing Values"),
+      th(colspan = 5, "Median Values"),
+    ),
+    tr(
+      th("Prior BoR Value"),
+      th("Sale Price"),
+      th("Initial Model Value"),
+      th("Final Model Value"),
+      th("Final Model Ratio"),
+      th("YoY Pct. Change")
+    )
+  )
+))
+
+# Create an interactive table of the valuation results by township
+pv_summary %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    autoHideNavigation = TRUE,
+    selection = "none",
+    container = headers,
+    escape = FALSE,
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(3, digits = 0) %>%
+  formatRound(9, digits = 2) %>%
+  formatCurrency(5:8, digits = 0) %>%
+  formatPercentage(10, digits = 1)
+```
+
+<br>
+
+## Map of Median YoY Percent Change by Township
+
+```{r map}
+# Generate township-level map of YoY percent change
+pv_summary %>%
+  left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
+  st_set_geometry("geometry") %>%
+ggplot() +
+  geom_sf(aes(fill = med_yoy_pct_change, geometry = geometry)) +
+  scale_fill_distiller(
+    name = "Median YoY\nPercent Change",
+    palette = "RdBu",
+    labels = scales::percent
+  ) +
+  theme_void()
+```
+
+<br>
+
+## Overall Ratio Distribution
+
+```{r outlier_dist, warning=FALSE, message=FALSE}
+
+# Plot histogram of ratios
+pv_final_values %>%
+  pivot_longer(c(stack_value, final_value)) %>%
+  mutate(
+    ratio = value / meta_sale_price,
+    name = fct_recode(
+      factor(name, levels = c("stack_value", "final_value")),
+      "Model Value" = "stack_value",
+      "Final Value" = "final_value"
+    )
+  ) %>%
+ggplot() +
+  geom_histogram(aes(x = ratio, fill = name), binwidth = 0.05) +
+  scale_x_continuous(breaks = breaks_extended(10), limits = c(0, 4)) +
+  scale_fill_hue(name = "Ratio Type") +
+  labs(
+    x = "Sale Ratio",
+    y = "Number of Properties"
+  ) +
+  facet_grid(vars(name), vars(meta_modeling_group)) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 12),
+    axis.title.x = element_text(margin = margin(t = 6), size = 10),
+    axis.title.y = element_text(margin = margin(r = 10), size = 10),
+    panel.grid.minor = element_blank()
+  ) +
+  theme(
+    strip.text = element_text(size = 12)
+  )
+
+```
+
+<br>
+
+## Ratio Distribution by Township by Sale Price Decile
+
+```{r ratio_decile, warning=FALSE, message=FALSE, results='hide'}
+# Split test data into sale price decile, then calculate distribution of 
+# ratios for each decile
+decile_data_ratio <- pv_final_values %>%
+  filter(
+    !is.na(meta_sale_price), !is.na(final_value),
+    !is.na(stack_value), !is.na(yoy_pct_change)
+  ) %>%
+  mutate(
+    decile = ntile(meta_sale_price, 10),
+    across(c(stack_value, final_value), ~ .x / meta_sale_price)
+  ) %>%
+  group_by(decile) %>%
+  mutate(decile_label = paste(
+    dollar(min(meta_sale_price), 1, scale = 1/1000, suffix = "K"),
+    dollar(max(meta_sale_price), 1, scale = 1/1000, suffix = "K"),
+    sep = " - ")
+  ) %>%
+  ungroup() %>%
+  mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
+  pivot_longer(c(stack_value, final_value), names_to = "name", values_to = "ratio") %>%
+  mutate(
+    name = fct_recode(
+      factor(name, levels = c("final_value", "stack_value")),
+      "Model Value" = "stack_value",
+      "Final Value" = "final_value"
+    )
+  )
+
+
+# Function to create decile plot based on a grouping variable
+decile_plot_ratio <- function(data, col_var) {
+  
+  data %>%
+    group_by({{col_var}}, decile_label) %>%
+    mutate(count = n()) %>%
+  ggplot() +
+    geom_boxplot(aes(x = ratio, color = name), outlier.alpha = 0.05) +
+    geom_text(
+      aes(x = 3, y = 0, label = count),
+      size = 3,
+      hjust = 1,
+      check_overlap = TRUE
+    ) +
+    scale_color_hue(name = "Ratio Type", direction = -1) +
+    facet_grid(
+      rows = vars(decile_label),
+      cols = vars({{col_var}}),
+      switch = "y"
+    ) +
+    xlim(0, 3) +
+    labs(x = "Sale Ratio", y = "") +
+    guides(color = guide_legend(reverse = TRUE)) +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      axis.title.x = element_text(margin = margin(t = 10), size = 10),
+      axis.text.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      strip.text = element_text(size = 12),
+      strip.text.y.left = element_text(angle = 0, hjust = 1),
+      strip.text.x = element_text(margin = margin(b = 10)),
+      panel.grid.minor = element_blank()
+    )
+}
+
+
+# Split into a separate decile plot for every 4 townships
+chunk <- function(x, n) split(x, sort(rank(x) %% n))
+towns <- sort(unique(decile_data_ratio$town_name))
+towns <- chunk(towns, ceiling(length(towns) / 4))
+
+lapply(towns, function(chunk) decile_plot_ratio(
+  decile_data_ratio %>% filter(town_name %in% chunk),
+  town_name
+))
+
+```
+
+<br>
+
+## Distribution of YoY Percent Change by Township by Prior Year Value Decile
+
+```{r yoy_decile, warning=FALSE, message=FALSE, results='hide'}
+# ratios for each decile
+decile_data_yoy <- pv_final_values %>%
+  filter(!is.na(yoy_pct_change), !is.na(prior_value)) %>%
+  mutate(
+    decile = ntile(prior_value, 10),
+    across(c(stack_value, final_value), ~ (.x - prior_value) / prior_value)
+  ) %>%
+  group_by(decile) %>%
+  mutate(decile_label = paste(
+    dollar(min(prior_value), 1, scale = 1/1000, suffix = "K"),
+    dollar(max(prior_value), 1, scale = 1/1000, suffix = "K"),
+    sep = " - ")
+  ) %>%
+  ungroup() %>%
+  mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
+  pivot_longer(c(stack_value, final_value), names_to = "name", values_to = "value") %>%
+  mutate(
+    name = fct_recode(
+      factor(name, levels = c("final_value", "stack_value")),
+      "Model Value" = "stack_value",
+      "Final Value" = "final_value"
+    )
+  )
+
+
+# Function to create decile plot based on a grouping variable
+decile_plot_yoy <- function(data, col_var) {
+  
+  data %>%
+    group_by({{col_var}}, decile_label) %>%
+    mutate(count = n()) %>%
+  ggplot() +
+    geom_boxplot(aes(x = value, color = name), outlier.alpha = 0.05) +
+    geom_text(
+      aes(x = 4, y = 0, label = count),
+      size = 3,
+      hjust = 1,
+      check_overlap = TRUE
+    ) +
+    scale_x_continuous(labels = scales::percent, limits = c(-1, 4)) +
+    scale_color_hue(name = "Ratio Type", direction = -1) +
+    facet_grid(
+      rows = vars(decile_label),
+      cols = vars({{col_var}}),
+      switch = "y"
+    ) +
+    labs(x = "YoY % Change", y = "") +
+    guides(color = guide_legend(reverse = TRUE)) +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      axis.title.x = element_text(margin = margin(t = 10), size = 10),
+      axis.text.y = element_blank(),
+      axis.text.x = element_text(angle = -45, hjust = 0),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      strip.text = element_text(size = 12),
+      strip.text.y.left = element_text(angle = 0, hjust = 1),
+      strip.text.x = element_text(margin = margin(b = 10)),
+      panel.grid.minor = element_blank()
+    )
+}
+
+
+# Split into a separate decile plot for every 4 townships
+chunk <- function(x, n) split(x, sort(rank(x) %% n))
+towns <- sort(unique(decile_data_yoy$town_name))
+towns <- chunk(towns, ceiling(length(towns) / 4))
+
+lapply(towns, function(chunk) decile_plot_yoy(
+  decile_data_yoy %>% filter(town_name %in% chunk),
+  town_name
+))
+
+
+```
+
+<br>
+
+## Spatial Distribution of Largest YoY Changes
+
+```{r outlier_map, message=FALSE}
+# Create a township level map showing the location of individual outliers from
+# the ratio plot above
+
+pv_final_values %>%
+  filter(!is.infinite(yoy_pct_change)) %>%
+  mutate(
+    dir = ifelse(yoy_pct_change > 0, "Increase", "Decrease"),
+    outlier = is_outlier(
+      yoy_pct_change,
+      method = "quantile",
+      probs = c(0.01, 0.995),
+      na.rm = TRUE
+    )
+  ) %>%
+  filter(outlier) %>%
+  mutate(decile_label = cut(
+    x = yoy_pct_change,
+    breaks = c(-1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, Inf),
+    labels = c(
+      "-100% to -50%", "-50% to 0%", "0% to 50%", "50% to 100%",
+      "100% to 150%", "150% to 200%", "200% to 250%", "250% to 300%",
+      "300% to 350%", "350% to 400%", "400%+"
+    )
+  )) %>%
+  ungroup() %>%
+  st_as_sf(coords = c("geo_longitude", "geo_latitude"), crs = 4326) %>%
+ggplot() +
+  geom_sf(data = town_shp) +
+  geom_sf(
+    aes(geometry = geometry, color = fct_rev(decile_label)),
+    size = 0.7,
+    alpha = 0.7
+  ) +
+  guides(color = guide_legend(title = "YoY % Change")) +
+  facet_wrap(vars(dir)) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 12)
+  )
+
+```
