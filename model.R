@@ -456,7 +456,7 @@ sm_final_fit <- stack_model(
     "cat" = cat_wflow_final_fit %>% pull_workflow_prepped_recipe()
   ),
   meta_spec = sm_meta_model,
-  meta_keep_vars = "meta_town_code",
+  meta_group_vars = "meta_town_code",
   data = train
 )
 
