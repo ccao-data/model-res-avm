@@ -67,9 +67,9 @@ test_summary <- test_res %>%
     count = n(),
     prop = n() / nrow(.),
     across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    final = ccao_cod(stack / meta_sale_price)$COD,
-    final_prd = ccao_prd(stack, meta_sale_price)$PRD,
-    final_prb = ccao_prb(stack, meta_sale_price)$PRB,
+    final = ccao_cod(stack / meta_sale_price, suppress = TRUE)$COD,
+    final_prd = ccao_prd(stack, meta_sale_price, suppress = TRUE)$PRD,
+    final_prb = ccao_prb(stack, meta_sale_price, suppress = TRUE)$PRB,
     final_med_ratio = median(
       (stack / meta_sale_price)[
         !assessr::is_outlier(stack / meta_sale_price, method = "quantile")
