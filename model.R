@@ -37,8 +37,8 @@ tictoc::tic(msg = "Full Modeling Complete!")
 set.seed(27)
 
 # Toggle cross validation and set number of folds to use
-cv_enable <- as.logical(model_get_env("R_CV_ENABLE", FALSE))
-cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", FALSE))
+cv_enable <- as.logical(model_get_env("R_CV_ENABLE", TRUE))
+cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", TRUE))
 cv_num_folds <- as.numeric(model_get_env("R_CV_NUM_FOLDS", 5))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 10, seed = 27)
 
@@ -57,24 +57,26 @@ mod_predictors <- ccao::vars_dict %>%
   filter(var_is_predictor) %>%
   pull(var_name_standard) %>%
   unique() %>%
-  na.omit() %>%
-  append(c("walk_score"))
+  na.omit()
+
+
+#crime <- read.csv("crime_rates.csv") %>% 
+  #select(geo_geoid, year, crime_rate)
+
+
 
 # Load the full set of training data, keep only good, complete observations
 # Arrange by sale date in order to facilitate out-of-time sampling/validation
 full_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
-  arrange(meta_sale_date)
+  arrange(meta_sale_date) %>%
+  mutate(year = str_sub(meta_sale_date, 1, 4))
 
-walkscore <- read.dbf("BGs_MSAs_174186_032013.dbf") %>% 
-  filter(grepl("^17031", geoid2)) %>%
-  mutate(geo_geoid = str_sub(geoid2, 1, 11)) %>%
-  select(geo_geoid, SSWS2USE) %>%
-  group_by(geo_geoid) %>%
-  summarize(walk_score = mean(SSWS2USE))
+df <- merge(full_data, crime, by.x=c("year", "geo_geoid"), by.y = c("year", "geo_geoid"))
 
-full_data_with_walkscore <- inner_join(full_data, walkscore, on = "geo_geoid")
-full_data <- full_data_with_walkscore
+#full_data <- df %>% select(-crime_rate)
+
+
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are

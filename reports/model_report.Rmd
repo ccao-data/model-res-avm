@@ -44,7 +44,7 @@ report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 
 ```{r summary, message=FALSE}
 # Load test set results
-test_res <- read_parquet(here("output", "data", "testdata.parquet")) %>%
+test_res <- read_parquet(here("output", "data", "testdata_chicago_retuned.parquet")) %>%
   mutate(
     town_name = town_convert(meta_town_code),
     triad = factor(
@@ -59,6 +59,8 @@ test_res <- test_res %>%
   filter(triad == report_triad)
 }
 
+test_res <- test_res %>% filter(!town_name %in% c("Leyden", "Maine"))
+
 # Summarize test set results by township
 test_summary <- test_res %>%
   group_by(town_name) %>%
@@ -67,7 +69,7 @@ test_summary <- test_res %>%
     count = n(),
     prop = n() / nrow(.),
     across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    final = ccao_cod(stack / meta_sale_price)$COD,
+    final = ccao_cod(stack / meta_sale_price, suppress=T)$COD,
     final_prd = ccao_prd(stack, meta_sale_price)$PRD,
     final_prb = ccao_prb(stack, meta_sale_price)$PRB,
     final_med_ratio = median(
