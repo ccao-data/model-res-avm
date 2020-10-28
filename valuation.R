@@ -128,3 +128,6 @@ rmarkdown::render(
   input = here("reports", "valuation_report.Rmd"),
   output_file = here("output", "reports", "valuation_report.html")
 )
+
+# Stop full script timer
+tictoc::toc()
