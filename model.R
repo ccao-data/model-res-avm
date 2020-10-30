@@ -37,8 +37,8 @@ tictoc::tic(msg = "Full Modeling Complete!")
 set.seed(27)
 
 # Toggle cross validation and set number of folds to use
-cv_enable <- as.logical(model_get_env("R_CV_ENABLE", TRUE))
-cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", TRUE))
+cv_enable <- as.logical(model_get_env("R_CV_ENABLE", FALSE))
+cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", FALSE))
 cv_num_folds <- as.numeric(model_get_env("R_CV_NUM_FOLDS", 5))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 10, seed = 27)
 
@@ -57,7 +57,16 @@ mod_predictors <- ccao::vars_dict %>%
   filter(var_is_predictor) %>%
   pull(var_name_standard) %>%
   unique() %>%
-  na.omit()
+  na.omit() %>%
+  append(c("elem_district", "hs_district"))
+
+#download model data from ingest script
+#make feature
+#append name to list of mod_predictors
+#check data
+#change name of test data
+#change name of report
+#change name of test data in markdown
 
 
 #crime <- read.csv("crime_rates.csv") %>% 
@@ -65,16 +74,76 @@ mod_predictors <- ccao::vars_dict %>%
 
 
 
+#df <- merge(full_data, crime, by.x=c("year", "geo_geoid"), by.y = c("year", "geo_geoid"))
+
+# create factor variable for elementary school attendance boundaries
+
+unit_districts <- read_sf("https://opendata.arcgis.com/datasets/1e2f499e494744afb4ebae3a61d6e123_16.geojson") %>%
+  filter(MAX_AGENCY_DESC != "BOARD OF EDUCATION") %>%
+  select(MAX_AGENCY_DESC, geometry)
+
+cook_elem <- read_sf("https://opendata.arcgis.com/datasets/cbcf6b1c3aaa420d90ccea6af877562b_2.geojson") %>% 
+  rename(elem_district = AGENCY_DESCRIPTION) %>%
+  select(elem_district, geometry)
+
+cook_hs <- read_sf("https://opendata.arcgis.com/datasets/0657c2831de84e209863eac6c9296081_6.geojson") %>% 
+  rename(hs_district = AGENCY_DESC) %>%
+  select(hs_district, geometry)
+
+chi_elem <- read_sf("https://data.cityofchicago.org/resource/mvv3-naxt.geojson") %>%
+  rename(elem_district = school_nm) %>%
+  select(elem_district, geometry)
+
+chi_hs <- read_sf("https://data.cityofchicago.org/resource/94tp-gppc.geojson") %>%
+  rename(hs_district = school_nm) %>%
+  select(hs_district, geometry)
+
+elem <- unique(rbind(chi_elem, cook_elem, unit_districts %>% rename(elem_district = MAX_AGENCY_DESC))) %>%
+  st_as_sf(crs = 4326, agr = "constant") %>%
+  st_transform(32616)
+
+hs <- unique(rbind(chi_hs, cook_hs, unit_districts %>% rename(hs_district = MAX_AGENCY_DESC))) %>%
+  st_as_sf(crs = 4326, agr = "constant") %>%
+  st_transform(32616)
+
 # Load the full set of training data, keep only good, complete observations
 # Arrange by sale date in order to facilitate out-of-time sampling/validation
 full_data <- read_parquet(here("input", "modeldata.parquet")) %>%
-  filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
-  arrange(meta_sale_date) %>%
-  mutate(year = str_sub(meta_sale_date, 1, 4))
+  filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude))
 
-df <- merge(full_data, crime, by.x=c("year", "geo_geoid"), by.y = c("year", "geo_geoid"))
+full_data <- full_data %>%
+  mutate(geo_longitude_copy = geo_longitude,
+         geo_latitude_copy = geo_latitude) %>%
+  st_as_sf(coords = c("geo_longitude_copy", "geo_latitude_copy"), crs = 4326, agr = "constant") %>%
+  st_transform(32616) %>%
+  st_join(elem["elem_district"]) %>%
+  st_join(hs["hs_district"]) %>%
+  #mutate(elem_district = ifelse(is.na(elem_district), meta_nbhd_med, elem_district),
+         #hs_district = ifelse(is.na(hs_district), meta_nbhd_med, hs_district)) %>%
+  as_tibble() %>%
+  select(-geometry) %>%
+  mutate(elem_district = ifelse(is.na(elem_district), "GALE", elem_district), # deal with unassigned PIN
+         hs_district = ifelse(is.na(hs_district), "SULLIVAN HS", hs_district))
+#https://www.greatschools.org/search/search.page?lat=42.0196797&locationLabel=7617%20N%20Eastlake%20Terrace%2C%20Chicago%2C%20IL%2060626%2C%20USA&locationType=street_address&lon=-87.66405950000001&st=public_charter&st=public&st=charter&state=IL
 
+# mean encoding
+elem_means <- full_data %>%
+  group_by(elem_district) %>%
+  summarize(elem_avg_sale = mean(meta_sale_price))
+
+hs_means <- full_data %>%
+  group_by(hs_district) %>%
+  summarize(hs_avg_sale = mean(meta_sale_price))
+
+full_data <- inner_join(elem_means, as_tibble(full_data), by="elem_district")
+full_data <- inner_join(hs_means, as_tibble(full_data), by="hs_district") %>% 
+  arrange(meta_sale_date)
+
+
+sum(is.na(full_data$elem_district))
+sum(is.na(full_data$hs_district))
 #full_data <- df %>% select(-crime_rate)
+
 
 
 
@@ -122,7 +191,7 @@ enet_params_path <- here("output", "params", "enet_params.rds")
 
 # Setup basic ElasticNet model specification
 enet_model <- linear_reg(penalty = 1e-7, mixture = 0.16) %>%
-  set_engine("glmnet") %>%
+  set_engine("lm") %>%
   set_mode("regression")
 
 # Define basic ElasticNet model workflow
@@ -137,6 +206,11 @@ enet_wflow <- workflow() %>%
 enet_wflow_final_fit <- enet_wflow %>%
   fit(data = train)
 
+#significance_summary <- enet_wflow_final_fit %>%
+  #pull_workflow_fit %>%
+  #tidy()
+
+#for (i in c(1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2))
 # Remove unnecessary objects
 rm_intermediate("enet")
 
@@ -490,8 +564,7 @@ test %>%
     )
   ) %>%
   bind_cols(predict(sm_final_fit, test)) %>%
-  write_parquet(here("output", "data", "testdata.parquet"))
-
+  write_parquet(here("output", "data", "testdata_school_boundaries_factor.parquet"))
 
 ### Step 3 - Create finalized assessment model
 
@@ -529,7 +602,7 @@ sm_final_full_fit %>%
 # Generate modeling diagnostic/performance report
 rmarkdown::render(
   input = here("reports", "model_report.Rmd"),
-  output_file = here("output", "reports", "model_report.html")
+  output_file = here("output", "reports", "model_report_school_boundaries_factor.html")
 )
 
 # Stop all timers and write CV timers to file
