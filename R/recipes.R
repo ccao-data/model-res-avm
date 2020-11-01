@@ -19,7 +19,7 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
       all_predictors(), all_outcomes()
     ) %>%
     step_log(
-      all_outcomes(), ends_with("_sf"), contains("income"),
+      all_outcomes(), ends_with("_sf"), contains("income"), contains("meta_nbhd_"),
       offset = 1
     ) %>%
     step_nzv(
