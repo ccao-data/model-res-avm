@@ -587,4 +587,3 @@ if (file.exists(model_timings_path)) {
     )
 }
 ```
-

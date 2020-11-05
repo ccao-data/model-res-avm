@@ -264,7 +264,7 @@ lgbm_wflow <- workflow() %>%
 
 # Begin CV tuning if enabled
 if (cv_enable) {
-
+  
   # Create param search space for lgbm
   lgbm_params <- lgbm_model %>%
     parameters() %>%
@@ -277,7 +277,7 @@ if (cv_enable) {
       learn_rate = learn_rate(c(-3, -0.3)),
       sample_size = sample_prop()
     )
-
+  
   # Use Bayesian tuning to find best performing params
   tictoc::tic(msg = "LightGBM CV model fitting complete!")
   lgbm_search <- tune_bayes(
@@ -290,19 +290,19 @@ if (cv_enable) {
   )
   tictoc::toc(log = TRUE)
   beepr::beep(2)
-
+  
   # Save tuning results to file
   if (cv_write_params) {
     lgbm_search %>%
       model_axe_tune_data() %>%
       saveRDS(lgbm_params_path)
   }
-
+  
   # Choose the best model that minimizes RMSE
   lgbm_final_params <- select_best(lgbm_search, metric = "rmse")
   
 } else {
-
+  
   # If no CV, load best params from file if exists, otherwise use defaults
   if (file.exists(lgbm_params_path)) {
     lgbm_final_params <- select_best(readRDS(lgbm_params_path), metric = "rmse")
