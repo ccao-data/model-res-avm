@@ -50,7 +50,9 @@ cv_control <- control_bayes(verbose = TRUE, no_improve = 10, seed = 27)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # List of variables that uniquely identify each structure
-mod_id_vars <- c("meta_pin", "meta_class", "meta_multi_code")
+mod_id_vars <- c(
+  "meta_pin", "meta_class", "meta_multi_code", "meta_document_num"
+)
 
 # Get the full list of right-hand side predictors from ccao::vars_dict
 mod_predictors <- ccao::vars_dict %>%

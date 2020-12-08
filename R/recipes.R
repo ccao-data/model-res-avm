@@ -12,7 +12,9 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
     # Preprocessing for all predictors and outcome
     step_unknown(all_nominal(), -has_role("id")) %>%
     step_other(
-      all_nominal(), -has_role("id"), -any_of(c("meta_town_code", "meta_nbhd")),
+      all_nominal(), -has_role("id"), 
+      -any_of(c("meta_town_code", "meta_nbhd")),
+      -starts_with("geo_school_"),
       threshold = 0.005
     ) %>%
     step_naomit(
@@ -21,10 +23,6 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
     step_log(
       all_outcomes(), ends_with("_sf"), contains("income"), contains("meta_nbhd_"),
       offset = 1
-    ) %>%
-    step_nzv(
-      all_predictors(), -all_outcomes(), -has_role("id"),
-      unique_cut = 0.05
     ) %>%
     step_corr(
       all_numeric(), -all_outcomes(), -has_role("id"), 
