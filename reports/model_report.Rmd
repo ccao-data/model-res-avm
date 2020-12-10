@@ -42,7 +42,7 @@ report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
-```{r summary, message=FALSE}
+```{r summary, message=FALSE, warning=FALSE}
 # Load test set results
 test_res <- read_parquet(here("output", "data", "testdata.parquet")) %>%
   mutate(
@@ -496,10 +496,10 @@ param_headers <- htmltools::withTags(table(
     tr(
       th(rowspan = 2, "Model"),
       th(rowspan = 2, "Iters"),
-      th(colspan = 7, "Parameters"),
+      th(colspan = 6, "Parameters"),
     ),
     tr(
-      th("mtry"), th("trees"), th("min_n"), th("tree_depth"),
+      th("mtry"), th("min_n"), th("tree_depth"),
       th("learn_rate"), th("loss_reduction"), th("sample_size")
     )
   )
@@ -527,7 +527,7 @@ model_results %>%
       info = FALSE
     )
   ) %>%
-  formatRound(c(7:9), digits = 4)
+  formatRound(c(6:8), digits = 4)
 
 ```
 

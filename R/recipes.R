@@ -17,8 +17,10 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
       -starts_with("geo_school_"),
       threshold = 0.005
     ) %>%
+    # Omitting missing observations will be skipped when baking on new data
     step_naomit(
-      all_predictors(), all_outcomes()
+      all_predictors(), all_outcomes(),
+      skip = TRUE
     ) %>%
     step_log(
       all_outcomes(), ends_with("_sf"), contains("income"), contains("meta_nbhd_"),

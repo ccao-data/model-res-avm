@@ -143,7 +143,7 @@ xgb_params_path <- here("output", "params", "xgb_params.rds")
 
 # Initialize xgboost model specification
 xgb_model <- boost_tree(
-  trees = tune(), tree_depth = tune(), min_n = tune(),
+  trees = 1500, tree_depth = tune(), min_n = tune(),
   loss_reduction = tune(), sample_size = tune(), 
   mtry = tune(), learn_rate = tune()
 ) %>%
@@ -168,7 +168,7 @@ if (cv_enable) {
   xgb_params <- xgb_model %>%
     parameters() %>%
     update(
-      trees = trees(range = c(500, 1500)),
+      # trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
       min_n = min_n(),
       tree_depth = tree_depth(c(3L, 12L)),
@@ -227,7 +227,7 @@ xgb_wflow_final_full_fit <- xgb_wflow %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-rm_intermediate("xgb")
+# rm_intermediate("xgb")
 
 
 
@@ -244,7 +244,7 @@ lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 # Initialize lightbgm model specification
 # Note that categorical vars must be explicitly specified for lightgbm
 lgbm_model <- boost_tree(
-  trees = tune(), tree_depth = tune(), min_n = tune(),
+  trees = 1500, tree_depth = tune(), min_n = tune(),
   loss_reduction = tune(), sample_size = tune(),
   mtry = tune(), learn_rate = tune()
 ) %>%
@@ -271,7 +271,7 @@ if (cv_enable) {
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
-      trees = trees(range = c(500, 1500)),
+      # trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
       min_n = min_n(),
       tree_depth = tree_depth(c(3L, 12L)),
@@ -330,7 +330,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-rm_intermediate("lgbm")
+# rm_intermediate("lgbm")
 
 
 
@@ -348,7 +348,7 @@ cat_params_path <- here("output", "params", "cat_params.rds")
 # treesnip CatBoost implementation detects categorical columns automatically
 # https://github.com/curso-r/treesnip/blob/master/R/catboost.R#L237 
 cat_model <- boost_tree(
-  trees = tune(), tree_depth = tune(), min_n = tune(),
+  trees = 1500, tree_depth = tune(), min_n = tune(),
   sample_size = tune(), mtry = tune(), learn_rate = tune()
 ) %>%
   set_engine("catboost") %>%
@@ -370,7 +370,7 @@ if (cv_enable) {
   cat_params <- cat_model %>%
     parameters() %>%
     update(
-      trees = trees(range = c(500, 1500)),
+      # trees = trees(range = c(500, 1500)),
       mtry = mtry(c(5L, floor(train_p / 3))),
       min_n = min_n(),
       tree_depth = tree_depth(c(3L, 12L)),
@@ -428,7 +428,7 @@ cat_wflow_final_full_fit <- cat_wflow %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-rm_intermediate("cat")
+# rm_intermediate("cat")
 
 
 
