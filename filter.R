@@ -24,27 +24,13 @@ source("R/valuation_funs.R")
 ##### Valuation ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Load the final stacked model object from file
-sm_final_full_fit <- model_load(here("output", "models", "stacked_model.zip"))
+# Load the final LightGBM model object and recipe from file
+lgbm_final_full_fit <- model_load(here("output", "models", "lgbm_model.zip"))
+lgbm_final_full_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
-# Get all arms-length sales
+# Get all arms-length sales and clean up some string cols
 sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length) %>%
-  mutate(
-    meta_pin = str_pad(meta_pin, 14, "left", "0"),
-    meta_class = str_pad(meta_class, 3, "left", "0"),
-    meta_multi_code = as.character(meta_multi_code)
-  )
-
-# Get predicted values for all sales
-sales_preds <- bind_cols(
-  bake(sm_final_full_fit$recipes$lgbm, sales_data, has_role("id")), 
-  predict(
-    object = sm_final_full_fit,
-    new_data = sales_data,
-    prepped_recipe = sm_final_full_fit$recipes$lgbm
-  )
-) %>%
   mutate(
     meta_pin = str_pad(meta_pin, 14, "left", "0"),
     meta_class = str_pad(meta_class, 3, "left", "0"),
@@ -52,15 +38,14 @@ sales_preds <- bind_cols(
     meta_document_num = str_pad(meta_document_num, 11, "left", "0")
   )
 
-# Join predicted values back onto the sales data and cleanup
+# Get predicted values from the saved model and recipe
 sales_data <- sales_data %>%
-  left_join(
-    sales_preds,
-    by = c("meta_pin", "meta_class", "meta_multi_code", "meta_document_num")
-  ) %>%
   mutate(
-    meta_nbhd = str_pad(meta_nbhd, 3, "left", "0"),
-    meta_sale_price = na_if(meta_sale_price, 0)
+    lgbm = model_predict(
+      spec = lgbm_final_full_fit,
+      recipe = lgbm_final_full_recipe,
+      data = .
+    )
   )
 
 
@@ -76,7 +61,7 @@ sales_filtered <- sales_data %>%
     meta_pin, meta_document_num, meta_class, meta_year, meta_town_code, meta_nbhd, 
     geo_property_address, geo_property_apt_no, geo_property_city, geo_property_zip,
     geo_longitude, geo_latitude,
-    model_value = stack, meta_sale_price, meta_nbhd_avg
+    model_value = lgbm, meta_sale_price, meta_nbhd_avg
   ) %>%
   
   # Calculate ratios
