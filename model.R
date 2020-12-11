@@ -89,11 +89,7 @@ train_recipe <- mod_recp_prep(
 # Extract number of cols used in model (P) and categorical column names
 juiced_train <- juice(prep(train_recipe)) %>% 
   select(-any_of(c(mod_id_vars, "meta_sale_price")))
-
 train_p <- ncol(juiced_train)
-train_cat_vars <- juiced_train %>%
-  select(where(is.factor)) %>%
-  colnames()
 
 # Remove unnecessary data
 rm(time_split, juiced_train); gc()
@@ -228,7 +224,7 @@ xgb_wflow_final_full_fit <- xgb_wflow %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-# rm_intermediate("xgb")
+rm_intermediate("xgb")
 
 
 
@@ -243,7 +239,8 @@ xgb_wflow_final_full_fit <- xgb_wflow %>%
 lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 
 # Initialize lightbgm model specification
-# Note that categorical vars must be explicitly specified for lightgbm
+# Note that categorical columns (factors) are detected automatically by
+# treesnip implementation
 lgbm_model <- boost_tree(
   trees = 1500, tree_depth = tune(), min_n = tune(),
   loss_reduction = tune(), sample_size = tune(),
@@ -253,7 +250,6 @@ lgbm_model <- boost_tree(
   set_mode("regression") %>%
   set_args(
     num_threads = num_threads,
-    categorical_feature = train_cat_vars,
     verbose = -1 
   )
 
@@ -331,7 +327,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-# rm_intermediate("lgbm")
+rm_intermediate("lgbm")
 
 
 
@@ -429,7 +425,7 @@ cat_wflow_final_full_fit <- cat_wflow %>%
   fit(data = full_data)
 
 # Remove unnecessary objects
-# rm_intermediate("cat")
+rm_intermediate("cat")
 
 
 
