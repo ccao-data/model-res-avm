@@ -61,7 +61,7 @@ postval_model <- function(data, truth, class, estimate, med_adj_cols, townhome_a
   townhome_adjustments <- data %>%
     val_townhomes_by_group(
       class = meta_class,
-      estimate = stack,
+      estimate = {{estimate}},
       townhome_adj_cols = townhome_adj_cols
     ) %>%
     ungroup()

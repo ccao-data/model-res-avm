@@ -46,14 +46,9 @@ model_axe_recipe <- function(x) {
 }
 
 
-# Strip unnecessary data from final model object that isn't needed for predict()
-model_axe_stack <- function(model) {
-  
-  model$recipes <- map(model$recipes , model_axe_recipe)
-  model$meta_spec <- butcher::butcher(model$meta_spec)
-  model$meta_recipe <- model_axe_recipe(model$meta_recipe)
-  
-  return(model)
+# Return prediction from a model and recipe
+model_predict <- function(spec, recipe, data) {
+  exp(predict(spec, new_data = bake(recipe, data, all_predictors()))$.pred)
 }
 
 
@@ -63,12 +58,12 @@ model_axe_stack <- function(model) {
 model_save <- function(model, zipfile) {
   
   file_lgbm <- file.path(tempdir(), "lgbm.model")
-  lightgbm::lgb.save(model$spec$lgbm$fit, file_lgbm)
-  model$specs$lgbm$fit <- NULL
+  lightgbm::lgb.save(model$fit, file_lgbm)
+  model$fit <- NULL
   
   file_meta <- file.path(tempdir(), "meta.model")
   saveRDS(model, file_meta)
-
+  
   zip::zipr(zipfile, files = c(file_meta, file_lgbm))
 }
 
@@ -79,84 +74,7 @@ model_load <- function(zipfile) {
   zip::unzip(zipfile, exdir = ex_dir)
   
   model <- readRDS(file.path(ex_dir, "meta.model"))
-  model$specs$lgbm$fit <- lightgbm::lgb.load(file.path(ex_dir, "lgbm.model"))
+  model$fit <- lightgbm::lgb.load(file.path(ex_dir, "lgbm.model"))
   
   return(model)
 }
-
-
-# Return prediction from a model and recipe
-model_predict <- function(spec, recipe, data) {
-  exp(predict(spec, new_data = bake(recipe, data, all_predictors()))$.pred)
-}
-
-
-# Create a stacked model object containing each fitted model, its corresponding
-# recipe, a metamodel, and the training data
-stack_model <- function(specs, recipes, meta_spec, meta_group_vars = NULL, data) {
-  
-  # Check that names match for specs and recipes
-  stopifnot(
-    all(names(specs) %in% names(recipes)),
-    all(names(recipes) %in% names(specs))
-  )
-
-  # Get fits for all specs
-  meta_train_fits <- pmap(list(specs, recipes), ~ model_predict(.x, .y, data))
-  
-  # Create a recipe for the meta model
-  meta_recipe <- stack_recp_prep(
-    bind_cols(meta_train_fits, data),
-    group_vars = c(names(specs), meta_group_vars)
-  )
- 
-  # Prep the data for fitting in the meta model
-  prepped <- prep(meta_recipe)
-  x <- juice(prepped, all_predictors())
-  y <- juice(prepped, all_outcomes())
-  
-  # Fit the meta model on the predictions of the other specs + town_code
-  meta_fit <-  fit_xy(meta_spec, x = x, y = y)
-  
-  # Prep meta recipe for export with model and remove training data
-  meta_recipe_prepped <- prep(meta_recipe, retain = FALSE)
-  meta_recipe_prepped$template <- NULL
-  
-  # Return original specs, recipes, and meta fit + recipe
-  meta <- list(
-    specs = specs,
-    recipes = recipes,
-    meta_fit = meta_fit,
-    meta_recipe = meta_recipe_prepped
-  )
-  class(meta) <- "stack_model"
-  
-  return(meta)
-}
-
-
-# S3 predict method for stack model object
-predict.stack_model <- function(object, new_data, prepped_recipe = NULL) {
-  
-  # Predict on new data using previously fitted specs
-  new_preds <- pmap(
-    list(object$specs, object$recipes), ~ model_predict(.x, .y, new_data)
-  )
-  
-  # Run an optional recipe to preprocess new_data. This is useful as sometimes
-  # the number of rows in new_preds will be different from the number in new_data
-  # as applying recipes will remove rows with NAs
-  if (!is.null(prepped_recipe)) {
-    new_data <- bake(prepped_recipe, new_data)
-  }
-
-  # Get predictions from the stacked model using predictions as inputs
-  stack_preds <- exp(predict(
-    object$meta_fit,
-    bake(object$meta_recipe, bind_cols(new_preds, new_data), all_predictors())
-  ))
-  
-  # Output other model predictions + stacked predictions in a single list
-  c(new_preds, stack = list(stack_preds$.pred))
-}
-

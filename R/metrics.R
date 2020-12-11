@@ -28,7 +28,7 @@ codm.data.frame <- function(data, truth, estimate, na_rm = TRUE, ...) {
 codm_vec <- function(truth, estimate, na_rm = TRUE, ...) {
   
   codm_impl <- function(truth, estimate) {
-    assessr::cod(estimate / truth)
+    assessr::cod(exp(estimate) / exp(truth))
   }
   
   metric_vec_template(
@@ -40,3 +40,4 @@ codm_vec <- function(truth, estimate, na_rm = TRUE, ...) {
     ...
   )
 }
+

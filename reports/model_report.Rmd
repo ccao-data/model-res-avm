@@ -17,6 +17,7 @@ library(DT)
 library(forcats)
 library(ggplot2)
 library(here)
+library(lubridate)
 library(purrr)
 library(recipes)
 library(scales)
@@ -24,7 +25,6 @@ library(sf)
 library(stringr)
 library(tidyr)
 library(tune)
-source(here("R", "model_funs.R"))
 
 # Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
@@ -40,6 +40,19 @@ report_filter <- as.logical(ifelse(
 # Triad to use for report. Set with system variable else param defined in yaml
 report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
+```
+
+```{r timing}
+# Print total training time if timings file exists
+model_timings_path <- here("output", "params", "model_timings.rds")
+if (file.exists(model_timings_path)) {
+  readRDS(model_timings_path) %>%
+    filter(model == "lightgbm") %>%
+    pull(elapsed) %>% round(0) %>%
+    seconds_to_period() %>%
+    paste("Model took", ., "to train") %>%
+    cat()
+}
 ```
 
 ```{r summary, message=FALSE, warning=FALSE}
@@ -66,23 +79,22 @@ test_summary <- test_res %>%
     med_sp = median(meta_sale_price),
     count = n(),
     prop = n() / nrow(.),
-    across(enet:stack, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    final = ccao_cod(stack / meta_sale_price, suppress = TRUE)$COD,
-    final_prd = ccao_prd(stack, meta_sale_price, suppress = TRUE)$PRD,
-    final_prb = ccao_prb(stack, meta_sale_price, suppress = TRUE)$PRB,
+    across(enet:lgbm, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
+    final_cod = ccao_cod(lgbm / meta_sale_price, suppress = TRUE)$COD,
+    final_prd = ccao_prd(lgbm, meta_sale_price, suppress = TRUE)$PRD,
+    final_prb = ccao_prb(lgbm, meta_sale_price, suppress = TRUE)$PRB,
     final_med_ratio = median(
-      (stack / meta_sale_price)[
-        !assessr::is_outlier(stack / meta_sale_price, method = "quantile")
+      (lgbm / meta_sale_price)[
+        !assessr::is_outlier(lgbm / meta_sale_price, method = "quantile")
       ]
     )
   ) %>%
   mutate(
-    final_cod_met = cod_met(round(final, 2)),
+    final_cod_met = cod_met(round(final_cod, 2)),
     final_prd_met = prd_met(round(final_prd, 2)),
     final_prb_met = prb_met(round(final_prb, 2))
   ) %>%
-  arrange(final) %>%
-  rename_with(~ gsub("_cod", "", .x), c(ends_with("_cod")))
+  arrange(final_cod)
 
 # Create a container with custom column headers for model summary table
 headers <- htmltools::withTags(table(
@@ -93,13 +105,11 @@ headers <- htmltools::withTags(table(
       th(rowspan = 2, "Median Sale Price"),
       th(rowspan = 2, "Number of Sales"),
       th(rowspan = 2, "Proportion of Total Sales"),
-      th(rowspan = 2, "Baseline (enet)"),
-      # th(colspan = 3, "Stacked Models"),
-      th(rowspan = 2, "Stack Result"),
+      th(rowspan = 2, "Linear (Baseline)"),
+      th(rowspan = 2, "Raw Model"),
       th(colspan = 4, "Final Model Stats")
     ),
     tr(
-      # th("xgb"), th("lgbm"), th("cat"),
       th("COD"), th("PRD"), th("PRB"), th("Med. Ratio")
     )
   )
@@ -107,7 +117,6 @@ headers <- htmltools::withTags(table(
 
 # Create an interactive table of the test set results by township
 test_summary %>%
-  select(-any_of(c("xgb", "lgbm", "cat"))) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -128,7 +137,7 @@ test_summary %>%
   formatPercentage(4, digits = 1) %>%
   formatRound(c(5:10)) %>%
   formatStyle(  
-    c("final", "final_prd", "final_prb"),
+    c("final_cod", "final_prd", "final_prb"),
     c("final_cod_met", "final_prd_met", "final_prb_met"),
     backgroundColor = styleEqual(
       c(0, 1),
@@ -143,11 +152,12 @@ test_summary %>%
 
 ```{r map}
 # Vector of model name order (in the order run in model.R)
-model_order <- c("enet", "xgb", "lgbm", "cat", "stack", "final")
+model_order <- c("enet", "lgbm", "final")
 
 # Generate township-level map of COD
 test_summary %>%
-  pivot_longer(c(enet:stack, final)) %>%
+  rename(enet = enet_cod, lgbm = lgbm_cod, final = final_cod) %>%
+  pivot_longer(c(enet, lgbm, final)) %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
   mutate(name = factor(name, levels = model_order)) %>%
@@ -157,7 +167,7 @@ ggplot() +
   facet_wrap(vars(name)) +
   theme_void() +
   theme(
-    strip.text = element_text(size = 12, margin = margin(b = 3))
+    strip.text = element_text(size = 14, margin = margin(b = 3))
   )
 ```
 
@@ -169,10 +179,10 @@ ggplot() +
 
 # Load the saved model from file so we can use its recipe to extract the 
 # modeling variables
-sm_final_full_fit <- model_load(here("output", "models", "stacked_model.zip"))
+lgbm_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
 # Get the predictors used in the model and rename them to human-readable
-test_vars <- bake(sm_final_full_fit$recipes$lgbm, test_res, all_predictors()) %>%
+test_vars <- bake(lgbm_recipe, test_res, all_predictors()) %>%
   vars_rename(names_from = "standard", names_to = "pretty") %>%
   rename(
     "Age" = char_age_poly_1, "Age ^ 2" = char_age_poly_2,
@@ -201,7 +211,7 @@ tibble(
 decile_data <- test_res %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
-    across(enet:stack, ~ .x / meta_sale_price)
+    across(enet:lgbm, ~ .x / meta_sale_price)
   ) %>%
   group_by(decile) %>%
   mutate(decile_label = paste(
@@ -211,7 +221,7 @@ decile_data <- test_res %>%
   ) %>%
   ungroup() %>%
   mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
-  pivot_longer(enet:stack, names_to = "model", values_to = "ratio") %>%
+  pivot_longer(enet:lgbm, names_to = "model", values_to = "ratio") %>%
   mutate(model = factor(model, levels = model_order))
 
 # Function to create decile plot based on a grouping variable
@@ -274,19 +284,19 @@ decile_plot(decile_data, model)
 
 ---
 
-## Overall Ratio Distribution (Stack Model Pred. / Sale Price)
+## Overall Ratio Distribution (Model Pred. / Sale Price)
 
 ```{r outlier_dist, warning=FALSE, message=FALSE}
 # Get the overall distribution for stack model trimmed and untrimmed
 outlier_dist <- test_res %>%
   group_by(town_name) %>%
   mutate(
-    outlier = is_outlier(stack / meta_sale_price, method = "quantile"),
+    outlier = is_outlier(lgbm / meta_sale_price, method = "quantile"),
     trimmed = "Trimmed"
   ) %>%
   filter(!outlier) %>%
   bind_rows(test_res %>% mutate(trimmed = "Not Trimmed")) %>%
-  mutate(ratio = stack / meta_sale_price) 
+  mutate(ratio = lgbm / meta_sale_price) 
 
 # Find 1st and 99th percentile for trimmed and untrimmed ratios
 quantiles <- outlier_dist %>%
@@ -374,7 +384,7 @@ outlier_dist %>%
   ) %>%
   select(
     Trimmed = trimmed, Township = town_name, PIN = meta_pin, Address, 
-    `Stacked Model` = stack, `Sale Price` = meta_sale_price, Ratio = ratio, meta_class,
+    `Model Prediction` = lgbm, `Sale Price` = meta_sale_price, Ratio = ratio, meta_class,
     any_of(vars_dict %>% filter(var_is_predictor) %>% pull(var_name_standard)),
     -meta_town_code
   ) %>%
@@ -401,7 +411,7 @@ outlier_dist %>%
     )
   ) %>%
   formatCurrency(
-    c("Sale Price", "Stacked Model", "Median Income",
+    c("Sale Price", "Model Prediction", "Median Income",
       "Neighborhood Mean Sale Price", "Neighborhood Median Sale Price"),
     digits = 0
   ) %>%
@@ -416,57 +426,8 @@ outlier_dist %>%
 
 ---
 
-## Model Correlation (Spearman)
-
-```{r corr}
-# Prepare correlation data matrix
-model_cor <- as_tibble(cor(select(test_res, enet:stack), method = "spearman")) %>%
-  mutate(name2 = names(.)) %>%
-  pivot_longer(-name2) %>%
-  mutate(
-    across(contains("name"), ~ factor(.x, levels = model_order)),
-    name2 = fct_rev(name2),
-    value = round(value, 3)
-  )
-
-# Plot model correlation
-ggplot(model_cor) +
-  geom_tile(aes(x = name, y = name2, fill = value)) +
-  geom_text(aes(x = name, y = name2, label = value, color = value > 0.98)) +
-  scale_x_discrete(expand = c(0, 0), position = "top") +
-  scale_y_discrete(expand = c(0, 0)) +
-  scale_fill_distiller(palette = "RdBu", name = "Correlation") +
-  scale_color_manual(
-    values = c("TRUE" = "white", "FALSE" = "black"),
-    guide = FALSE
-  ) +
-  labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    legend.title = element_text(margin = margin(b = 6)),
-    axis.text = element_text(size = 14)
-  )
-```
-
-<br>
-
-## Final Hyperparameters
-
-```{r params}
-# Load model results for each model and append to data frame
-model_results <- tibble()
-
-xgb_params_path <- here("output", "params", "xgb_params.rds")
-if (file.exists(xgb_params_path)) {
-  xgb_params <- readRDS(xgb_params_path)
-  xgb_final_params <- xgb_params %>%
-    mutate(iterations = max(.iter)) %>%
-    select_best(metric = "rmse") %>%
-    mutate(model = "xgb")
-  
-  model_results <- bind_rows(model_results, xgb_final_params)
-}
-
+```{r param_plots, warning=FALSE, message=FALSE}
+# Load hyperparameters data from file
 lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 if (file.exists(lgbm_params_path)) {
   lgbm_params <- readRDS(lgbm_params_path)
@@ -474,20 +435,21 @@ if (file.exists(lgbm_params_path)) {
     mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
     mutate(model = "lgbm")
-
-  model_results <- bind_rows(model_results, lgbm_final_params)
 }
 
-cat_params_path <- here("output", "params", "cat_params.rds")
-if (file.exists(cat_params_path)) {
-  cat_params <- readRDS(cat_params_path)
-  cat_final_params <- cat_params %>%
-    mutate(iterations = max(.iter)) %>%
-    select_best(metric = "rmse") %>%
-    mutate(model = "cat")
-
-  model_results <- bind_rows(model_results, cat_final_params)
+# Create autoplot of model params for those that exist
+if (exists("lgbm_params")) {
+  autoplot(lgbm_params, metric = "rmse", type = "marginals") +
+    geom_smooth(se = F) +
+    labs(title = "LightGBM Tuning Results") +
+    theme_minimal()
 }
+
+```
+
+## Final Hyperparameters
+
+```{r param_final}
 
 # Custom headers for parameter results table
 param_headers <- htmltools::withTags(table(
@@ -495,7 +457,7 @@ param_headers <- htmltools::withTags(table(
   thead(
     tr(
       th(rowspan = 2, "Model"),
-      th(rowspan = 2, "Iters"),
+      th(rowspan = 2, "Iterations"),
       th(colspan = 6, "Parameters"),
     ),
     tr(
@@ -506,7 +468,7 @@ param_headers <- htmltools::withTags(table(
 ))
 
 # Table of all final model parameters
-model_results %>%
+lgbm_final_params %>%
   select(-any_of(c(
     "n", "std_err", ".iter", ".config", ".metric", ".estimator",
     ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb"
@@ -529,61 +491,4 @@ model_results %>%
   ) %>%
   formatRound(c(6:8), digits = 4)
 
-```
-
-<br>
-
-## Hyperparameter Tuning
-
-```{r param_plots, warning=FALSE, message=FALSE}
-# Create autoplot of model params for those that exist
-if (exists("xgb_params")) {
-  autoplot(xgb_params, metric = "rmse", type = "marginals") +
-    geom_smooth(se = F) +
-    labs(title = "XGBoost Tuning Results") +
-    theme_minimal()
-}
-
-if (exists("lgbm_params")) {
-  autoplot(lgbm_params, metric = "rmse", type = "marginals") +
-    geom_smooth(se = F) +
-    labs(title = "LightGBM Tuning Results") +
-    theme_minimal()
-}
-
-if (exists("cat_params")) {
-  autoplot(cat_params, metric = "rmse", type = "marginals") +
-    geom_smooth(se = F) +
-    labs(title = "CatBoost Tuning Results") +
-    theme_minimal()
-}
-```
-
-<br>
-
-## Model Training Time
-
-```{r timings, fig.height=2}
-model_timings_path <- here("output", "params", "model_timings.rds")
-if (file.exists(model_timings_path)) {
-  readRDS(model_timings_path) %>%
-    filter(model != "full") %>%
-    mutate(
-      across(c(tic:toc, elapsed), ~ .x / 3600),
-      model = factor(model, levels = c("elasticnet", "xgboost", "lightgbm", "catboost"))
-    ) %>%
-  ggplot() +
-    geom_rect(aes(ymin = 0, ymax = 1, xmin = tic, xmax = toc, fill = model)) +
-    scale_x_continuous(expand = c(0, 0), breaks = extended_breaks(18)) +
-    scale_y_continuous(expand = c(0, 0)) +
-    guides(fill = guide_legend(title = "Model")) +
-    labs(x = "Number of Hours Elapsed While Training") +
-    theme_minimal() + 
-    theme(
-      axis.ticks.y = element_blank(),
-      axis.ticks.x = element_line(),
-      axis.text.y = element_blank(),
-      axis.title.x = element_text(margin = margin(t = 6))
-    )
-}
 ```

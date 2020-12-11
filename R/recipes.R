@@ -23,7 +23,10 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
       skip = TRUE
     ) %>%
     step_log(
-      all_outcomes(), ends_with("_sf"), contains("income"), contains("meta_nbhd_"),
+      all_outcomes(), 
+      ends_with("_sf"),
+      contains("income"),
+      contains("meta_nbhd_"),
       offset = 1
     ) %>%
     step_corr(
@@ -43,17 +46,4 @@ dummy_recp_prep <- function(recipe) {
   recipe %>%
     step_mutate_at(starts_with("ind_"), fn = ~ as.numeric(.)) %>%
     step_dummy(all_nominal(), -all_outcomes(), -has_role("id"))
-}
-
-
-# Recipe for stacking/meta model, goal here is to interact each vector of fitted
-# model values with spatial regimes variable
-stack_recp_prep <- function(data, group_vars = NULL) {
-  recipe(meta_sale_price ~ ., data = data) %>%
-    add_role(all_numeric(), -all_outcomes(), new_role = "model") %>%
-    step_rm(-any_of(group_vars), -all_outcomes()) %>%
-    step_naomit(all_predictors()) %>%
-    step_log(all_numeric(), all_outcomes()) %>%
-    step_dummy(all_nominal(), -all_outcomes()) %>%
-    step_interact(~ has_role("model") * matches(".X\\d+"))
 }

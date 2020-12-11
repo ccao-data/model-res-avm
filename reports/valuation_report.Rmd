@@ -73,7 +73,7 @@ pv_summary <- pv_final_values %>%
     num_missing_vals = sum(is.na(final_value)),
     median_prior_value = median(prior_value, na.rm = TRUE),
     median_sale_price = median(meta_sale_price, na.rm = TRUE),
-    median_model_value = median(stack_value, na.rm = TRUE),
+    median_model_value = median(lgbm_value, na.rm = TRUE),
     median_final_value = median(final_value, na.rm = TRUE),
     median_ratio = median(final_value / meta_sale_price, na.rm = TRUE),
     med_yoy_pct_change = median(yoy_pct_change, na.rm = T)
@@ -149,12 +149,12 @@ ggplot() +
 ```{r outlier_dist, warning=FALSE, message=FALSE}
 # Plot histogram of ratios by modeling class (single-family vs multi-family)
 pv_final_values %>%
-  pivot_longer(c(stack_value, final_value)) %>%
+  pivot_longer(c(lgbm_value, final_value)) %>%
   mutate(
     ratio = value / meta_sale_price,
     name = fct_recode(
-      factor(name, levels = c("stack_value", "final_value")),
-      "Model Value" = "stack_value",
+      factor(name, levels = c("lgbm_value", "final_value")),
+      "Model Value" = "lgbm_value",
       "Final Value" = "final_value"
     )
   ) %>%
@@ -191,11 +191,11 @@ ggplot() +
 decile_data_ratio <- pv_final_values %>%
   filter(
     !is.na(meta_sale_price), !is.na(final_value),
-    !is.na(stack_value), !is.na(yoy_pct_change)
+    !is.na(lgbm_value), !is.na(yoy_pct_change)
   ) %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
-    across(c(stack_value, final_value), ~ .x / meta_sale_price)
+    across(c(lgbm_value, final_value), ~ .x / meta_sale_price)
   ) %>%
   group_by(decile) %>%
   mutate(decile_label = paste(
@@ -205,11 +205,11 @@ decile_data_ratio <- pv_final_values %>%
   ) %>%
   ungroup() %>%
   mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
-  pivot_longer(c(stack_value, final_value), names_to = "name", values_to = "ratio") %>%
+  pivot_longer(c(lgbm_value, final_value), names_to = "name", values_to = "ratio") %>%
   mutate(
     name = fct_recode(
-      factor(name, levels = c("final_value", "stack_value")),
-      "Model Value" = "stack_value",
+      factor(name, levels = c("final_value", "lgbm_value")),
+      "Model Value" = "lgbm_value",
       "Final Value" = "final_value"
     )
   )
@@ -275,7 +275,7 @@ decile_data_yoy <- pv_final_values %>%
   filter(!is.na(yoy_pct_change), !is.na(prior_value)) %>%
   mutate(
     decile = ntile(prior_value, 10),
-    across(c(stack_value, final_value), ~ (.x - prior_value) / prior_value)
+    across(c(lgbm_value, final_value), ~ (.x - prior_value) / prior_value)
   ) %>%
   group_by(decile) %>%
   mutate(decile_label = paste(
@@ -285,11 +285,11 @@ decile_data_yoy <- pv_final_values %>%
   ) %>%
   ungroup() %>%
   mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
-  pivot_longer(c(stack_value, final_value), names_to = "name", values_to = "value") %>%
+  pivot_longer(c(lgbm_value, final_value), names_to = "name", values_to = "value") %>%
   mutate(
     name = fct_recode(
-      factor(name, levels = c("final_value", "stack_value")),
-      "Model Value" = "stack_value",
+      factor(name, levels = c("final_value", "lgbm_value")),
+      "Model Value" = "lgbm_value",
       "Final Value" = "final_value"
     )
   )

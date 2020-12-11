@@ -216,14 +216,6 @@
       "Repository": "CRAN",
       "Hash": "b7d7f1e926dfcd57c74ce93f5c048e80"
     },
-    "catboost": {
-      "Package": "catboost",
-      "Version": "0.24.3",
-      "Source": "URL",
-      "RemoteType": "url",
-      "RemoteUrl": "https://github.com/catboost/catboost/releases/download/v0.24.3/catboost-R-Windows-0.24.3.tgz",
-      "Hash": "a1c2844a2f7e4aa85f3d096e06b98a23"
-    },
     "ccao": {
       "Package": "ccao",
       "Version": "0.4.4",
@@ -1208,13 +1200,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "a42372606cb76f34da9d090326e9f955"
-    },
-    "xgboost": {
-      "Package": "xgboost",
-      "Version": "1.2.0.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "e83e1df3948005afbddd83db86f3a0cb"
     },
     "xml2": {
       "Package": "xml2",
