@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "3.6.3",
+    "Version": "4.0.3",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -132,8 +132,8 @@
       "Package": "assessr",
       "Version": "0.4.2",
       "Source": "GitLab",
-      "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteType": "gitlab",
+      "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteHost": "gitlab.com",
       "RemoteRepo": "packages/assessr",
       "RemoteUsername": "ccao-data-science---modeling",
@@ -199,15 +199,15 @@
     },
     "butcher": {
       "Package": "butcher",
-      "Version": "0.1.2",
+      "Version": "0.1.2.9000",
       "Source": "GitHub",
       "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "butcher",
       "RemoteUsername": "tidymodels",
+      "RemoteRepo": "butcher",
       "RemoteRef": "master",
-      "RemoteSha": "62b91a3556fe347d429de1e74bfe9fd1810c01a2",
-      "Hash": "fa0c9e298371304818350611a9f1765b"
+      "RemoteSha": "62c138bb5dfd7577ea0e3f28596f84853d8ead08",
+      "RemoteHost": "api.github.com",
+      "Hash": "d3bb801419c78cade43d02c1683495d8"
     },
     "callr": {
       "Package": "callr",
@@ -215,6 +215,14 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "b7d7f1e926dfcd57c74ce93f5c048e80"
+    },
+    "catboost": {
+      "Package": "catboost",
+      "Version": "0.24.3",
+      "Source": "URL",
+      "RemoteType": "url",
+      "RemoteUrl": "https://github.com/catboost/catboost/releases/download/v0.24.3/catboost-R-Windows-0.24.3.tgz",
+      "Hash": "a1c2844a2f7e4aa85f3d096e06b98a23"
     },
     "ccao": {
       "Package": "ccao",
@@ -292,6 +300,13 @@
       "Repository": "CRAN",
       "Hash": "0d57bc8e27b7ba9e45dba825ebc0de6b"
     },
+    "credentials": {
+      "Package": "credentials",
+      "Version": "1.3.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "a96728288c75a814c900af9da84387be"
+    },
     "crosstalk": {
       "Package": "crosstalk",
       "Version": "1.1.0.1",
@@ -308,10 +323,10 @@
     },
     "data.table": {
       "Package": "data.table",
-      "Version": "1.13.2",
+      "Version": "1.13.4",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "907b184e0fd13bc19154a8f322920015"
+      "Hash": "626afb25b020646f53105e6485e695c6"
     },
     "dbscan": {
       "Package": "dbscan",
@@ -420,10 +435,10 @@
     },
     "future": {
       "Package": "future",
-      "Version": "1.20.1",
+      "Version": "1.21.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "ba8048a1641465f807c52b78d1eae18a"
+      "Hash": "f25fad6bee82b7ab01f055e2d813b96f"
     },
     "generics": {
       "Package": "generics",
@@ -431,6 +446,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "4d243a9c10b00589889fe32314ffd902"
+    },
+    "gert": {
+      "Package": "gert",
+      "Version": "1.0.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "0ebdadbb2b742cd230cb3ec7fdf5898a"
     },
     "ggplot2": {
       "Package": "ggplot2",
@@ -445,13 +467,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "05129b4387282404780d2f8593636388"
-    },
-    "git2r": {
-      "Package": "git2r",
-      "Version": "0.27.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "531a82d1beed1f545beb25f4f5945bf7"
     },
     "gitcreds": {
       "Package": "gitcreds",
@@ -532,10 +547,10 @@
     },
     "htmlwidgets": {
       "Package": "htmlwidgets",
-      "Version": "1.5.2",
+      "Version": "1.5.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "0aaf56b7960bb066646e1868cadcaf07"
+      "Hash": "6fdaa86d0700f8b3e92ee3c445a5a10d"
     },
     "httr": {
       "Package": "httr",
@@ -651,11 +666,10 @@
     },
     "lightgbm": {
       "Package": "lightgbm",
-      "Version": "3.0.0",
-      "Source": "URL",
-      "RemoteType": "url",
-      "RemoteUrl": "https://github.com/microsoft/LightGBM/releases/download/v3.0.0/lightgbm-3.0.0-r-cran.tar.gz",
-      "Hash": "4b8ed4f72031d8e90528acedab2b5653"
+      "Version": "3.1.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "ba01893d7dd619646c153f68924b890f"
     },
     "listenv": {
       "Package": "listenv",
@@ -864,6 +878,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "97def703420c8ab10d8f0e6c72101e02"
+    },
+    "rappdirs": {
+      "Package": "rappdirs",
+      "Version": "0.3.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "8c8298583adbbe76f3c2220eef71bebc"
     },
     "recipes": {
       "Package": "recipes",
@@ -1090,14 +1111,14 @@
     "treesnip": {
       "Package": "treesnip",
       "Version": "0.1.0.9000",
-      "Source": "Local",
-      "RemoteType": "local",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "curso-r",
       "RemoteRepo": "treesnip",
-      "RemoteRef": "HEAD",
+      "RemoteRef": "master",
       "RemoteSha": "29dab3e6f1c47dd6073bad3976b87ce4c6270184",
-      "RemoteHost": "api.github.com",
-      "Hash": "74ab1e722106e053c31e1abcce0ad9ab"
+      "Hash": "46df3d391c3e4cdf2d17eb59546d2cb0"
     },
     "tune": {
       "Package": "tune",
@@ -1115,10 +1136,10 @@
     },
     "usethis": {
       "Package": "usethis",
-      "Version": "1.6.3",
+      "Version": "2.0.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "c541a7aed5f7fb3b487406bf92842e34"
+      "Hash": "133099afbac51dc52948b89b387a9734"
     },
     "utf8": {
       "Package": "utf8",
