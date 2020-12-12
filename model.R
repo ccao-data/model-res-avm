@@ -4,7 +4,7 @@
 
 # Load R libraries
 options(tidymodels.dark = TRUE)
-library(arrow) 
+library(arrow)
 library(assessr)
 library(beepr)
 library(butcher)
@@ -45,7 +45,7 @@ cv_control <- control_bayes(verbose = TRUE, no_improve = 15, seed = 27)
 ##### Prepare Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Create list of variables that uniquely identify each structure or sale, these 
+# Create list of variables that uniquely identify each structure or sale, these
 # must be kept in the training data even though they are not regressors
 mod_id_vars <- c(
   "meta_pin", "meta_class", "meta_multi_code", "meta_document_num"
@@ -80,7 +80,7 @@ train_folds <- vfold_cv(train, v = cv_num_folds)
 # normalizes/logs data, and removes/imputes missing values
 train_recipe <- mod_recp_prep(
   data = train,
-  keep_vars = mod_predictors, 
+  keep_vars = mod_predictors,
   id_vars = mod_id_vars
 )
 
@@ -90,7 +90,8 @@ juiced_train <- juice(prep(train_recipe), all_predictors())
 train_p <- ncol(juiced_train)
 
 # Remove unnecessary data from setup
-rm(time_split, juiced_train); gc()
+rm(time_split, juiced_train)
+gc()
 
 
 
@@ -142,7 +143,7 @@ rm_intermediate("enet")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This is the main model used to value 200-class residential property. It uses
-# lightgbm as a backend, which is a boosted tree model somewhat similar to 
+# lightgbm as a backend, which is a boosted tree model somewhat similar to
 # xgboost or catboost, but with better performance and faster training.
 # See https://lightgbm.readthedocs.io/ for more information
 
@@ -157,7 +158,7 @@ lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees arg here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 1000, 
+  trees = 1000,
   num_leaves = tune(), tree_depth = tune(), min_n = tune(),
   mtry = tune(), loss_reduction = tune(), learn_rate = tune()
 ) %>%
@@ -165,7 +166,7 @@ lgbm_model <- lgbm_tree(
   set_mode("regression") %>%
   set_args(
     num_threads = num_threads,
-    verbose = -1 
+    verbose = -1
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -181,39 +182,39 @@ lgbm_wflow <- workflow() %>%
 # hyperparameters, as grid search or random search take a very long time to
 # produce similarly accurate results
 if (cv_enable) {
-  
+
   # Create the parameter search space for hyperparameter optimization
   # Param boundaries are taken directly from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
-      
+
       # Most important. Specific to lightgbm. Ideally equal to < 2 ^ tree_depth
       # Higher values increase training time and model complexity
-      num_leaves = num_leaves(c(2 ^ 5L, 2 ^ 13L)),
-      
+      num_leaves = num_leaves(c(2^5L, 2^13L)),
+
       # Very important. Maps to max_depth in lightgbm. Higher values increase
       # model complexity but may cause overfitting
       tree_depth = tree_depth(c(5L, 13L)),
-      
+
       # Very important. Maps to min_data_in_leaf in lightgbm. Optimal/large
       # values can help prevent overfitting
       min_n = min_n(c(2L, 40L)),
-      
+
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
       mtry = mtry(c(5L, train_p)),
-      
+
       # Maps to min_gain_to_split in lightgbm. Will prevent splitting if the
       # training gain is too small. Higher values reduce training time
       loss_reduction = loss_reduction(c(-4, -2)),
-      
+
       # Maps to learning_rate in lightgbm. Should be changed in tune with
       # number of trees
       learn_rate = learn_rate(c(-3, -0.5))
     )
-  
+
   # Use Bayesian tuning to find best performing params. This part takes quite
   # a long time, depending on the compute resources available
   tictoc::tic(msg = "LightGBM CV model fitting complete!")
@@ -228,7 +229,7 @@ if (cv_enable) {
   )
   tictoc::toc(log = TRUE)
   beepr::beep(2)
-  
+
   # Save tuning results to file. This is a data frame where each row is one
   # CV iteration
   if (cv_write_params) {
@@ -236,12 +237,11 @@ if (cv_enable) {
       model_axe_tune_data() %>%
       saveRDS(lgbm_params_path)
   }
-  
+
   # Choose the best model (whichever model minimizes RMSE)
   lgbm_final_params <- select_best(lgbm_search, metric = "rmse")
-  
 } else {
-  
+
   # If CV is not enabled, load saved parameters from file if it exists
   # Otherwise use a set of sensible hand-chosen defaults
   if (file.exists(lgbm_params_path)) {
@@ -281,7 +281,7 @@ rm_intermediate("lgbm")
 
 ### Get predictions and save objects
 
-# Get predictions on the test set using all models then save to file. These 
+# Get predictions on the test set using all models then save to file. These
 # predictions are used to evaluate model performance in model_report.Rmd
 test %>%
   mutate(
@@ -299,13 +299,13 @@ test %>%
   write_parquet(here("output", "data", "testdata.parquet"))
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
-# model_save() function, which uses lgb.save() rather than saveRDS(), since 
+# model_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
 lgbm_wflow_final_full_fit %>%
   pull_workflow_fit() %>%
   model_save(here("output", "models", "lgbm_model.zip"))
-  
-# Save the finalized recipe object to file so it can be used to preprocess 
+
+# Save the finalized recipe object to file so it can be used to preprocess
 # new data
 lgbm_wflow_final_full_fit %>%
   pull_workflow_prepped_recipe() %>%

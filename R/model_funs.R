@@ -5,13 +5,14 @@ rm_intermediate <- function(x, keep = NULL) {
   rm_list <- env[
     str_starts(env, x) & !str_detect(env, "final") & !env %in% keep
   ]
-  
+
   if (length(rm_list) > 0) {
     message(paste(
       "Removing intermediate objects:",
       paste(rm_list, collapse = ", ")
     ))
-    rm(list = rm_list, envir = .GlobalEnv); gc()
+    rm(list = rm_list, envir = .GlobalEnv)
+    gc()
   }
 }
 
@@ -20,7 +21,7 @@ rm_intermediate <- function(x, keep = NULL) {
 model_get_env <- function(x, default) {
   env <- Sys.getenv(x, unset = NA)
   ifelse(!is.na(env), env, default)
-} 
+}
 
 
 # Remove unnecessary attribute data from iteration results objects created
@@ -28,7 +29,7 @@ model_get_env <- function(x, default) {
 # smaller when saved to disk
 model_axe_tune_data <- function(x) {
   stripped <- x %>% select(-any_of("splits"))
-  
+
   attrs <- attributes(x) %>%
     purrr::list_modify("names" = names(stripped))
   attributes(stripped) <- attrs
@@ -44,7 +45,7 @@ model_axe_recipe <- function(x) {
     purrr::list_modify(orig_lvls = NULL)
 
   class(axed) <- "recipe"
-  
+
   return(axed)
 }
 
@@ -58,14 +59,13 @@ model_predict <- function(spec, recipe, data) {
 # Save final model object to disk. This is a workaround to split the lightgbm
 # fit into a separate file since it REALLY doesn't like being saved as RDS
 model_save <- function(model, zipfile) {
-  
   file_lgbm <- file.path(tempdir(), "lgbm.model")
   lightgbm::lgb.save(model$fit, file_lgbm)
   model$fit <- NULL
-  
+
   file_meta <- file.path(tempdir(), "meta.model")
   saveRDS(model, file_meta)
-  
+
   zip::zipr(zipfile, files = c(file_meta, file_lgbm))
 }
 
@@ -74,9 +74,9 @@ model_save <- function(model, zipfile) {
 model_load <- function(zipfile) {
   ex_dir <- tempdir()
   zip::unzip(zipfile, exdir = ex_dir)
-  
+
   model <- readRDS(file.path(ex_dir, "meta.model"))
   model$fit <- lightgbm::lgb.load(file.path(ex_dir, "lgbm.model"))
-  
+
   return(model)
 }

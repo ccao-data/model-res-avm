@@ -3,7 +3,7 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load R libraries
-library(arrow) 
+library(arrow)
 library(assessr)
 library(beepr)
 library(ccao)
@@ -36,7 +36,7 @@ lgbm_final_full_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
 # Some post-modeling adjustments (such as ratio capping) require sales to work.
 # As such, we need to append the most recent sale (closest to the assessment
-# date) to each PIN. Not all PINs will have sales, as our sales sample is 
+# date) to each PIN. Not all PINs will have sales, as our sales sample is
 # limited to 5 years prior to the assessment date
 sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length) %>%
@@ -47,7 +47,7 @@ sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
 # Load the full set of residential properties that need values, join the sales
 # where available
 assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
-  left_join(sales_data, by = "meta_pin") 
+  left_join(sales_data, by = "meta_pin")
 
 # Generate predictions for all assessment data using the lightgbm model
 assmntdata <- assmntdata %>%
@@ -81,8 +81,8 @@ assmntdata <- assmntdata %>%
 # modeling group, and averaging values for identical townhomes
 pv_model <- postval_model(
   data = assmntdata,
-  truth = meta_sale_price, 
-  estimate = lgbm, 
+  truth = meta_sale_price,
+  estimate = lgbm,
   class = meta_class,
   med_adj_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
   townhome_adj_cols = c(
@@ -96,7 +96,7 @@ pv_model %>%
   saveRDS(here("output", "models", "postval_model.rds"))
 
 # Applied the postval model to initial lightgbm predictions to get final
-# predicted values. Keep only the columns needed for final output 
+# predicted values. Keep only the columns needed for final output
 pv_final_values <- assmntdata %>%
   mutate(
     meta_town_name = town_convert(meta_town_code),
@@ -104,10 +104,11 @@ pv_final_values <- assmntdata %>%
     prior_value = meta_est_land + meta_est_bldg
   ) %>%
   select(
-    meta_pin, meta_year, meta_class, meta_town_code, meta_nbhd, 
+    meta_pin, meta_year, meta_class, meta_town_code, meta_nbhd,
     meta_modeling_group, meta_multi_code, geo_latitude, geo_longitude,
     meta_sale_price, meta_sale_date, meta_document_num,
-    prior_value, lgbm_value = lgbm, final_value
+    prior_value,
+    lgbm_value = lgbm, final_value
   )
 
 # Save final values to file so they can be uploaded to AS/400 or Tyler iasWorld
