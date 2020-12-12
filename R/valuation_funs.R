@@ -1,5 +1,11 @@
-# Shift the distribution of ratios toward the true median to account for bias
-# in modeling. Not ideal but all we can do with bad data
+# These functions are used in valuation.R to do post-modeling adjustments to
+# predicted values. They primarily limit extremely large sales ratios and shift
+# ratio distributions toward 1 when necessary to correct for model bias
+
+# Shift the distribution of ratios toward 1 to account for bias in modeling
+# Not ideal but all we can do with bad data. This technique is not ideal, but
+# is necessary to correct model prediction bias at the very high and very low
+# ends of the price spectrum
 val_med_pct_adj <- function(truth, estimate, min_n = 20, max_abs_adj = 0.4) {
   num_sales <- sum(!is.na(truth))
   
@@ -17,6 +23,8 @@ val_med_pct_adj <- function(truth, estimate, min_n = 20, max_abs_adj = 0.4) {
 
 
 # Limit excessively high and low ratios by capping them to a fixed boundary
+# If a property has a sale, is should never have a sales ratio outside these
+# boundaries
 val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
   
   ratio <- estimate / truth
@@ -31,8 +39,9 @@ val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
 }
 
 
-# Within the same developments, townhomes with the same age and building size
-# should have the same value.
+# Within the same development, townhomes with the same age and building size
+# (nearly identical) should have the same value, so we manually set their value
+# to the median of their prediction
 val_townhomes_by_group <- function(data, class, estimate, townhome_adj_cols) {
   
   data %>%
@@ -46,8 +55,8 @@ val_townhomes_by_group <- function(data, class, estimate, townhome_adj_cols) {
 }
 
 
-# Post-valuation adjustment object that saves adjustments and can be called to
-# predict new values
+# Post-valuation adjustment class that saves all of the above adjustments and
+# can be used to predict new/unseen values
 postval_model <- function(data, truth, class, estimate, med_adj_cols, townhome_adj_cols) {
   
   med_adjustments <- data %>%

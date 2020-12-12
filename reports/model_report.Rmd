@@ -9,6 +9,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
+# Load R libraries
 library(arrow)
 library(assessr)
 library(ccao)
@@ -39,26 +40,29 @@ report_filter <- as.logical(ifelse(
   params$filter
 ))
 
-# Triad to use for report. Set with system variable else param defined in yaml
+# Triad to use for report if filtered. Set with system variable else param
+# defined in yaml
 report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
-```{r timing}
-# Print total training time if timings file exists
+```{r model_timing}
+# Print total training time if timings file exists. This looks for the 
+# lightgbm CV section timing, which is the HUGE majority of training time
 model_timings_path <- here("output", "params", "model_timings.rds")
 if (file.exists(model_timings_path)) {
   readRDS(model_timings_path) %>%
     filter(model == "lightgbm") %>%
-    pull(elapsed) %>% round(0) %>%
+    pull(elapsed) %>%
+    round(0) %>%
     seconds_to_period() %>%
     paste("Model took", ., "to train") %>%
     cat()
 }
 ```
 
-```{r summary, message=FALSE, warning=FALSE}
-# Load test set results
+```{r model_summary, message=FALSE, warning=FALSE}
+# Load test set results from model.R and add town/triad information
 test_res <- read_parquet(here("output", "data", "testdata.parquet")) %>%
   mutate(
     town_name = town_convert(meta_town_code),
@@ -68,13 +72,15 @@ test_res <- read_parquet(here("output", "data", "testdata.parquet")) %>%
     )
   )
 
-# Filter to specific triad based on report param
+# Filter to specific triad based on report parameter
 if (report_filter) {
 test_res <- test_res %>%
   filter(triad == report_triad)
 }
 
-# Summarize test set results by township
+# Summarize test set results by township. Values prefixed with final_ are
+# filtered according to CCAO SOPs on ratio studies (top and bottom 5% of ratios
+# are excluded)
 test_summary <- test_res %>%
   group_by(town_name) %>%
   summarize(
@@ -98,7 +104,8 @@ test_summary <- test_res %>%
   ) %>%
   arrange(final_cod)
 
-# Create a container with custom column headers for model summary table
+# Create a container with custom column headers for model summary table. This
+# is purely aesthetic
 headers <- htmltools::withTags(table(
   class = "display", 
   thead(
@@ -152,11 +159,11 @@ test_summary %>%
 
 ## Map of COD by Township by Model Type
 
-```{r map}
+```{r model_map}
 # Vector of model name order (in the order run in model.R)
 model_order <- c("enet", "lgbm", "final")
 
-# Generate township-level map of COD
+# Generate township level map of COD
 test_summary %>%
   rename(enet = enet_cod, lgbm = lgbm_cod, final = final_cod) %>%
   pivot_longer(c(enet, lgbm, final)) %>%
@@ -177,13 +184,13 @@ ggplot() +
 
 ## Variables Used in Final Model
 
-```{r vars}
-
-# Load the saved model from file so we can use its recipe to extract the 
-# modeling variables
+```{r model_vars}
+# Load the saved model from file so we can extract the modeling variables from
+# its recipe
 lgbm_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
-# Get the predictors used in the model and rename them to human-readable
+# Get the predictors used in the model and rename them to their human-readable
+# format
 test_vars <- bake(lgbm_recipe, test_res, all_predictors()) %>%
   vars_rename(names_from = "standard", names_to = "pretty") %>%
   rename(
@@ -192,7 +199,7 @@ test_vars <- bake(lgbm_recipe, test_res, all_predictors()) %>%
     "Land Sqft." = char_hd_sf_poly_1, "Land Sqft. ^ 2" = char_hd_sf_poly_2
   )
 
-# Create a table of var name and attributes
+# Create a table of variable names and attributes
 tibble(
   "Variable Name" = names(test_vars),
   "Variable Type" = map_chr(test_vars, class),
@@ -208,8 +215,8 @@ tibble(
 ## Ratio Distribution by Township by Sale Price Decile
 
 ```{r ratio_decile, warning=FALSE, message=FALSE, results='hide'}
-# Split test data into sale price decile, then calculate distribution of 
-# ratios for each decile
+# Split test set results into sale price decile, then calculate distribution of 
+# ratios for each decile by township
 decile_data <- test_res %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
@@ -260,7 +267,8 @@ decile_plot <- function(data, col_var) {
     )
 }
 
-# Split into a separate decile plot for every 4 townships
+# Split into a separate decile plot for every 4 townships, otherwise all
+# townships would be in a single plot
 chunk <- function(x, n) split(x, sort(rank(x) %% n))
 towns <- sort(unique(decile_data$town_name))
 towns <- chunk(towns, ceiling(length(towns) / 4))
@@ -277,6 +285,7 @@ lapply(towns, function(chunk) decile_plot(
 ## Ratio Distribution by Model Type by Sale Price Decile
 
 ```{r ratio_model, warning=FALSE}
+# Create a distribution of ratios plot for each model type (enet and lightgbm)
 decile_plot(decile_data, model)
 ```
 
@@ -289,7 +298,8 @@ decile_plot(decile_data, model)
 ## Overall Ratio Distribution (Model Pred. / Sale Price)
 
 ```{r outlier_dist, warning=FALSE, message=FALSE}
-# Get the overall distribution for stack model trimmed and untrimmed
+# Get the overall distribution of ratios for the lightgbm model. Flag ratios
+# that would be trimmed according to CCAO SOPs using the is_outlier() function
 outlier_dist <- test_res %>%
   group_by(town_name) %>%
   mutate(
@@ -305,7 +315,8 @@ quantiles <- outlier_dist %>%
   group_by(trimmed) %>%
   summarize(q01 = quantile(ratio, 0.01), q99 = quantile(ratio, 0.99))
 
-# Plot histogram of ratios
+# Plot histogram of ratios, where the colored areas represent the 1st and 99th
+# percentile for each distribution
 ggplot(outlier_dist) +
   geom_histogram(aes(x = ratio), binwidth = 0.05) +
   geom_rect(
@@ -344,8 +355,8 @@ ggplot(outlier_dist) +
 ## Spatial Distribution of Outliers
 
 ```{r outlier_map, message=FALSE}
-# Create a township level map showing the location of individual outliers from
-# the ratio plot above
+# Create a township level map showing the location of individual outliers within
+# the 1st and 99th percentile from the histogram above
 outlier_dist %>%
   left_join(quantiles, by = "trimmed") %>%
   filter(ratio < q01 | ratio > q99) %>%
@@ -372,7 +383,8 @@ ggplot() +
 Table shows only observations less than the 0.1 percentile and greater than the 99.9 percentile.
 
 ```{r outlier_table}
-# Create a table of outliers from the 0.01 and 99.9 percentiles
+# Create a table of outliers from the 0.01 and 99.9 percentiles of both trimmed
+# and untrimmed values. These are the largest outliers by magnitude of error
 outlier_dist %>%
   group_by(trimmed) %>%
   mutate(q01 = quantile(ratio, 0.001), q99 = quantile(ratio, 0.999)) %>%
@@ -431,14 +443,16 @@ outlier_dist %>%
 ## Feature Importance
 
 ```{r feat_imp, warning=FALSE}
-# If model file exists, calculate feature importance
+# If model file exists, calculate feature importance using lightgbm's built in
+# functionality, which measures gain
 lgbm_model_path <- here("output", "models", "lgbm_model.zip")
 if (file.exists(lgbm_model_path)) {
   lgbm_final_full_fit <- model_load(lgbm_model_path)
 
-  # Get feature importance (gain) for LightGBM model (TAKES A LONG TIME TO RUN)
+  # Get feature importance (gain) for lightgbm model (TAKES A LONG TIME TO RUN)
   lgbm_feat_imp <- lgb.importance(lgbm_final_full_fit$fit)
-  
+ 
+  # Create a horizontal bar plot showing the top N features' gain and cover 
   tibble(lgbm_feat_imp) %>%
     arrange(desc(Gain)) %>%
     dplyr::slice(1:30) %>%
@@ -460,7 +474,7 @@ if (file.exists(lgbm_model_path)) {
 ## Hyperparameter Tuning
 
 ```{r param_plots, warning=FALSE, message=FALSE}
-# Load hyperparameters data from file
+# Load hyperparameters data from file if it exists
 lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 if (file.exists(lgbm_params_path)) {
   lgbm_params <- readRDS(lgbm_params_path)
@@ -470,21 +484,18 @@ if (file.exists(lgbm_params_path)) {
     mutate(model = "lgbm")
 }
 
-# Create autoplot of model params for those that exist
+# If parameters exist, generate an autoplot of the CV results
 if (exists("lgbm_params")) {
   autoplot(lgbm_params, metric = "rmse", type = "marginals") +
     geom_smooth(se = F) +
-    labs(title = "LightGBM Tuning Results") +
     theme_minimal()
 }
-
 ```
 
 ## Final Hyperparameters
 
 ```{r param_final}
-
-# Custom headers for parameter results table
+# Custom headers for parameter results table, purely aesthetic
 param_headers <- htmltools::withTags(table(
   class = "display", 
   thead(
@@ -500,7 +511,7 @@ param_headers <- htmltools::withTags(table(
   )
 ))
 
-# Table of all final model parameters
+# Table of all final model hyperparameters that were used
 lgbm_final_params %>%
   select(-any_of(c(
     "n", "std_err", ".iter", ".config", ".metric", ".estimator",
@@ -523,5 +534,4 @@ lgbm_final_params %>%
     )
   ) %>%
   formatRound(c(6:8), digits = 4)
-
 ```

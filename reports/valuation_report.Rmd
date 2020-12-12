@@ -9,6 +9,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
+# Load R libraries
 library(arrow)
 library(assessr)
 library(ccao)
@@ -34,13 +35,15 @@ report_filter <- as.logical(ifelse(
   params$filter
 ))
 
-# Triad to use for report. Set with system variable else param defined in yaml
+# Triad to use for report if filtered. Set with system variable else param
+# defined in yaml
 report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
-```{r summary, message=FALSE}
-# Load final assessment values from file (created by valuation.R)
+```{r val_summary, message=FALSE}
+# Load final assessment values from file (created by valuation.R). These include
+# post-modeling adjustments
 pv_final_values <- read_parquet(
     here("output", "data", "finalvalues.parquet")
   ) %>%
@@ -58,13 +61,13 @@ pv_final_values <- read_parquet(
     )
   )
 
-# Filter to specific triad based on report params
+# Filter to specific triad based on report parameters
 if (report_filter) {
 pv_final_values <- pv_final_values %>%
   filter(triad == report_triad)
 }
 
-# Summarize pipeline results by township
+# Summarize the full modeling pipeline results by township
 pv_summary <- pv_final_values %>%
   group_by(town_name) %>%
   summarize(
@@ -101,7 +104,7 @@ headers <- htmltools::withTags(table(
   )
 ))
 
-# Create an interactive table of the valuation results by township
+# Create an interactive table of the valuation summary results by township
 pv_summary %>%
   datatable(
     rownames = FALSE,
@@ -127,8 +130,8 @@ pv_summary %>%
 
 ## Map of Median YoY Percent Change by Township
 
-```{r map}
-# Generate township-level map of YoY percent change
+```{r val_map}
+# Generate township-level map of YoY percent change for all finalized values
 pv_summary %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
@@ -146,8 +149,9 @@ ggplot() +
 
 ## Overall Ratio Distribution
 
-```{r outlier_dist, warning=FALSE, message=FALSE}
+```{r ratio_dist, warning=FALSE, message=FALSE}
 # Plot histogram of ratios by modeling class (single-family vs multi-family)
+# Ratios here are calculated using the MOST RECENT SALE for each property
 pv_final_values %>%
   pivot_longer(c(lgbm_value, final_value)) %>%
   mutate(
@@ -215,7 +219,8 @@ decile_data_ratio <- pv_final_values %>%
   )
 
 
-# Function to create decile plot based on a grouping variable
+# Function to create decile plot based on a grouping variable. Goal is to show
+# the shift in ratio distribution caused by post-modeling adjustment
 decile_plot_ratio <- function(data, col_var) {
   
   data %>%
@@ -253,7 +258,8 @@ decile_plot_ratio <- function(data, col_var) {
 }
 
 
-# Split into a separate decile plot for every 4 townships
+# Split into a separate decile plot for every 4 townships, otherwise all
+# townships would be in a single plot
 chunk <- function(x, n) split(x, sort(rank(x) %% n))
 towns <- sort(unique(decile_data_ratio$town_name))
 towns <- chunk(towns, ceiling(length(towns) / 4))
@@ -344,7 +350,6 @@ lapply(towns, function(chunk) decile_plot_yoy(
   town_name
 ))
 
-
 ```
 
 <br>
@@ -352,8 +357,8 @@ lapply(towns, function(chunk) decile_plot_yoy(
 ## Spatial Distribution of Largest YoY Changes
 
 ```{r outlier_map, message=FALSE}
-# Create a township level map showing the location of individual outliers for
-# YoY percentage change
+# Create a township level map showing the location of the largest YoY percentage
+# changes. Goal is to look for patterns of changes
 pv_final_values %>%
   filter(!is.infinite(yoy_pct_change)) %>%
   mutate(
