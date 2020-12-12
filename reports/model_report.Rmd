@@ -17,6 +17,7 @@ library(DT)
 library(forcats)
 library(ggplot2)
 library(here)
+library(lightgbm)
 library(lubridate)
 library(purrr)
 library(recipes)
@@ -25,6 +26,7 @@ library(sf)
 library(stringr)
 library(tidyr)
 library(tune)
+source(here("R", "model_funs.R"))
 
 # Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
@@ -422,9 +424,40 @@ outlier_dist %>%
 
 <br>
 
-# Model Tuning
+# Model Analysis
 
 ---
+
+## Feature Importance
+
+```{r feat_imp, warning=FALSE}
+# If model file exists, calculate feature importance
+lgbm_model_path <- here("output", "models", "lgbm_model.zip")
+if (file.exists(lgbm_model_path)) {
+  lgbm_final_full_fit <- model_load(lgbm_model_path)
+
+  # Get feature importance (gain) for LightGBM model (TAKES A LONG TIME TO RUN)
+  lgbm_feat_imp <- lgb.importance(lgbm_final_full_fit$fit)
+  
+  tibble(lgbm_feat_imp) %>%
+    arrange(desc(Gain)) %>%
+    dplyr::slice(1:30) %>%
+    mutate(Feature = fct_reorder(Feature, Gain)) %>%
+    pivot_longer(cols = c(Gain, Cover)) %>%
+    mutate(name = factor(name, levels = c("Gain", "Cover"))) %>%
+  ggplot() +
+    geom_col(aes(y = Feature, x = value)) +
+    facet_wrap(vars(name), nrow = 1, scales = "free_x") +
+    labs(x = "", y = "") +
+    theme_minimal() +
+    theme(
+      plot.margin = margin(0, 0, 0, 0),
+      panel.grid.major.y = element_blank()
+    )
+}
+```
+
+## Hyperparameter Tuning
 
 ```{r param_plots, warning=FALSE, message=FALSE}
 # Load hyperparameters data from file
