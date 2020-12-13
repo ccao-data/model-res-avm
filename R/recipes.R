@@ -38,7 +38,6 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
       all_outcomes(),
       ends_with("_sf"),
       contains("income"),
-      contains("meta_nbhd_"),
       offset = 1
     ) %>%
 

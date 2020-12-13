@@ -61,25 +61,22 @@ sales_data <- sales_data %>%
 # hand-reviewed by the CCAO and excluded from the model if they are atypical or
 # not arms-length. Not all sales flagged here will be excluded
 
-# Select relevant output columns
+# Select relevant output columns and calculate sales ratio
 sales_filtered <- sales_data %>%
   select(
     meta_pin, meta_document_num, meta_class, meta_year, meta_town_code, meta_nbhd,
     geo_property_address, geo_property_apt_no, geo_property_city, geo_property_zip,
-    geo_longitude, geo_latitude,
-    model_value = lgbm, meta_sale_price, meta_nbhd_avg
+    geo_longitude, geo_latitude, model_value = lgbm, meta_sale_price
   ) %>%
-
-  # Calculate sales ratio and sale ratio based on neighborhood average sale price
-  mutate(
-    sales_ratio = model_value / meta_sale_price,
-    nbhd_avg_pred_ratio = model_value / meta_nbhd_avg
-  )
+  mutate(sales_ratio = model_value / meta_sale_price) %>%
+  group_by(meta_nbhd) %>%
+  mutate(nbhd_avg_pred_ratio = model_value / mean(meta_sale_price)) %>% 
+  ungroup()
 
 # Flag very high and very low ratios (anything that deviates from its prediction
 # be a factor of 3 or more)
 ratio_factor <- sales_filtered %>%
-  filter(sales_ratio < 0.33 | sales_ratio > 3) %>%
+  filter(sales_ratio < 0.25 | sales_ratio > 4) %>%
 
   # Invert ratios in order to rank by magnitude of error
   mutate(
@@ -93,7 +90,7 @@ ratio_factor <- sales_filtered %>%
 # Flag large deviations from the neighborhood average sale price
 nbhd_avg_factor <- sales_filtered %>%
   filter(
-    (nbhd_avg_pred_ratio < 0.33 | nbhd_avg_pred_ratio > 3),
+    (nbhd_avg_pred_ratio < 0.25 | nbhd_avg_pred_ratio > 4),
     !meta_pin %in% ratio_factor
   ) %>%
 
@@ -143,15 +140,12 @@ flagged_sales <- bind_rows(
   ) %>%
   select(-nbhd_avg_pred_ratio) %>%
   relocate(`Township Name`, .after = "meta_year") %>%
-  relocate(meta_nbhd_avg, .after = "sales_ratio") %>%
   vars_recode(type = "long") %>%
   vars_rename(names_from = "standard", names_to = "pretty") %>%
   rename(
     `Predicted 2021 Value` = model_value,
     `Reason for Flag` = reason,
-    `Sale Ratio` = sales_ratio,
-    PIN = `Property Identification Number`,
-    `Docket #` = `Sale Deed Number`
+    `Sale Ratio` = sales_ratio
   ) %>%
   arrange(rank) %>%
   mutate(`Severity Rank` = row_number()) %>%

@@ -132,14 +132,14 @@
       "Package": "assessr",
       "Version": "0.4.2",
       "Source": "GitLab",
-      "RemoteType": "gitlab",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
+      "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
       "RemoteRepo": "packages/assessr",
       "RemoteUsername": "ccao-data-science---modeling",
       "RemoteRef": "HEAD",
-      "RemoteSha": "1e4040e200d4e18fb343010bf14d4ec9af142a93",
-      "Hash": "943666e67b5489a7555cda150de245d5"
+      "RemoteSha": "7b5d2551c6f61d6f4b411687bbd91f9a8632d761",
+      "Hash": "bc4848d556d3634360a09fa19b8119b5"
     },
     "audio": {
       "Package": "audio",
@@ -226,8 +226,8 @@
       "RemoteRepo": "packages/ccao",
       "RemoteUsername": "ccao-data-science---modeling",
       "RemoteRef": "HEAD",
-      "RemoteSha": "292366eec0ff00431b1476ae02976045c1cb476b",
-      "Hash": "099d1115e2641d9304c2a13cf3f06688"
+      "RemoteSha": "141daea59486e0962d0a85de5a879a4dbf974680",
+      "Hash": "d2c1a42bbe53f36a19ca6a95b134c0cb"
     },
     "class": {
       "Package": "class",
@@ -518,10 +518,10 @@
     },
     "here": {
       "Package": "here",
-      "Version": "1.0.0",
+      "Version": "1.0.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "d8d86d2f6c19e9e0174fb22c5d7dabc0"
+      "Hash": "24b224366f9c2e7534d2344d10d59211"
     },
     "highr": {
       "Package": "highr",
@@ -595,10 +595,10 @@
     },
     "jsonlite": {
       "Package": "jsonlite",
-      "Version": "1.7.1",
+      "Version": "1.7.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "1ec84e070b88b37ed169f19def40d47c"
+      "Hash": "98138e0994d41508c7a6b84a0600cfcb"
     },
     "knitr": {
       "Package": "knitr",
@@ -770,10 +770,10 @@
     },
     "parallelly": {
       "Package": "parallelly",
-      "Version": "1.21.0",
+      "Version": "1.22.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "bbf1e5cf8653a539e4659c8c40f17b72"
+      "Hash": "c8cd9aa518ef4b08bc10aa17b548c27c"
     },
     "parsnip": {
       "Package": "parsnip",

@@ -380,7 +380,7 @@ ggplot() +
 
 ## Outlier Table
 
-Table shows only observations less than the 0.1 percentile and greater than the 99.9 percentile.
+Table shows only observations with ratios less than the 0.1 percentile and greater than the 99.9 percentile.
 
 ```{r outlier_table}
 # Create a table of outliers from the 0.01 and 99.9 percentiles of both trimmed
@@ -425,8 +425,7 @@ outlier_dist %>%
     )
   ) %>%
   formatCurrency(
-    c("Sale Price", "Model Prediction", "Median Income",
-      "Neighborhood Mean Sale Price", "Neighborhood Median Sale Price"),
+    c("Sale Price", "Model Prediction", "Median Income"),
     digits = 0
   ) %>%
   formatPercentage(

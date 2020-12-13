@@ -26,7 +26,8 @@ source("R/recipes.R")
 source("R/metrics.R")
 source("R/model_funs.R")
 
-# Get number of available physical cores
+# Get number of available physical cores to use for lightgbm multithreading
+# lightgbm docs recommend using only real cores, not logical
 num_threads <- parallel::detectCores(logical = FALSE)
 
 # Start full script timer
@@ -65,7 +66,7 @@ mod_predictors <- ccao::vars_dict %>%
 full_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
   arrange(meta_sale_date)
-
+  
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales

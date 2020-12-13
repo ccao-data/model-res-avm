@@ -60,7 +60,7 @@ assmntdata <- assmntdata %>%
   ) %>%
   mutate(
     meta_pin = str_pad(meta_pin, 14, "left", "0"),
-    meta_nbhd = str_pad(meta_nbhd, 3, "left", "0"),
+    meta_nbhd = str_pad(meta_nbhd, 5, "left", "0"),
     meta_sale_price = na_if(meta_sale_price, 0)
   )
 
