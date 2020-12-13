@@ -56,6 +56,17 @@ num_leaves <- function(range = c(32L, 2^15L), trans = NULL) {
 }
 
 
+# Register custom num_leaves tuning parameter to lightgbm parsnip model
+parsnip::set_model_arg(
+  model = "boost_tree",
+  eng = "lightgbm",
+  parsnip = "num_leaves",
+  original = "num_leaves",
+  func = list(fun = "num_leaves"),
+  has_submodel = FALSE
+)
+
+
 # Hacky function to used in lieu of finalize_workflow() to update final model
 # parameters. Necessary since finalize_workflow() performs a check against the
 # boost_tree() specification, which does not yet contain num_leaves as a
