@@ -200,7 +200,7 @@ if (cv_enable) {
 
       # Very important. Maps to min_data_in_leaf in lightgbm. Optimal/large
       # values can help prevent overfitting
-      min_n = min_n(c(2L, 40L)),
+      min_n = min_n(c(2L, 200L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
@@ -221,7 +221,7 @@ if (cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 15,
+    initial = 12,
     iter = 100,
     param_info = lgbm_params,
     metrics = metric_set(rmse, codm, rsq),
@@ -260,13 +260,13 @@ if (cv_enable) {
 # Fit the final model using the training data and our final hyperparameters
 # This is the model used to measure performance on the test set
 lgbm_wflow_final_fit <- lgbm_wflow %>%
-  finalize_workflow(as.list(lgbm_final_params)) %>%
+  model_update_params(lgbm_final_params) %>%
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This is the model used for actually assessing all properties
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  finalize_workflow(as.list(lgbm_final_params)) %>%
+  model_update_params(lgbm_final_params) %>%
   fit(data = full_data)
 
 # Remove unnecessary objects created while modeling

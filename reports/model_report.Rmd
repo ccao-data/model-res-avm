@@ -481,7 +481,7 @@ if (file.exists(lgbm_params_path)) {
   lgbm_final_params <- lgbm_params %>%
     mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    mutate(model = "lgbm")
+    mutate(.config = str_remove(.config, "Iter"))
 }
 
 # If parameters exist, generate an autoplot of the CV results
@@ -500,13 +500,13 @@ param_headers <- htmltools::withTags(table(
   class = "display", 
   thead(
     tr(
-      th(rowspan = 2, "Model"),
-      th(rowspan = 2, "Iterations"),
-      th(colspan = 6, "Parameters"),
+      th(rowspan = 2, "Total Iterations"),
+      th(rowspan = 2, "Best Iteration"),
+      th(colspan = 7, "Parameters"),
     ),
     tr(
       th("mtry"), th("min_n"), th("tree_depth"),
-      th("learn_rate"), th("loss_reduction"), th("sample_size")
+      th("learn_rate"), th("loss_reduction"), th("num_leaves")
     )
   )
 ))
@@ -514,10 +514,10 @@ param_headers <- htmltools::withTags(table(
 # Table of all final model hyperparameters that were used
 lgbm_final_params %>%
   select(-any_of(c(
-    "n", "std_err", ".iter", ".config", ".metric", ".estimator",
+    "n", "std_err", ".iter", ".metric", ".estimator",
     ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb"
   ))) %>%
-  relocate(c(model, iterations), .before = NULL) %>%
+  relocate(c(iterations, .config), .before = NULL) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -533,5 +533,5 @@ lgbm_final_params %>%
       info = FALSE
     )
   ) %>%
-  formatRound(c(6:8), digits = 4)
+  formatRound(c(6:7), digits = 4)
 ```

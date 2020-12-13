@@ -56,25 +56,27 @@ num_leaves <- function(range = c(32L, 2^15L), trans = NULL) {
 }
 
 
-# Register custom num_leaves tuning parameter to lightgbm parsnip model
-parsnip::set_model_arg(
-  model = "boost_tree",
-  eng = "lightgbm",
-  parsnip = "num_leaves",
-  original = "num_leaves",
-  func = list(fun = "num_leaves"),
-  has_submodel = FALSE
-)
+# Hacky function to used in lieu of finalize_workflow() to update final model
+# parameters. Necessary since finalize_workflow() performs a check against the
+# boost_tree() specification, which does not yet contain num_leaves as a
+# parameter. Likely to be fixed by treesnip/parsnip in the future
+model_update_params <- function(wflow, params) {
+  wflow$fit$actions$model$spec <- list_modify(
+    wflow$fit$actions$model$spec,
+    params %>% select(-any_of(".config")) %>% as.list()
+  )
+  wflow
+}
 
 
 # Replicated parsnip::boost_tree() function with additional arg for taking
 # num_leaves as a hyperparameter. num_leaves is a hyperparameter exclusive
 # to lightgbm
 lgbm_tree <- function(
-                      mode = "unknown", mtry = NULL, trees = NULL,
-                      min_n = NULL, tree_depth = NULL, learn_rate = NULL,
-                      loss_reduction = NULL, sample_size = NULL, stop_iter = NULL,
-                      num_leaves = NULL) {
+    mode = "unknown", mtry = NULL, trees = NULL,
+    min_n = NULL, tree_depth = NULL, learn_rate = NULL,
+    loss_reduction = NULL, sample_size = NULL, stop_iter = NULL,
+    num_leaves = NULL) {
   args <- list(
     mtry = enquo(mtry), trees = enquo(trees), min_n = enquo(min_n),
     tree_depth = enquo(tree_depth), learn_rate = enquo(learn_rate),
