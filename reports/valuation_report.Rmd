@@ -147,7 +147,38 @@ ggplot() +
 
 <br>
 
-## Overall Ratio Distribution
+## Overall Value Distribution
+
+```{r value_dist, warning=FALSE, message=FALSE}
+# Plot density of previous, predicted, adjusted value and sale price to look
+# for discrepancies in distributions
+pv_final_values %>%
+  pivot_longer(c(meta_sale_price, prior_value:final_value)) %>%
+  mutate(name = fct_recode(
+    factor(name, levels = c(
+      "prior_value", "lgbm_value",
+      "final_value", "meta_sale_price"
+    )),
+    "Prior Value" = "prior_value",
+    "Model Value" = "lgbm_value",
+    "Post-Model Value" = "final_value",
+    "Sale Price" = "meta_sale_price"
+  )) %>%
+ggplot() +
+  geom_density(aes(x = value, color = name), size = 1.05) +
+  scale_x_log10(
+    name = "Value Source",
+    limits = c(5000, 1900000),
+    labels = scales::dollar
+  ) +
+  labs(x = "Price", y = "Density") +
+  guides(color = guide_legend(title = "Value Source")) +
+  theme_minimal()
+```
+
+<br>
+
+## Overall Ratio Distributions
 
 ```{r ratio_dist, warning=FALSE, message=FALSE}
 # Plot histogram of ratios by modeling class (single-family vs multi-family)
