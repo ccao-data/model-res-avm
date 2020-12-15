@@ -3,9 +3,13 @@ Table of Contents
 
   - [Model Overview](#model-overview)
       - [How It Works](#how-it-works)
-      - [Features Used](#features-used)
-      - [Sales Used](#sales-used)
       - [Choices Made](#choices-made)
+          - [Model Selection](#model-selection)
+          - [Hyperparameter Selection](#hyperparameter-selection)
+          - [Features Used](#features-used)
+          - [Sales Used](#sales-used)
+          - [Postmodeling](#postmodeling)
+          - [trim bounds](#trim-bounds)
       - [Ongoing Issues](#ongoing-issues)
       - [Major Changes From V1](#major-changes-from-v1)
       - [FAQs](#faqs)
@@ -14,6 +18,7 @@ Table of Contents
       - [Installation](#installation)
       - [Usage/Files](#usagefiles)
       - [Troubleshooting](#troubleshooting)
+          - [Installation](#installation-1)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -78,45 +83,166 @@ question, we use a two-step process:
     mailing.
 
 The full residential modeling pipeline, from raw data to final values,
-looks something like:
+looks approximately like the flowchart below. Note that **blue nodes are
+clickable links to the code responsible for that step**.
 
 ``` mermaid
-graph LR
+graph TB
     as400[("AS-400/<br>Mainframe")]
-    ext_data["External data<br>(Census data,<br>geospatial)"]
+    mirror("Data mirrored from<br>County mainframe")
+    ext_data(("External data<br>(Census data,<br>geospatial)"))
     etl_pinlocations("Ext. data joined<br>to property data")
     sql[("SQL<br>database")]
     etl_res_data("Data extracted<br>and cleaned")
-    data_train["Training<br>(sales) data"]
-    data_ass["All property<br>data"]
+    data_train["Raw training<br>(sales) data"]
+    data_ass["Raw data<br>(all properties)"]
 
+    prep1("Data preprocessing<br>for model")
+    prep2("Data preprocessing<br>for assessment")
     model_step1("Model training<br>(Step 1 above)")
     model_step2("Valuation<br>(Step 2 above)")
     model{"Trained<br>Model"}
     final_vals["Final predicted/<br>assessed values"]
+    desk_review("Hand review<br>and correction")
 
     click etl_res_data "https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data"
     click etl_pinlocations "https://gitlab.com/ccao-data-science---modeling/processes/etl_pinlocations"
+    click prep1 "https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/master/R/recipes.R#L5"
+    click prep2 "https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/master/R/recipes.R#L5"
 
     classDef Link fill:#90a9e8;
     class etl_res_data Link;
     class etl_pinlocations Link;
+    class prep1 Link;
+    class prep2 Link;
 
-    as400 -->|"Data mirrored from<br>County mainframe"| sql
+    as400 --> mirror
+    mirror --> sql
     ext_data --> etl_pinlocations
     etl_pinlocations --> sql
     sql --> etl_res_data
     etl_res_data --> data_train
     etl_res_data --> data_ass
-    data_train --> model_step1
+    data_train --> prep1
+    prep1 --> model_step1
     model_step1 --> model
     model --> model_step2
-    data_ass --> model_step2
+    data_ass --> prep2
+    prep2 --> model_step2
     model_step2 --> final_vals
-    final_vals -->|"Values uploaded after<br>hand review and correction"| as400
+    final_vals --> desk_review
+    desk_review -->|"Values uploaded after<br>hand review and correction"| as400
 ```
 
-### Features Used
+### Choices Made
+
+Despite its growing reputation as an easy-to-use panacea, machine
+learning actually involves a number of choices and trade-offs which are
+not always transparent or well-justified. Seemingly inane decisions by
+algorithm creators and data scientists [can introduce systemic
+bias](https://www.scientificamerican.com/article/how-nist-tested-facial-recognition-algorithms-for-racial-bias/)
+into results.
+
+To counter this, we’ve listed the major choices we’ve made about our
+modeling process below, as well as the rationale behind each decision.
+We feel strongly that these choices lead to optimal results given the
+trade-offs involved.
+
+#### Model Selection
+
+We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our
+primary valuation model. LightGBM is a GBDT (gradient-boosting decision
+tree) framework created and maintained by Microsoft. It was only very
+recently [released officially for
+R](https://cran.r-project.org/web/packages/lightgbm/index.html), but has
+been around since 2016.
+
+We tried a number of other model types and frameworks, including
+regularized linear models,
+[XGBoost](https://xgboost.readthedocs.io/en/latest/),
+[CatBoost](https://catboost.ai/), random forest, shallow neural
+networks, and support vector machines. We even tried ensemble methods
+such as [model
+stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/commit/77de50dce86986f8d442f05c161438933c097958).
+We chose LightGBM because it has the right mix of trade-offs for our
+needs. Specifically, LightGBM is:
+
+  - [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The
+    docs contain good explanations of LightGBM’s features and useful
+    troubleshooting sections.
+  - Extremely fast. It trained faster than other model types by a nearly
+    2:1 margin using our data (CPU training only).
+  - Highly accurate. It consistently beat other methods in accuracy, as
+    measured by RMSE (root mean squared error) using a test set.
+  - [Capable of natively handling categorical
+    features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support).
+    This is extremely important as a large amount of our property data
+    is categorical (type of roof, neighborhood, etc.). Other methods,
+    such as XGBoost, require feature transformation such as one-hot
+    encoding to use categorical data.
+  - Widely used in housing-specific machine learning models and
+    competitions.
+  - Simpler to use and implement than ensemble methods or neural
+    networks, which allows less room for error.
+  - Easy to diagnose problems with, as it has built-in feature
+    importance and contribution methods.
+
+The downsides of LightGBM are that it is:
+
+  - Relatively difficult to explain compared to simpler models such as
+    linear regression.
+  - Not particularly well-integrated into
+    [Tidymodels](https://www.tidymodels.org/) (yet), the R framework we
+    use for machine learning.
+  - Painful to train, since it has a somewhat large number of
+    hyperparameters.
+  - Prone to over-fitting if not carefully trained, unlike other methods
+    such as random forest.
+
+Additionally, we run a regularized linear model (ElasticNet) to use as a
+baseline comparison for LightGBM. LightGBM universally outperforms the
+linear model, particularly in areas with high housing heterogeneity.
+
+#### Hyperparameter Selection
+
+Models must have well-specified
+[hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_\(machine_learning\))
+in order to be accurate and useful. LightGBM has a large number of
+tunable parameters, but we train the most important six. These
+parameters are:
+
+| LightGBM<br>Parameter                                                                               | Tidymodels<br>Equivalent | Parameter Description                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [num\_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | num\_leaves              | The main parameter to control model complexity. Most important.                                                                                                                                                                                |
+| [max\_depth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                  | tree\_depth              | The maximum tree depth of the model.                                                                                                                                                                                                           |
+| [min\_data\_in\_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)   | min\_n                   | The minimum data in a single tree leaf. Important to prevent over-fitting.                                                                                                                                                                     |
+| [feature\_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)     | mtry                     | The random subset of features selected for a tree, as a percentage. NOTE: treesnip [transforms this input](https://github.com/curso-r/treesnip/blob/29dab3e6f1c47dd6073bad3976b87ce4c6270184/R/lightgbm.R#L211) before passing it to LightGBM. |
+| [min\_gain\_to\_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split) | loss\_reduction          | The minimum gain needed to create a split.                                                                                                                                                                                                     |
+| [learning\_rate](https://lightgbm.readthedocs.io/en/latest/Parameters.html#learning_rate)           | learn\_rate              | Higher learning rate means potentially faster training, depends on number of trees.                                                                                                                                                            |
+
+These parameters are tuned using [Bayesian hyperparameter
+optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which
+iteratively searches the parameter space based on the previous parameter
+tuning results. We use Bayesian tuning instead of grid search or random
+search because it trains far faster and results in nearly identical
+final parameters.
+
+The downside of Bayesian tuning is that it can waste time exploring a
+useless part of the parameter space. In our case, LightGBM has [the
+constraint](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html#tune-parameters-for-the-leaf-wise-best-first-tree)
+that `num_leaves < 2^(max_depth)`. Unfortunately, there’s no way (yet)
+to build this constraint into Tidymodels. We can partially solve this
+issue by shrinking the possible parameter space by [hand-tuning minimum
+and maximum parameter
+values](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html).
+
+Model accuracy for each parameter combination is measured on a
+validation set using [5-fold
+cross-validation](https://docs.aws.amazon.com/machine-learning/latest/dg/cross-validation.html).
+Final model accuracy is measured on a test set of the most recent 10% of
+sales in our training sample.
+
+#### Features Used
 
 The residential model uses a variety of individual and aggregate
 features to determine a property’s assessed value. We’ve tested a long
@@ -183,14 +309,16 @@ model as of 2020-12-15.
 | Sale Month of Year                         | Time           | numeric     |                                                                                                 |
 | Sale Quarter of Year                       | Time           | numeric     |                                                                                                 |
 
-### Sales Used
-
-### Choices Made
+#### Sales Used
 
   - Model type
   - Features to include/exclude
   - How to trim the sales sample
   - post-modeling adjustments
+
+#### Postmodeling
+
+#### trim bounds
 
 ### Ongoing Issues
 
