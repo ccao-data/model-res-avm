@@ -12,7 +12,7 @@ output:
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "man/figures/README-",
+  fig.path = "docs/figures/",
   out.width = "100%"
 )
 ```
@@ -187,7 +187,13 @@ Many people have intuitive assumptions about what drives the value of their home
 
 #### Data Used
 
+![](docs/figures/oot_sampling.png)
 
+##### Train
+
+##### Test
+
+##### Assessment
 
 
 #### Postmodeling

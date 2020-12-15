@@ -329,6 +329,14 @@ they’re excluded:
 
 #### Data Used
 
+![](docs/figures/oot_sampling.png)
+
+##### Train
+
+##### Test
+
+##### Assessment
+
 #### Postmodeling
 
 #### trim bounds
