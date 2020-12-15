@@ -329,13 +329,42 @@ they’re excluded:
 
 #### Data Used
 
+Models need data in order to be trained and measured for accuracy.
+Modern predictive modeling typically uses four data sets:
+
+1.  A training set, used to train the parameters of the model itself.
+2.  A validation set, used to choose the best hyperparameters that
+    define the model’s structure.
+3.  A test set, used to measure the performance of the trained, tuned
+    model on unseen data.
+4.  Previously unseen data with an unknown outcome variable, in our case
+    we want to predict the future sale price (assessed value) of unsold
+    homes.
+
+To assess our model, we use sales data from ***the seven years prior to
+the assessment date***. This range gives us a sufficient amount of data
+for accurate prediction without including outdated price information.
+This sales data is further subdivided into data sets 1-3 in the list
+above.
+
+We use a technique called out-of-time testing (see Figure 1) to
+explicitly measure the model’s ability to predict recent sales. To do
+this, we hold out the most recent 10% of sales as our test set. The
+remaining 90% of the data is split into multiple training and validation
+sets using 5-fold cross-validation.
+
+##### Figure 1: Out-of-time Sampling
+
 ![](docs/figures/oot_sampling.png)
 
-##### Train
+Once we’re satisfied with the model’s performance on recent sales, we
+retrain the model using the full sales sample (see Figure 2). This gives
+the final model more (and more recent) sales from which to learn
+patterns.
 
-##### Test
+##### Figure 2: Final Training
 
-##### Assessment
+![](docs/figures/final_sampling.png)
 
 #### Postmodeling
 
