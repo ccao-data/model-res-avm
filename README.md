@@ -7,7 +7,7 @@ Table of Contents
           - [Model Selection](#model-selection)
           - [Hyperparameter Selection](#hyperparameter-selection)
           - [Features Used](#features-used)
-          - [Sales Used](#sales-used)
+          - [Data Used](#data-used)
           - [Postmodeling](#postmodeling)
           - [trim bounds](#trim-bounds)
       - [Ongoing Issues](#ongoing-issues)
@@ -208,8 +208,8 @@ linear model, particularly in areas with high housing heterogeneity.
 Models must have well-specified
 [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_\(machine_learning\))
 in order to be accurate and useful. LightGBM has a large number of
-tunable parameters, but we train the most important six. These
-parameters are:
+tunable parameters, but we train the most important six in our model.
+These parameters are:
 
 | LightGBM<br>Parameter                                                                               | Tidymodels<br>Equivalent | Parameter Description                                                                                                                                                                                                                          |
 | --------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -309,12 +309,25 @@ model as of 2020-12-15.
 | Sale Month of Year                         | Time           | numeric     |                                                                                                 |
 | Sale Quarter of Year                       | Time           | numeric     |                                                                                                 |
 
-#### Sales Used
+##### Features Excluded
 
-  - Model type
-  - Features to include/exclude
-  - How to trim the sales sample
-  - post-modeling adjustments
+Many people have intuitive assumptions about what drives the value of
+their home, so we often receive the question “Is X taken into account
+when valuing my property?” Here’s a list of commonly asked about
+features which are *not* in the model, as well as rationale for why
+they’re excluded:
+
+| Feature                                                | Reason It’s Excluded                                                                                                                                                                                                |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property condition                                     | Over 98% of the properties in our data have the same condition, meaning it’s not tracked effectively and there’s not enough variation for it to be predictive of sale price.                                        |
+| Being in an unincorporated area                        | [We’re working on it\!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                            |
+| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn’t add much predictive power. Additionally, it is difficult to reliably aggregate crime data.   |
+| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can’t reliably observe interior property characteristics beyond what is available through building permits.                                                 |
+| Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future\!                                                                                                                                                                           |
+| Blighted building or eyesore in my neighborhood        | If a specific building or thing is affecting sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model). |
+| Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                        |
+
+#### Data Used
 
 #### Postmodeling
 
