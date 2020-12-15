@@ -5,40 +5,15 @@ Table of Contents
       - [How It Works](#how-it-works)
       - [Features Used](#features-used)
       - [Sales Used](#sales-used)
-  - [Choices Made](#choices-made)
-  - [Ongoing Issues](#ongoing-issues)
-  - [Major Changes From V1](#major-changes-from-v1)
-  - [FAQs](#faqs)
+      - [Choices Made](#choices-made)
+      - [Ongoing Issues](#ongoing-issues)
+      - [Major Changes From V1](#major-changes-from-v1)
+      - [FAQs](#faqs)
   - [Technical Details](#technical-details)
   - [Replication/Usage](#replicationusage)
       - [Installation](#installation)
       - [Usage/Files](#usagefiles)
       - [Troubleshooting](#troubleshooting)
-  - [Process of Installing and Running Residental
-    Model](#process-of-installing-and-running-residental-model)
-      - [Steps of Installation and
-        Running](#steps-of-installation-and-running)
-          - [Step 1: Clone the repo, Setting Repo as working directory
-            in
-            RStudio](#step-1-clone-the-repo-setting-repo-as-working-directory-in-rstudio)
-          - [Step 2: In RStuio, Install Package Renv and Run
-            renv::restore()](#step-2-in-rstuio-install-package-renv-and-run-renvrestore)
-          - [Step 3: Ask for Input data and hyperparameter files from
-            Dan](#step-3-ask-for-input-data-and-hyperparameter-files-from-dan)
-          - [Step 4: Run Model.R from ccao\_res\_avm repo (creates the
-            model and evaluates its performance on a test
-            set)](#step-4-run-model.r-from-ccao_res_avm-repo-creates-the-model-and-evaluates-its-performance-on-a-test-set)
-          - [Step 5: Run Valuation.R (gets the predicted values for all
-            the properties we need to
-            assess)](#step-5-run-valuation.r-gets-the-predicted-values-for-all-the-properties-we-need-to-assess)
-          - [Step 6: Run reports: model\_report.Rmd &
-            Valuation\_report.Rmd for model performance
-            evaluation.](#step-6-run-reports-model_report.rmd-valuation_report.rmd-for-model-performance-evaluation.)
-      - [Common Bugs:](#common-bugs)
-          - [Step 2: Install Package Renv and Run
-            renv::restore()](#step-2-install-package-renv-and-run-renvrestore)
-          - [Step 4: Run Model.R from ccao\_res\_avm
-            repo](#step-4-run-model.r-from-ccao_res_avm-repo)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -102,14 +77,13 @@ question, we use a two-step process:
     additional rounds of automated and human review between modeling and
     mailing.
 
-The full residential modeling pipeline, from raw data to mailing
-assessed values to taxpayers, looks something like:
+The full residential modeling pipeline, from raw data to final values,
+looks something like:
 
 ``` mermaid
 graph LR
     as400[("AS-400/<br>Mainframe")]
-    mirror("Data mirrored from<br>County mainframe")
-    ext_data(("External data<br>(Census data,<br>geospatial)"))
+    ext_data["External data<br>(Census data,<br>geospatial)"]
     etl_pinlocations("Ext. data joined<br>to property data")
     sql[("SQL<br>database")]
     etl_res_data("Data extracted<br>and cleaned")
@@ -120,7 +94,6 @@ graph LR
     model_step2("Valuation<br>(Step 2 above)")
     model{"Trained<br>Model"}
     final_vals["Final predicted/<br>assessed values"]
-    desk_review("Hand review<br>and correction")
 
     click etl_res_data "https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data"
     click etl_pinlocations "https://gitlab.com/ccao-data-science---modeling/processes/etl_pinlocations"
@@ -129,8 +102,7 @@ graph LR
     class etl_res_data Link;
     class etl_pinlocations Link;
 
-    as400 --> mirror
-    mirror --> sql
+    as400 -->|"Data mirrored from<br>County mainframe"| sql
     ext_data --> etl_pinlocations
     etl_pinlocations --> sql
     sql --> etl_res_data
@@ -141,8 +113,7 @@ graph LR
     model --> model_step2
     data_ass --> model_step2
     model_step2 --> final_vals
-    final_vals --> desk_review
-    desk_review --> as400
+    final_vals -->|"Values uploaded after<br>hand review and correction"| as400
 ```
 
 ### Features Used
@@ -214,14 +185,14 @@ model as of 2020-12-15.
 
 ### Sales Used
 
-## Choices Made
+### Choices Made
 
   - Model type
   - Features to include/exclude
   - How to trim the sales sample
   - post-modeling adjustments
 
-## Ongoing Issues
+### Ongoing Issues
 
   - Data integrity (wrong characteristics, bad sales, lack of chars)
   - Low-value properties
@@ -229,7 +200,7 @@ model as of 2020-12-15.
   - Multi-family
   - Land valuation
 
-## Major Changes From V1
+### Major Changes From V1
 
   - Whole county
   - lightgbm
@@ -237,9 +208,9 @@ model as of 2020-12-15.
   - split codebase
   - dependency management
 
-## FAQs
+### FAQs
 
-# Technical Details
+## Technical Details
 
 Modeling is implemented using the
 [Tidymodels](https://www.tidymodels.org/) framework for R.
@@ -256,63 +227,51 @@ Minimized on RMSE
 
 Other models tried
 
-# Replication/Usage
+## Replication/Usage
 
-## Installation
+### Installation
 
-## Usage/Files
+The code in this repository is written primarily in
+[R](https://www.r-project.org/about.html). Please install the [latest
+version of R](https://cloud.r-project.org/) and
+[RStudio](https://rstudio.com/products/rstudio/download/) before
+proceeding with the steps below. If you’re on Windows, you’ll also need
+to install [rtools40](https://cran.r-project.org/bin/windows/Rtools/) in
+order to build packages.
 
-## Troubleshooting
+1.  Clone this repository using git, or simply download using the button
+    at the top of the page
+2.  Set your working directory to the local folder containing this
+    repository’s files, either using R’s `setwd()` command or using
+    RStudio’s
+    [projects](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects)
+3.  Install `renv`, R’s package manager, by running
+    `install.packages("renv")`
+4.  Install all R package dependencies using `renv` by running
+    `renv::restore()`
+5.  Place modeling and assessment data parquet files in the `input/`
+    directory within the repo
+6.  Run the `model.R` script. This trains the model, evaluates a test
+    set, and generates a report on the model’s peformance
+7.  Run the `valuation.R` script. This creates a secondary adjustment
+    model and generates predicted values for all properties we need to
+    assess
 
-# Process of Installing and Running Residental Model
+### Usage/Files
 
------
+### Troubleshooting
 
-## Steps of Installation and Running
+#### Installation
 
-#### Step 1: Clone the repo, Setting Repo as working directory in RStudio
+The dependencies for this repository are numerous and not all of them
+may install correctly. Here are some common install issues (as seen in
+the R console) as well as their respective resolutions:
 
-#### Step 2: In RStuio, Install Package Renv and Run renv::restore()
+  - Error: `Failed to retrieve package 'treesnip'` <br>Solution:
+    Manually install treesnip [from
+    GitHub](https://github.com/curso-r/treesnip), following the
+    instructions listed
 
-#### Step 3: Ask for Input data and hyperparameter files from Dan
-
-Params file goes output/params folder: \* cat\_params.rds, \*
-xgb\_params.rds, \* lgbm\_params.rds, \* Model\_timings.rds
-
-Input files goes to input folder: \* nbhdstats.parquet, \*
-assmntdata.parquet, \* modeldata.parquet
-
-#### Step 4: Run Model.R from ccao\_res\_avm repo (creates the model and evaluates its performance on a test set)
-
-#### Step 5: Run Valuation.R (gets the predicted values for all the properties we need to assess)
-
-#### Step 6: Run reports: model\_report.Rmd & Valuation\_report.Rmd for model performance evaluation.
-
-## Common Bugs:
-
-#### Step 2: Install Package Renv and Run renv::restore()
-
-Potential Problesm Encountered:
-
-1)  Error: Failed to retrieve package ‘treesnip’ Solution:
-
-<!-- end list -->
-
-  - Manullay install treesnip with instruction:
-    <https://github.com/curso-r/treesnip>
-
-<!-- end list -->
-
-2)  Error: WARNING: Rtools is required to build R packages, but is not
-    currently installed.
-
-Solution: - Install R Tools:
-<https://cran.r-project.org/bin/windows/Rtools/>
-
-3)  Error: (converted from warning) package ‘parsnip’ was built under R
-    version 4.0.3
-
-Solution: - try manually installing the dev version of parsnip from
-github: <https://github.com/tidymodels/parsnip>
-
-#### Step 4: Run Model.R from ccao\_res\_avm repo
+  - Error: `WARNING: Rtools is required to build R packages, but is not
+    currently installed` <br>Solution: Install the latest version of
+    Rtools [from CRAN](https://cran.r-project.org/bin/windows/Rtools/)
