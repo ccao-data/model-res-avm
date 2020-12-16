@@ -7,9 +7,15 @@ Table of Contents
           - [Model Selection](#model-selection)
           - [Hyperparameter Selection](#hyperparameter-selection)
           - [Features Used](#features-used)
+              - [Features Excluded](#features-excluded)
           - [Data Used](#data-used)
-          - [Postmodeling](#postmodeling)
-          - [trim bounds](#trim-bounds)
+              - [Using `modeldata`](#using-modeldata)
+              - [Using `assmntdata`](#using-assmntdata)
+              - [Representativeness](#representativeness)
+          - [Post-Modeling](#post-modeling)
+          - [Other Choices](#other-choices)
+              - [288s](#s)
+              - [How Are Comparables Used?](#how-are-comparables-used)
       - [Ongoing Issues](#ongoing-issues)
       - [Major Changes From V1](#major-changes-from-v1)
       - [FAQs](#faqs)
@@ -22,7 +28,7 @@ Table of Contents
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-## Model Overview
+# Model Overview
 
 The duty of the Cook County Assessor’s Office is to value property in a
 fair, accurate, and transparent way. The Assessor is committed to
@@ -54,7 +60,7 @@ and [commercial
 apartments](https://gitlab.com/ccao-data-science---modeling/models/commercial-apartments-automated-valuation-model)
 are determined by separate models.
 
-### How It Works
+## How It Works
 
 The goal of the model is to answer the question “What would the sale
 price of every home be if it had sold last year?” To answer this
@@ -103,7 +109,6 @@ graph TB
     model_step2("Valuation<br>(Step 2 above)")
     model{"Trained<br>Model"}
     final_vals["Final predicted/<br>assessed values"]
-    desk_review("Hand review<br>and correction")
 
     click etl_res_data "https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data"
     click etl_pinlocations "https://gitlab.com/ccao-data-science---modeling/processes/etl_pinlocations"
@@ -130,11 +135,10 @@ graph TB
     data_ass --> prep2
     prep2 --> model_step2
     model_step2 --> final_vals
-    final_vals --> desk_review
-    desk_review -->|"Values uploaded after<br>hand review and correction"| as400
+    final_vals -->|"Values uploaded after<br>hand review and correction"| as400
 ```
 
-### Choices Made
+## Choices Made
 
 Despite its growing reputation as an easy-to-use panacea, machine
 learning actually involves a number of choices and trade-offs which are
@@ -148,7 +152,7 @@ modeling process below, as well as the rationale behind each decision.
 We feel strongly that these choices lead to optimal results given the
 trade-offs involved.
 
-#### Model Selection
+### Model Selection
 
 We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our
 primary valuation model. LightGBM is a GBDT (gradient-boosting decision
@@ -203,7 +207,7 @@ Additionally, we run a regularized linear model (ElasticNet) to use as a
 baseline comparison for LightGBM. LightGBM universally outperforms the
 linear model, particularly in areas with high housing heterogeneity.
 
-#### Hyperparameter Selection
+### Hyperparameter Selection
 
 Models must have well-specified
 [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_\(machine_learning\))
@@ -239,10 +243,10 @@ values](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html).
 Model accuracy for each parameter combination is measured on a
 validation set using [5-fold
 cross-validation](https://docs.aws.amazon.com/machine-learning/latest/dg/cross-validation.html).
-Final model accuracy is measured on a test set of the most recent 10% of
-sales in our training sample.
+Final model accuracy is measured on a test set of the [most recent 10%
+of sales](#data-used) in our training sample.
 
-#### Features Used
+### Features Used
 
 The residential model uses a variety of individual and aggregate
 features to determine a property’s assessed value. We’ve tested a long
@@ -255,7 +259,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2020-12-15.
+model as of 2020-12-16.
 
 | Feature Name                               | Category       | Type        | Possible Values                                                                                 |
 | :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -309,7 +313,7 @@ model as of 2020-12-15.
 | Sale Month of Year                         | Time           | numeric     |                                                                                                 |
 | Sale Quarter of Year                       | Time           | numeric     |                                                                                                 |
 
-##### Features Excluded
+#### Features Excluded
 
 Many people have intuitive assumptions about what drives the value of
 their home, so we often receive the question “Is X taken into account
@@ -327,50 +331,115 @@ they’re excluded:
 | Blighted building or eyesore in my neighborhood        | If a specific building or thing is affecting sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model). |
 | Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                        |
 
-#### Data Used
+### Data Used
+
+This repository uses two main data sets:
+
+  - `modeldata` - Includes residential sales from ***the seven years
+    prior to the next assessment date***, which gives us a sufficient
+    amount of data for accurate prediction without including outdated
+    price information. This is the data used to train and evaluate the
+    model. Its approximate size is 300K rows with 80 features.
+  - `assmntdata` - Includes all residential properties (sold and unsold)
+    which need assessed values. This is the data the final model is used
+    on. Its approximate size is 1.1 million rows with 80 features.
+
+Both of these data sets are are constructed using the
+[etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
+repository. They contain only *residential single- and multi-family
+properties*. Single-family includes property classes 202, 203, 204, 205,
+206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes
+property classes 211 and 212. Other residential properties, such as
+condominiums (class 299 and 399) are valued [using a different
+model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+
+#### Using `modeldata`
 
 Models need data in order to be trained and measured for accuracy.
-Modern predictive modeling typically uses four data sets:
+Modern predictive modeling typically uses three data sets:
 
 1.  A training set, used to train the parameters of the model itself.
 2.  A validation set, used to choose the best hyperparameters that
     define the model’s structure.
 3.  A test set, used to measure the performance of the trained, tuned
     model on unseen data.
-4.  Previously unseen data with an unknown outcome variable, in our case
-    we want to predict the future sale price (assessed value) of unsold
-    homes.
 
-To assess our model, we use sales data from ***the seven years prior to
-the assessment date***. This range gives us a sufficient amount of data
-for accurate prediction without including outdated price information.
-This sales data is further subdivided into data sets 1-3 in the list
-above.
+`modeldata` is used to create these data sets. It is subdivided using a
+technique called out-of-time testing (see Figure 1).
 
-We use a technique called out-of-time testing (see Figure 1) to
-explicitly measure the model’s ability to predict recent sales. To do
-this, we hold out the most recent 10% of sales as our test set. The
-remaining 90% of the data is split into multiple training and validation
-sets using 5-fold cross-validation.
+Out-of-time testing explicitly measures the model’s ability to predict
+recent sales. It holds out the most recent 10% of sales as a test set,
+while the remaining 90% of the data is split into multiple training and
+validation sets using 5-fold cross-validation. We chose this technique
+instead of out-of-time validation or rolling window validation because
+it’s easier to implement in Tidymodels and we want to use the most
+recent sales possible when training (to account for any market changes
+caused by COVID).
 
-##### Figure 1: Out-of-time Sampling
+##### Figure 1: Out-of-time Testing
 
 ![](docs/figures/oot_sampling.png)
 
 Once we’re satisfied with the model’s performance on recent sales, we
-retrain the model using the full sales sample (see Figure 2). This gives
-the final model more (and more recent) sales from which to learn
-patterns.
+retrain the model using the full sales sample (all rows in `modeldata`).
+This gives the final model more (and more recent) sales to learn from,
+see below.
 
 ##### Figure 2: Final Training
 
 ![](docs/figures/final_sampling.png)
 
-#### Postmodeling
+#### Using `assmntdata`
 
-#### trim bounds
+Finally, the model, trained on the full sales sample from `modeldata`,
+can be used to predict assessed values for all residential properties.
+To do this, we set the “sale date” of all properties in `assmntdata` to
+Jan 1st of the assessment year, then use the final model to predict what
+the sale price would be on that date.
 
-### Ongoing Issues
+These sale prices are our initial prediction for what each property is
+worth. They eventually become the assessed value sent to taxpayers after
+some further adjustments (see [Post-Modeling](#post-modeling)) and hand
+review.
+
+#### Representativeness
+
+There’s a common saying in the machine learning world, “garbage in,
+garbage out.” This is a succinct way to say that training a predictive
+model with bad, unrepresentative, or biased data leads to bad results.
+
+To counter this problem and ensure high-quality prediction, we do our
+best to ensure that the sales data used to train the model is
+representative of the actual market. This means dropping non-arms-length
+sales, removing outliers, and manually reviewing suspect sales.
+Specifically, we:
+
+  - Drop any sales with a sale price of less than $10,000
+  - Drop sales on any properties with more than 40 rooms or 18 bedrooms
+  - Drop sales whose price is more than 4 standard deviations away from
+    the mean price of sales in the same class and township
+  - Drop sales with a significant amount of missing data
+  - Hand review and then potentially drop (if found to be not
+    arms-length) sales which:
+      - Have a very high or very low sales ratio (predicted value /
+        actual sale value)
+      - Significantly deviate from the neighborhood average
+      - Have a very large year-over-year change in valuation or sale
+        price
+
+### Post-Modeling
+
+### Other Choices
+
+#### 288s
+
+fdsfsdf
+
+#### How Are Comparables Used?
+
+They aren’t.
+
+## Ongoing Issues
 
   - Data integrity (wrong characteristics, bad sales, lack of chars)
   - Low-value properties
@@ -378,7 +447,7 @@ patterns.
   - Multi-family
   - Land valuation
 
-### Major Changes From V1
+## Major Changes From V1
 
   - Whole county
   - lightgbm
@@ -386,9 +455,9 @@ patterns.
   - split codebase
   - dependency management
 
-### FAQs
+## FAQs
 
-## Technical Details
+# Technical Details
 
 Modeling is implemented using the
 [Tidymodels](https://www.tidymodels.org/) framework for R.
@@ -405,9 +474,9 @@ Minimized on RMSE
 
 Other models tried
 
-## Replication/Usage
+# Replication/Usage
 
-### Installation
+## Installation
 
 The code in this repository is written primarily in
 [R](https://www.r-project.org/about.html). Please install the [latest
@@ -435,11 +504,11 @@ order to build packages.
     model and generates predicted values for all properties we need to
     assess
 
-### Usage/Files
+## Usage/Files
 
-### Troubleshooting
+## Troubleshooting
 
-#### Installation
+### Installation
 
 The dependencies for this repository are numerous and not all of them
 may install correctly. Here are some common install issues (as seen in
