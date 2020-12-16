@@ -7,18 +7,13 @@ Table of Contents
           - [Model Selection](#model-selection)
           - [Hyperparameter Selection](#hyperparameter-selection)
           - [Features Used](#features-used)
-              - [Features Excluded](#features-excluded)
           - [Data Used](#data-used)
-              - [Using `modeldata`](#using-modeldata)
-              - [Using `assmntdata`](#using-assmntdata)
-              - [Representativeness](#representativeness)
           - [Post-Modeling](#post-modeling)
           - [Other Choices](#other-choices)
-              - [288s](#s)
-              - [How Are Comparables Used?](#how-are-comparables-used)
-      - [Ongoing Issues](#ongoing-issues)
-      - [Major Changes From V1](#major-changes-from-v1)
-      - [FAQs](#faqs)
+      - [Major Changes From Previous
+        Versions](#major-changes-from-previous-versions)
+  - [Ongoing Issues](#ongoing-issues)
+  - [FAQs](#faqs)
   - [Technical Details](#technical-details)
   - [Replication/Usage](#replicationusage)
       - [Installation](#installation)
@@ -36,7 +31,7 @@ transparency throughout the assessment process, and as such, this
 repository contains:
 
   - [Nearly all code used to determine Cook County residential property
-    values](./)
+    values](./model.R)
   - [Rationale for different modeling, feature, and code decisions that
     affect assessed property values](#choices-made)
   - [An outline of ongoing data quality issues that affect assessed
@@ -313,6 +308,24 @@ model as of 2020-12-16.
 | Sale Month of Year                         | Time           | numeric     |                                                                                                 |
 | Sale Quarter of Year                       | Time           | numeric     |                                                                                                 |
 
+#### Data Sources
+
+We rely on numerous third-party sources to add new features to our data.
+These features are used in the primary valuation model and thus need to
+be high-quality and error-free. A non-exhaustive list of features and
+their respective sources includes:
+
+| Feature                                           | Data Source                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tax rate                                          | Cook County Clerk’s Office                                                                                                                                                                                                                                                                               |
+| O’Hare noise boundary                             | Buffering O’Hare airport spatial boundary                                                                                                                                                                                                                                                                |
+| Road proximity                                    | Buffering [OpenStreetMap](https://www.openstreetmap.org/#map=10/41.8129/-87.6871) motorway, trunk, and primary roads                                                                                                                                                                                     |
+| Flood indicator                                   | [FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/)                                                                                                                                                                                                                            |
+| Flood risk and direction                          | [First Street](https://firststreet.org/flood-factor/) flood data                                                                                                                                                                                                                                         |
+| Median income                                     | [2014-2018 ACS 5-year estimates](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2018/5-year.html)                                                                                                                                                       |
+| Elementary school district or attendance boundary | [Cook County school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-Elementary-School-Tax-Distric/an6r-bw5a) and [CPS attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-Elementary-School-Attendanc/7edu-z2e8)              |
+| High school district of attendance boundary       | [Cook County high school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-High-School-Tax-Dist-2016/h3xu-azvs) and [CPS high school attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-High-School-Attendance-Boun/y9da-bb2y) |
+
 #### Features Excluded
 
 Many people have intuitive assumptions about what drives the value of
@@ -429,17 +442,131 @@ Specifically, we:
 
 ### Post-Modeling
 
+In addition to the first-pass modeling done by LightGBM, the CCAO also
+runs a much simpler second-pass model on the predicted values from
+`assmntdata`. This second model is internally called “post-modeling”,
+and is responsible for correcting any deficiencies in the first model’s
+predictions. Specifically, post-modeling will:
+
+1.  Shift the distribution of predicted values for each neighborhood and
+    modeling group (single- and multi-family) such that its median sale
+    ratio (predicted value / actual sale value) moves toward 1. This is
+    done by applying a neighborhood and modeling group-specific
+    percentage multiplier to all properties. This percentage multiplier
+    is capped at 40%. This is done to correct some of the modeling bias
+    caused by [ongoing data issues](#ongoing-issues), as well as prevent
+    broad over- or under-assessment.
+
+2.  Cap sales ratios for properties with sales in the last seven years.
+    If a property’s sale ratio (predicted value / actual sale value) is
+    less than 0.7 or greater than 2, its predicted value will be
+    adjusted to the cap value. For example, if a property sold for $100K
+    in 2019 and our model predicts that it’s value is $65K, it will have
+    a sale ratio of 0.65, which is below the 0.7 threshold. As a result,
+    the property’s predicted value will be adjusted to $70K.
+
+3.  Ensure that perfectly identical properties are identically valued.
+    For some property classes, such as townhouses, we manually adjust
+    values such that all identical properties in the same unit or
+    complex receive the same predicted value. This is accomplished by
+    replacing individual predicted values with the median predicted
+    value for all properties in the same unit.
+
+These adjustments have been collectively approved by the senior
+leadership of the CCAO. They are designed to limit the impact of data
+integrity issues, prevent regressivity in assessment, and ensure that
+people with the same property receive the same value.
+
 ### Other Choices
 
-#### 288s
+In addition the major choices listed above, there are a number of
+smaller choices which impact model results, such as how to administer
+certain processes.
 
-fdsfsdf
+#### Home Improvement Exemptions
 
-#### How Are Comparables Used?
+Per Illinois statute [35
+ILCS 200/15-180](https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=003502000K15-180),
+[homeowners are entitled to deduct up to $75,000 per
+year](https://www.cookcountyassessor.com/home-improvement-exemption)
+from their fair market value based on any value created by improvements
+to a residential property.
 
-They aren’t.
+This has the effect of essentially “freezing” a home’s characteristics
+at whatever they were prior to the start of the improvement project. For
+example, if a property owner adds an additional bedroom and applies for
+a home improvement exemption, the property will be valued as if the new
+bedroom does not exist until the exemption expires and as long as the
+increase in valuation is less than $75,000.
 
-## Ongoing Issues
+The exemption expires after 4 years or until the next assessment cycle,
+whichever is longer. For example, an exemption received in 2016 for a
+property in Northfield (with assessment years 2016, 2019, and 2022) will
+last 6 years (our system updates the property characteristics in 2021,
+the year before the 2022 reassessment).
+
+The goal of home improvement exemptions is to prevent penalizing
+homeowners for improving their property. However, these exemptions also
+make modeling more complicated. Homes that are sold while an improvement
+exemption is active may have updated characteristics (more bedrooms, new
+garage, etc.) that are reflected in the sale price but *not* in our
+data. These properties can bias the model if not corrected, as their old
+characteristics do not accurately reflect their sale price.
+
+To fix this, we [developed
+code](https://ccao-data-science---modeling.gitlab.io/packages/ccao/reference/chars_update.html)
+to update the characteristics of properties with home improvement
+exemptions. This update occurs ***only when training the model, not when
+actually valuing properties***. In other words, we update our
+sales/training data to include the characteristics at the time of sale,
+but value exempt properties as if their characteristics haven’t changed.
+
+Updating this data is complicated and imperfect (see [ongoing
+issues](#ongoing-issues)), so if properties with an active home
+improvement exemption cannot have their characteristics accurately
+updated, they are dropped from the training data (`modeldata`).
+
+## Major Changes From Previous Versions
+
+This repository represents a significant departure from the [residential
+codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
+used to create assessed values in 2019 and 2020. As the Data Science
+department at the CCAO has grown, we’ve been able to dedicate more
+resources to building models, applications, and other tools. As a
+result, we’ve made the following major changes:
+
+  - Reduced the size of the residential modeling codebase substantially,
+    from around 16,000 lines of R code to less than 1,000. This was
+    accomplished by moving complicated data handling to our [internal R
+    package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
+    and abstracting away machine learning logic to
+    [Tidymodels](https://www.tidymodels.org/).
+  - Unified modeling for the entire county. Prior iterations of the
+    residential model used individual models for each township. This was
+    difficult to implement and track and performed worse than a single
+    large model. The new model can value any residential property in the
+    county, is significantly faster to train, and is much easier to
+    replicate.
+  - Split the residential codebase into separate models for
+    [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm)
+    and
+    [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+    Previously, these models were combined in the same scripts, leading
+    to a lot of complication and unnecessary overhead. Separating them
+    makes it much easier to understand and diagnose each model.
+  - Switched to using LightGBM as our primary valuation model. LightGBM
+    is essentially the most bleeding-edge machine learning framework
+    widely available that isn’t a neural network. Prior to LightGBM, we
+    used linear models or R’s gbm package. Prior to 2018, the CCAO used
+    linear models in SPSS for residential valuations.
+  - Improved dependency management via
+    [renv](https://rstudio.github.io/renv/articles/renv.html).
+    Previously, users trying replicate our model needed to manually
+    install a list of needed R packages. By switching to renv, we’ve
+    vastly reduced the effort needed to replicate our modeling
+    environment, see the [installation section](#installation) below.
+
+# Ongoing Issues
 
   - Data integrity (wrong characteristics, bad sales, lack of chars)
   - Low-value properties
@@ -447,15 +574,103 @@ They aren’t.
   - Multi-family
   - Land valuation
 
-## Major Changes From V1
+# FAQs
 
-  - Whole county
-  - lightgbm
-  - tidymodels
-  - split codebase
-  - dependency management
+**Q: How are comparables used in the model?**
 
-## FAQs
+We don’t use sale or uniformity comparables for the purpose of modeling.
+Our model works by automatically finding patterns in sales data and
+extrapolating those patterns to predict prices; the model never
+explicitly says, “here is property X and here are Y similar properties
+and their sale prices.”
+
+We *do* use [comparables for other
+things](https://www.cookcountyassessor.com/what-are-comparable-properties),
+namely when processing appeals and when evaluating the model’s
+performance.
+
+**Q: What are the most important features in the model?**
+
+The importance of individual features in the model varies from place to
+place. Some properties will gain $50K in value from an additional
+bedroom, while others will gain almost nothing. However, some factors do
+stand out as more influential:
+
+  - Location. Two identical single-family homes, one in Wicker Park, the
+    other in the south suburbs, will not receive the same valuation.
+    Location is the largest driver of county-wide variation in property
+    value. This is accounted for in our model through a number of
+    [location-based features](#features-used) such as school district,
+    neighborhood, township, and others.
+  - Square footage. Larger homes tend to be worth more than smaller
+    ones, though there are diminishing marginal returns.
+  - Number of bedrooms and bathrooms. Generally speaking, the more rooms
+    the better, though again there are diminishing returns. The value
+    added by a second bedroom is much more than the value added by a
+    twentieth bedroom.
+
+**Q: How much will one additional bedroom add to my assessed value?**
+
+Our model is non-linear, meaning it’s difficult to say things like, “100
+additional square feet will increase this property’s value by $5,000,”
+as the relationship between price and individual features varies from
+property to property.
+
+We’re working on creating an easy-to-use application that would allow
+taxpayers to change their property’s characteristics and instantly
+receive a new predicted value from the model. This should be available
+in early 2021.
+
+**Q: Why don’t you use a simple linear model?**
+
+We decided that performance was more important than the perfect
+interpretability offered by linear models, and LightGBM tends to
+outperform linear models on data with a large number of categorical
+features, interactions, and non-linearities. We still use a [linear
+model as a
+baseline](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/master/model.R#L101)
+against LightGBM.
+
+We’re working on exposing the interpretability features of LightGBM via
+the application mentioned above.
+
+**Q: How do you measure model performance?**
+
+Assessors tend to use [housing and assessment-specific performance
+measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf)
+to gauge the performance of their mass appraisal systems, including:
+
+  - [COD (Coefficient of
+    Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
+  - [PRD (Price-Related
+    Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
+  - [PRB (Price-Related
+    Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
+
+These statistics can be found broken out by township in the [sample
+modeling
+report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_baseline.html)
+included in this repository.
+
+More traditionally, we use R<sup>2</sup> and root-mean-squared-error
+(RMSE) to gauge overall model performance and fit. Overall model
+performance on the test set as of 2020-12-16 is shown in the table below
+and generally stays within this range.
+
+| Model Type | R<sup>2</sup> |     RMSE |
+| :--------- | ------------: | -------: |
+| Linear     |          0.72 | 153749.7 |
+| LightGBM   |          0.86 | 109133.9 |
+
+**Q: My assessed value seems wrong. How do I fix it?**
+
+There are over one million residential properties in Cook County
+spanning a huge variety of locations, types, ages, and conditions. A
+mass appraisal model isn’t going to accurately value every single
+property. If you believe that the value produced by our model is
+inaccurate, please [file an
+appeal](https://www.cookcountyassessor.com/online-appeals) with our
+office.
 
 # Technical Details
 
@@ -471,8 +686,6 @@ preprocessing in recipes
 Tuned according to lgbm docs
 
 Minimized on RMSE
-
-Other models tried
 
 # Replication/Usage
 
