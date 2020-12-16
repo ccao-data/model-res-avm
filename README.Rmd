@@ -36,7 +36,7 @@ The goal of the model is to answer the question "What would the sale price of ev
 
 1. **Modeling**: First, we use the code in this repository to train an advanced machine learning model. The model predicts the sale price (fair market value) of unsold properties using the known sale price of similar and nearby properties. Training the model involves iteratively updating a mathematical function to recognize patterns in the data. The output of this step is a model object which can be used to predict any property's sale price given a [set of characteristics (such as location, number of bedrooms, etc.)](#features-used).
 
-2. **Valuation**: Second, we use the model created in step one to predict values for all residential properties in Cook County. We then train a secondary, much simpler model (which we call the post-modeling adjustment model) to correct for any systemic bias introduced by the first model. Finally, we combine the first and second model to produce initial assessed property values - the ones printed on Residential Reassessment Notices that are mailed when properties are reassessed. However, note that values produced by the model and mailed values may not be identical, as there are additional rounds of automated and human review between modeling and mailing.
+2. **Valuation**: Second, we use the model created in Step 1 to predict values for all residential properties in Cook County. We then train a secondary, much simpler model (which we call the post-modeling adjustment model) to correct for any systemic bias introduced by the first model. Finally, we combine the first and second model to produce initial assessed property values - the ones printed on Residential Reassessment Notices that are mailed when properties are reassessed. However, note that values produced by the model and mailed values may not be identical, as there are additional rounds of automated and human review between modeling and mailing.
 
 The full residential modeling pipeline, from raw data to final values, looks approximately like the flowchart below. Note that **blue nodes are clickable links to the code responsible for that step**.
 
@@ -193,20 +193,20 @@ Many people have intuitive assumptions about what drives the value of their home
 |--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Property condition                                     | Over 98% of the properties in our data have the same condition, meaning it's not tracked effectively and there's not enough variation for it to be predictive of sale price.                                        |
 | Being in an unincorporated area                        | [We're working on it!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                             |
-| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn't add much predictive power. Additionally, it is difficult to reliably aggregate crime data.   |
+| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn't add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County.  |
 | Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can't reliably observe interior property characteristics beyond what is available through building permits.                                                 |
 | Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future!                                                                                                                                                                            |
-| Blighted building or eyesore in my neighborhood        | If a specific building or thing is affecting sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model). |
+| Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model). |
 | Pictures of property                                   | We don't have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                        |
 
 ### Data Used
 
-This repository uses two main data sets:
+This repository uses two data sets that are constructed by the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository:
 
 * `modeldata` - Includes residential sales from ***the seven years prior to the next assessment date***, which gives us a sufficient amount of data for accurate prediction without including outdated price information. This is the data used to train and evaluate the model. Its approximate size is 300K rows with 80 features.
 * `assmntdata` - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 80 features.
 
-Both of these data sets are are constructed using the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository. They contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+These data sets contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
 
 #### Using `modeldata`
 
@@ -293,11 +293,30 @@ This repository represents a significant departure from the [residential codebas
 
 # Ongoing Issues
 
-- Data integrity (wrong characteristics, bad sales, lack of chars)
-- Low-value properties
-- Multi-codes
-- Multi-family
-- Land valuation
+The CCAO faces a number of ongoing issues which can contribute to poor modeling outcomes. Some of these issues are in the process of being solved; others are less tractable. We list them here for the sake of transparency and to provide a sense of the challenges we face. 
+
+### Data Quality, Integrity, and Management
+
+#### Lack of Property Characteristics
+
+#### Inaccurate Property Characteristics
+
+#### Non-arms-length Sales
+
+#### Archaic Data Systems
+
+
+### Heterogeneity, Outliers, and Obfuscation
+
+#### Housing Heterogeneity
+
+mutli-fam
+
+#### High and Low-value Properties
+
+#### Purposeful Obfuscation
+
+
 
 # FAQs
 

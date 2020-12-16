@@ -13,6 +13,10 @@ Table of Contents
       - [Major Changes From Previous
         Versions](#major-changes-from-previous-versions)
   - [Ongoing Issues](#ongoing-issues)
+      - [Data Quality, Integrity, and
+        Management](#data-quality-integrity-and-management)
+      - [Heterogeneity, Outliers, and
+        Obfuscation](#heterogeneity-outliers-and-obfuscation)
   - [FAQs](#faqs)
   - [Technical Details](#technical-details)
   - [Replication/Usage](#replicationusage)
@@ -71,17 +75,16 @@ question, we use a two-step process:
     characteristics (such as location, number of bedrooms,
     etc.)](#features-used).
 
-2.  **Valuation**: Second, we use the model created in step one to
-    predict values for all residential properties in Cook County. We
-    then train a secondary, much simpler model (which we call the
-    post-modeling adjustment model) to correct for any systemic bias
-    introduced by the first model. Finally, we combine the first and
-    second model to produce initial assessed property values - the ones
-    printed on Residential Reassessment Notices that are mailed when
-    properties are reassessed. However, note that values produced by the
-    model and mailed values may not be identical, as there are
-    additional rounds of automated and human review between modeling and
-    mailing.
+2.  **Valuation**: Second, we use the model created in Step 1 to predict
+    values for all residential properties in Cook County. We then train
+    a secondary, much simpler model (which we call the post-modeling
+    adjustment model) to correct for any systemic bias introduced by the
+    first model. Finally, we combine the first and second model to
+    produce initial assessed property values - the ones printed on
+    Residential Reassessment Notices that are mailed when properties are
+    reassessed. However, note that values produced by the model and
+    mailed values may not be identical, as there are additional rounds
+    of automated and human review between modeling and mailing.
 
 The full residential modeling pipeline, from raw data to final values,
 looks approximately like the flowchart below. Note that **blue nodes are
@@ -334,15 +337,15 @@ when valuing my property?” Here’s a list of commonly asked about
 features which are *not* in the model, as well as rationale for why
 they’re excluded:
 
-| Feature                                                | Reason It’s Excluded                                                                                                                                                                                                |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Property condition                                     | Over 98% of the properties in our data have the same condition, meaning it’s not tracked effectively and there’s not enough variation for it to be predictive of sale price.                                        |
-| Being in an unincorporated area                        | [We’re working on it\!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                            |
-| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn’t add much predictive power. Additionally, it is difficult to reliably aggregate crime data.   |
-| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can’t reliably observe interior property characteristics beyond what is available through building permits.                                                 |
-| Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future\!                                                                                                                                                                           |
-| Blighted building or eyesore in my neighborhood        | If a specific building or thing is affecting sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model). |
-| Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                        |
+| Feature                                                | Reason It’s Excluded                                                                                                                                                                                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property condition                                     | Over 98% of the properties in our data have the same condition, meaning it’s not tracked effectively and there’s not enough variation for it to be predictive of sale price.                                                              |
+| Being in an unincorporated area                        | [We’re working on it\!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                                                  |
+| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn’t add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County. |
+| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can’t reliably observe interior property characteristics beyond what is available through building permits.                                                                       |
+| Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future\!                                                                                                                                                                                                 |
+| Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                            |
+| Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                              |
 
 ### Data Used
 
@@ -568,11 +571,30 @@ result, we’ve made the following major changes:
 
 # Ongoing Issues
 
-  - Data integrity (wrong characteristics, bad sales, lack of chars)
-  - Low-value properties
-  - Multi-codes
-  - Multi-family
-  - Land valuation
+The CCAO faces a number of ongoing issues which can contribute to poor
+modeling outcomes. Some of these issues are in the process of being
+solved; others are less tractable. We list them here for the sake of
+transparency and to provide a sense of the challenges we face.
+
+### Data Quality, Integrity, and Management
+
+#### Lack of Property Characteristics
+
+#### Inaccurate Property Characteristics
+
+#### Non-arms-length Sales
+
+#### Archaic Data Systems
+
+### Heterogeneity, Outliers, and Obfuscation
+
+#### Housing Heterogeneity
+
+mutli-fam
+
+#### High and Low-value Properties
+
+#### Purposeful Obfuscation
 
 # FAQs
 
