@@ -19,14 +19,14 @@ knitr::opts_chunk$set(
 
 # Model Overview
 
-The duty of the Cook County Assessor's Office is to value property in a fair, accurate, and transparent way. The Assessor is committed to transparency throughout the assessment process, and as such, this repository contains:
+The duty of the Cook County Assessor's Office is to value property in a fair, accurate, and transparent way. The Assessor is committed to transparency throughout the assessment process. As such, this repository contains:
 
-* [Nearly all code used to determine Cook County residential property values](./model.R)
-* [Rationale for different modeling, feature, and code decisions that affect assessed property values](#choices-made)
-* [An outline of ongoing data quality issues that affect assessed property values](#ongoing-issues)
-* [Instructions to replicate our model and results using open data](#installation)
+* [Nearly all code used to determine Cook County residential property values](./model.R).
+* [Rationale for different modeling, feature, and code decisions that affect assessed property values](#choices-made).
+* [An outline of ongoing data quality issues that affect assessed property values](#ongoing-issues).
+* [Instructions to replicate our model and results using open data](#installation).
 
-The repository itself contains code for the Computer Assisted Mass Appraisal (CAMA) system used to generate initial assessed values for all single-family and multi-family residential properties in Cook County. This system is effectively an advanced statistical/machine learning model (hereafter referred to as "the model") which uses previous sales to generate predicted values (assessments) for unsold properties. 
+The repository itself contains code for the Computer Assisted Mass Appraisal (CAMA) system used to generate initial assessed values for all single-family and multi-family residential properties in Cook County. This system is effectively an advanced statistical/machine learning model (hereafter referred to as "the model") which uses previous sales to generate predicted sale values (assessments) for unsold properties. 
 
 Note that data extraction/preparation, feature engineering, and data validation for this model are handled in a [separate repository](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data). Values for [residential condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm) and [commercial apartments](https://gitlab.com/ccao-data-science---modeling/models/commercial-apartments-automated-valuation-model) are determined by separate models.
 
@@ -34,7 +34,7 @@ Note that data extraction/preparation, feature engineering, and data validation 
 
 The goal of the model is to answer the question "What would the sale price of every home be if it had sold last year?" To answer this question, we use a two-step process:
 
-1. **Modeling**: First, we use the code in this repository to train an advanced machine learning model. The model predicts the sale price (fair market value) of unsold properties using the known sale price of similar and nearby properties. Training the model involves iteratively updating a mathematical function to recognize patterns in the data. The output of this step is a model object which can be used to predict any property's sale price given a [set of characteristics (such as location, number of bedrooms, etc.)](#features-used).
+1. **Modeling**: First, we use the code in this repository to train an predictive machine learning model. The model predicts the sale price (fair market value) of unsold properties using the known sale price of similar and nearby properties. Training the model involves iteratively updating a mathematical function to recognize patterns in the data. The output of this step is a model object which can be used to predict any property's sale price given a [set of characteristics (such as location, number of bedrooms, etc.)](#features-used).
 
 2. **Valuation**: Second, we use the model created in Step 1 to predict values for all residential properties in Cook County. We then train a secondary, much simpler model (which we call the post-modeling adjustment model) to correct for any systemic bias introduced by the first model. Finally, we combine the first and second model to produce initial assessed property values - the ones printed on Residential Reassessment Notices that are mailed when properties are reassessed. However, note that values produced by the model and mailed values may not be identical, as there are additional rounds of automated and human review between modeling and mailing.
 
@@ -89,7 +89,7 @@ graph TB
 
 Despite its growing reputation as an easy-to-use panacea, machine learning actually involves a number of choices and trade-offs which are not always transparent or well-justified. Seemingly inane decisions by algorithm creators and data scientists [can introduce systemic bias](https://www.scientificamerican.com/article/how-nist-tested-facial-recognition-algorithms-for-racial-bias/) into results. 
 
-To counter this, we've listed the major choices we've made about our modeling process below, as well as the rationale behind each decision. We feel strongly that these choices lead to optimal results given the trade-offs involved. 
+To counter this, we've listed the major choices we've made about our modeling process below, as well as the rationale behind each decision. We feel strongly that these choices lead to optimal results given the trade-offs involved, but we're [absolutely open to suggestions and criticism](#contributing).
 
 ### Model Selection
 
@@ -99,10 +99,10 @@ We tried a number of other model types and frameworks, including regularized lin
 
 * [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The docs contain good explanations of LightGBM's features and useful troubleshooting sections.
 * Extremely fast. It trained faster than other model types by a nearly 2:1 margin using our data (CPU training only).
-* Highly accurate. It consistently beat other methods in accuracy, as measured by RMSE (root mean squared error) using a test set.
+* Highly accurate. It consistently beat other methods in accuracy, as [measured by RMSE (root mean squared error) using a test set](#faqs).
 * [Capable of natively handling categorical features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support). This is extremely important as a large amount of our property data is categorical (type of roof, neighborhood, etc.). Other methods, such as XGBoost, require feature transformation such as one-hot encoding to use categorical data.
 * Widely used in housing-specific machine learning models and competitions.
-* Simpler to use and implement than ensemble methods or neural networks, which allows less room for error.
+* Simpler to use and implement than ensemble methods or neural networks, which can involve lots of fiddling and configuration.
 * Easy to diagnose problems with, as it has built-in feature importance and contribution methods.
 
 The downsides of LightGBM are that it is:
@@ -110,13 +110,13 @@ The downsides of LightGBM are that it is:
 * Relatively difficult to explain compared to simpler models such as linear regression.
 * Not particularly well-integrated into [Tidymodels](https://www.tidymodels.org/) (yet), the R framework we use for machine learning.
 * Painful to train, since it has a somewhat large number of hyperparameters.
-* Prone to over-fitting if not carefully trained, unlike other methods such as random forest.
+* Prone to over-fitting if not trained carefully, unlike other methods such as random forest.
 
 Additionally, we run a regularized linear model (ElasticNet) to use as a baseline comparison for LightGBM. LightGBM universally outperforms the linear model, particularly in areas with high housing heterogeneity. 
 
 ### Hyperparameter Selection
 
-Models must have well-specified [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) in order to be accurate and useful. LightGBM has a large number of tunable parameters, but we train the most important six in our model. These parameters are:
+[Hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) define the structure and trade-offs of models. They must be well-specified in order for a model to be accurate and useful. LightGBM has a large number of tunable parameters, but we train the most important six in our model. These parameters are:
 
 | LightGBM<br>Parameter                                                                            | Tidymodels<br>Equivalent | Parameter Description                                                                                                                                                                                                                          |
 |--------------------------------------------------------------------------------------------------|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -127,9 +127,9 @@ Models must have well-specified [hyperparameters](https://en.wikipedia.org/wiki/
 | [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split) | loss_reduction           | The minimum gain needed to create a split.                                                                                                                                                                                                     |
 | [learning_rate](https://lightgbm.readthedocs.io/en/latest/Parameters.html#learning_rate)         | learn_rate               | Higher learning rate means potentially faster training, depends on number of trees.                                                                                                                                                            |
 
-These parameters are tuned using [Bayesian hyperparameter optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which iteratively searches the parameter space based on the previous parameter tuning results. We use Bayesian tuning instead of grid search or random search because it trains far faster and results in nearly identical final parameters. 
+These parameters are tuned using [Bayesian hyperparameter optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which iteratively searches the parameter space based on the previous parameter tuning results. We use Bayesian tuning instead of grid search or random search because it trains faster and results in nearly identical final parameters. 
 
-The downside of Bayesian tuning is that it can waste time exploring a useless part of the parameter space. In our case, LightGBM has [the constraint](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html#tune-parameters-for-the-leaf-wise-best-first-tree) that `num_leaves < 2^(max_depth)`. Unfortunately, there's no way (yet) to build this constraint into Tidymodels. We can partially solve this issue by shrinking the possible parameter space by [hand-tuning minimum and maximum parameter values](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html).
+The downside of Bayesian tuning is that it can waste time exploring a useless part of the parameter space. In our case, LightGBM has [the constraint](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html#tune-parameters-for-the-leaf-wise-best-first-tree) that `num_leaves < 2^(max_depth)`. Unfortunately, there's no way (yet) to build this constraint into Tidymodels. We partially solve this issue by shrinking the possible parameter space by [hand-tuning minimum and maximum parameter values](https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html).
 
 Model accuracy for each parameter combination is measured on a validation set using [5-fold cross-validation](https://docs.aws.amazon.com/machine-learning/latest/dg/cross-validation.html). Final model accuracy is measured on a test set of the [most recent 10% of sales](#data-used) in our training sample.
 
@@ -187,11 +187,11 @@ We rely on numerous third-party sources to add new features to our data. These f
 
 #### Features Excluded
 
-Many people have intuitive assumptions about what drives the value of their home, so we often receive the question "Is X taken into account when valuing my property?" Here's a list of commonly asked about features which are *not* in the model, as well as rationale for why they're excluded:
+Many people have intuitive assumptions about what drives the value of their home, so we often receive the question "Is X taken into account when valuing my property?" Here's a list of commonly-asked-about features which are *not* in the model, as well as rationale for why they're excluded:
 
 | Feature                                                | Reason It's Excluded                                                                                                                                                                                                |
 |--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Property condition                                     | Over 98% of the properties in our data have the same condition, meaning it's not tracked effectively and there's not enough variation for it to be predictive of sale price.                                        |
+| Property condition                                     | We track property condition, but over 98% of the properties in our data have the same condition, meaning it's not tracked effectively and there's not enough variation for it to be predictive of sale price.                                        |
 | Being in an unincorporated area                        | [We're working on it!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                             |
 | Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn't add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County.  |
 | Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can't reliably observe interior property characteristics beyond what is available through building permits.                                                 |
@@ -213,7 +213,7 @@ These data sets contain only *residential single- and multi-family properties*. 
 Models need data in order to be trained and measured for accuracy. Modern predictive modeling typically uses three data sets:
 
 1. A training set, used to train the parameters of the model itself.
-2. A validation set, used to choose the best hyperparameters that define the model's structure.
+2. A validation set, used to choose hyperparameter combination that optimizes model accuracy.
 3. A test set, used to measure the performance of the trained, tuned model on unseen data.
 
 `modeldata` is used to create these data sets. It is subdivided using a technique called out-of-time testing (see Figure 1).
@@ -242,22 +242,22 @@ There's a common saying in the machine learning world, "garbage in, garbage out.
 
 To counter this problem and ensure high-quality prediction, we do our best to ensure that the sales data used to train the model is representative of the actual market. This means dropping non-arms-length sales, removing outliers, and manually reviewing suspect sales. Specifically, we:
 
-* Drop any sales with a sale price of less than $10,000
-* Drop sales on any properties with more than 40 rooms or 18 bedrooms
-* Drop sales whose price is more than 4 standard deviations away from the mean price of sales in the same class and township
-* Drop sales with a significant amount of missing data
+* Drop any sales with a sale price of less than $10,000.
+* Drop sales on any properties with more than 40 rooms or 18 bedrooms (these are usually data entry errors).
+* Drop sales whose price is more than 4 standard deviations away from the mean price of sales in the same class and township.
+* Drop sales with a significant amount of missing data.
 * Hand review and then potentially drop (if found to be not arms-length) sales which:
-  * Have a very high or very low sales ratio (predicted value / actual sale value)
-  * Significantly deviate from the neighborhood average
-  * Have a very large year-over-year change in valuation or sale price
+  * Have a very high or very low sales ratio (predicted value / actual sale value).
+  * Deviate significantly from the neighborhood average.
+  * Have a very large year-over-year change in valuation or sale price.
 
 ### Post-Modeling
 
 In addition to the first-pass modeling done by LightGBM, the CCAO also runs a much simpler second-pass model on the predicted values from `assmntdata`. This second model is internally called "post-modeling", and is responsible for correcting any deficiencies in the first model's predictions. Specifically, post-modeling will:
 
-1. Shift the distribution of predicted values for each neighborhood and modeling group (single- and multi-family) such that its median sale ratio (predicted value / actual sale value) moves toward 1. This is done by applying a neighborhood and modeling group-specific percentage multiplier to all properties. This percentage multiplier is capped at 40%. This is done to correct some of the modeling bias caused by [ongoing data issues](#ongoing-issues), as well as prevent broad over- or under-assessment.
+1. Shift the distribution of predicted values for each neighborhood and modeling group (single- vs multi-family) such that its median sale ratio (predicted value / actual sale value) moves toward 1. This is done by applying a neighborhood and modeling group-specific percentage multiplier to all properties. This percentage multiplier is capped at 40%. This is done to correct some of the modeling bias caused by [ongoing data issues](#ongoing-issues), as well as prevent broad over- or under-assessment.
 
-2. Cap sales ratios for properties with sales in the last seven years. If a property's sale ratio (predicted value / actual sale value) is less than 0.7 or greater than 2, its predicted value will be adjusted to the cap value. For example, if a property sold for \$100K in 2019 and our model predicts that it's value is \$65K, it will have a sale ratio of 0.65, which is below the 0.7 threshold. As a result, the property's predicted value will be adjusted to $70K.
+2. Alter assessed values for properties with sales in the last seven years if and only if their sale ratio falls outside specific thresholds. If a property's sale ratio (predicted value / actual sale value) is less than 0.7 or greater than 2, its predicted value will be adjusted such that its ratio is exactly at the threshold. For example, if a property sold for \$100K in 2019 and our model predicts that it's value is \$65K, it will have a sale ratio of 0.65, which is below the 0.7 threshold. As a result, the property's predicted value will be adjusted to $70K.
 
 3. Ensure that perfectly identical properties are identically valued. For some property classes, such as townhouses, we manually adjust values such that all identical properties in the same unit or complex receive the same predicted value. This is accomplished by replacing individual predicted values with the median predicted value for all properties in the same unit.
 
