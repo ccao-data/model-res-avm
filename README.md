@@ -10,13 +10,11 @@ Table of Contents
           - [Data Used](#data-used)
           - [Post-Modeling](#post-modeling)
           - [Other Choices](#other-choices)
-      - [Major Changes From Previous
+      - [Major Changes from Previous
         Versions](#major-changes-from-previous-versions)
   - [Ongoing Issues](#ongoing-issues)
-      - [Data Quality, Integrity, and
-        Management](#data-quality-integrity-and-management)
-      - [Heterogeneity, Outliers, and
-        Obfuscation](#heterogeneity-outliers-and-obfuscation)
+      - [Data Quality and Integrity](#data-quality-and-integrity)
+      - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
   - [FAQs](#faqs)
   - [Technical Details](#technical-details)
   - [Replication/Usage](#replicationusage)
@@ -259,7 +257,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2020-12-17.
+model as of 2020-12-18.
 
 | Feature Name                               | Category       | Type        | Possible Values                                                                                 |
 | :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -394,7 +392,7 @@ it’s easier to implement in Tidymodels and we want to use the most
 recent sales possible when training (to account for any market changes
 caused by COVID).
 
-##### Figure 1: Out-of-time Testing
+##### Figure 1: Out-of-Time Testing
 
 ![](docs/figures/oot_sampling.png)
 
@@ -534,18 +532,20 @@ issues](#ongoing-issues)), so if properties with an active home
 improvement exemption cannot have their characteristics accurately
 updated, they are dropped from the training data (`modeldata`).
 
-## Major Changes From Previous Versions
+## Major Changes from Previous Versions
 
 This repository represents a significant departure from the [residential
+modeling
 codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
 used to create assessed values in 2019 and 2020. As the Data Science
 department at the CCAO has grown, we’ve been able to dedicate more
 resources to building models, applications, and other tools. As a
-result, we’ve made the following major changes:
+result, we’ve made the following major changes to the residential
+modeling codebase:
 
-  - Reduced the size of the residential modeling codebase substantially,
-    from around 16,000 lines of R code to less than 1,000. This was
-    accomplished by moving complicated data handling to our [internal R
+  - Reduced the size of the codebase substantially, from around 16,000
+    lines of R code to less than 1,000. This was accomplished by moving
+    complicated data handling to our [internal R
     package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
     and abstracting away machine learning logic to
     [Tidymodels](https://www.tidymodels.org/).
@@ -560,7 +560,7 @@ result, we’ve made the following major changes:
     and
     [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
     Previously, these models were combined in the same scripts, leading
-    to a lot of complication and unnecessary overhead. Separating them
+    to a lot of complications and unnecessary overhead. Separating them
     makes it much easier to understand and diagnose each model.
   - Switched to using LightGBM as our primary valuation model. LightGBM
     is essentially the most bleeding-edge machine learning framework
@@ -581,25 +581,136 @@ modeling outcomes. Some of these issues are in the process of being
 solved; others are less tractable. We list them here for the sake of
 transparency and to provide a sense of the challenges we face.
 
-### Data Quality, Integrity, and Management
+### Data Quality and Integrity
 
-#### Lack of Property Characteristics
+We face a number of data-related challenges that are specific to our
+office. These issues are largely the result of legacy data systems,
+understaffing, and the sheer number of properties in Cook County (over 1
+million residential properties). We’re actively working to correct or
+mitigate most of these issues.
 
-#### Inaccurate Property Characteristics
+##### Lack of Property Characteristics
 
-#### Non-arms-length Sales
+Our office tracks around 40 characteristics of individual properties. Of
+those 40, about 25 are [usable in modeling](#data-used). The remaining
+15 characteristics are too sparse, too dirty, or too unbalanced to use.
+Additionally, our data is missing features commonly used in property
+valuation, such as:
 
-#### Archaic Data Systems
+  - Property condition.
+  - Lot frontage.
+  - Land slope.
+  - Percentage of property above grade.
+  - Quality of finishes.
+  - Electrical and utility systems.
+  - Interior characteristics like finish quality, recent remodeling, or
+    kitchen quality.
+  - Any information about pools.
+  - Information about location desirability or views.
 
-### Heterogeneity, Outliers, and Obfuscation
+This lack of characteristics contributes to larger errors when modeling,
+as it becomes difficult to distinguish between individual properties.
+For example, an extremely run-down mansion with otherwise high-value
+characteristics (good location, large number of bedrooms) may be
+significantly over-assessed, due to our model not accounting for
+property condition.
 
-#### Housing Heterogeneity
+##### Inaccurate Property Characteristics
 
-mutli-fam
+The property characteristics we track can sometimes be incorrect or
+outdated. The two major sources of characteristic errors are:
 
-#### High and Low-value Properties
+1.  Data entry or processing errors. Field records from our office need
+    to digitized and mistakes happen. Fortunately, these types of errors
+    are relatively rare.
+2.  Characteristic update errors. There are a variety of systems that
+    update the characteristics of properties in our system. Some of them
+    can be slow to detect changes or otherwise unreliable.
 
-#### Purposeful Obfuscation
+These errors can cause under- *or* over-assessment. If you believe your
+property has been misvalued due to a characteristic error or the
+property characteristics recorded on our website are incorrect. Please
+[contact our office](https://www.cookcountyassessor.com/contact) to file
+a property characteristic appeal.
+
+##### Non-Arms-Length Sales
+
+It is difficult for our office to determine whether or not any given
+property sale is
+[arms-length](https://www.investopedia.com/terms/a/armslength.asp).
+Non-arms-length sales, such as selling your home to a family member at a
+discount, can bias the model and result in larger assessment errors. We
+do our best to [remove non-arms-length sales](#representativeness), but
+it’s nearly impossible to know for certain that every transaction is
+valid.
+
+##### Purposeful Obfuscation
+
+Occasionally, people try to hide or alter their property characteristics
+in order to change their assessed value. Typically this takes the form
+of changing their [property
+class](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf).
+However, property class has no impact on predictions from our model.
+
+Falsely altering other characteristics, such as square footage, may
+change an assessed value. However, doing so has negative consequences
+for neighbors and similar properties, as high sales on homes with
+incorrectly reported characteristics can upwardly bias the model,
+resulting in over-assessment.
+
+### Heterogeneity and Extremes
+
+In addition to the data challenges that are specific to our office, we
+also face the same modeling issues as most assessors and machine
+learning practitioners.
+
+##### Housing Heterogeneity
+
+Cook County is an extremely large and diverse housing market. It spans
+millions of properties that vary widely in type, age, location, and
+quality. Accurately estimating the price of such different properties is
+a complicated, challenging task.
+
+This challenge is particularly acute in areas with high housing
+characteristic and price heterogeneity. For example, the Hyde Park
+neighborhood in Chicago is home to the University of Chicago and has
+large, multi-million-dollar houses near campus. However, sale prices
+drop precipitously just a few blocks away, as one passes south of 63rd
+street or west of I-90. This sort of sharp price discontinuity makes it
+difficult to accurately assess properties, as models tend to “smooth”
+such hard breaks unless geographic boundaries are explicitly defined.
+
+<img src="docs/figures/hype_park-1.png" width="85%" />
+
+Hyde Park is only one example, similarly unique situations exist
+throughout the county. Our model *does* account for some of these
+situations through neighborhood fixed effects and other location
+factors. However, effectively modeling major drivers of heterogeneity is
+an ongoing challenge.
+
+##### High and Low-Value Properties
+
+Mass appraisal models need lots of sales data in order to accurately
+predict sale prices, but sales become more sparse toward either end of
+the price spectrum. The vast majority of properties (over 90%) in Cook
+County sell for between $50K and $2.5M. Predicting sale prices outside
+of that range is difficult; there just aren’t enough representative
+sales to train the model effectively.
+
+The plot below shows the overall distribution of model values before
+[adjustment](#post-modeling), model values after adjustment, and actual
+sale prices. If the model is doing a good job, the lines should be
+nearly overlapping. However, the lines clearly diverge below $50,000.
+Post-modeling adjustments somewhat fix the issue, but a lack of sales
+and [poor quality data](#data-quality-and-integrity) make accurate
+modeling of these properties difficult.
+
+<img src="docs/figures/val_distribution-1.png" width="100%" />
+
+This problem isn’t limited to mass appraisal models; predictive models
+are just generally bad at predicting extreme outliers. We may implement
+new machine learning techniques or policies to deal with this issue in
+the future.
 
 # FAQs
 
@@ -659,11 +770,11 @@ baseline](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/
 against LightGBM.
 
 We’re working on exposing the interpretability features of LightGBM via
-the application mentioned above.
+a public-facing application.
 
 **Q: How do you measure model performance?**
 
-Assessors tend to use [housing and assessment-specific performance
+Assessors tend to use [housing and assessment-specific
 measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf)
 to gauge the performance of their mass appraisal systems, including:
 
@@ -677,12 +788,13 @@ to gauge the performance of their mass appraisal systems, including:
 These statistics can be found broken out by township in the [sample
 modeling
 report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_baseline.html)
-included in this repository.
+included in this repository. Note that this report is a sample and may
+not reflect the current state of the model.
 
 More traditionally, we use R<sup>2</sup> and root-mean-squared-error
 (RMSE) to gauge overall model performance and fit. Overall model
-performance on the test set as of 2020-12-17 is shown in the table below
-and generally stays within this range.
+performance on the [test set](#data-used) as of 2020-12-18 is shown in
+the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> |     RMSE |
 | :--------- | ------------: | -------: |

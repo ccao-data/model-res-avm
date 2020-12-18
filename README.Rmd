@@ -220,7 +220,7 @@ Models need data in order to be trained and measured for accuracy. Modern predic
 
 Out-of-time testing explicitly measures the model's ability to predict recent sales. It holds out the most recent 10% of sales as a test set, while the remaining 90% of the data is split into multiple training and validation sets using 5-fold cross-validation. We chose this technique instead of out-of-time validation or rolling window validation because it's easier to implement in Tidymodels and we want to use the most recent sales possible when training (to account for any market changes caused by COVID).
 
-##### Figure 1: Out-of-time Testing
+##### Figure 1: Out-of-Time Testing
 
 ![](docs/figures/oot_sampling.png)
 
@@ -281,13 +281,13 @@ To fix this, we [developed code](https://ccao-data-science---modeling.gitlab.io/
 
 Updating this data is complicated and imperfect (see [ongoing issues](#ongoing-issues)), so if properties with an active home improvement exemption cannot have their characteristics accurately updated, they are dropped from the training data (`modeldata`).
 
-## Major Changes From Previous Versions
+## Major Changes from Previous Versions
 
-This repository represents a significant departure from the [residential codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev) used to create assessed values in 2019 and 2020. As the Data Science department at the CCAO has grown, we've been able to dedicate more resources to building models, applications, and other tools. As a result, we've made the following major changes:
+This repository represents a significant departure from the [residential modeling codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev) used to create assessed values in 2019 and 2020. As the Data Science department at the CCAO has grown, we've been able to dedicate more resources to building models, applications, and other tools. As a result, we've made the following major changes to the residential modeling codebase:
 
-* Reduced the size of the residential modeling codebase substantially, from around 16,000 lines of R code to less than 1,000. This was accomplished by moving complicated data handling to our [internal R package](https://gitlab.com/ccao-data-science---modeling/packages/ccao) and abstracting away machine learning logic to [Tidymodels](https://www.tidymodels.org/).
+* Reduced the size of the codebase substantially, from around 16,000 lines of R code to less than 1,000. This was accomplished by moving complicated data handling to our [internal R package](https://gitlab.com/ccao-data-science---modeling/packages/ccao) and abstracting away machine learning logic to [Tidymodels](https://www.tidymodels.org/).
 * Unified modeling for the entire county. Prior iterations of the residential model used individual models for each township. This was difficult to implement and track and performed worse than a single large model. The new model can value any residential property in the county, is significantly faster to train, and is much easier to replicate.
-* Split the residential codebase into separate models for [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm) and [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm). Previously, these models were combined in the same scripts, leading to a lot of complication and unnecessary overhead. Separating them makes it much easier to understand and diagnose each model.
+* Split the residential codebase into separate models for [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm) and [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm). Previously, these models were combined in the same scripts, leading to a lot of complications and unnecessary overhead. Separating them makes it much easier to understand and diagnose each model.
 * Switched to using LightGBM as our primary valuation model. LightGBM is essentially the most bleeding-edge machine learning framework widely available that isn't a neural network. Prior to LightGBM, we used linear models or R's gbm package. Prior to 2018, the CCAO used linear models in SPSS for residential valuations.
 * Improved dependency management via [renv](https://rstudio.github.io/renv/articles/renv.html). Previously, users trying replicate our model needed to manually install a list of needed R packages. By switching to renv, we've vastly reduced the effort needed to replicate our modeling environment, see the [installation section](#installation) below.
 
@@ -295,28 +295,158 @@ This repository represents a significant departure from the [residential codebas
 
 The CCAO faces a number of ongoing issues which can contribute to poor modeling outcomes. Some of these issues are in the process of being solved; others are less tractable. We list them here for the sake of transparency and to provide a sense of the challenges we face. 
 
-### Data Quality, Integrity, and Management
+### Data Quality and Integrity
 
-#### Lack of Property Characteristics
+We face a number of data-related challenges that are specific to our office. These issues are largely the result of legacy data systems, understaffing, and the sheer number of properties in Cook County (over 1 million residential properties). We're actively working to correct or mitigate most of these issues.
 
-#### Inaccurate Property Characteristics
+##### Lack of Property Characteristics
 
-#### Non-arms-length Sales
+Our office tracks around 40 characteristics of individual properties. Of those 40, about 25 are [usable in modeling](#data-used). The remaining 15 characteristics are too sparse, too dirty, or too unbalanced to use. Additionally, our data is missing features commonly used in property valuation, such as:
 
-#### Archaic Data Systems
+* Property condition.
+* Lot frontage.
+* Land slope.
+* Percentage of property above grade.
+* Quality of finishes.
+* Electrical and utility systems.
+* Interior characteristics like finish quality, recent remodeling, or kitchen quality.
+* Any information about pools.
+* Information about location desirability or views.
 
+This lack of characteristics contributes to larger errors when modeling, as it becomes difficult to distinguish between individual properties. For example, an extremely run-down mansion with otherwise high-value characteristics (good location, large number of bedrooms) may be significantly over-assessed, due to our model not accounting for property condition.
 
-### Heterogeneity, Outliers, and Obfuscation
+##### Inaccurate Property Characteristics
 
-#### Housing Heterogeneity
+The property characteristics we track can sometimes be incorrect or outdated. The two major sources of characteristic errors are:
 
-mutli-fam
+1. Data entry or processing errors. Field records from our office need to digitized and mistakes happen. Fortunately, these types of errors are relatively rare.
+2. Characteristic update errors. There are a variety of systems that update the characteristics of properties in our system. Some of them can be slow to detect changes or otherwise unreliable.
 
-#### High and Low-value Properties
+These errors can cause under- *or* over-assessment. If you believe your property has been misvalued due to a characteristic error or the property characteristics recorded on our website are incorrect. Please [contact our office](https://www.cookcountyassessor.com/contact) to file a property characteristic appeal.
 
-#### Purposeful Obfuscation
+##### Non-Arms-Length Sales
 
+It is difficult for our office to determine whether or not any given property sale is [arms-length](https://www.investopedia.com/terms/a/armslength.asp). Non-arms-length sales, such as selling your home to a family member at a discount, can bias the model and result in larger assessment errors. We do our best to [remove non-arms-length sales](#representativeness), but it's nearly impossible to know for certain that every transaction is valid.
 
+##### Purposeful Obfuscation
+
+Occasionally, people try to hide or alter their property characteristics in order to change their assessed value. Typically this takes the form of changing their [property class](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf). However, property class has no impact on predictions from our model.
+
+Falsely altering other characteristics, such as square footage, may change an assessed value. However, doing so has negative consequences for neighbors and similar properties, as high sales on homes with incorrectly reported characteristics can upwardly bias the model, resulting in over-assessment.
+
+### Heterogeneity and Extremes
+
+In addition to the data challenges that are specific to our office, we also face the same modeling issues as most assessors and machine learning practitioners. 
+
+##### Housing Heterogeneity
+
+Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. Accurately estimating the price of such different properties is a complicated, challenging task. 
+
+This challenge is particularly acute in areas with high housing characteristic and price heterogeneity. For example, the Hyde Park neighborhood in Chicago is home to the University of Chicago and has large, multi-million-dollar houses near campus. However, sale prices drop precipitously just a few blocks away, as one passes south of 63rd street or west of I-90. This sort of sharp price discontinuity makes it difficult to accurately assess properties, as models tend to "smooth" such hard breaks unless geographic boundaries are explicitly defined. 
+
+```{r hype_park, message=FALSE, echo=FALSE, out.width="85%"}
+library(yardstick)
+library(here)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggmap)
+
+# Load the set of final values in Hyde Park if available. Otherwise, use 
+# pre-saved image
+fvset_path <- here("output", "data", "finalvalues.parquet")
+image_path <- here("docs", "figures", "hyde_park-1.png")
+if (file.exists(fvset_path)) {
+  fvset <- arrow::read_parquet(fvset_path)
+  
+  # Coordinate bounding box for Hyde Park
+  bbox <- c(-87.645957, 41.764118, -87.560727, 41.820911)
+  
+  # Labels and breaks for price map
+  price_breaks = c(0, 1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2e6, Inf)
+  price_labels = c(
+    "$0 - $100K", "$100K - $250K", "$250K - $500K",
+    "$500K - $750K", "$750K - $1M", "$1M - $2M", "$2M+"
+  )
+  
+  # Keep only observations in the bounding box
+  fvset_sum <- fvset %>%
+    filter(
+      between(geo_longitude, bbox[1], bbox[3]),
+      between(geo_latitude, bbox[2], bbox[4]),
+      !is.na(meta_sale_price)
+    ) %>%
+    mutate(price_bins = cut(
+      meta_sale_price,
+      breaks = price_breaks,
+      labels = price_labels
+    ))
+  
+  # Download stamen map tiles
+  map_tiles <- get_stamenmap(bbox = bbox, zoom = 13, maptype = "toner-lite")
+
+  # Create map and save to file
+  ggmap(map_tiles) +
+    geom_point(
+      data = fvset_sum,
+      aes(x = geo_longitude, y = geo_latitude, color = price_bins),
+      alpha = 0.5
+    ) +
+    guides(color = guide_legend(title = "Sale Price")) +
+    labs(
+      title = "Sale Price Heterogeneity in Hyde Park",
+      caption = "IDOR sales from 2013 - 2020"
+    ) +
+    theme_void() +
+    theme(
+      plot.title = element_text(margin = margin(b = 6), size = 12)
+    )
+  
+} else if (file.exists(image_path)) {
+  knitr::include_graphics(image_path)
+}
+
+```
+
+Hyde Park is only one example, similarly unique situations exist throughout the county. Our model *does* account for some of these situations through neighborhood fixed effects and other location factors. However, effectively modeling major drivers of heterogeneity is an ongoing challenge.
+
+##### High and Low-Value Properties
+
+Mass appraisal models need lots of sales data in order to accurately predict sale prices, but sales become more sparse toward either end of the price spectrum. The vast majority of properties (over 90%) in Cook County sell for between \$50K and \$2.5M. Predicting sale prices outside of that range is difficult; there just aren't enough representative sales to train the model effectively.
+
+The plot below shows the overall distribution of model values before [adjustment](#post-modeling), model values after adjustment, and actual sale prices. If the model is doing a good job, the lines should be nearly overlapping. However, the lines clearly diverge below $50,000. Post-modeling adjustments somewhat fix the issue, but a lack of sales and [poor quality data](#data-quality-and-integrity) make accurate modeling of these properties difficult.
+
+```{r val_distribution, message=FALSE, warning=FALSE, echo=FALSE, fig.height=3}
+
+# Plot model price distributions
+if (exists("fvset")) {
+  fvset %>%
+  pivot_longer(c(meta_sale_price, lgbm_value, final_value)) %>%
+  mutate(name = forcats::fct_recode(
+    factor(name, levels = c(
+      "prior_value", "lgbm_value",
+      "final_value", "meta_sale_price"
+    )),
+    "Prior Value" = "prior_value",
+    "Initial Model Value" = "lgbm_value",
+    "Adjusted Model Value" = "final_value",
+    "Sale Price" = "meta_sale_price"
+  )) %>%
+ggplot() +
+  geom_density(aes(x = value, color = name), size = 1.05) +
+  geom_vline(aes(xintercept = 5e4)) +
+  scale_x_log10(
+    name = "Price",
+    limits = c(5000, 3000000),
+    labels = scales::dollar
+  ) +
+  labs(x = "Price", y = "Density") +
+  guides(color = guide_legend(title = "Value Source")) +
+  theme_minimal()
+ }
+```
+
+This problem isn't limited to mass appraisal models; predictive models are just generally bad at predicting extreme outliers. We may implement new machine learning techniques or policies to deal with this issue in the future.
 
 # FAQs
 
@@ -344,28 +474,27 @@ We're working on creating an easy-to-use application that would allow taxpayers 
 
 We decided that performance was more important than the perfect interpretability offered by linear models, and LightGBM tends to outperform linear models on data with a large number of categorical features, interactions, and non-linearities. We still use a [linear model as a baseline](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/master/model.R#L101) against LightGBM. 
 
-We're working on exposing the interpretability features of LightGBM via the application mentioned above.
+We're working on exposing the interpretability features of LightGBM via a public-facing application.
 
 **Q: How do you measure model performance?**
 
-Assessors tend to use [housing and assessment-specific performance measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf) to gauge the performance of their mass appraisal systems, including:
+Assessors tend to use [housing and assessment-specific measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf) to gauge the performance of their mass appraisal systems, including:
 
-* [COD (Coefficient of Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html) 
+* [COD (Coefficient of Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
 * [PRD (Price-Related Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
 * [PRB (Price-Related Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
 
-These statistics can be found broken out by township in the [sample modeling report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_baseline.html) included in this repository.
+These statistics can be found broken out by township in the [sample modeling report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_baseline.html) included in this repository. Note that this report is a sample and may not reflect the current state of the model.
 
-More traditionally, we use R<sup>2</sup> and root-mean-squared-error (RMSE) to gauge overall model performance and fit. Overall model performance on the test set as of `r Sys.Date()` is shown in the table below and generally stays within this range.
+More traditionally, we use R<sup>2</sup> and root-mean-squared-error (RMSE) to gauge overall model performance and fit. Overall model performance on the [test set](#data-used) as of `r Sys.Date()` is shown in the table below and generally stays within this range.
 
 ```{r model_perf, message=FALSE, echo=FALSE}
-library(yardstick)
-library(here)
-library(dplyr)
-library(tidyr)
+# Load test set if it exists in local repo, if not, ignore this chunk
 testset_path <- here("output", "data", "testdata.parquet")
 if (file.exists(testset_path)) {
   testset <- arrow::read_parquet(testset_path)
+  
+  # Get aggregate model performance by type (LightGBM and linear)
   testset %>%
     pivot_longer(enet:lgbm, names_to = "Model Type") %>%
     group_by(`Model Type`) %>%
