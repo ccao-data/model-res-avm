@@ -175,11 +175,11 @@ needs. Specifically, LightGBM is:
   - [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The
     docs contain good explanations of LightGBM’s features and useful
     troubleshooting sections.
-  - Extremely fast. It trained faster than other model types by a nearly
-    2:1 margin using our data (CPU training only).
   - Highly accurate. It consistently beat other methods in accuracy, as
     [measured by RMSE (root mean squared error) using a test
     set](#faqs).
+  - Extremely fast. It trained faster than other model types by a nearly
+    2:1 margin using our data (CPU training only).
   - [Capable of natively handling categorical
     features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support).
     This is extremely important as a large amount of our property data
@@ -424,7 +424,7 @@ review.
 
 #### Representativeness
 
-There’s a common saying in the machine learning world, “garbage in,
+There’s a common saying in the machine learning world: “garbage in,
 garbage out.” This is a succinct way to say that training a predictive
 model with bad, unrepresentative, or biased data leads to bad results.
 
@@ -672,8 +672,9 @@ learning practitioners.
 
 Cook County is an extremely large and diverse housing market. It spans
 millions of properties that vary widely in type, age, location, and
-quality. Accurately estimating the price of such different properties is
-a complicated, challenging task.
+quality. In some regions of the county, sales are common; in other
+regions, sales are sparse. Accurately estimating the price of such
+different properties and regions is a complicated, challenging task.
 
 This challenge is particularly acute in areas with high housing
 characteristic and price heterogeneity. For example, the Hyde Park
@@ -739,11 +740,11 @@ bedroom, while others will gain almost nothing. However, some factors do
 stand out as more influential:
 
   - Location. Two identical single-family homes, one in Wicker Park, the
-    other in the south suburbs, will not receive the same valuation.
-    Location is the largest driver of county-wide variation in property
-    value. This is accounted for in our model through a number of
-    [location-based features](#features-used) such as school district,
-    neighborhood, township, and others.
+    other in Markham, will not receive the same valuation. Location is
+    the largest driver of county-wide variation in property value. This
+    is accounted for in our model through a number of [location-based
+    features](#features-used) such as school district, neighborhood,
+    township, and others.
   - Square footage. Larger homes tend to be worth more than smaller
     ones, though there are diminishing marginal returns.
   - Number of bedrooms and bathrooms. Generally speaking, the more rooms
@@ -809,10 +810,11 @@ range.
 **Q: My assessed value seems wrong. How do I fix it?**
 
 There are over one million residential properties in Cook County
-spanning a huge variety of locations, types, ages, and conditions. A
-mass appraisal model isn’t going to accurately value every single
-property. If you believe that the value produced by our model is
-inaccurate, please [file an
+spanning a huge variety of locations, types, ages, and conditions. Mass
+appraisal should produce fair valuations for most properties. But a mass
+appraisal model isn’t going to accurately value every single property.
+If you believe that the value produced by our model is inaccurate,
+please [file an
 appeal](https://www.cookcountyassessor.com/online-appeals) with our
 office.
 

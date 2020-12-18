@@ -98,8 +98,8 @@ We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary va
 We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 
 * [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The docs contain good explanations of LightGBM's features and useful troubleshooting sections.
-* Extremely fast. It trained faster than other model types by a nearly 2:1 margin using our data (CPU training only).
 * Highly accurate. It consistently beat other methods in accuracy, as [measured by RMSE (root mean squared error) using a test set](#faqs).
+* Extremely fast. It trained faster than other model types by a nearly 2:1 margin using our data (CPU training only).
 * [Capable of natively handling categorical features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support). This is extremely important as a large amount of our property data is categorical (type of roof, neighborhood, etc.). Other methods, such as XGBoost, require feature transformation such as one-hot encoding to use categorical data.
 * Widely used in housing-specific machine learning models and competitions.
 * Simpler to use and implement than ensemble methods or neural networks, which can involve lots of fiddling and configuration.
@@ -238,7 +238,7 @@ These sale prices are our initial prediction for what each property is worth. Th
 
 #### Representativeness
 
-There's a common saying in the machine learning world, "garbage in, garbage out." This is a succinct way to say that training a predictive model with bad, unrepresentative, or biased data leads to bad results. 
+There's a common saying in the machine learning world: "garbage in, garbage out." This is a succinct way to say that training a predictive model with bad, unrepresentative, or biased data leads to bad results. 
 
 To counter this problem and ensure high-quality prediction, we do our best to ensure that the sales data used to train the model is representative of the actual market. This means dropping non-arms-length sales, removing outliers, and manually reviewing suspect sales. Specifically, we:
 
@@ -340,7 +340,8 @@ In addition to the data challenges that are specific to our office, we also face
 
 ##### Housing Heterogeneity
 
-Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. Accurately estimating the price of such different properties is a complicated, challenging task. 
+Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. In some regions of the county, sales are common; in other 
+regions, sales are sparse. Accurately estimating the price of such different properties and regions is a complicated, challenging task. 
 
 This challenge is particularly acute in areas with high housing characteristic and price heterogeneity. For example, the Hyde Park neighborhood in Chicago is home to the University of Chicago and has large, multi-million-dollar houses near campus. However, sale prices drop precipitously just a few blocks away, as one passes south of 63rd street or west of I-90. This sort of sharp price discontinuity makes it difficult to accurately assess properties, as models tend to "smooth" such hard breaks unless geographic boundaries are explicitly defined. 
 
@@ -460,7 +461,7 @@ We *do* use [comparables for other things](https://www.cookcountyassessor.com/wh
 
 The importance of individual features in the model varies from place to place. Some properties will gain $50K in value from an additional bedroom, while others will gain almost nothing. However, some factors do stand out as more influential:
 
-- Location. Two identical single-family homes, one in Wicker Park, the other in the south suburbs, will not receive the same valuation. Location is the largest driver of county-wide variation in property value. This is accounted for in our model through a number of [location-based features](#features-used) such as school district, neighborhood, township, and others.
+- Location. Two identical single-family homes, one in Wicker Park, the other in Markham, will not receive the same valuation. Location is the largest driver of county-wide variation in property value. This is accounted for in our model through a number of [location-based features](#features-used) such as school district, neighborhood, township, and others.
 - Square footage. Larger homes tend to be worth more than smaller ones, though there are diminishing marginal returns.
 - Number of bedrooms and bathrooms. Generally speaking, the more rooms the better, though again there are diminishing returns. The value added by a second bedroom is much more than the value added by a twentieth bedroom.
 
@@ -510,7 +511,7 @@ if (file.exists(testset_path)) {
 
 **Q: My assessed value seems wrong. How do I fix it?**
 
-There are over one million residential properties in Cook County spanning a huge variety of locations, types, ages, and conditions. A mass appraisal model isn't going to accurately value every single property. If you believe that the value produced by our model is inaccurate, please [file an appeal](https://www.cookcountyassessor.com/online-appeals) with our office.
+There are over one million residential properties in Cook County spanning a huge variety of locations, types, ages, and conditions. Mass appraisal should produce fair valuations for most properties. But a mass appraisal model isn't going to accurately value every single property. If you believe that the value produced by our model is inaccurate, please [file an appeal](https://www.cookcountyassessor.com/online-appeals) with our office.
 
 # Technical Details
 
