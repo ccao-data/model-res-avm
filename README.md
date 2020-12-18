@@ -17,11 +17,15 @@ Table of Contents
       - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
   - [FAQs](#faqs)
   - [Technical Details](#technical-details)
-  - [Replication/Usage](#replicationusage)
+  - [Usage](#usage)
       - [Installation](#installation)
-      - [Usage/Files](#usagefiles)
+      - [Files](#files)
+      - [Running](#running)
+      - [Options](#options)
       - [Troubleshooting](#troubleshooting)
           - [Installation](#installation-1)
+  - [License](#license)
+  - [Contributing](#contributing)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -791,15 +795,16 @@ report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/bl
 included in this repository. Note that this report is a sample and may
 not reflect the current state of the model.
 
-More traditionally, we use R<sup>2</sup> and root-mean-squared-error
-(RMSE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2020-12-18 is shown in
-the table below and generally stays within this range.
+More traditionally, we use R<sup>2</sup>, root-mean-squared-error
+(RMSE), and mean absolute error to gauge overall model performance and
+fit. Overall model performance on the [test set](#data-used) as of
+2020-12-18 is shown in the table below and generally stays within this
+range.
 
-| Model Type | R<sup>2</sup> |     RMSE |
-| :--------- | ------------: | -------: |
-| Linear     |          0.72 | 153749.7 |
-| LightGBM   |          0.86 | 109133.9 |
+| Model Type | R<sup>2</sup> | RMSE     | MAE     |
+| :--------- | ------------: | :------- | :------ |
+| Linear     |          0.72 | $153,750 | $90,784 |
+| LightGBM   |          0.86 | $109,134 | $63,103 |
 
 **Q: My assessed value seems wrong. How do I fix it?**
 
@@ -826,7 +831,7 @@ Tuned according to lgbm docs
 
 Minimized on RMSE
 
-# Replication/Usage
+# Usage
 
 ## Installation
 
@@ -851,12 +856,16 @@ order to build packages.
 5.  Place modeling and assessment data parquet files in the `input/`
     directory within the repo
 6.  Run the `model.R` script. This trains the model, evaluates a test
-    set, and generates a report on the model’s peformance
+    set, and generates a report on the model’s performance
 7.  Run the `valuation.R` script. This creates a secondary adjustment
     model and generates predicted values for all properties we need to
     assess
 
-## Usage/Files
+## Files
+
+## Running
+
+## Options
 
 ## Troubleshooting
 
@@ -874,3 +883,9 @@ the R console) as well as their respective resolutions:
   - Error: `WARNING: Rtools is required to build R packages, but is not
     currently installed` <br>Solution: Install the latest version of
     Rtools [from CRAN](https://cran.r-project.org/bin/windows/Rtools/)
+
+# License
+
+[GNU Affero General Public License v3.0](./LICENSE.txt)
+
+# Contributing
