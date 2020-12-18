@@ -723,7 +723,7 @@ the future.
 We don’t use sale or uniformity comparables for the purpose of modeling.
 Our model works by automatically finding patterns in sales data and
 extrapolating those patterns to predict prices; the model never
-explicitly says, “here is property X and here are Y similar properties
+explicitly says, “Here is property X and here are Y similar properties
 and their sale prices.”
 
 We *do* use [comparables for other
@@ -796,8 +796,8 @@ included in this repository. Note that this report is a sample and may
 not reflect the current state of the model.
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
-(RMSE), and mean absolute error to gauge overall model performance and
-fit. Overall model performance on the [test set](#data-used) as of
+(RMSE), and mean absolute error (MAE) to gauge overall model performance
+and fit. Overall model performance on the [test set](#data-used) as of
 2020-12-18 is shown in the table below and generally stays within this
 range.
 
@@ -886,6 +886,12 @@ the R console) as well as their respective resolutions:
 
 # License
 
-[GNU Affero General Public License v3.0](./LICENSE.txt)
+We use the [GNU Affero General Public License v3.0](./LICENSE.txt).
 
 # Contributing
+
+We welcome pull requests, comments, and other feedback via GitLab. For
+more involved collaboration or projects, please see the [Developer
+Engagement
+Program](https://gitlab.com/groups/ccao-data-science---modeling/-/wikis/People/Contributing)
+documentation on our group wiki.

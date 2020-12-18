@@ -452,7 +452,7 @@ This problem isn't limited to mass appraisal models; predictive models are just 
 
 **Q: How are comparables used in the model?**
 
-We don't use sale or uniformity comparables for the purpose of modeling. Our model works by automatically finding patterns in sales data and extrapolating those patterns to predict prices; the model never explicitly says, "here is property X and here are Y similar properties and their sale prices."
+We don't use sale or uniformity comparables for the purpose of modeling. Our model works by automatically finding patterns in sales data and extrapolating those patterns to predict prices; the model never explicitly says, "Here is property X and here are Y similar properties and their sale prices."
 
 We *do* use [comparables for other things](https://www.cookcountyassessor.com/what-are-comparable-properties), namely when processing appeals and when evaluating the model's performance.
 
@@ -486,7 +486,7 @@ Assessors tend to use [housing and assessment-specific measurements](https://www
 
 These statistics can be found broken out by township in the [sample modeling report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_baseline.html) included in this repository. Note that this report is a sample and may not reflect the current state of the model.
 
-More traditionally, we use R<sup>2</sup>, root-mean-squared-error (RMSE), and mean absolute error to gauge overall model performance and fit. Overall model performance on the [test set](#data-used) as of `r Sys.Date()` is shown in the table below and generally stays within this range.
+More traditionally, we use R<sup>2</sup>, root-mean-squared-error (RMSE), and mean absolute error (MAE) to gauge overall model performance and fit. Overall model performance on the [test set](#data-used) as of `r Sys.Date()` is shown in the table below and generally stays within this range.
 
 ```{r model_perf, message=FALSE, echo=FALSE}
 # Load test set if it exists in local repo, if not, ignore this chunk
@@ -560,8 +560,9 @@ The dependencies for this repository are numerous and not all of them may instal
 
 # License
 
-[GNU Affero General Public License v3.0](./LICENSE.txt)
+We use the [GNU Affero General Public License v3.0](./LICENSE.txt).
 
 # Contributing
 
+We welcome pull requests, comments, and other feedback via GitLab. For more involved collaboration or projects, please see the [Developer Engagement Program](https://gitlab.com/groups/ccao-data-science---modeling/-/wikis/People/Contributing) documentation on our group wiki.
 
