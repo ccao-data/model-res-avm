@@ -487,7 +487,7 @@ Assessors tend to use [housing and assessment-specific measurements](https://www
 
 These statistics can be found broken out by township in the [sample modeling report](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_baseline.html) included in this repository. Note that this report is a sample and may not reflect the current state of the model.
 
-More traditionally, we use R<sup>2</sup>, root-mean-squared-error (RMSE), and mean absolute error (MAE) to gauge overall model performance and fit. Overall model performance on the [test set](#data-used) as of `r Sys.Date()` is shown in the table below and generally stays within this range.
+More traditionally, we use R<sup>2</sup>, root-mean-squared-error (RMSE), mean absolute error (MAE), and mean absolute percentage error (MAPE) to gauge overall model performance and fit. Overall model performance on the [test set](#data-used) as of `r Sys.Date()` is shown in the table below and generally stays within this range.
 
 ```{r model_perf, message=FALSE, echo=FALSE}
 # Load test set if it exists in local repo, if not, ignore this chunk
@@ -502,7 +502,8 @@ if (file.exists(testset_path)) {
     summarise(
       `R<sup>2</sup>` = rsq_trad_vec(meta_sale_price, value),
       RMSE = scales::dollar(rmse_vec(meta_sale_price, value), accuracy = 1),
-      MAE = scales::dollar(mae_vec(meta_sale_price, value), accuracy = 1)
+      MAE = scales::dollar(mae_vec(meta_sale_price, value), accuracy = 1),
+      MAPE = scales::percent(mape_vec(meta_sale_price, value) / 100)
     ) %>%
     mutate(`Model Type` = recode(`Model Type`, enet = "Linear", lgbm = "LightGBM")) %>%
     knitr::kable(format = "markdown", digits = 2)
