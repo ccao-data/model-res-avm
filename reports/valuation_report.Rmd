@@ -167,7 +167,7 @@ pv_final_values %>%
 ggplot() +
   geom_density(aes(x = value, color = name), size = 1.05) +
   scale_x_log10(
-    name = "Value Source",
+    name = "Price",
     limits = c(5000, 1900000),
     labels = scales::dollar
   ) +
