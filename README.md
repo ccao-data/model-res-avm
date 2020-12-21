@@ -1024,7 +1024,7 @@ These variables can be set by altering the .Renviron file in your user
 home folder or by using the `Sys.setenv()` function in R. If no
 variables are set, sensible defaults are used.
 
-**In model.R**
+**In `model.R`:**
 
   - `R_CV_ENABLE` - If `TRUE`, model will determine best hyperparameters
     using k-fold cross validation. If `FALSE`, model will use saved
@@ -1037,14 +1037,15 @@ variables are set, sensible defaults are used.
   - `R_CV_NUM_FOLDS` - Integer. Number of folds to use for k-fold cross
     validation.
 
-**In model\_report.Rmd and valuation\_report.Rmd**
+**In `model_report.Rmd` and `valuation_report.Rmd`:**
 
-`R_REPORT_FILTER` - If `TRUE`, only show township-level statistics for
-the triad selected by `R_REPORT_TRIAD`. If `FALSE`, show all statistics
-for all townships. Can also be set using R Markdown report parameters.
-`R_REPORT_TRIAD` - Name of Cook County triad to report on. Options are
-City, South, and North. Can also be set using R Markdown report
-parameters.
+  - `R_REPORT_FILTER` - If `TRUE`, only show township-level statistics
+    for the triad selected by `R_REPORT_TRIAD`. If `FALSE`, show all
+    statistics for all townships. Can also be set using R Markdown
+    report parameters.
+  - `R_REPORT_TRIAD` - Name of Cook County triad to report on. Options
+    are City, South, and North. Can also be set using R Markdown report
+    parameters.
 
 ## Getting Data
 

@@ -644,16 +644,16 @@ graph LR
 
 Various aspects of modeling and reporting are controlled by optional [environmental variables](https://stat.ethz.ch/R-manual/R-devel/library/base/html/Startup.html). These variables can be set by altering the .Renviron file in your user home folder or by using the `Sys.setenv()` function in R. If no variables are set, sensible defaults are used.
 
-**In model.R**
+**In `model.R`:**
 
 * `R_CV_ENABLE` - If `TRUE`, model will determine best hyperparameters using k-fold cross validation. If `FALSE`, model will use saved hyperparameters from `output/params/lgbm_params.rds`. If that file doesn't exist, model will use the hyperparameter defaults saved in `model.R`.
 * `R_CV_WRITE_PARAMS` - If `TRUE`, model will overwrite `output/params/lgbm_params.rds` with new values after completing cross validation.
 * `R_CV_NUM_FOLDS` - Integer. Number of folds to use for k-fold cross validation.
 
-**In model_report.Rmd and valuation_report.Rmd**
+**In `model_report.Rmd` and `valuation_report.Rmd`:**
 
-`R_REPORT_FILTER` - If `TRUE`, only show township-level statistics for the triad selected by `R_REPORT_TRIAD`. If `FALSE`, show all statistics for all townships. Can also be set using R Markdown report parameters.
-`R_REPORT_TRIAD` - Name of Cook County triad to report on. Options are City, South, and North. Can also be set using R Markdown report parameters.
+* `R_REPORT_FILTER` - If `TRUE`, only show township-level statistics for the triad selected by `R_REPORT_TRIAD`. If `FALSE`, show all statistics for all townships. Can also be set using R Markdown report parameters.
+* `R_REPORT_TRIAD` - Name of Cook County triad to report on. Options are City, South, and North. Can also be set using R Markdown report parameters.
 
 ## Getting Data
 
