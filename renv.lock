@@ -137,7 +137,7 @@
     },
     "assessr": {
       "Package": "assessr",
-      "Version": "0.4.2",
+      "Version": "0.4.3",
       "Source": "GitLab",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteType": "gitlab",
@@ -145,8 +145,8 @@
       "RemoteRepo": "packages/assessr",
       "RemoteUsername": "ccao-data-science---modeling",
       "RemoteRef": "HEAD",
-      "RemoteSha": "7b5d2551c6f61d6f4b411687bbd91f9a8632d761",
-      "Hash": "bc4848d556d3634360a09fa19b8119b5"
+      "RemoteSha": "b4f8b9555add2378b544f113bdd4a1b12d83ce21",
+      "Hash": "25a6968b9069514d546533d467db0a7f"
     },
     "audio": {
       "Package": "audio",
@@ -240,8 +240,8 @@
       "RemoteRepo": "packages/ccao",
       "RemoteUsername": "ccao-data-science---modeling",
       "RemoteRef": "HEAD",
-      "RemoteSha": "aa3c4bf76aaf60384218b5dec2d2943e99c0c552",
-      "Hash": "3facab80c49c7dfb75d4f8ef8cf43ea6"
+      "RemoteSha": "286023e8bf2baf5927be284c06df61044da374fb",
+      "Hash": "ffa44fb9c59346802fb352d5f7574746"
     },
     "class": {
       "Package": "class",
