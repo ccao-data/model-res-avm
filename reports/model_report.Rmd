@@ -1,6 +1,5 @@
 ---
 title: "Model Summary"
-author: "Cook County Assessor's Office"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
@@ -27,6 +26,7 @@ library(sf)
 library(stringr)
 library(tidyr)
 library(tune)
+library(yardstick)
 source(here("R", "model_funs.R"))
 
 # Hide code output and make plots take 100% of page width
@@ -46,7 +46,7 @@ report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 ```
 
-```{r model_timing}
+```{r model_timing, results='asis'}
 # Print total training time if timings file exists. This looks for the 
 # lightgbm CV section timing, which is the HUGE majority of training time
 model_timings_path <- here("output", "params", "model_timings.rds")
@@ -71,7 +71,26 @@ test_res <- read_parquet(here("output", "data", "testdata.parquet")) %>%
       levels = c("North", "City", "South")
     )
   )
+  
+# Get aggregate model performance by type (LightGBM and linear)
+test_res %>%
+  pivot_longer(enet:lgbm, names_to = "Model Type") %>%
+  group_by(`Model Type`) %>%
+  summarise(
+    `R<sup>2</sup>` = rsq_trad_vec(meta_sale_price, value),
+    RMSE = scales::dollar(rmse_vec(meta_sale_price, value), accuracy = 1),
+    MAE = scales::dollar(mae_vec(meta_sale_price, value), accuracy = 1),
+    MAPE = scales::percent(mape_vec(meta_sale_price, value) / 100)
+  ) %>%
+  mutate(`Model Type` = recode(`Model Type`, enet = "Linear", lgbm = "LightGBM")) %>%
+  knitr::kable(format = "markdown", digits = 2)
+```
 
+<br>
+
+## Model Breakdown by Township
+
+```{r model_summary_by_town, message=FALSE, warning=FALSE}
 # Filter to specific triad based on report parameter
 if (report_filter) {
 test_res <- test_res %>%
@@ -155,8 +174,6 @@ test_summary %>%
   )
 ```
 
-<br>
-
 ## Map of COD by Township by Model Type
 
 ```{r model_map}
@@ -179,8 +196,6 @@ ggplot() +
     strip.text = element_text(size = 14, margin = margin(b = 3))
   )
 ```
-
-<br>
 
 ## Variables Used in Final Model
 

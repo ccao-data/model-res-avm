@@ -16,14 +16,13 @@ Table of Contents
       - [Data Quality and Integrity](#data-quality-and-integrity)
       - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
   - [FAQs](#faqs)
-  - [Technical Details](#technical-details)
   - [Usage](#usage)
       - [Installation](#installation)
-      - [Files](#files)
       - [Running](#running)
+      - [Files](#files)
       - [Options](#options)
+      - [Getting Data](#getting-data)
       - [Troubleshooting](#troubleshooting)
-          - [Installation](#installation-1)
   - [License](#license)
   - [Contributing](#contributing)
 
@@ -116,10 +115,7 @@ graph TB
     click prep2 "https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/master/R/recipes.R#L5"
 
     classDef Link fill:#90a9e8;
-    class etl_res_data Link;
-    class etl_pinlocations Link;
-    class prep1 Link;
-    class prep2 Link;
+    class etl_res_data,etl_pinlocations,prep1,prep2 Link;
 
     as400 --> mirror
     mirror --> sql
@@ -261,7 +257,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2020-12-18.
+model as of 2020-12-21.
 
 | Feature Name                               | Category       | Type        | Possible Values                                                                                 |
 | :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -312,8 +308,15 @@ model as of 2020-12-18.
 | Township Code                              | Meta           | character   |                                                                                                 |
 | Sale Year                                  | Time           | numeric     |                                                                                                 |
 | Sale Quarter                               | Time           | numeric     |                                                                                                 |
-| Sale Month of Year                         | Time           | numeric     |                                                                                                 |
-| Sale Quarter of Year                       | Time           | numeric     |                                                                                                 |
+| Sale Month                                 | Time           | numeric     |                                                                                                 |
+| Sale Week                                  | Time           | numeric     |                                                                                                 |
+| Sale Day                                   | Time           | numeric     |                                                                                                 |
+| Sale Quarter of Year                       | Time           | character   |                                                                                                 |
+| Sale Month of Year                         | Time           | character   |                                                                                                 |
+| Sale Week of Year                          | Time           | numeric     |                                                                                                 |
+| Sale Day of Year                           | Time           | numeric     |                                                                                                 |
+| Sale During School Year                    | Time           | logical     |                                                                                                 |
+| Sale During Holidays                       | Time           | logical     |                                                                                                 |
 
 #### Data Sources
 
@@ -361,10 +364,10 @@ repository:
     prior to the next assessment date***, which gives us a sufficient
     amount of data for accurate prediction without including outdated
     price information. This is the data used to train and evaluate the
-    model. Its approximate size is 300K rows with 80 features.
+    model. Its approximate size is 300K rows with 89 features.
   - `assmntdata` - Includes all residential properties (sold and unsold)
     which need assessed values. This is the data the final model is used
-    on. Its approximate size is 1.1 million rows with 80 features.
+    on. Its approximate size is 1.1 million rows with 89 features.
 
 These data sets contain only *residential single- and multi-family
 properties*. Single-family includes property classes 202, 203, 204, 205,
@@ -391,10 +394,17 @@ Out-of-time testing explicitly measures the model’s ability to predict
 recent sales. It holds out the most recent 10% of sales as a test set,
 while the remaining 90% of the data is split into multiple training and
 validation sets using 5-fold cross-validation. We chose this technique
-instead of out-of-time validation or rolling window validation because
-it’s easier to implement in Tidymodels and we want to use the most
-recent sales possible when training (to account for any market changes
-caused by COVID).
+instead of walk-forward/rolling window validation because it’s easier to
+implement in Tidymodels and we want to use the most recent sales
+possible when training (to account for any market changes caused by
+COVID).
+
+Additionally, we don’t explicitly weight training data by recency,
+meaning every sale in the sample is initially given equal weight during
+training. As the model learns, it may minimize the effect of very old
+sales. We tested explicit time weighting schemes using things like
+exponential and Gaussian decay functions, but they had little impact on
+performance and added significant complexity.
 
 ##### Figure 1: Out-of-Time Testing
 
@@ -719,6 +729,29 @@ the future.
 
 # FAQs
 
+**Q: My assessed value seems too low or too high. How do I fix it?**
+
+There are over one million residential properties in Cook County
+spanning a huge variety of locations, types, ages, and conditions. Mass
+appraisal should produce fair valuations for most properties. But a mass
+appraisal model isn’t going to accurately value every single property.
+If you believe that the value produced by our model is inaccurate,
+please [file an
+appeal](https://www.cookcountyassessor.com/online-appeals) with our
+office.
+
+**Q: My home has been sold recently. Why isn’t my assessed value equal
+to my sale price?**
+
+Setting the assessed value of a home equal to the value of a recent sale
+is called selective appraisal or sales chasing. Sales chasing can
+artificially improve assessment performance statistics and bias
+statistical models. Worse, it can bias assessment accuracy in favor of
+recently sold properties, giving an unfair advantage to areas or
+properties with high turnover. For more information, see [Appendix E of
+the IAAO Standard on Ratio
+Studies](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf).
+
 **Q: How are comparables used in the model?**
 
 We don’t use sale or uniformity comparables for the purpose of modeling.
@@ -797,81 +830,238 @@ included in this repository. Note that this report is a sample and may
 not reflect the current state of the model.
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
-(RMSE), and mean absolute error (MAE) to gauge overall model performance
-and fit. Overall model performance on the [test set](#data-used) as of
-2020-12-18 is shown in the table below and generally stays within this
-range.
+(RMSE), mean absolute error (MAE), and mean absolute percentage error
+(MAPE) to gauge overall model performance and fit. Overall model
+performance on the [test set](#data-used) as of 2020-12-21 is shown in
+the table below and generally stays within this range.
 
-| Model Type | R<sup>2</sup> | RMSE     | MAE     |
-| :--------- | ------------: | :------- | :------ |
-| Linear     |          0.72 | $153,750 | $90,784 |
-| LightGBM   |          0.86 | $109,134 | $63,103 |
+| Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
+| :--------- | ------------: | :------- | :------ | :--- |
+| Linear     |          0.72 | $153,750 | $90,784 | 34%  |
+| LightGBM   |          0.86 | $109,015 | $63,071 | 28%  |
 
-**Q: My assessed value seems wrong. How do I fix it?**
+**Q: How often does the model change?**
 
-There are over one million residential properties in Cook County
-spanning a huge variety of locations, types, ages, and conditions. Mass
-appraisal should produce fair valuations for most properties. But a mass
-appraisal model isn’t going to accurately value every single property.
-If you believe that the value produced by our model is inaccurate,
-please [file an
-appeal](https://www.cookcountyassessor.com/online-appeals) with our
-office.
-
-# Technical Details
-
-Modeling is implemented using the
-[Tidymodels](https://www.tidymodels.org/) framework for R.
-
-LightGBM + glmnet (elasticnet)
-
-lgbm integrated with treesnip + custom code
-
-preprocessing in recipes
-
-Tuned according to lgbm docs
-
-Minimized on RMSE
+We’re constantly making minor tweaks to improve the model’s accuracy,
+speed, and usability. However, major changes to the model typically take
+place during the downtime between reassessments, so about once per year.
 
 # Usage
 
-## Installation
-
 The code in this repository is written primarily in
 [R](https://www.r-project.org/about.html). Please install the [latest
-version of R](https://cloud.r-project.org/) and
-[RStudio](https://rstudio.com/products/rstudio/download/) before
-proceeding with the steps below. If you’re on Windows, you’ll also need
-to install [rtools40](https://cran.r-project.org/bin/windows/Rtools/) in
-order to build packages.
+version of R](https://cloud.r-project.org/) (requires R version \>=
+4.0.0) and [RStudio](https://rstudio.com/products/rstudio/download/)
+before proceeding with the steps below. If you’re on Windows, you’ll
+also need to install
+[Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to
+build the necessary packages.
 
-1.  Clone this repository using git, or simply download using the button
-    at the top of the page
+## Installation
+
+1.  Clone this repository using git, or simply download it using the
+    button at the top of the page.
 2.  Set your working directory to the local folder containing this
-    repository’s files, either using R’s `setwd()` command or using
-    RStudio’s
-    [projects](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects)
+    repository’s files, either using R’s `setwd()` command or
+    (preferably) using RStudio’s
+    [projects](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects).
 3.  Install `renv`, R’s package manager, by running
-    `install.packages("renv")`
+    `install.packages("renv")`.
 4.  Install all R package dependencies using `renv` by running
-    `renv::restore()`
-5.  Place modeling and assessment data parquet files in the `input/`
-    directory within the repo
-6.  Run the `model.R` script. This trains the model, evaluates a test
-    set, and generates a report on the model’s performance
-7.  Run the `valuation.R` script. This creates a secondary adjustment
-    model and generates predicted values for all properties we need to
-    assess
+    `renv::restore()`. This step may take awhile.
+5.  Place [modeling and assessment data parquet files](#files) in the
+    `input/` directory within the repo, or generate them yourself using
+    [etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data).
+    See [Files](#files) for details.
 
-## Files
+For installation issues, particularly related to package installation
+and dependencies, see [Troubleshooting](#troubleshooting).
 
 ## Running
 
+**Scripts**
+
+To use this repository, run the following scripts in order:
+
+1.  `model.R` - Trains the model, evaluates a test set, and generates a
+    report on the model’s performance.
+2.  `valuation.R` - Creates a [secondary adjustment
+    model](#post-modeling) and generates predicted values for all
+    properties that need assessment.
+
+The web of dependencies, outputs, and intermediate files is shown in the
+graph below. Note that `modeldata.parquet` and `assmntdata.parquet`
+(highlighted in orange) are the only files that ***must exist*** in
+order to run these scripts.
+
+``` mermaid
+graph LR
+
+    model{"model.R"}
+    modeldata[("input/modeldata.parquet")]
+    params["output/params/lgbm_params.rds"]
+    env_vars>"ENV variables"]
+
+    testdata[("output/data/testdata.parquet")]
+    model_zip["output/models/lgbm_model.zip"]
+    model_recipe["output/models/lgbm_recipe.rds"]
+    timings["output/params/model_timings.rds"]
+
+    val{"valuation.R"}
+    assmntdata[("input/assmntdata.parquet")]
+    postval["output/models/postval_model.rds"]
+    final[("output/data/finalvalues.parquet")]
+
+    modeldata --> model
+    params -->|Optional| model
+    env_vars -->|Optional| model
+    model --> testdata
+    model --> model_zip
+    model --> model_recipe
+    model --> timings
+
+    assmntdata --> val
+    modeldata --> val
+    model_zip --> val
+    model_recipe --> val
+    val --> postval
+    val --> final
+    
+    classDef orange fill:#f96;
+    class modeldata,assmntdata orange;
+```
+
+**Reports**
+
+Each script also has a corresponding report which details its outcomes
+and performance. These reports run automatically at the end of each
+script, but can also be run independently. The set of files needed for
+each report is shown in the graph below.
+
+``` mermaid
+graph LR
+
+    params["output/params/lgbm_params.rds"]
+    env_vars>"ENV variables"]
+
+    testdata[("output/data/testdata.parquet")]
+    model_zip["output/models/lgbm_model.zip"]
+    model_recipe["output/models/lgbm_recipe.rds"]
+    timings["output/params/model_timings.rds"]
+
+    model_report[["reports/model_report.Rmd"]]
+    model_report_out["output/reports/model_report.html"]
+
+    testdata --> model_report
+    model_zip --> model_report
+    model_recipe --> model_report
+    timings --> model_report
+    env_vars -->|Optional| model_report
+    params --> model_report
+    model_report --> model_report_out
+
+    final[("output/data/finalvalues.parquet")]
+    val_report[["reports/valuation_report.Rmd"]]
+    val_report_out["output/reports/valuation_report.html"]
+
+    final --> val_report
+    env_vars -->|Optional| val_report
+    val_report --> val_report_out
+```
+
+## Files
+
+**Modeling**
+
+  - `model.R` - Trains the model, evaluates a test set, and generates a
+    report on the model’s performance.
+  - `input/modeldata.parquet` - Training data. See [Data
+    Used](#data-used) and [Getting Data](#getting-data) for details.
+  - `output/data/testdata.parquet` - Test set used to evaluate model
+    performance. Contains the predicted values from both LightGBM and a
+    baseline linear model.
+  - `output/models/lgbm_model.zip` - Saved LightGBM model object. Can be
+    used to generate new predicted values on unseen data.
+  - `output/models/lgbm_recipe.rds` - Saved Tidymodels recipe object.
+    Must be used to preprocess unseen data before passing it to the
+    model object.
+  - `output/params/lgbm_params.rds` - Saved set of trained model
+    hyperparameters. If this file doesn’t exist, default set in
+    `model.R` will be used.
+  - `output/params/model_timings.rds` - Time elapsed during model
+    training, saved in a data frame. Used in modeling report to show
+    total training time.
+  - `reports/model_report.Rmd` - Reports on model performance, errors,
+    and outliers. Broken out by township.
+  - (Optional) Set of environmental variables to change cross validation
+    behavior. See [Options](#options).
+
+**Valuation**
+
+  - `valuation.R` - Creates a [secondary adjustment
+    model](#post-modeling) and generates predicted values for all
+    properties that need assessment.
+  - `input/assmntdata.parquet` - Assessment data. This is the set of all
+    properties which need assessed values. Note that `meta_sale_date` is
+    set to date of assessment.
+  - `output/models/postval_model.rds` - Saved set of adjustments to make
+    to raw predicted values. Can be applied to unseen data using a
+    `predict()` method.
+  - `output/data/finalvalues.parquet` - Set of final, adjusted predicted
+    values for all properties in `assmntdata`.
+  - `reports/valuation_report.Rmd` - Reports on the quality of
+    prediction/assessment using the final model. Also details the
+    changes made by post-modeling adjustments.
+  - (Optional) Set of environmental variables to change cross validation
+    behavior. See [Options](#options).
+
 ## Options
 
-## Troubleshooting
+Various aspects of modeling and reporting are controlled by optional
+[environmental
+variables](https://stat.ethz.ch/R-manual/R-devel/library/base/html/Startup.html).
+These variables can be set by altering the .Renviron file in your user
+home folder or by using the `Sys.setenv()` function in R. If no
+variables are set, sensible defaults are used.
 
-### Installation
+**In model.R**
+
+  - `R_CV_ENABLE` - If `TRUE`, model will determine best hyperparameters
+    using k-fold cross validation. If `FALSE`, model will use saved
+    hyperparameters from `output/params/lgbm_params.rds`. If that file
+    doesn’t exist, model will use the hyperparameter defaults saved in
+    `model.R`.
+  - `R_CV_WRITE_PARAMS` - If `TRUE`, model will overwrite
+    `output/params/lgbm_params.rds` with new values after completing
+    cross validation.
+  - `R_CV_NUM_FOLDS` - Integer. Number of folds to use for k-fold cross
+    validation.
+
+**In model\_report.Rmd and valuation\_report.Rmd**
+
+`R_REPORT_FILTER` - If `TRUE`, only show township-level statistics for
+the triad selected by `R_REPORT_TRIAD`. If `FALSE`, show all statistics
+for all townships. Can also be set using R Markdown report parameters.
+`R_REPORT_TRIAD` - Name of Cook County triad to report on. Options are
+City, South, and North. Can also be set using R Markdown report
+parameters.
+
+## Getting Data
+
+The [data required](#data-used) to run these scripts is produced by the
+[etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
+repository, which uses SQL pulls from the CCAO’s internal database as a
+primary data source. This makes it impossible for outside parties to
+recreate the data currently used for modeling.
+
+In the short term, parties interested in recreating our model can reach
+out directly to the [CCAO Data Science
+Department](mailto:datascience@cookcountyassessor.com) for data
+extracts. As a permanent fix, the CCAO plans to publish these data
+extracts on the [Cook County Data
+Portal](https://datacatalog.cookcountyil.gov/) in early 2021.
+
+## Troubleshooting
 
 The dependencies for this repository are numerous and not all of them
 may install correctly. Here are some common install issues (as seen in
@@ -880,15 +1070,23 @@ the R console) as well as their respective resolutions:
   - Error: `Failed to retrieve package 'treesnip'` <br>Solution:
     Manually install treesnip [from
     GitHub](https://github.com/curso-r/treesnip), following the
-    instructions listed
+    instructions listed.
 
   - Error: `WARNING: Rtools is required to build R packages, but is not
     currently installed` <br>Solution: Install the latest version of
-    Rtools [from CRAN](https://cran.r-project.org/bin/windows/Rtools/)
+    Rtools [from CRAN](https://cran.r-project.org/bin/windows/Rtools/),
+    following the instructions listed.
+
+  - Error: `DLL '<package-name>' not found: maybe not installed for this
+    architecture?` <br>Soluation: Try installing the package manually
+    with the `INSTALL_opts` flag set. See
+    [here](https://github.com/rstudio/renv/issues/162#issuecomment-612380245)
+    for an example.
 
 # License
 
-We use the [GNU Affero General Public License v3.0](./LICENSE.txt).
+Distributed under the GPL-3 License. See [LICENSE](./LICENSE.txt) for
+more information.
 
 # Contributing
 
