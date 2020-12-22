@@ -306,11 +306,7 @@ model as of 2020-12-21.
 | Garage Indicator                           | Indicator      | logical     |                                                                                                 |
 | Neighborhood Code                          | Meta           | character   |                                                                                                 |
 | Township Code                              | Meta           | character   |                                                                                                 |
-| Sale Year                                  | Time           | numeric     |                                                                                                 |
-| Sale Quarter                               | Time           | numeric     |                                                                                                 |
-| Sale Month                                 | Time           | numeric     |                                                                                                 |
 | Sale Week                                  | Time           | numeric     |                                                                                                 |
-| Sale Day                                   | Time           | numeric     |                                                                                                 |
 | Sale Quarter of Year                       | Time           | character   |                                                                                                 |
 | Sale Month of Year                         | Time           | character   |                                                                                                 |
 | Sale Week of Year                          | Time           | numeric     |                                                                                                 |
@@ -372,8 +368,10 @@ repository:
 These data sets contain only *residential single- and multi-family
 properties*. Single-family includes property classes 202, 203, 204, 205,
 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes
-property classes 211 and 212. Other residential properties, such as
-condominiums (class 299 and 399) are valued [using a different
+property classes 211 and 212. Bed and breakfast properties (class 218
+and 219) are considered single-family for the sake of modeling. Other
+residential properties, such as condominiums (class 299 and 399) are
+valued [using a different
 model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
 
 #### Using `modeldata`
@@ -837,8 +835,8 @@ the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
 | :--------- | ------------: | :------- | :------ | :--- |
-| Linear     |          0.72 | $153,750 | $90,784 | 34%  |
-| LightGBM   |          0.86 | $109,015 | $63,071 | 28%  |
+| Linear     |          0.74 | $157,331 | $92,744 | 33%  |
+| LightGBM   |          0.86 | $118,105 | $66,941 | 26%  |
 
 **Q: How often does the model change?**
 

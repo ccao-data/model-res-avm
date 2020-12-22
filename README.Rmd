@@ -203,7 +203,7 @@ This repository uses two data sets that are constructed by the [etl_res_data](ht
 * `modeldata` - Includes residential sales from ***the seven years prior to the next assessment date***, which gives us a sufficient amount of data for accurate prediction without including outdated price information. This is the data used to train and evaluate the model. Its approximate size is 300K rows with 89 features.
 * `assmntdata` - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 89 features.
 
-These data sets contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+These data sets contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
 
 #### Using `modeldata`
 
