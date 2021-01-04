@@ -344,7 +344,7 @@ regions, sales are sparse. Accurately estimating the price of such different pro
 
 This challenge is particularly acute in areas with high housing characteristic and price heterogeneity. For example, the Hyde Park neighborhood in Chicago is home to the University of Chicago and has large, multi-million-dollar houses near campus. However, sale prices drop precipitously just a few blocks away, as one passes south of 63rd street or west of I-90. This sort of sharp price discontinuity makes it difficult to accurately assess properties, as models tend to "smooth" such hard breaks unless geographic boundaries are explicitly defined. 
 
-```{r hype_park, message=FALSE, echo=FALSE, out.width="85%"}
+```{r hyde_park, message=FALSE, echo=FALSE, out.width="85%"}
 library(yardstick)
 library(here)
 library(dplyr)
@@ -660,6 +660,14 @@ Various aspects of modeling and reporting are controlled by optional [environmen
 The [data required](#data-used) to run these scripts is produced by the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository, which uses SQL pulls from the CCAO's internal database as a primary data source. This makes it impossible for outside parties to recreate the data currently used for modeling.
 
 In the short term, parties interested in recreating our model can reach out directly to the [CCAO Data Science Department](mailto:datascience@cookcountyassessor.com) for data extracts. As a permanent fix, the CCAO plans to publish these data extracts on the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/) in early 2021.
+
+## System Requirements
+
+Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html#parallel-processing) and [LightGBM](https://lightgbm.readthedocs.io/en/latest/Parallel-Learning-Guide.html) support parallel processing to speed up model training. However, the current parallel implementation in Tidymodels is extremely memory-intensive, as it needs to carry loaded packages and objects into each worker process. As such, parallel processing in Tidymodels is turned **off**, while parallel processing in LightGBM is turned **on**. This means that models are fit sequentially, but each model fitting is sped up using the parallel processing built-in to LightGBM. Note that:
+
+* The total amount of RAM needed for overall model fitting is around 6GB.
+* The number of threads is set via the [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads) parameter, which is passed to the model using the `set_args()` function from `parsnip`. By default, `num_threads` is equal to the full number of physical cores available. More (or faster) cores will decrease total training time.
+* This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
 
 ## Troubleshooting
 

@@ -22,6 +22,7 @@ Table of Contents
       - [Files](#files)
       - [Options](#options)
       - [Getting Data](#getting-data)
+      - [System Requirements](#system-requirements)
       - [Troubleshooting](#troubleshooting)
   - [License](#license)
   - [Contributing](#contributing)
@@ -257,7 +258,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2020-12-21.
+model as of 2021-01-04.
 
 | Feature Name                               | Category       | Type        | Possible Values                                                                                 |
 | :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -693,7 +694,7 @@ street or west of I-90. This sort of sharp price discontinuity makes it
 difficult to accurately assess properties, as models tend to “smooth”
 such hard breaks unless geographic boundaries are explicitly defined.
 
-<img src="docs/figures/hype_park-1.png" width="85%" />
+<img src="docs/figures/hyde_park-1.png" width="85%" />
 
 Hyde Park is only one example, similarly unique situations exist
 throughout the county. Our model *does* account for some of these
@@ -830,13 +831,13 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2020-12-21 is shown in
+performance on the [test set](#data-used) as of 2021-01-04 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
 | :--------- | ------------: | :------- | :------ | :--- |
-| Linear     |          0.74 | $157,331 | $92,744 | 33%  |
-| LightGBM   |          0.86 | $118,105 | $66,941 | 26%  |
+| Linear     |          0.74 | $157,382 | $92,775 | 33%  |
+| LightGBM   |          0.86 | $118,359 | $67,027 | 26%  |
 
 **Q: How often does the model change?**
 
@@ -1059,6 +1060,34 @@ Department](mailto:datascience@cookcountyassessor.com) for data
 extracts. As a permanent fix, the CCAO plans to publish these data
 extracts on the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/) in early 2021.
+
+## System Requirements
+
+Both
+[Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html#parallel-processing)
+and
+[LightGBM](https://lightgbm.readthedocs.io/en/latest/Parallel-Learning-Guide.html)
+support parallel processing to speed up model training. However, the
+current parallel implementation in Tidymodels is extremely
+memory-intensive, as it needs to carry loaded packages and objects into
+each worker process. As such, parallel processing in Tidymodels is
+turned **off**, while parallel processing in LightGBM is turned **on**.
+This means that models are fit sequentially, but each model fitting is
+sped up using the parallel processing built-in to LightGBM. Note that:
+
+  - The total amount of RAM needed for overall model fitting is around
+    6GB.
+  - The number of threads is set via the
+    [num\_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads)
+    parameter, which is passed to the model using the `set_args()`
+    function from `parsnip`. By default, `num_threads` is equal to the
+    full number of physical cores available. More (or faster) cores will
+    decrease total training time.
+  - This repository uses the CPU version of LightGBM included with the
+    [LightGBM R
+    package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If
+    you’d like to use the GPU version you’ll need to [build it
+    yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
 
 ## Troubleshooting
 
