@@ -258,7 +258,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-04.
+model as of 2021-01-05.
 
 | Feature Name                               | Category       | Type        | Possible Values                                                                                 |
 | :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -350,6 +350,22 @@ they’re excluded:
 | Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future\!                                                                                                                                                                                                 |
 | Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                            |
 | Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                              |
+
+#### Spatial Features Note
+
+Spatial features included in this model use the most recently available
+data, even for historic sales. In other words, these features are
+*time-invariant*. For example, a sale that occurred in 2013 will use
+2014-2018 ACS median income as a feature. Likewise, a property assessed
+in 2021 will also use 2014-2018 ACS median income as a feature. We chose
+to use time-invariant spatial features for a few reasons. Namely:
+
+1.  It’s difficult to collect historic spatial data for certain features
+    like school districts.
+2.  The spatial features we decided to use don’t actually vary much over
+    time.
+3.  Collecting and aggregating years’ worth of spatial data adds a lot
+    of complexity but doesn’t significantly increase model performance.
 
 ### Data Used
 
@@ -831,7 +847,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-04 is shown in
+performance on the [test set](#data-used) as of 2021-01-05 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
