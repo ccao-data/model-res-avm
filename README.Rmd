@@ -90,7 +90,7 @@ To counter this, we've listed the major choices we've made about our modeling pr
 
 ### Model Selection
 
-We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a GBDT (gradient-boosting decision tree) framework created and maintained by Microsoft. It was only very recently [released officially for R](https://cran.r-project.org/web/packages/lightgbm/index.html), but has been around since 2016. 
+We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It was only very recently [released officially for R](https://cran.r-project.org/web/packages/lightgbm/index.html), but has been around since 2016. 
 
 We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 

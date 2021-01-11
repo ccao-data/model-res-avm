@@ -153,9 +153,10 @@ criticism](#contributing).
 ### Model Selection
 
 We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our
-primary valuation model. LightGBM is a GBDT (gradient-boosting decision
-tree) framework created and maintained by Microsoft. It was only very
-recently [released officially for
+primary valuation model. LightGBM is a [GBDT (gradient-boosting decision
+tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html)
+framework created and maintained by Microsoft. It was only very recently
+[released officially for
 R](https://cran.r-project.org/web/packages/lightgbm/index.html), but has
 been around since 2016.
 
@@ -258,7 +259,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-05.
+model as of 2021-01-11.
 
 | Feature Name                               | Category       | Type        | Possible Values                                                                                 |
 | :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -847,7 +848,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-05 is shown in
+performance on the [test set](#data-used) as of 2021-01-11 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
