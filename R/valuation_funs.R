@@ -10,13 +10,12 @@ val_med_pct_adj <- function(truth, estimate, min_n = 20, max_abs_adj = 0.4) {
   num_sales <- sum(!is.na(truth))
 
   med_pct_adj <- median((truth - estimate) / estimate, na.rm = TRUE)
-
-  output <- ifelse(num_sales >= min_n, med_pct_adj, NA_real_)
   output <- ifelse(
     abs(med_pct_adj) > max_abs_adj,
     0.4 * sign(med_pct_adj),
     med_pct_adj
   )
+  output <- ifelse(num_sales >= min_n, med_pct_adj, NA_real_)
 
   return(output)
 }
