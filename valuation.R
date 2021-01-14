@@ -36,13 +36,16 @@ lgbm_final_full_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
 # Some post-modeling adjustments (such as ratio capping) require sales to work.
 # As such, we need to append the most recent sale (closest to the assessment
-# date) to each PIN. Not all PINs will have sales, as our sales sample is
-# limited to 5 years prior to the assessment date
+# date within 2 years) to each PIN. Not all PINs will have sales, as our sales
+# sample is limited to 7 years prior to the assessment date
 sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
-  filter(ind_arms_length) %>%
+  filter(
+    ind_arms_length,
+    meta_year >= max(meta_year) - 1
+  ) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
-  select(meta_pin, meta_sale_price, meta_document_num)
+  distinct(meta_pin, meta_sale_price, meta_document_num)
 
 # Load the full set of residential properties that need values, join the sales
 # where available
