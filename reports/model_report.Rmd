@@ -421,7 +421,6 @@ outlier_dist %>%
   vars_rename(names_from = "standard", names_to = "pretty") %>%
   datatable(
     rownames = FALSE,
-    autoHideNavigation = TRUE,
     selection = "none",
     options = list(
       scrollX = TRUE,
@@ -440,7 +439,7 @@ outlier_dist %>%
     )
   ) %>%
   formatCurrency(
-    c("Sale Price", "Model Prediction", "Median Income"),
+    c("Sale Price", "Model Prediction", "Tract Median Income"),
     digits = 0
   ) %>%
   formatPercentage(
@@ -536,13 +535,11 @@ lgbm_final_params %>%
   datatable(
     rownames = FALSE,
     filter = "none",
-    autoHideNavigation = TRUE,
     selection = "none",
     container = param_headers,
     escape = FALSE,
     options = list(
       scrollX = TRUE,
-      # autoWidth = TRUE,
       paging = FALSE,
       searching = FALSE,
       info = FALSE

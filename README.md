@@ -259,62 +259,58 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-11.
+model as of 2021-01-14.
 
-| Feature Name                               | Category       | Type        | Possible Values                                                                                 |
-| :----------------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
-| Age                                        | Characteristic | numeric     |                                                                                                 |
-| Central Air Conditioning                   | Characteristic | categorical | Central A/C, No Central A/C                                                                     |
-| Apartments                                 | Characteristic | categorical | Two, Three, Four, Five, Six, None                                                               |
-| Attic Finish                               | Characteristic | categorical | Living Area, Partial, None                                                                      |
-| Attic Type                                 | Characteristic | categorical | Full, Partial, None                                                                             |
-| Bedrooms                                   | Characteristic | numeric     |                                                                                                 |
-| Building Square Feet                       | Characteristic | numeric     |                                                                                                 |
-| Basement                                   | Characteristic | categorical | Full, Slab, Partial, Crawl                                                                      |
-| Basement Finish                            | Characteristic | categorical | Formal Rec Room, Apartment, Unfinished                                                          |
-| Wall Material                              | Characteristic | categorical | Frame, Masonry, Frame + Masonry, Stucco                                                         |
-| Full Baths                                 | Characteristic | numeric     |                                                                                                 |
-| Fireplaces                                 | Characteristic | numeric     |                                                                                                 |
-| Garage 1 Area                              | Characteristic | categorical | Yes, No                                                                                         |
-| Garage 1 Attached                          | Characteristic | categorical | Yes, No                                                                                         |
-| Garage 1 Material                          | Characteristic | categorical | Frame, Masonry, Frame + Masonry, Stucco                                                         |
-| Garage 1 Size                              | Characteristic | categorical | 1 cars, 1.5 cars, 2 cars, 2.5 cars, 3 cars, 3.5 cars, 0 cars, 4 cars                            |
-| Half Baths                                 | Characteristic | numeric     |                                                                                                 |
-| Land Square Feet                           | Characteristic | numeric     |                                                                                                 |
-| Central Heating                            | Characteristic | categorical | Warm Air Furnace, Hot Water Steam, Electric Heater, None                                        |
-| Number of Commercial Units                 | Characteristic | numeric     |                                                                                                 |
-| Other Heating                              | Characteristic | categorical | Floor Furnace, Unit Heater, Stove, Solar, None                                                  |
-| Porch                                      | Characteristic | categorical | Frame Enclosed, Masonry Enclosed, None                                                          |
-| Roof Material                              | Characteristic | categorical | Shingle + Asphalt, Tar + Gravel, Slate, Shake, Tile, Other                                      |
-| Rooms                                      | Characteristic | numeric     |                                                                                                 |
-| Cathedral Ceiling                          | Characteristic | categorical | Yes, No                                                                                         |
-| Design Plan                                | Characteristic | categorical | Architect, Stock Plan                                                                           |
-| Type of Residence                          | Characteristic | categorical | 1 Story, 2 Story, 3 Story +, Split Level, 1.5 Story, 1.6 Story, 1.7 Story, 1.8 Story, 1.9 Story |
-| Use                                        | Characteristic | categorical | Single-Family, Multi-Family                                                                     |
-| Median Income                              | Economic       | numeric     |                                                                                                 |
-| Tax Rate                                   | Economic       | numeric     |                                                                                                 |
-| Number of Foreclosures in Town Per Month   | Economic       | numeric     |                                                                                                 |
-| Number of Foreclosures in Town Per Quarter | Economic       | numeric     |                                                                                                 |
-| FEMA Floodplain                            | Geospatial     | logical     |                                                                                                 |
-| O’Hare Noise                               | Geospatial     | logical     |                                                                                                 |
-| Road Proximity \< 100 Feet                 | Geospatial     | logical     |                                                                                                 |
-| Road Proximity 101 - 300 Feet              | Geospatial     | logical     |                                                                                                 |
-| Flood Risk Direction                       | Geospatial     | numeric     |                                                                                                 |
-| Flood Risk Factor                          | Geospatial     | numeric     |                                                                                                 |
-| Elementary/Middle School                   | Geospatial     | character   |                                                                                                 |
-| High School                                | Geospatial     | character   |                                                                                                 |
-| Large Home                                 | Indicator      | logical     |                                                                                                 |
-| Large Lot                                  | Indicator      | logical     |                                                                                                 |
-| Garage Indicator                           | Indicator      | logical     |                                                                                                 |
-| Neighborhood Code                          | Meta           | character   |                                                                                                 |
-| Township Code                              | Meta           | character   |                                                                                                 |
-| Sale Week                                  | Time           | numeric     |                                                                                                 |
-| Sale Quarter of Year                       | Time           | character   |                                                                                                 |
-| Sale Month of Year                         | Time           | character   |                                                                                                 |
-| Sale Week of Year                          | Time           | numeric     |                                                                                                 |
-| Sale Day of Year                           | Time           | numeric     |                                                                                                 |
-| Sale During School Year                    | Time           | logical     |                                                                                                 |
-| Sale During Holidays                       | Time           | logical     |                                                                                                 |
+| Feature Name                      | Category       | Type        | Possible Values                                                                                 |
+| :-------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
+| Age                               | Characteristic | numeric     |                                                                                                 |
+| Central Air Conditioning          | Characteristic | categorical | Central A/C, No Central A/C                                                                     |
+| Apartments                        | Characteristic | categorical | Two, Three, Four, Five, Six, None                                                               |
+| Attic Finish                      | Characteristic | categorical | Living Area, Partial, None                                                                      |
+| Attic Type                        | Characteristic | categorical | Full, Partial, None                                                                             |
+| Bedrooms                          | Characteristic | numeric     |                                                                                                 |
+| Building Square Feet              | Characteristic | numeric     |                                                                                                 |
+| Basement                          | Characteristic | categorical | Full, Slab, Partial, Crawl                                                                      |
+| Basement Finish                   | Characteristic | categorical | Formal Rec Room, Apartment, Unfinished                                                          |
+| Wall Material                     | Characteristic | categorical | Frame, Masonry, Frame + Masonry, Stucco                                                         |
+| Full Baths                        | Characteristic | numeric     |                                                                                                 |
+| Fireplaces                        | Characteristic | numeric     |                                                                                                 |
+| Garage 1 Area                     | Characteristic | categorical | Yes, No                                                                                         |
+| Garage 1 Attached                 | Characteristic | categorical | Yes, No                                                                                         |
+| Garage 1 Material                 | Characteristic | categorical | Frame, Masonry, Frame + Masonry, Stucco                                                         |
+| Garage 1 Size                     | Characteristic | categorical | 1 cars, 1.5 cars, 2 cars, 2.5 cars, 3 cars, 3.5 cars, 0 cars, 4 cars                            |
+| Half Baths                        | Characteristic | numeric     |                                                                                                 |
+| Land Square Feet                  | Characteristic | numeric     |                                                                                                 |
+| Central Heating                   | Characteristic | categorical | Warm Air Furnace, Hot Water Steam, Electric Heater, None                                        |
+| Other Heating                     | Characteristic | categorical | Floor Furnace, Unit Heater, Stove, Solar, None                                                  |
+| Porch                             | Characteristic | categorical | Frame Enclosed, Masonry Enclosed, None                                                          |
+| Roof Material                     | Characteristic | categorical | Shingle + Asphalt, Tar + Gravel, Slate, Shake, Tile, Other                                      |
+| Rooms                             | Characteristic | numeric     |                                                                                                 |
+| Cathedral Ceiling                 | Characteristic | categorical | Yes, No                                                                                         |
+| Design Plan                       | Characteristic | categorical | Architect, Stock Plan                                                                           |
+| Type of Residence                 | Characteristic | categorical | 1 Story, 2 Story, 3 Story +, Split Level, 1.5 Story, 1.6 Story, 1.7 Story, 1.8 Story, 1.9 Story |
+| Use                               | Characteristic | categorical | Single-Family, Multi-Family                                                                     |
+| Tract Median Income               | Economic       | numeric     |                                                                                                 |
+| Tax Rate                          | Economic       | numeric     |                                                                                                 |
+| FEMA Floodplain                   | Geospatial     | logical     |                                                                                                 |
+| O’Hare Noise Indicator            | Geospatial     | logical     |                                                                                                 |
+| Road Proximity \< 100 Feet        | Geospatial     | logical     |                                                                                                 |
+| Road Proximity 101 - 300 Feet     | Geospatial     | logical     |                                                                                                 |
+| Flood Risk Direction              | Geospatial     | numeric     |                                                                                                 |
+| Flood Risk Factor                 | Geospatial     | numeric     |                                                                                                 |
+| Elementary/Middle School District | Geospatial     | character   |                                                                                                 |
+| High School District              | Geospatial     | character   |                                                                                                 |
+| Large Lot Indicator               | Indicator      | logical     |                                                                                                 |
+| Garage Indicator                  | Indicator      | logical     |                                                                                                 |
+| Neighborhood Code                 | Meta           | character   |                                                                                                 |
+| Township Code                     | Meta           | character   |                                                                                                 |
+| Sale Week                         | Time           | numeric     |                                                                                                 |
+| Sale Quarter of Year              | Time           | character   |                                                                                                 |
+| Sale Month of Year                | Time           | character   |                                                                                                 |
+| Sale Week of Year                 | Time           | numeric     |                                                                                                 |
+| Sale Day of Year                  | Time           | numeric     |                                                                                                 |
+| Sale During School Year           | Time           | logical     |                                                                                                 |
+| Sale During Holidays              | Time           | logical     |                                                                                                 |
 
 #### Data Sources
 
@@ -848,13 +844,13 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-11 is shown in
+performance on the [test set](#data-used) as of 2021-01-14 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
 | :--------- | ------------: | :------- | :------ | :--- |
-| Linear     |          0.74 | $157,382 | $92,775 | 33%  |
-| LightGBM   |          0.86 | $118,359 | $67,027 | 26%  |
+| Linear     |          0.76 | $157,511 | $91,514 | 29%  |
+| LightGBM   |          0.83 | $131,515 | $69,659 | 24%  |
 
 **Q: How often does the model change?**
 
