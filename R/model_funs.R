@@ -24,6 +24,20 @@ model_get_env <- function(x, default) {
 }
 
 
+# LightGBM grows trees leaf-wise rather than depth-wise, meaning that not all
+# tree levels will have the same number of leaves. num_leaves is implicitly
+# capped at 2 ^ max_depth (full depth tree). This function explicitly caps
+# num_leaves
+model_cap_num_leaves <- function(params) {
+  params$num_leaves <- ifelse(
+    params$num_leaves > (2 ^ params$tree_depth) - 1,
+    max((2 ^ params$tree_depth) - 1, 2),
+    params$num_leaves
+  )
+  return(params)
+}
+
+
 # Remove unnecessary attribute data from iteration results objects created
 # by tune_grid and tune_bayes. This makes the parameter object significantly
 # smaller when saved to disk
@@ -33,7 +47,7 @@ model_axe_tune_data <- function(x) {
   attrs <- attributes(x) %>%
     purrr::list_modify("names" = names(stripped))
   attributes(stripped) <- attrs
-  stripped
+  return(stripped)
 }
 
 

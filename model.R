@@ -240,18 +240,22 @@ if (cv_enable) {
   }
 
   # Choose the best model (whichever model minimizes RMSE)
-  lgbm_final_params <- select_best(lgbm_search, metric = "rmse")
+  lgbm_final_params <- model_cap_num_leaves(
+    select_best(lgbm_search, metric = "rmse")
+  )
 } else {
 
   # If CV is not enabled, load saved parameters from file if it exists
   # Otherwise use a set of sensible hand-chosen defaults
   if (file.exists(lgbm_params_path)) {
-    lgbm_final_params <- select_best(readRDS(lgbm_params_path), metric = "rmse")
-  } else {
-    lgbm_final_params <- list(
-      trees = 1000, tree_depth = 9, min_n = 17, loss_reduction = 0.056,
-      mtry = 13, sample_size = 0.448, learn_rate = 0.0158
+    lgbm_final_params <- model_cap_num_leaves(
+      select_best(readRDS(lgbm_params_path), metric = "rmse")
     )
+  } else {
+    lgbm_final_params <- model_cap_num_leaves(data.frame(
+      mtry = 13, min_n = 17, tree_depth = 9, learn_rate = 0.0158,
+      loss_reduction = 0.056, num_leaves = 167
+    ))
   }
 }
 
