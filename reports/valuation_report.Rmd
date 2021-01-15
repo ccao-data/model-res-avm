@@ -17,7 +17,9 @@ library(dplyr)
 library(DT)
 library(forcats)
 library(ggplot2)
+library(glue)
 library(here)
+library(lubridate)
 library(purrr)
 library(scales)
 library(sf)
@@ -49,18 +51,27 @@ pv_final_values <- read_parquet(
   ) %>%
   filter(meta_modeling_group != "BB") %>%
   mutate(
+    pri_yr_board_est = meta_pri_yr_board_est_bldg + meta_pri_yr_board_est_land,
+    mailed_est = meta_mailed_est_bldg + meta_mailed_est_land,
+    certified_est = meta_certified_est_bldg + meta_certified_est_land,
     town_name = town_convert(meta_town_code),
     triad = factor(
       town_get_triad(meta_town_code, name = TRUE),
       levels = c("North", "City", "South")
     ),
-    yoy_pct_change = (final_value - prior_value) / prior_value,
+    ratio_capped = !between(lgbm_value / meta_sale_price, 0.7, 2.0),
+    board_yoy_pct_change = (final_value - pri_yr_board_est) / pri_yr_board_est,
+    certified_yoy_pct_change = (final_value - certified_est) / certified_est,
     meta_modeling_group = fct_recode(
       factor(meta_modeling_group, levels = c("SF", "MF")),
       "Single-Family" = "SF",
       "Multi-Family" = "MF"
     )
   )
+
+# Save report year and assessment date
+report_year <- max(pv_final_values$meta_year)
+assessment_year <- lubridate::year(max(pv_final_values$meta_sale_date))
 
 # Filter to specific triad based on report parameters
 if (report_filter) {
@@ -70,17 +81,23 @@ pv_final_values <- pv_final_values %>%
 
 # Summarize the full modeling pipeline results by township
 pv_summary <- pv_final_values %>%
+  
+  # Need to exclude multi code PINs from the summary, as their prior year
+  # values may be for all property on the PIN, rather than a single building
+  filter(!ind_multi_pin) %>%
   group_by(town_name) %>%
   summarize(
     triad = first(triad),
     num_props = n(),
-    num_missing_vals = sum(is.na(final_value)),
-    median_prior_value = median(prior_value, na.rm = TRUE),
+    num_ratios_capped = sum(ratio_capped, na.rm = TRUE),
+    median_board_est = median(pri_yr_board_est, na.rm = TRUE),
+    median_certified_est = median(certified_est, na.rm = TRUE),
     median_sale_price = median(meta_sale_price, na.rm = TRUE),
     median_model_value = median(lgbm_value, na.rm = TRUE),
     median_final_value = median(final_value, na.rm = TRUE),
     median_ratio = median(final_value / meta_sale_price, na.rm = TRUE),
-    med_yoy_pct_change = median(yoy_pct_change, na.rm = T)
+    med_yoy_pct_change_board = median(board_yoy_pct_change, na.rm = T),
+    med_yoy_pct_change_cert = median(certified_yoy_pct_change, na.rm = T)
   )
 
 # Create a container with custom column headers for summary table
@@ -90,17 +107,19 @@ headers <- htmltools::withTags(table(
     tr(
       th(rowspan = 2, "Township"),
       th(rowspan = 2, "Triad"),
-      th(rowspan = 2, "Num. of Properties"),
-      th(rowspan = 2, "Num. Missing Values"),
-      th(colspan = 5, "Median Values"),
+      th(rowspan = 2, "Num. PINs"),
+      th(rowspan = 2, "Num. Ratios Capped"),
+      th(colspan = 8, "Median Values"),
     ),
     tr(
-      th("Prior BoR Value"),
-      th("Sale Price"),
+      th(glue("BoR Value ({report_year - 1})")),
+      th(glue("Certified Value ({report_year})")),
+      th(glue("Sale Price ({report_year})")),
       th("Initial Model Value"),
       th("Final Model Value"),
       th("Final Model Ratio"),
-      th("YoY Pct. Change")
+      th("Median Percent Change (BoR to Final)"),
+      th("Median Percent Change (Cert to Final)")
     )
   )
 ))
@@ -110,7 +129,6 @@ pv_summary %>%
   datatable(
     rownames = FALSE,
     filter = "none",
-    autoHideNavigation = TRUE,
     selection = "none",
     container = headers,
     escape = FALSE,
@@ -121,32 +139,51 @@ pv_summary %>%
       info = FALSE
     )
   ) %>%
-  formatRound(3, digits = 0) %>%
-  formatRound(9, digits = 2) %>%
-  formatCurrency(5:8, digits = 0) %>%
-  formatPercentage(10, digits = 1)
+  formatRound(3:4, digits = 0) %>%
+  formatRound(10, digits = 2) %>%
+  formatCurrency(c(5:9), digits = 0) %>%
+  formatPercentage(c(11, 12), digits = 1)
 ```
 
 <br>
 
-## Map of Median YoY Percent Change by Township
+## Map of Median Percent Change by Township
 
-```{r val_map}
+```{r val_map, warning=FALSE, message=FALSE}
 # Generate township-level map of YoY percent change for all finalized values
 pv_summary %>%
   left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
   st_set_geometry("geometry") %>%
+  pivot_longer(
+    cols = c(med_yoy_pct_change_board, med_yoy_pct_change_cert),
+    names_to = "type",
+    values_to = "change"
+  ) %>%
+  mutate(
+    type = fct_recode(
+      factor(type, levels = c(
+        "med_yoy_pct_change_board", 
+        "med_yoy_pct_change_cert"
+      )),
+      "BoR to Final Model Value" = "med_yoy_pct_change_board",
+      "Certified to Final Model Value" = "med_yoy_pct_change_cert"
+    )
+  ) %>%
 ggplot() +
-  geom_sf(aes(fill = med_yoy_pct_change, geometry = geometry)) +
+  geom_sf(aes(fill = change, geometry = geometry)) +
   scale_fill_distiller(
-    name = "Median YoY\nPercent Change",
-    palette = "RdBu",
-    labels = scales::percent
+    name = "Median\n% Change",
+    palette = "BuPu",
+    labels = scales::percent,
+    direction = 1
   ) +
-  theme_void()
+  facet_wrap(vars(type)) +
+  theme_void() +
+  theme(
+    strip.text.x = element_text(size = 12),
+    legend.title = element_text(margin = margin(b = 6))
+  )
 ```
-
-<br>
 
 ## Overall Value Distribution
 
@@ -154,16 +191,20 @@ ggplot() +
 # Plot density of previous, predicted, adjusted value and sale price to look
 # for discrepancies in distributions
 pv_final_values %>%
-  pivot_longer(c(meta_sale_price, prior_value:final_value)) %>%
+  pivot_longer(c(
+    pri_yr_board_est, certified_est, meta_sale_price,
+    lgbm_value, final_value
+  )) %>%
   mutate(name = fct_recode(
     factor(name, levels = c(
-      "prior_value", "lgbm_value",
-      "final_value", "meta_sale_price"
+      "pri_yr_board_est", "certified_est",
+      "meta_sale_price", "lgbm_value", "final_value"
     )),
-    "Prior Value" = "prior_value",
-    "Model Value" = "lgbm_value",
-    "Post-Model Value" = "final_value",
-    "Sale Price" = "meta_sale_price"
+    "BoR Value (2 Years Ago)" = "pri_yr_board_est",
+    "Certified Value (Prior Year)" = "certified_est",
+    "Sale Price (Prior Year)" = "meta_sale_price",
+    "Initial Model Value" = "lgbm_value",
+    "Final Model Value" = "final_value",
   )) %>%
 ggplot() +
   geom_density(aes(x = value, color = name), size = 1.05) +
@@ -190,8 +231,8 @@ pv_final_values %>%
     ratio = value / meta_sale_price,
     name = fct_recode(
       factor(name, levels = c("lgbm_value", "final_value")),
-      "Model Value" = "lgbm_value",
-      "Final Value" = "final_value"
+      "Initial Model Value" = "lgbm_value",
+      "Final Model Value" = "final_value"
     )
   ) %>%
 ggplot() +
@@ -227,7 +268,7 @@ ggplot() +
 decile_data_ratio <- pv_final_values %>%
   filter(
     !is.na(meta_sale_price), !is.na(final_value),
-    !is.na(lgbm_value), !is.na(yoy_pct_change)
+    !is.na(lgbm_value)
   ) %>%
   mutate(
     decile = ntile(meta_sale_price, 10),
@@ -305,111 +346,30 @@ lapply(towns, function(chunk) decile_plot_ratio(
 
 <br>
 
-## Distribution of YoY Percent Change by Township by Prior Year Value Decile
-
-```{r yoy_decile, warning=FALSE, message=FALSE, results='hide'}
-# Split YoY percent change by PRIOR YEAR fair-market value
-decile_data_yoy <- pv_final_values %>%
-  filter(!is.na(yoy_pct_change), !is.na(prior_value)) %>%
-  mutate(
-    decile = ntile(prior_value, 10),
-    across(c(lgbm_value, final_value), ~ (.x - prior_value) / prior_value)
-  ) %>%
-  group_by(decile) %>%
-  mutate(decile_label = paste(
-    dollar(min(prior_value), 1, scale = 1/1000, suffix = "K"),
-    dollar(max(prior_value), 1, scale = 1/1000, suffix = "K"),
-    sep = " - ")
-  ) %>%
-  ungroup() %>%
-  mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
-  pivot_longer(c(lgbm_value, final_value), names_to = "name", values_to = "value") %>%
-  mutate(
-    name = fct_recode(
-      factor(name, levels = c("final_value", "lgbm_value")),
-      "Model Value" = "lgbm_value",
-      "Final Value" = "final_value"
-    )
-  )
-
-
-# Function to create decile plot based on a grouping variable
-decile_plot_yoy <- function(data, col_var) {
-  
-  data %>%
-    group_by({{col_var}}, decile_label) %>%
-    mutate(count = n()) %>%
-  ggplot() +
-    geom_boxplot(aes(x = value, color = name), outlier.alpha = 0.05) +
-    geom_text(
-      aes(x = 4, y = 0, label = count),
-      size = 3,
-      hjust = 1,
-      check_overlap = TRUE
-    ) +
-    scale_x_continuous(labels = scales::percent, limits = c(-1, 4)) +
-    scale_color_hue(name = "Ratio Type", direction = -1) +
-    facet_grid(
-      rows = vars(decile_label),
-      cols = vars({{col_var}}),
-      switch = "y"
-    ) +
-    labs(x = "YoY % Change", y = "") +
-    guides(color = guide_legend(reverse = TRUE)) +
-    theme_minimal() +
-    theme(
-      legend.position = "none",
-      axis.title.x = element_text(margin = margin(t = 10), size = 10),
-      axis.text.y = element_blank(),
-      axis.text.x = element_text(angle = -45, hjust = 0),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor.y = element_blank(),
-      strip.text = element_text(size = 12),
-      strip.text.y.left = element_text(angle = 0, hjust = 1),
-      strip.text.x = element_text(margin = margin(b = 10)),
-      panel.grid.minor = element_blank()
-    )
-}
-
-
-# Split into a separate decile plot for every 4 townships
-chunk <- function(x, n) split(x, sort(rank(x) %% n))
-towns <- sort(unique(decile_data_yoy$town_name))
-towns <- chunk(towns, ceiling(length(towns) / 4))
-
-lapply(towns, function(chunk) decile_plot_yoy(
-  decile_data_yoy %>% filter(town_name %in% chunk),
-  town_name
-))
-
-```
-
-<br>
-
-## Spatial Distribution of Largest YoY Changes
+## Spatial Distribution of Largest YoY Changes (Certified to Final Model Value)
 
 ```{r outlier_map, message=FALSE}
 # Create a township level map showing the location of the largest YoY percentage
 # changes. Goal is to look for patterns of changes
 pv_final_values %>%
-  filter(!is.infinite(yoy_pct_change)) %>%
+  filter(!is.infinite(certified_yoy_pct_change)) %>%
   mutate(
-    dir = ifelse(yoy_pct_change > 0, "Increase", "Decrease"),
+    dir = ifelse(certified_yoy_pct_change > 0, "Increase", "Decrease"),
     outlier = is_outlier(
-      yoy_pct_change,
+      certified_yoy_pct_change,
       method = "quantile",
-      probs = c(0.01, 0.995),
+      probs = c(0.005, 0.995),
       na.rm = TRUE
     )
   ) %>%
   filter(outlier) %>%
   mutate(decile_label = cut(
-    x = yoy_pct_change,
-    breaks = c(-1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, Inf),
+    x = certified_yoy_pct_change,
+    breaks = c(-Inf, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, Inf),
     labels = c(
-      "-100% to -50%", "-50% to 0%", "0% to 50%", "50% to 100%",
+      "< -100%", "-100% to -50%", "-50% to 0%", "0% to 50%", "50% to 100%",
       "100% to 150%", "150% to 200%", "200% to 250%", "250% to 300%",
-      "300% to 350%", "350% to 400%", "400%+"
+      "300% to 350%", "350% to 400%", "> 400%"
     )
   )) %>%
   ungroup() %>%
