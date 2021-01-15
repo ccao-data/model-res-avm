@@ -41,9 +41,7 @@ report_filter <- as.logical(ifelse(
 # defined in yaml
 report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
-```
 
-```{r val_summary, message=FALSE}
 # Load final assessment values from file (created by valuation.R). These include
 # post-modeling adjustments
 pv_final_values <- read_parquet(
@@ -78,7 +76,117 @@ if (report_filter) {
 pv_final_values <- pv_final_values %>%
   filter(triad == report_triad)
 }
+```
 
+## Overall Performance
+
+```{r model_perf, message=FALSE, fig.align="center"}
+# Create overall performance table of standard sales ratio study stats
+# To conform to SOPs, we need to use lagged sales for all years prior to the
+# reporting/current year. See wiki SOPs
+sales_data_wide <- read_parquet(here("input", "modeldata.parquet")) %>%
+  filter(ind_arms_length, meta_year >= report_year - 2) %>%
+  group_by(meta_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date)) %>%
+  select(meta_pin, meta_year, meta_class, meta_multi_code, meta_sale_price) %>%
+  ungroup() %>%
+  mutate(meta_year = case_when(
+    meta_year == report_year ~ "yr-0",
+    meta_year == report_year - 1 ~ "yr-1",
+    meta_year == report_year - 2 ~ "yr-2"
+  )) %>%
+  pivot_wider(
+    id_cols = c(meta_pin, meta_class, meta_multi_code),
+    names_from = meta_year,
+    values_from = meta_sale_price,
+    names_prefix = "sale_price_"
+  )
+
+# Calculate COD, PRD, PRB, and median ratio for each set of available values
+pv_model_perf <- pv_final_values %>%
+  left_join(sales_data_wide, by = c("meta_pin", "meta_class", "meta_multi_code")) %>%
+  filter(!ind_multi_pin, pri_yr_board_est != 0, certified_est != 0) %>%
+  group_by(town_name) %>%
+  summarize(
+    bor_cod = ccao_cod(pri_yr_board_est / `sale_price_yr-2`, na.rm = TRUE)$COD,
+    bor_prd = ccao_prd(pri_yr_board_est, `sale_price_yr-2`, na.rm = TRUE)$PRD,
+    bor_prb = ccao_prb(pri_yr_board_est, `sale_price_yr-2`, na.rm = TRUE)$PRB,
+    bor_med = median(pri_yr_board_est / `sale_price_yr-2`, na.rm = TRUE),
+    
+    cert_cod = ccao_cod(certified_est / `sale_price_yr-1`, na.rm = TRUE)$COD,
+    cert_prd = ccao_prd(certified_est, `sale_price_yr-1`, na.rm = TRUE)$PRD,
+    cert_prb = ccao_prb(certified_est, `sale_price_yr-1`, na.rm = TRUE)$PRB,
+    cert_med = median(certified_est / `sale_price_yr-1`, na.rm = TRUE),
+    
+    init_cod = ccao_cod(lgbm_value / `sale_price_yr-0`, na.rm = TRUE)$COD,
+    init_prd = ccao_prd(lgbm_value, `sale_price_yr-0`, na.rm = TRUE)$PRD,
+    init_prb = ccao_prb(lgbm_value, `sale_price_yr-0`, na.rm = TRUE)$PRB,
+    init_med = median(lgbm_value / `sale_price_yr-0`, na.rm = TRUE),
+    
+    final_cod = ccao_cod(final_value / `sale_price_yr-0`, na.rm = TRUE)$COD,
+    final_prd = ccao_prd(final_value, `sale_price_yr-0`, na.rm = TRUE)$PRD,
+    final_prb = ccao_prb(final_value, `sale_price_yr-0`, na.rm = TRUE)$PRB,
+    final_med = median(final_value / `sale_price_yr-0`, na.rm = TRUE),
+  ) %>%
+  mutate(
+    across(contains("_cod"), cod_met, .names = "{.col}_met"),
+    across(contains("_prd"), prd_met, .names = "{.col}_met"),
+    across(contains("_prb"), prb_met, .names = "{.col}_met"),
+    across(contains("_med"), ~ between(.x, 0.95, 1.05), .names = "{.col}_met")
+  )
+
+# Create a container with custom column headers for summary table
+pv_model_perf_headers <- htmltools::withTags(table(
+  class = "display", 
+  thead(
+    tr(
+      th(rowspan = 2, "Township"),
+      th(colspan = 4, glue("BoR ({report_year - 1})")),
+      th(colspan = 4, glue("Certified ({report_year})")),
+      th(colspan = 4, "Initial Model"),
+      th(colspan = 4, "Final Model"),
+    ),
+    tr(
+      th("COD"), th("PRD"), th("PRB"), th("Med."),
+      th("COD"), th("PRD"), th("PRB"), th("Med."),
+      th("COD"), th("PRD"), th("PRB"), th("Med."),
+      th("COD"), th("PRD"), th("PRB"), th("Med.")
+    )
+  )
+))
+
+# Create an interactive datatable with all stats
+pv_model_perf %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    escape = FALSE,
+    container = pv_model_perf_headers,
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE,
+      columnDefs = list(list(targets = 17:32, visible = FALSE))
+    )
+  ) %>%
+  formatRound(2:17, digits = 2) %>%
+  formatStyle(  
+    pv_model_perf %>% select(2:17) %>% names() %>% sort(),
+    pv_model_perf %>% select(18:33) %>% names() %>% sort(),
+    backgroundColor = styleEqual(
+      c(0, 1),
+      c("transparent", "#81ca9c")
+    )
+  )
+```
+
+<br>
+
+## Summary of Changes
+
+```{r val_summary, message=FALSE}
 # Summarize the full modeling pipeline results by township
 pv_summary <- pv_final_values %>%
   
@@ -101,7 +209,7 @@ pv_summary <- pv_final_values %>%
   )
 
 # Create a container with custom column headers for summary table
-headers <- htmltools::withTags(table(
+pv_summary_headers <- htmltools::withTags(table(
   class = "display", 
   thead(
     tr(
@@ -130,7 +238,7 @@ pv_summary %>%
     rownames = FALSE,
     filter = "none",
     selection = "none",
-    container = headers,
+    container = pv_summary_headers,
     escape = FALSE,
     options = list(
       autoWidth = TRUE,
