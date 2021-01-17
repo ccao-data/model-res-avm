@@ -259,7 +259,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-14.
+model as of 2021-01-16.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 | :-------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -478,16 +478,18 @@ runs a much simpler second-pass model on the predicted values from
 and is responsible for correcting any deficiencies in the first model’s
 predictions. Specifically, post-modeling will:
 
-1.  Shift the distribution of predicted values for each neighborhood and
-    modeling group (single- vs multi-family) such that its median sale
+1.  Shift distributions of predicted values such that their median sale
     ratio (predicted value / actual sale value) moves toward 1. This is
-    done by applying a neighborhood and modeling group-specific
-    percentage multiplier to all properties. This percentage multiplier
-    is capped at 40%. This is done to correct some of the modeling bias
-    caused by [ongoing data issues](#ongoing-issues), as well as prevent
-    broad over- or under-assessment.
+    done by applying a percentage multiplier to **all properties**
+    within a neighborhood, modeling group, and sale price quartile. This
+    percentage multiplier is capped at 40% and requires a minimum number
+    of sales (20) within each adjustment group. This is done to correct
+    some of the modeling bias caused by [ongoing data
+    issues](#ongoing-issues), as well as prevent broad over- or
+    under-assessment. Only a small proportion of all properties receive
+    this adjustment.
 
-2.  Alter assessed values for properties with sales in the last seven
+2.  Alter assessed values for properties with sales in the last two
     years if and only if their sale ratio falls outside specific
     thresholds. If a property’s sale ratio (predicted value / actual
     sale value) is less than 0.7 or greater than 2, its predicted value
@@ -531,7 +533,7 @@ a home improvement exemption, the property will be valued as if the new
 bedroom does not exist until the exemption expires and as long as the
 increase in valuation is less than $75,000.
 
-The exemption expires after 4 years or until the next assessment cycle,
+The exemption expires after 4 years or after the next assessment cycle,
 whichever is longer. For example, an exemption received in 2016 for a
 property in Northfield (with assessment years 2016, 2019, and 2022) will
 last 6 years (our system updates the property characteristics in 2021,
@@ -548,10 +550,14 @@ characteristics do not accurately reflect their sale price.
 To fix this, we [developed
 code](https://ccao-data-science---modeling.gitlab.io/packages/ccao/reference/chars_update.html)
 to update the characteristics of properties with home improvement
-exemptions. This update occurs ***only when training the model, not when
-actually valuing properties***. In other words, we update our
-sales/training data to include the characteristics at the time of sale,
-but value exempt properties as if their characteristics haven’t changed.
+exemptions. This code is used to:
+
+1.  Update sales data so that characteristic improvements are included
+    when training the model.
+2.  Update and then value properties **with improvements** to see if the
+    improvements add more value than the $75,000 statutory limit. If
+    they do, then `(improved_value - unimproved_value) - 75000` is added
+    to the predicted market value of the unimproved property.
 
 Updating this data is complicated and imperfect (see [ongoing
 issues](#ongoing-issues)), so if properties with an active home
@@ -602,10 +608,10 @@ modeling codebase:
 
 # Ongoing Issues
 
-The CCAO faces a number of ongoing issues which can contribute to poor
-modeling outcomes. Some of these issues are in the process of being
-solved; others are less tractable. We list them here for the sake of
-transparency and to provide a sense of the challenges we face.
+The CCAO faces a number of ongoing issues which make modeling difficult.
+Some of these issues are in the process of being solved; others are less
+tractable. We list them here for the sake of transparency and to provide
+a sense of the challenges we face.
 
 ### Data Quality and Integrity
 
@@ -670,19 +676,32 @@ do our best to [remove non-arms-length sales](#representativeness), but
 it’s nearly impossible to know for certain that every transaction is
 valid.
 
-##### Purposeful Obfuscation
+##### Incentives Not to Disclose Accurate Information
 
-Occasionally, people try to hide or alter their property characteristics
-in order to change their assessed value. Typically this takes the form
-of changing their [property
-class](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf).
-However, property class has no impact on predictions from our model.
+The Cook County property tax system is complex and can sometimes create
+perverse incentives.
 
-Falsely altering other characteristics, such as square footage, may
-change an assessed value. However, doing so has negative consequences
-for neighbors and similar properties, as high sales on homes with
-incorrectly reported characteristics can upwardly bias the model,
-resulting in over-assessment.
+For example, most property owners want their property taxes to be as low
+as possible, and are thus disincentivized from reporting characteristic
+errors which could raise their assessed value. Conversely, if a property
+owner plans to sell their home on a listing website, then they have a
+strong incentive (the highest possible sale price) to ensure the website
+accurately reflects their property’s characteristics. Listing websites
+know this and offer easy ways to self-update property attributes.
+
+Additionally, the assessment system has a built-in number of “hard
+boundaries” such as property class and assessor neighborhood. These
+boundaries create the (mis)perceived incentive to slightly alter the
+characteristics of marginal properties. For example, subtracting 10
+square feet from a property’s total footprint in order to end up in a
+different property class. In actuality, property class has no impact on
+predictions from our models.
+
+Falsely altering or not reporting property characteristics may change an
+assessed value, but it also has negative consequences for neighbors and
+similar properties. High sales on homes with incorrectly reported
+characteristics can upwardly bias the model, resulting in
+over-assessment for others.
 
 ### Heterogeneity and Extremes
 
@@ -844,13 +863,13 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-14 is shown in
+performance on the [test set](#data-used) as of 2021-01-16 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
 | :--------- | ------------: | :------- | :------ | :--- |
-| Linear     |          0.76 | $157,511 | $91,514 | 29%  |
-| LightGBM   |          0.83 | $131,515 | $69,659 | 24%  |
+| Linear     |          0.76 | $157,501 | $91,506 | 29%  |
+| LightGBM   |          0.83 | $131,539 | $69,507 | 24%  |
 
 **Q: How often does the model change?**
 

@@ -262,9 +262,9 @@ To counter this problem and ensure high-quality prediction, we do our best to en
 
 In addition to the first-pass modeling done by LightGBM, the CCAO also runs a much simpler second-pass model on the predicted values from `assmntdata`. This second model is internally called "post-modeling", and is responsible for correcting any deficiencies in the first model's predictions. Specifically, post-modeling will:
 
-1. Shift the distribution of predicted values for each neighborhood and modeling group (single- vs multi-family) such that its median sale ratio (predicted value / actual sale value) moves toward 1. This is done by applying a neighborhood and modeling group-specific percentage multiplier to all properties. This percentage multiplier is capped at 40%. This is done to correct some of the modeling bias caused by [ongoing data issues](#ongoing-issues), as well as prevent broad over- or under-assessment.
+1. Shift distributions of predicted values such that their median sale ratio (predicted value / actual sale value) moves toward 1. This is done by applying a percentage multiplier to **all properties** within a neighborhood, modeling group, and sale price quartile. This percentage multiplier is capped at 40% and requires a minimum number of sales (20) within each adjustment group. This is done to correct some of the modeling bias caused by [ongoing data issues](#ongoing-issues), as well as prevent broad over- or under-assessment. Only a small proportion of all properties receive this adjustment.
 
-2. Alter assessed values for properties with sales in the last seven years if and only if their sale ratio falls outside specific thresholds. If a property's sale ratio (predicted value / actual sale value) is less than 0.7 or greater than 2, its predicted value will be adjusted such that its ratio is exactly at the threshold. For example, if a property sold for \$100K in 2019 and our model predicts that it's value is \$65K, it will have a sale ratio of 0.65, which is below the 0.7 threshold. As a result, the property's predicted value will be adjusted to $70K.
+2. Alter assessed values for properties with sales in the last two years if and only if their sale ratio falls outside specific thresholds. If a property's sale ratio (predicted value / actual sale value) is less than 0.7 or greater than 2, its predicted value will be adjusted such that its ratio is exactly at the threshold. For example, if a property sold for \$100K in 2019 and our model predicts that it's value is \$65K, it will have a sale ratio of 0.65, which is below the 0.7 threshold. As a result, the property's predicted value will be adjusted to $70K.
 
 3. Ensure that perfectly identical properties are identically valued. For some property classes, such as townhouses, we manually adjust values such that all identical properties in the same unit or complex receive the same predicted value. This is accomplished by replacing individual predicted values with the median predicted value for all properties in the same unit.
 
@@ -280,11 +280,14 @@ Per Illinois statute [35 ILCS 200/15-180](https://www.ilga.gov/legislation/ilcs/
 
 This has the effect of essentially "freezing" a home's characteristics at whatever they were prior to the start of the improvement project. For example, if a property owner adds an additional bedroom and applies for a home improvement exemption, the property will be valued as if the new bedroom does not exist until the exemption expires and as long as the increase in valuation is less than $75,000.
 
-The exemption expires after 4 years or until the next assessment cycle, whichever is longer. For example, an exemption received in 2016 for a property in Northfield (with assessment years 2016, 2019, and 2022) will last 6 years (our system updates the property characteristics in 2021, the year before the 2022 reassessment).
+The exemption expires after 4 years or after the next assessment cycle, whichever is longer. For example, an exemption received in 2016 for a property in Northfield (with assessment years 2016, 2019, and 2022) will last 6 years (our system updates the property characteristics in 2021, the year before the 2022 reassessment).
 
 The goal of home improvement exemptions is to prevent penalizing homeowners for improving their property. However, these exemptions also make modeling more complicated. Homes that are sold while an improvement exemption is active may have updated characteristics (more bedrooms, new garage, etc.) that are reflected in the sale price but *not* in our data. These properties can bias the model if not corrected, as their old characteristics do not accurately reflect their sale price.
 
-To fix this, we [developed code](https://ccao-data-science---modeling.gitlab.io/packages/ccao/reference/chars_update.html) to update the characteristics of properties with home improvement exemptions. This update occurs ***only when training the model, not when actually valuing properties***. In other words, we update our sales/training data to include the characteristics at the time of sale, but value exempt properties as if their characteristics haven't changed.
+To fix this, we [developed code](https://ccao-data-science---modeling.gitlab.io/packages/ccao/reference/chars_update.html) to update the characteristics of properties with home improvement exemptions. This code is used to:
+
+1. Update sales data so that characteristic improvements are included when training the model.
+2. Update and then value properties **with improvements** to see if the improvements add more value than the $75,000 statutory limit. If they do, then `(improved_value - unimproved_value) - 75000` is added to the predicted market value of the unimproved property.
 
 Updating this data is complicated and imperfect (see [ongoing issues](#ongoing-issues)), so if properties with an active home improvement exemption cannot have their characteristics accurately updated, they are dropped from the training data (`modeldata`).
 
@@ -300,7 +303,7 @@ This repository represents a significant departure from the [residential modelin
 
 # Ongoing Issues
 
-The CCAO faces a number of ongoing issues which can contribute to poor modeling outcomes. Some of these issues are in the process of being solved; others are less tractable. We list them here for the sake of transparency and to provide a sense of the challenges we face. 
+The CCAO faces a number of ongoing issues which make modeling difficult. Some of these issues are in the process of being solved; others are less tractable. We list them here for the sake of transparency and to provide a sense of the challenges we face.
 
 ### Data Quality and Integrity
 
@@ -335,11 +338,15 @@ These errors can cause under- *or* over-assessment. If you believe your property
 
 It is difficult for our office to determine whether or not any given property sale is [arms-length](https://www.investopedia.com/terms/a/armslength.asp). Non-arms-length sales, such as selling your home to a family member at a discount, can bias the model and result in larger assessment errors. We do our best to [remove non-arms-length sales](#representativeness), but it's nearly impossible to know for certain that every transaction is valid.
 
-##### Purposeful Obfuscation
+##### Incentives Not to Disclose Accurate Information
 
-Occasionally, people try to hide or alter their property characteristics in order to change their assessed value. Typically this takes the form of changing their [property class](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf). However, property class has no impact on predictions from our model.
+The Cook County property tax system is complex and can sometimes create perverse incentives. 
 
-Falsely altering other characteristics, such as square footage, may change an assessed value. However, doing so has negative consequences for neighbors and similar properties, as high sales on homes with incorrectly reported characteristics can upwardly bias the model, resulting in over-assessment.
+For example, most property owners want their property taxes to be as low as possible, and are thus disincentivized from reporting characteristic errors which could raise their assessed value. Conversely, if a property owner plans to sell their home on a listing website, then they have a strong incentive (the highest possible sale price) to ensure the website accurately reflects their property's characteristics. Listing websites know this and offer easy ways to self-update property attributes.
+
+Additionally, the assessment system has a built-in number of "hard boundaries" such as property class and assessor neighborhood. These boundaries create the (mis)perceived incentive to slightly alter the characteristics of marginal properties. For example, subtracting 10 square feet from a property's total footprint in order to end up in a different property class. In actuality, property class has no impact on predictions from our models.
+
+Falsely altering or not reporting property characteristics may change an assessed value, but it also has negative consequences for neighbors and similar properties. High sales on homes with incorrectly reported characteristics can upwardly bias the model, resulting in over-assessment for others.
 
 ### Heterogeneity and Extremes
 
@@ -362,14 +369,15 @@ library(ggmap)
 
 # Load the set of final values in Hyde Park if available. Otherwise, use 
 # pre-saved image
-fvset_path <- here("output", "data", "finalvalues.parquet")
+sales_path <- here("input", "modeldata.parquet")
 image_path <- here("docs", "figures", "hyde_park-1.png")
-if (file.exists(fvset_path)) {
-  fvset <- arrow::read_parquet(fvset_path)
+if (file.exists(sales_path)) {
+  sales <- arrow::read_parquet(sales_path) %>%
+    filter(meta_year >= max(meta_year) - 1)
   
   # Coordinate bounding box for Hyde Park
   bbox <- c(-87.645957, 41.764118, -87.560727, 41.820911)
-  
+
   # Labels and breaks for price map
   price_breaks = c(0, 1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2e6, Inf)
   price_labels = c(
@@ -378,7 +386,7 @@ if (file.exists(fvset_path)) {
   )
   
   # Keep only observations in the bounding box
-  fvset_sum <- fvset %>%
+  sales_sum <- sales %>%
     filter(
       between(geo_longitude, bbox[1], bbox[3]),
       between(geo_latitude, bbox[2], bbox[4]),
@@ -396,14 +404,17 @@ if (file.exists(fvset_path)) {
   # Create map and save to file
   ggmap(map_tiles) +
     geom_point(
-      data = fvset_sum,
+      data = sales_sum,
       aes(x = geo_longitude, y = geo_latitude, color = price_bins),
       alpha = 0.5
     ) +
     guides(color = guide_legend(title = "Sale Price")) +
     labs(
       title = "Sale Price Heterogeneity in Hyde Park",
-      caption = "IDOR sales from 2013 - 2020"
+      caption = paste(
+        "IDOR sales from", min(sales$meta_year),
+        " - ", max(sales$meta_year)
+      )
     ) +
     theme_void() +
     theme(
@@ -425,10 +436,12 @@ Mass appraisal models need lots of sales data in order to accurately predict sal
 The plot below shows the overall distribution of model values before [adjustment](#post-modeling), model values after adjustment, and actual sale prices. If the model is doing a good job, the lines should be nearly overlapping. However, the lines clearly diverge below $50,000. Post-modeling adjustments somewhat fix the issue, but a lack of sales and [poor quality data](#data-quality-and-integrity) make accurate modeling of these properties difficult.
 
 ```{r val_distribution, message=FALSE, warning=FALSE, echo=FALSE, fig.height=3}
+# Path to final values
+fvset_path <- here("output", "data", "finalvalues.parquet")
 
 # Plot model price distributions
-if (exists("fvset")) {
-  fvset %>%
+if (file.exists(fvset_path)) {
+  arrow::read_parquet(fvset_path) %>%
   pivot_longer(c(meta_sale_price, lgbm_value, final_value)) %>%
   mutate(name = forcats::fct_recode(
     factor(name, levels = c(
