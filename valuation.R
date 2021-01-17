@@ -34,7 +34,7 @@ tictoc::tic(msg = "Full Valuation Complete!")
 lgbm_final_full_fit <- model_load(here("output", "models", "lgbm_model.zip"))
 lgbm_final_full_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
-# Some post-modeling adjustments (such as ratio capping) require sales to work.
+# Post-modeling adjustments (such as ratio capping) require sales to work.
 # As such, we need to append the most recent sale (closest to the assessment
 # date within 2 years) to each PIN. Not all PINs will have sales, as our sales
 # sample is limited to 7 years prior to the assessment date
@@ -42,7 +42,8 @@ sales_data_prev_2_years <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length, meta_year >= max(meta_year) - 1) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
-  distinct(meta_pin, meta_sale_price, meta_document_num)
+  distinct(meta_pin, meta_sale_price, meta_document_num) %>%
+  ungroup()
 
 # Load the full set of residential properties that need values, join the sales
 # where available
@@ -115,8 +116,8 @@ pv_model <- postval_model(
   class = meta_class,
   med_adj_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
   townhome_adj_cols = c(
-    "meta_town_code", "char_age", "char_bsmt", "char_rooms",
-    "char_attic_fnsh", "char_bldg_sf", "char_beds"
+    "meta_town_code", "meta_class", "char_age", "char_bsmt", "char_rooms",
+    "char_gar1_size", "char_attic_fnsh", "char_bldg_sf", "char_beds"
   )
 )
 
@@ -133,15 +134,17 @@ pv_final_values <- assmntdata %>%
   mutate(ind_multi_pin = n() > 1) %>%
   ungroup()
 
-# Load most recent year of sales, taking the most recent sale within year
+# Load most recent year of sales, taking the most recent sale within the year
 sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length, meta_year == max(meta_year)) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
-  select(meta_pin, meta_year, meta_class, meta_sale_price)
+  select(meta_pin, meta_year, meta_class, meta_sale_price) %>%
+  ungroup()
 
 # Attach only the most recent year of sales to the final values for the
-# purpose of reporting
+# purpose of reporting and sales ratio study. The 2 years of sales for the post-
+# modeling adjustment are tossed out here
 pv_final_values <- pv_final_values %>%
   select(-meta_sale_price) %>%
   left_join(sales_data, by = c("meta_pin", "meta_year", "meta_class")) %>%
@@ -154,7 +157,7 @@ pv_final_values %>%
 
 ### Generate reports
 
-# Generate valuation diagnostic/performance report
+# Generate valuation performance/diagnostic report
 rmarkdown::render(
   input = here("reports", "valuation_report.Rmd"),
   output_file = here("output", "reports", "valuation_report.html")
