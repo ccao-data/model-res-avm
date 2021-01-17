@@ -17,8 +17,8 @@ library(tidymodels)
 library(treesnip)
 
 # Load helper functions from file
-source("R/model_funs.R")
-source("R/valuation_funs.R")
+source(here("R", "model_funs.R"))
+source(here("R", "valuation_funs.R"))
 
 # Start full script timer
 tictoc::tic(msg = "Full Valuation Complete!")
@@ -114,11 +114,13 @@ pv_model <- postval_model(
   truth = meta_sale_price,
   estimate = lgbm,
   class = meta_class,
-  med_adj_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
+  quartile_adj_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
   townhome_adj_cols = c(
     "meta_town_code", "meta_class", "char_age", "char_bsmt", "char_rooms",
     "char_gar1_size", "char_attic_fnsh", "char_bldg_sf", "char_beds"
-  )
+  ),
+  min_quartile_sales = 25,
+  min_townhome_sales = 6
 )
 
 # Save postval model to file so it can be used for any future predictions

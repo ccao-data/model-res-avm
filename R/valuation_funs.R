@@ -6,7 +6,7 @@
 # Not ideal but all we can do with bad data. This technique is not ideal, but
 # is necessary to correct model prediction bias at the very high and very low
 # ends of the price spectrum
-val_med_pct_adj <- function(truth, estimate, min_n = 20, max_abs_adj = 0.4) {
+val_med_pct_adj <- function(truth, estimate, min_n, max_abs_adj = 0.4) {
   num_sales <- sum(!is.na(truth))
 
   med_pct_adj <- median((truth - estimate) / estimate, na.rm = TRUE)
@@ -43,40 +43,68 @@ val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
 # Within the same development, townhomes with the same characteristics
 # (nearly identical) should have the same value, so we manually set their value
 # to the median of their prediction + adjustment if there are any sales
-val_townhomes_by_group <- function(data, truth, estimate, class, townhome_adj_cols) {
+val_townhomes_by_group <- function(data, truth, estimate, class,
+                                   townhome_adj_cols, min_townhome_sales) {
   data %>%
     filter({{ class }} %in% c("210", "295")) %>%
     group_by(across(all_of(townhome_adj_cols))) %>%
     filter(n() > 1) %>%
     summarize(
-      med_townhome_est = median({{ estimate }}, na.rm = TRUE),
-      med_townhome_sale = median({{ truth }}, na.rm = TRUE),
-      num_in_group = n(),
-      num_sales = sum(!is.na({{ truth }})),
-      med_pct_adj = val_med_pct_adj({{ truth }}, {{ estimate }}, min_n = 6)
+      th_med_est = median({{ estimate }}, na.rm = TRUE),
+      th_med_sale = median({{ truth }}, na.rm = TRUE),
+      th_num_in_group = n(),
+      th_num_sales = sum(!is.na({{ truth }})),
+      th_med_pct_adj = val_med_pct_adj(
+        truth = {{ truth }}, 
+        estimate = {{ estimate }},
+        min_n = min_townhome_sales
+      ),
+      th_med_pct_adj = replace_na(th_med_pct_adj, 0)
     ) %>%
     mutate(
-      med_pct_adj = replace_na(med_pct_adj, 0),
-      final_townhome_adj = rowSums(tibble(med_townhome_est, med_townhome_est * med_pct_adj), na.rm = T)
+      th_final_value = rowSums(
+        tibble(th_med_est, th_med_est * th_med_pct_adj),
+        na.rm = TRUE
+      )
     )
+}
+
+
+# Create a list of quartiles based on an input vector. Min and max are replaced
+# with -Inf and Inf so that new values outside the current range can be assigned
+val_create_quartiles <- function(x, na.rm = TRUE) {
+  list(c(
+    -Inf,
+    unique(quantile(x, probs = c(0.25, 0.5, 0.75), na.rm = na.rm, names = F)),
+    Inf
+  ))
+}
+
+
+# Assign a quartile to a value based on a list of quartiles
+val_assign_quartile <- function(x, qrts) {
+  ifelse(
+    !is.na(x),
+    pmap_chr(
+      list(x, qrts),
+      function(x, y) as.character(cut(x, breaks = y, dig.lab = 10))
+    ),
+    NA
+  )
 }
 
 
 # Post-valuation adjustment class that saves all of the above adjustments and
 # can be used to predict new/unseen values
-postval_model <- function(data, truth, estimate, class, med_adj_cols, townhome_adj_cols) {
+postval_model <- function(data, truth, estimate, class, quartile_adj_cols,
+                          townhome_adj_cols, min_quartile_sales,
+                          min_townhome_sales) {
   
   # For every unique modeling group within neighborhood, calculate quartile of
   # sale prices
   quartiles_df <- data %>%
-    group_by(across(all_of(med_adj_cols))) %>%
-    summarize(
-      quartiles_lst = list(c(-Inf, unique(quantile(
-        {{truth}},
-        probs = c(0.25, 0.5, 0.75),
-        na.rm = TRUE, names = FALSE
-      )), Inf)
-    )) %>%
+    group_by(across(all_of(quartile_adj_cols))) %>%
+    summarize(quartiles_lst = val_create_quartiles({{ truth }})) %>%
     rowwise() %>%
     filter(
       !is.null(quartiles_lst),
@@ -89,18 +117,16 @@ postval_model <- function(data, truth, estimate, class, med_adj_cols, townhome_a
   # then calculate the median adjustment for that quartile
   med_adjustments <- data %>%
     left_join(quartiles_df) %>%
-    mutate(quartile = ifelse(
-      !is.na({{ truth }}),
-      pmap_chr(
-        list({{ truth }}, quartiles_lst),
-        function(x, y) as.character(cut(x, breaks = y, dig.lab = 10))
-      ),
-      NA
-    )) %>%
-    group_by(across(all_of(c(med_adj_cols, "quartile")))) %>%
+    mutate(quartile = val_assign_quartile({{ truth }}, .data$quartiles_lst)) %>%
+    group_by(across(all_of(c(quartile_adj_cols, "quartile")))) %>%
     summarize(
-      med_pct_adj = val_med_pct_adj({{ truth }}, {{ estimate }}),
-      num_sales = sum(!is.na({{ truth }}))
+      qrt_num_sales = sum(!is.na({{ truth }})),
+      qrt_med_pct_adj = val_med_pct_adj(
+        truth = {{ truth }}, 
+        estimate = {{ estimate }},
+        min_n = min_quartile_sales
+      ),
+      qrt_med_pct_adj = replace_na(qrt_med_pct_adj, 0),
     ) %>%
     ungroup()
 
@@ -111,15 +137,20 @@ postval_model <- function(data, truth, estimate, class, med_adj_cols, townhome_a
       truth = {{ truth }},
       estimate = {{ estimate }},
       class = {{ class }},
-      townhome_adj_cols = townhome_adj_cols
+      townhome_adj_cols = townhome_adj_cols,
+      min_townhome_sales = min_townhome_sales
     ) %>%
     ungroup()
 
   # Output "trained" data frames and set class of object
   output <- list(
     quartiles = quartiles_df,
-    med_adjustments = med_adjustments,
-    townhome_adjustments = townhome_adjustments
+    quartile_adj_cols = quartile_adj_cols,
+    quartile_med_adjustments = med_adjustments,
+    townhome_adjustments = townhome_adjustments,
+    townhome_adj_cols = townhome_adj_cols,
+    min_quartile_sales = min_quartile_sales,
+    min_townhome_sales = min_townhome_sales
   )
   class(output) <- "postval_model"
 
@@ -136,27 +167,33 @@ predict.postval_model <- function(object, new_data, truth, estimate) {
     left_join(object$quartiles) %>%
     mutate(quartile = ifelse(
       !is.na({{ truth }}),
-      pmap_chr(
-        list({{ truth }}, quartiles_lst),
-        function(x, y) as.character(cut(x, breaks = y, dig.lab = 10))
-      ),
-      NA
+      val_assign_quartile({{ truth }}, .data$quartiles_lst),
+      val_assign_quartile({{ estimate }}, .data$quartiles_lst)
     )) %>%
     
     # Join percentage adjustments by neighborhood, modeling group, and quartile
     # then apply the adjustment to all properties
-    left_join(object$med_adjustments) %>%
+    left_join(object$quartile_med_adjustments) %>%
     mutate(
-      {{ estimate }} := rowSums(tibble({{ estimate }}, {{ estimate }} * med_pct_adj), na.rm = T),
-      {{ estimate }} := na_if({{ estimate }}, 0),
-      {{ estimate }} := val_limit_ratios({{ truth }}, {{ estimate }})
+      {{ estimate }} := rowSums(
+        tibble({{ estimate }}, {{ estimate }} * qrt_med_pct_adj),
+        na.rm = TRUE
+      ),
+      {{ estimate }} := val_limit_ratios(
+        truth = {{ truth }}, 
+        estimate = {{ estimate }}
+      )
     ) %>%
     
     # Override townhomes with their own median adjusted estimated value from
     # within the same set of properties
     left_join(object$townhome_adjustments) %>%
     mutate(
-      {{ estimate }} := ifelse(!is.na(final_townhome_adj), final_townhome_adj, {{ estimate }}),
+      {{ estimate }} := ifelse(
+        !is.na(th_final_value),
+        th_final_value,
+        {{ estimate }}
+      ),
     ) %>%
     
     # Return the final estimated value

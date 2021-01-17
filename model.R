@@ -22,9 +22,9 @@ library(treesnip)
 library(vctrs)
 
 # Load helper functions from file
-source("R/recipes.R")
-source("R/metrics.R")
-source("R/model_funs.R")
+source(here("R", "recipes.R"))
+source(here("R", "metrics.R"))
+source(here("R", "model_funs.R"))
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
