@@ -259,7 +259,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-16.
+model as of 2021-01-17.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 | :-------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
@@ -483,7 +483,7 @@ predictions. Specifically, post-modeling will:
     done by applying a percentage multiplier to **all properties**
     within a neighborhood, modeling group, and sale price quartile. This
     percentage multiplier is capped at 40% and requires a minimum number
-    of sales (20) within each adjustment group. This is done to correct
+    of sales (25) within each adjustment group. This is done to correct
     some of the modeling bias caused by [ongoing data
     issues](#ongoing-issues), as well as prevent broad over- or
     under-assessment. Only a small proportion of all properties receive
@@ -504,7 +504,8 @@ predictions. Specifically, post-modeling will:
     values such that all identical properties in the same unit or
     complex receive the same predicted value. This is accomplished by
     replacing individual predicted values with the median predicted
-    value for all properties in the same unit.
+    value for all properties in the same unit. The median value is also
+    adjusted using the process in step 1.
 
 These adjustments have been collectively approved by the senior
 leadership of the CCAO. They are designed to limit the impact of data
@@ -863,7 +864,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-16 is shown in
+performance on the [test set](#data-used) as of 2021-01-17 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
