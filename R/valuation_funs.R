@@ -3,9 +3,8 @@
 # ratio distributions toward 1 when necessary to correct for model bias
 
 # Shift the distribution of ratios toward 1 to account for bias in modeling
-# Not ideal but all we can do with bad data. This technique is not ideal, but
-# is necessary to correct model prediction bias at the very high and very low
-# ends of the price spectrum
+# This technique is not ideal, but is necessary to correct model prediction
+# bias at the very high and very low ends of the price spectrum
 val_med_pct_adj <- function(truth, estimate, min_n, max_abs_adj = 0.4) {
   num_sales <- sum(!is.na(truth))
 
@@ -44,10 +43,10 @@ val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
 # (nearly identical) should have the same value, so we manually set their value
 # to the median of their prediction + adjustment if there are any sales
 val_townhomes_by_group <- function(data, truth, estimate, class,
-                                   townhome_adj_cols, min_townhome_sales) {
+                                   townhome_group_cols, townhome_min_sales) {
   data %>%
     filter({{ class }} %in% c("210", "295")) %>%
-    group_by(across(all_of(townhome_adj_cols))) %>%
+    group_by(across(all_of(townhome_group_cols))) %>%
     filter(n() > 1) %>%
     summarize(
       th_med_est = median({{ estimate }}, na.rm = TRUE),
@@ -57,7 +56,7 @@ val_townhomes_by_group <- function(data, truth, estimate, class,
       th_med_pct_adj = val_med_pct_adj(
         truth = {{ truth }}, 
         estimate = {{ estimate }},
-        min_n = min_townhome_sales
+        min_n = townhome_min_sales
       ),
       th_med_pct_adj = replace_na(th_med_pct_adj, 0)
     ) %>%
@@ -70,23 +69,24 @@ val_townhomes_by_group <- function(data, truth, estimate, class,
 }
 
 
-# Create a list of quartiles based on an input vector. Min and max are replaced
-# with -Inf and Inf so that new values outside the current range can be assigned
-val_create_quartiles <- function(x, na.rm = TRUE) {
+# Create a list of ntiles based on an input vector. Min and max are replaced
+# with -Inf and Inf so that new values outside the initial range can be assigned
+val_create_ntiles <- function(x, probs, na.rm = TRUE) {
   list(c(
     -Inf,
-    unique(quantile(x, probs = c(0.25, 0.5, 0.75), na.rm = na.rm, names = F)),
+    unique(quantile(x, probs = probs, na.rm = na.rm, names = FALSE)),
     Inf
   ))
 }
 
 
-# Assign a quartile to a value based on a list of quartiles
-val_assign_quartile <- function(x, qrts) {
+# Assign a ntile to a value based on a list of ntiles created by the
+# function above. Output is the character representation the the ntile range
+val_assign_ntile <- function(x, ntiles) {
   ifelse(
     !is.na(x),
     pmap_chr(
-      list(x, qrts),
+      list(x, ntiles),
       function(x, y) as.character(cut(x, breaks = y, dig.lab = 10))
     ),
     NA
@@ -96,61 +96,75 @@ val_assign_quartile <- function(x, qrts) {
 
 # Post-valuation adjustment class that saves all of the above adjustments and
 # can be used to predict new/unseen values
-postval_model <- function(data, truth, estimate, class, quartile_adj_cols,
-                          townhome_adj_cols, min_quartile_sales,
-                          min_townhome_sales) {
+postval_model <- function(
+  data, truth, estimate, class,
+  ntile_group_cols, ntile_probs, ntile_min_sales, ntile_min_turnover,
+  townhome_group_cols, townhome_min_sales) {
   
-  # For every unique modeling group within neighborhood, calculate quartile of
+  # For every unique modeling group within neighborhood, calculate ntile of
   # sale prices
-  quartiles_df <- data %>%
-    group_by(across(all_of(quartile_adj_cols))) %>%
-    summarize(quartiles_lst = val_create_quartiles({{ truth }})) %>%
+  ntiles_df <- data %>%
+    group_by(across(all_of(ntile_group_cols))) %>%
+    summarize(ntiles_lst = val_create_ntiles(
+      x = {{ truth }},
+      probs = ntile_probs
+    )) %>%
     rowwise() %>%
     filter(
-      !is.null(quartiles_lst),
-      length(quartiles_lst) >= 5,
-      !any(is.na(quartiles_lst))
+      !is.null(ntiles_lst),
+      length(ntiles_lst) >= length(ntile_probs + 2),
+      !any(is.na(ntiles_lst))
     ) %>%
     ungroup()
   
-  # For each sale, assign a quartile within neighborhood and modeling group,
-  # then calculate the median adjustment for that quartile
-  med_adjustments <- data %>%
-    left_join(quartiles_df) %>%
-    mutate(quartile = val_assign_quartile({{ truth }}, .data$quartiles_lst)) %>%
-    group_by(across(all_of(c(quartile_adj_cols, "quartile")))) %>%
+  # For each property, assign an ntile within neighborhood and modeling group,
+  # then calculate the median adjustment for that ntile
+  ntile_adjustments <- data %>%
+    left_join(ntiles_df) %>%
+    mutate(ntile = val_assign_ntile(
+      x = {{ truth }}, 
+      ntiles = .data$ntiles_lst
+    )) %>%
+    group_by(across(all_of(c(ntile_group_cols, "ntile")))) %>%
     summarize(
-      qrt_num_sales = sum(!is.na({{ truth }})),
-      qrt_med_pct_adj = val_med_pct_adj(
+      ntile_num_props = n(),
+      ntile_num_sales = sum(!is.na({{ truth }})),
+      ntile_med_pct_adj = val_med_pct_adj(
         truth = {{ truth }}, 
         estimate = {{ estimate }},
-        min_n = min_quartile_sales
+        min_n = ntile_min_sales
       ),
-      qrt_med_pct_adj = replace_na(qrt_med_pct_adj, 0),
+      ntile_med_pct_adj = replace_na(ntile_med_pct_adj, 0),
+      ntile_med_pct_adj = ifelse(
+        ntile_num_sales / ntile_num_props >= ntile_min_turnover,
+        ntile_med_pct_adj, 0
+      )
     ) %>%
     ungroup()
 
-  # Get the median adjusted value for townhomes, grouped by townhome_adj_cols
-  # This value will override quartile-based adjustments for these properties
+  # Get the median adjusted value for townhomes, grouped by townhome_group_cols
+  # This value will override ntile-based adjustments for these properties
   townhome_adjustments <- data %>%
     val_townhomes_by_group(
       truth = {{ truth }},
       estimate = {{ estimate }},
       class = {{ class }},
-      townhome_adj_cols = townhome_adj_cols,
-      min_townhome_sales = min_townhome_sales
+      townhome_group_cols = townhome_group_cols,
+      townhome_min_sales = townhome_min_sales
     ) %>%
     ungroup()
 
   # Output "trained" data frames and set class of object
   output <- list(
-    quartiles = quartiles_df,
-    quartile_adj_cols = quartile_adj_cols,
-    quartile_med_adjustments = med_adjustments,
+    ntiles = ntiles_df,
+    ntile_adjustments = ntile_adjustments,
+    ntile_group_cols = ntile_group_cols,
+    ntile_probs = ntile_probs,
+    ntile_min_sales = ntile_min_sales,
+    ntile_min_turnover = ntile_min_turnover,
     townhome_adjustments = townhome_adjustments,
-    townhome_adj_cols = townhome_adj_cols,
-    min_quartile_sales = min_quartile_sales,
-    min_townhome_sales = min_townhome_sales
+    townhome_group_cols = townhome_group_cols,
+    townhome_min_sales = townhome_min_sales
   )
   class(output) <- "postval_model"
 
@@ -163,20 +177,19 @@ predict.postval_model <- function(object, new_data, truth, estimate) {
   new_data %>%
     ungroup() %>%
     
-    # Join quartile range to unseen data and assign a quartile
-    left_join(object$quartiles) %>%
-    mutate(quartile = ifelse(
-      !is.na({{ truth }}),
-      val_assign_quartile({{ truth }}, .data$quartiles_lst),
-      val_assign_quartile({{ estimate }}, .data$quartiles_lst)
-    )) %>%
+    # Join ntile ranges to unseen data and assign a ntile
+    left_join(object$ntiles) %>%
+    mutate(ntile = val_assign_ntile(
+      x = {{ estimate }},
+      ntiles = .data$ntiles_lst)
+    ) %>%
     
-    # Join percentage adjustments by neighborhood, modeling group, and quartile
+    # Join percentage adjustments by neighborhood, modeling group, and ntile
     # then apply the adjustment to all properties
-    left_join(object$quartile_med_adjustments) %>%
+    left_join(object$ntile_adjustments) %>%
     mutate(
       {{ estimate }} := rowSums(
-        tibble({{ estimate }}, {{ estimate }} * qrt_med_pct_adj),
+        tibble({{ estimate }}, {{ estimate }} * ntile_med_pct_adj),
         na.rm = TRUE
       ),
       {{ estimate }} := val_limit_ratios(

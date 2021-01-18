@@ -6,6 +6,7 @@ output: html_document
 params:
   filter: "TRUE"
   triad: "City"
+  assessment_year: 2021
 ---
 
 ```{r setup, include=FALSE}
@@ -25,6 +26,7 @@ library(scales)
 library(sf)
 library(stringr)
 library(tidyr)
+source(here("R", "valuation_funs.R"))
 
 # Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
@@ -43,7 +45,7 @@ report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
 report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
 
 # Load final assessment values from file (created by valuation.R). These include
-# post-modeling adjustments
+# saved post-modeling adjusted values
 pv_final_values <- read_parquet(
     here("output", "data", "finalvalues.parquet")
   ) %>%
@@ -57,43 +59,56 @@ pv_final_values <- read_parquet(
       town_get_triad(meta_town_code, name = TRUE),
       levels = c("North", "City", "South")
     ),
-    ratio_capped = !between(lgbm_value / meta_sale_price, 0.7, 2.0),
     board_yoy_pct_change = (final_value - pri_yr_board_est) / pri_yr_board_est,
-    certified_yoy_pct_change = (final_value - certified_est) / certified_est,
-    meta_modeling_group = fct_recode(
-      factor(meta_modeling_group, levels = c("SF", "MF")),
-      "Single-Family" = "SF",
-      "Multi-Family" = "MF"
-    )
+    certified_yoy_pct_change = (final_value - certified_est) / certified_est
   )
 
-# Save report year and assessment date
-report_year <- max(pv_final_values$meta_year)
-assessment_year <- lubridate::year(max(pv_final_values$meta_sale_date))
+# Save assessment and sales year, first loading default params from env,
+# then from report params, then from data
+assessment_year <- Sys.getenv("R_ASSESSMENT_YEAR", unset = NA)
+assessment_year <- case_when(
+  !is.na(as.numeric(assessment_year)) ~ as.numeric(assessment_year),
+  !is.na(as.numeric(params$assessment_year)) ~ as.numeric(params$assessment_year),
+  TRUE ~ lubridate::year(max(pv_final_values$meta_sale_date))
+)
+sales_year <- assessment_year - 1
 
-# Filter to specific triad based on report parameters
+# Load full sales data for use in reporting historical sales ratios and
+# recreating post-modeling
+sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
+  filter(ind_arms_length, meta_year >= sales_year - 2) %>%
+  group_by(meta_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date)) %>%
+  distinct(meta_pin, meta_sale_price, meta_document_num, .keep_all = TRUE) %>%
+  ungroup() %>%
+  select(
+    meta_pin, meta_year, meta_town_code, meta_class, meta_multi_code,
+    meta_document_num, meta_sale_price
+  ) %>%
+  mutate(triad = town_get_triad(meta_town_code, name = TRUE))
+
+# Filter data to specific triad based on report parameters
 if (report_filter) {
-pv_final_values <- pv_final_values %>%
-  filter(triad == report_triad)
+  pv_final_values <- pv_final_values %>%
+    filter(triad == report_triad)
+  
+  sales_data <- sales_data %>%
+    filter(triad == report_triad)
 }
 ```
 
-## Overall Performance
+## Overall Performance by Triad
 
-```{r model_perf, message=FALSE, fig.align="center"}
+```{r model_perf_triad, message=FALSE}
 # Create overall performance table of standard sales ratio study stats
 # To conform to SOPs, we need to use lagged sales for all years prior to the
-# reporting/current year. See wiki SOPs
-sales_data_wide <- read_parquet(here("input", "modeldata.parquet")) %>%
-  filter(ind_arms_length, meta_year >= report_year - 2) %>%
-  group_by(meta_pin) %>%
-  filter(meta_sale_date == max(meta_sale_date)) %>%
-  select(meta_pin, meta_year, meta_class, meta_multi_code, meta_sale_price) %>%
+# reporting/current year. See wiki SOPs section
+sales_data_wide <- sales_data %>%
   ungroup() %>%
   mutate(meta_year = case_when(
-    meta_year == report_year ~ "yr-0",
-    meta_year == report_year - 1 ~ "yr-1",
-    meta_year == report_year - 2 ~ "yr-2"
+    meta_year == sales_year ~ "yr-0",
+    meta_year == sales_year - 1 ~ "yr-1",
+    meta_year == sales_year - 2 ~ "yr-2"
   )) %>%
   pivot_wider(
     id_cols = c(meta_pin, meta_class, meta_multi_code),
@@ -102,16 +117,15 @@ sales_data_wide <- read_parquet(here("input", "modeldata.parquet")) %>%
     names_prefix = "sale_price_"
   )
 
-# Calculate COD, PRD, PRB, and median ratio for each set of available values
-pv_model_perf <- pv_final_values %>%
-  left_join(sales_data_wide, by = c("meta_pin", "meta_class", "meta_multi_code")) %>%
-  filter(!ind_multi_pin, pri_yr_board_est != 0, certified_est != 0) %>%
-  group_by(town_name) %>%
+# Wrapper function for calculating COD, PRD, PRB, and median ratio by group
+# These performance stats are trimmed in accordance with CCAO SOPs
+pv_calc_stats <- function(data) {
+  data %>%
   summarize(
-    bor_cod = ccao_cod(pri_yr_board_est / `sale_price_yr-2`, na.rm = TRUE)$COD,
-    bor_prd = ccao_prd(pri_yr_board_est, `sale_price_yr-2`, na.rm = TRUE)$PRD,
-    bor_prb = ccao_prb(pri_yr_board_est, `sale_price_yr-2`, na.rm = TRUE)$PRB,
-    bor_med = median(pri_yr_board_est / `sale_price_yr-2`, na.rm = TRUE),
+    bor_cod = ccao_cod(pri_yr_board_est / `sale_price_yr-0`, na.rm = TRUE)$COD,
+    bor_prd = ccao_prd(pri_yr_board_est, `sale_price_yr-0`, na.rm = TRUE)$PRD,
+    bor_prb = ccao_prb(pri_yr_board_est, `sale_price_yr-0`, na.rm = TRUE)$PRB,
+    bor_med = median(pri_yr_board_est / `sale_price_yr-0`, na.rm = TRUE),
     
     cert_cod = ccao_cod(certified_est / `sale_price_yr-1`, na.rm = TRUE)$COD,
     cert_prd = ccao_prd(certified_est, `sale_price_yr-1`, na.rm = TRUE)$PRD,
@@ -134,17 +148,26 @@ pv_model_perf <- pv_final_values %>%
     across(contains("_prb"), prb_met, .names = "{.col}_met"),
     across(contains("_med"), ~ between(.x, 0.95, 1.05), .names = "{.col}_met")
   )
+}
 
-# Create a container with custom column headers for summary table
+
+# Calculate performance stats by triad
+pv_model_perf_triad <- pv_final_values %>%
+  left_join(sales_data_wide, by = c("meta_pin", "meta_class", "meta_multi_code")) %>%
+  filter(!ind_multi_pin, pri_yr_board_est != 0, certified_est != 0) %>%
+  group_by(triad) %>%
+  pv_calc_stats()
+
+# Create a container with custom column headers for triad summary table
 pv_model_perf_headers <- htmltools::withTags(table(
   class = "display", 
   thead(
     tr(
       th(rowspan = 2, "Township"),
-      th(colspan = 4, glue("BoR ({report_year - 1})")),
-      th(colspan = 4, glue("Certified ({report_year})")),
-      th(colspan = 4, "Initial Model"),
-      th(colspan = 4, "Final Model"),
+      th(colspan = 4, glue("BoR ({sales_year - 1}) / {sales_year} Sales")),
+      th(colspan = 4, glue("Certified ({sales_year}) / {sales_year - 1} Sales")),
+      th(colspan = 4, glue("Initial Model / {sales_year} Sales")),
+      th(colspan = 4, glue("Final Model / {sales_year} Sales")),
     ),
     tr(
       th("COD"), th("PRD"), th("PRB"), th("Med."),
@@ -155,8 +178,8 @@ pv_model_perf_headers <- htmltools::withTags(table(
   )
 ))
 
-# Create an interactive datatable with all stats
-pv_model_perf %>%
+# Create an interactive HTML table with all triad sales ratio stats
+pv_model_perf_triad %>%
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -164,6 +187,7 @@ pv_model_perf %>%
     escape = FALSE,
     container = pv_model_perf_headers,
     options = list(
+      scrollX = TRUE,
       autoWidth = TRUE,
       paging = FALSE,
       searching = FALSE,
@@ -173,8 +197,48 @@ pv_model_perf %>%
   ) %>%
   formatRound(2:17, digits = 2) %>%
   formatStyle(  
-    pv_model_perf %>% select(2:17) %>% names() %>% sort(),
-    pv_model_perf %>% select(18:33) %>% names() %>% sort(),
+    pv_model_perf_triad %>% select(2:17) %>% names() %>% sort(),
+    pv_model_perf_triad %>% select(18:33) %>% names() %>% sort(),
+    backgroundColor = styleEqual(
+      c(0, 1),
+      c("transparent", "#81ca9c")
+    )
+  )
+```
+
+<br>
+
+## Overall Performance by Township
+
+```{r model_perf_town, message=FALSE}
+# Calculate sales ratio performance stats by township
+pv_model_perf_township <- pv_final_values %>%
+  left_join(sales_data_wide, by = c("meta_pin", "meta_class", "meta_multi_code")) %>%
+  filter(!ind_multi_pin, pri_yr_board_est != 0, certified_est != 0) %>%
+  group_by(town_name) %>%
+  pv_calc_stats()
+
+# Create an interactive datatable with all stats by township
+pv_model_perf_township %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    escape = FALSE,
+    container = pv_model_perf_headers,
+    options = list(
+      scrollX = TRUE,
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE,
+      columnDefs = list(list(targets = 17:32, visible = FALSE))
+    )
+  ) %>%
+  formatRound(2:17, digits = 2) %>%
+  formatStyle(  
+    pv_model_perf_township %>% select(2:17) %>% names() %>% sort(),
+    pv_model_perf_township %>% select(18:33) %>% names() %>% sort(),
     backgroundColor = styleEqual(
       c(0, 1),
       c("transparent", "#81ca9c")
@@ -187,23 +251,20 @@ pv_model_perf %>%
 ## Summary of Changes
 
 ```{r val_summary, message=FALSE}
-# Summarize the full modeling pipeline results by township
+# Goal here is to summarize YoY changes in terms of median values and percentage
+# changes in value from year to year
 pv_summary <- pv_final_values %>%
-  
-  # Need to exclude multi code PINs from the summary, as their prior year
-  # values may be for all property on the PIN, rather than a single building
   filter(!ind_multi_pin) %>%
   group_by(town_name) %>%
   summarize(
     triad = first(triad),
     num_props = n(),
-    num_ratios_capped = sum(ratio_capped, na.rm = TRUE),
+    num_sales = sum(!is.na(meta_sale_price)),
     median_board_est = median(pri_yr_board_est, na.rm = TRUE),
     median_certified_est = median(certified_est, na.rm = TRUE),
     median_sale_price = median(meta_sale_price, na.rm = TRUE),
     median_model_value = median(lgbm_value, na.rm = TRUE),
     median_final_value = median(final_value, na.rm = TRUE),
-    median_ratio = median(final_value / meta_sale_price, na.rm = TRUE),
     med_yoy_pct_change_board = median(board_yoy_pct_change, na.rm = T),
     med_yoy_pct_change_cert = median(certified_yoy_pct_change, na.rm = T)
   )
@@ -215,17 +276,16 @@ pv_summary_headers <- htmltools::withTags(table(
     tr(
       th(rowspan = 2, "Township"),
       th(rowspan = 2, "Triad"),
-      th(rowspan = 2, "Num. PINs"),
-      th(rowspan = 2, "Num. Ratios Capped"),
+      th(rowspan = 2, "Num. Props"),
+      th(rowspan = 2, glue("Num. Sales ({sales_year})")),
       th(colspan = 8, "Median Values"),
     ),
     tr(
-      th(glue("BoR Value ({report_year - 1})")),
-      th(glue("Certified Value ({report_year})")),
-      th(glue("Sale Price ({report_year})")),
+      th(glue("BoR Value ({sales_year - 1})")),
+      th(glue("Certified Value ({sales_year})")),
+      th(glue("Sale Price ({sales_year})")),
       th("Initial Model Value"),
       th("Final Model Value"),
-      th("Final Model Ratio"),
       th("Median Percent Change (BoR to Final)"),
       th("Median Percent Change (Cert to Final)")
     )
@@ -248,9 +308,8 @@ pv_summary %>%
     )
   ) %>%
   formatRound(3:4, digits = 0) %>%
-  formatRound(10, digits = 2) %>%
   formatCurrency(c(5:9), digits = 0) %>%
-  formatPercentage(c(11, 12), digits = 1)
+  formatPercentage(c(10, 11), digits = 1)
 ```
 
 <br>
@@ -259,9 +318,8 @@ pv_summary %>%
 
 ```{r val_map, warning=FALSE, message=FALSE}
 # Generate township-level map of YoY percent change for all finalized values
-pv_summary %>%
-  left_join(ccao::town_shp, by = c("town_name" = "township_name")) %>%
-  st_set_geometry("geometry") %>%
+ccao::town_shp %>%
+  inner_join(pv_summary, by = c("township_name" = "town_name")) %>%
   pivot_longer(
     cols = c(med_yoy_pct_change_board, med_yoy_pct_change_cert),
     names_to = "type",
@@ -293,37 +351,189 @@ ggplot() +
   )
 ```
 
-## Overall Value Distribution
+<br>
 
-```{r value_dist, warning=FALSE, message=FALSE}
-# Plot density of previous, predicted, adjusted value and sale price to look
-# for discrepancies in distributions
-pv_final_values %>%
-  pivot_longer(c(
-    pri_yr_board_est, certified_est, meta_sale_price,
-    lgbm_value, final_value
-  )) %>%
-  mutate(name = fct_recode(
-    factor(name, levels = c(
-      "pri_yr_board_est", "certified_est",
-      "meta_sale_price", "lgbm_value", "final_value"
-    )),
-    "BoR Value (2 Years Ago)" = "pri_yr_board_est",
-    "Certified Value (Prior Year)" = "certified_est",
-    "Sale Price (Prior Year)" = "meta_sale_price",
-    "Initial Model Value" = "lgbm_value",
-    "Final Model Value" = "final_value",
-  )) %>%
-ggplot() +
-  geom_density(aes(x = value, color = name), size = 1.05) +
-  scale_x_log10(
-    name = "Price",
-    limits = c(5000, 1900000),
-    labels = scales::dollar
-  ) +
-  labs(x = "Price", y = "Density") +
-  guides(color = guide_legend(title = "Value Source")) +
-  theme_minimal()
+## Post-Modeling Adjustment Results by Town
+
+```{r post_model1, message=FALSE}
+## Goal of this chunk is to recreate what happens in the post-modeling step-by-
+# step, so that we can see the effect of each step independently and confirm
+# that the adjustments are doing what's expected
+
+# Load the set of sales that were used to generate post-modeling values
+# This is usually all sales from 2 years before the assessment date
+sales_data_prev_2_years <- sales_data %>%
+  filter(meta_year >= assessment_year - 2) %>%
+  distinct(meta_pin, meta_sale_price)
+
+# Load the post-val model itself from file
+pv_model <- readRDS(here("output", "models", "postval_model.rds"))
+
+# Join the sales sample, then assign a post-modeling ntile to each estimated
+# value. Each ntile has an adjustment percentage stored in the postval_model obj
+pv_postmodel_vals <- pv_final_values %>%
+  select(-meta_sale_price) %>%
+  left_join(sales_data_prev_2_years, by = "meta_pin") %>%
+  left_join(pv_model$ntiles) %>%
+  mutate(ntile = val_assign_ntile(lgbm_value, ntiles_lst))
+  
+# Filter extraneous columns, then join the adjustments by ntile from the postval
+# model object
+pv_postmodel_vals2 <- pv_postmodel_vals %>%
+  left_join(pv_model$ntile_adjustments) %>%
+  
+  # Add the ntile adjustment to the unadjusted value, then cap ratio if a sale
+  # exists
+  mutate(
+    value_ntile_adj = rowSums(tibble(lgbm_value, lgbm_value * ntile_med_pct_adj), na.rm = T),
+    value_cap_adj = val_limit_ratios(meta_sale_price, value_ntile_adj),
+  ) %>%
+  
+  # Join townhome adjustments and overwrite ntile adjustments for townhomes only
+  left_join(pv_model$townhome_adjustments) %>%
+  mutate(
+    value_th_adj = ifelse(!is.na(th_final_value), th_final_value, value_cap_adj),
+    diff = value_th_adj != final_value
+  ) %>%
+  select(
+    meta_pin, meta_town_code, meta_nbhd, meta_class, meta_modeling_group, triad,
+    town_name, th_med_pct_adj, th_num_sales, th_final_value, 
+    ntiles_lst, ntile, ntile_med_pct_adj, ntile_num_props, ntile_num_sales,
+    meta_sale_price, lgbm_value, value_ntile_adj, value_cap_adj, value_th_adj,
+    final_value, diff
+  )
+
+# For each step in the process, count the number of changes that occurred from
+# the previous step
+pv_postmodel_summary <- pv_postmodel_vals2 %>%
+  group_by(town_name) %>%
+  summarize(
+    num_props = n(),
+    num_adj_total = sum(lgbm_value != final_value),
+    pct_adj = num_adj_total / num_props,
+    num_sales = sum(!is.na(meta_sale_price)),
+    num_sales_adj = sum(lgbm_value != final_value & !is.na(meta_sale_price)),
+    pct_sales_adj = num_sales_adj / num_sales,
+    num_adj_by_ntile = sum(lgbm_value != value_ntile_adj),
+    num_adj_by_cap = sum(value_ntile_adj != value_cap_adj),
+    num_adj_by_th = sum(th_final_value == value_th_adj, na.rm = TRUE)
+  )
+
+# Create HTML header for summary table
+pv_postmodel_headers <- htmltools::withTags(table(
+  class = "display", 
+  thead(
+    tr(
+      th(rowspan = 2, "Township"),
+      th(colspan = 3, "All Props."),
+      th(colspan = 3, "Sales"),
+      th(colspan = 3, "Number of Adjustments."),
+    ),
+    tr(
+      th("Total"), th("# Adj."), th("% Adj."),
+      th("Total"), th("# Adj."), th("% Adj."),
+      th("N-tile"), th("Capped"), th("Townhome")
+    )
+  )
+))
+
+# Create interactive datatable
+pv_postmodel_summary %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    container = pv_postmodel_headers,
+    escape = FALSE,
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c(2, 3, 5, 6, 8:10), digits = 0) %>%
+  formatPercentage(c(4, 7), digits = 0)
+
+# Stop the report if there are differences between the final value saved in
+# finalvalues.parquet and the final value recreated with post-modeling in this
+# chunk
+if (sum(pv_postmodel_vals2$diff)) {
+  stop("Found differences between post-modeling results and report results")
+}
+```
+
+```{r post_model2, message=FALSE}
+# Goal of this chunk is to show a more detailed adjustment breakdown by ntile
+# To do this, we collect aggregate results for each ntile set in each township
+
+# Since ntile values vary across neighborhood and modeling group, we need to
+# assign them an arbitrary identifier based on their order. So the lowest ntile
+# becomes "Q1" the highest "QN"
+qnums <- pv_model$ntile_adjustments %>%
+  mutate(sort_num = gsub("[()]", "", ntile)) %>%
+  separate(sort_num, into = c("low_bound", "high_bound"), sep = ",") %>%
+  group_by(meta_town_code, meta_nbhd, meta_modeling_group) %>%
+  arrange(as.numeric(low_bound), .by_group = TRUE) %>%
+  mutate(qnum = paste0("Q", row_number())) %>%
+  filter(!is.na(low_bound))
+
+# Get adjusted count and median percent adjusted for each town and ntile
+pv_postmodel_summary2 <- pv_postmodel_vals2 %>%
+  left_join(qnums) %>%
+  group_by(town_name, qnum) %>% 
+  summarize(
+    pct = median(na_if((value_ntile_adj - lgbm_value) / lgbm_value, 0), na.rm = T),
+    cnt = sum(lgbm_value != value_ntile_adj)
+  ) %>%
+  filter(!is.na(qnum)) %>%
+  pivot_wider(id_cols = town_name, names_from = qnum, values_from = c(cnt, pct))
+
+# Get the median ratio cap adjustment by town, independent of ntile
+pv_postmodel_summary3 <- pv_postmodel_vals2 %>%
+  group_by(town_name) %>%
+  summarize(
+    rcap_pct_change = median(
+      na_if((value_cap_adj - value_ntile_adj) / value_ntile_adj, 0),
+      na.rm = TRUE
+    )
+  )
+
+# Create HTML header for summary table
+pv_postmodel_headers2 <- htmltools::withTags(table(
+  class = "display", 
+  thead(
+    tr(
+      th(rowspan = 2, "Township"),
+      th(colspan = 5, "Count Adj. (All Props.)"),
+      th(colspan = 5, "Median Pct. Adj."),
+      th(rowspan = 2, "Ratio Cap")
+    ),
+    tr(
+      th("Q1"), th("Q2"), th("Q3"), th("Q4"), th("Q5"),
+      th("Q1"), th("Q2"), th("Q3"), th("Q4"), th("Q5")
+    )
+  )
+))
+
+# Create interactive datatable
+pv_postmodel_summary2 %>%
+  left_join(pv_postmodel_summary3) %>% 
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    container = pv_postmodel_headers2,
+    escape = FALSE,
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c(2:6), digits = 0) %>%
+  formatPercentage(c(7:12), digits = 0)
 ```
 
 <br>
@@ -332,8 +542,15 @@ ggplot() +
 
 ```{r ratio_dist, warning=FALSE, message=FALSE}
 # Plot histogram of ratios by modeling class (single-family vs multi-family)
-# Ratios here are calculated using the MOST RECENT SALE for each property
+# Ratios here are calculated using the last year of sales, not the two years
+# used for post-modeling
 pv_final_values %>%
+  mutate(
+    meta_modeling_group = fct_recode(
+      factor(meta_modeling_group, levels = c("SF", "MF")),
+      "Single-Family" = "SF",
+      "Multi-Family" = "MF"
+  )) %>% 
   pivot_longer(c(lgbm_value, final_value)) %>%
   mutate(
     ratio = value / meta_sale_price,
@@ -363,7 +580,61 @@ ggplot() +
   theme(
     strip.text = element_text(size = 12)
   )
+```
 
+<br>
+
+## Ratio Density Distribution by Township
+
+```{r value_dist, warning=FALSE, message=FALSE, results='hide'}
+# Plot density of previous, predicted, adjusted value and sale price to look
+# for discrepancies or oddities in distributions
+pv_dist_vals <- pv_final_values %>%
+  pivot_longer(c(
+    pri_yr_board_est, certified_est, meta_sale_price,
+    lgbm_value, final_value
+  )) %>%
+  mutate(name = fct_recode(
+    factor(name, levels = c(
+      "pri_yr_board_est", "certified_est",
+      "meta_sale_price", "lgbm_value", "final_value"
+    )),
+    "BoR Value (2 Years Ago)" = "pri_yr_board_est",
+    "Certified Value (Prior Year)" = "certified_est",
+    "Sale Price (Prior Year)" = "meta_sale_price",
+    "Initial Model Value" = "lgbm_value",
+    "Final Model Value" = "final_value",
+  ))
+
+pv_dist_plot <- function(data, lims) {
+  data %>%
+    ggplot() +
+      geom_density(aes(x = value, color = name), size = 1.05) +
+      scale_x_log10(
+        name = "Price",
+        limits = lims,
+        labels = scales::dollar
+      ) +
+      labs(x = "Price", y = "Density") +
+      guides(color = guide_legend(title = "Value Source")) +
+      facet_wrap(vars(town_name), ncol = 1) +
+      theme_minimal()
+}
+
+# Split into a separate decile plot for every 2 townships, otherwise all
+# townships would be in a single plot and would be squished
+chunk <- function(x, n) split(x, sort(rank(x) %% n))
+towns <- pv_final_values %>% 
+  group_by(town_name) %>%
+  summarize(med_val = median(final_value, na.rm = T)) %>%
+  arrange(med_val) %>%
+  pull(town_name)
+towns <- chunk(towns, ceiling(length(towns) / 2))
+
+lapply(towns, function(chunk) pv_dist_plot(
+  pv_dist_vals %>% filter(town_name %in% chunk),
+  pv_final_values %>% filter(town_name %in% chunk) %>% pull(final_value) %>% quantile(., probs = c(0.05, 0.95))
+))
 ```
 
 <br>
@@ -398,7 +669,6 @@ decile_data_ratio <- pv_final_values %>%
       "Final Value" = "final_value"
     )
   )
-
 
 # Function to create decile plot based on a grouping variable. Goal is to show
 # the shift in ratio distribution caused by post-modeling adjustment
