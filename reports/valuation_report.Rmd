@@ -353,6 +353,31 @@ ggplot() +
 
 <br>
 
+## Post-Modeling Settings
+
+```{r post_model_settings, message=FALSE}
+# Load the post-val model from file
+pv_model <- readRDS(here("output", "models", "postval_model.rds"))
+
+# Create markdown table of post-modeling settings
+tibble(
+  "Type" = c("N-Tile", "Townhome"),
+  "Groups" = c(
+    paste(pv_model$ntile_group_cols, collapse = ", "),
+    paste(pv_model$townhome_group_cols, collapse = ", ")
+  ),
+  "Min. Sales" = c(
+    pv_model$ntile_min_sales,
+    pv_model$townhome_min_sales
+  ),
+  "Min. Turnover" = c(pv_model$ntile_min_turnover, ""),
+  "Cuts" = c(paste(pv_model$ntile_probs, collapse = ", "), "")
+) %>%
+  knitr::kable(format = "markdown")
+```
+
+<br>
+
 ## Post-Modeling Adjustment Results by Town
 
 ```{r post_model1, message=FALSE}
@@ -366,8 +391,7 @@ sales_data_prev_2_years <- sales_data %>%
   filter(meta_year >= assessment_year - 2) %>%
   distinct(meta_pin, meta_sale_price)
 
-# Load the post-val model itself from file
-pv_model <- readRDS(here("output", "models", "postval_model.rds"))
+
 
 # Join the sales sample, then assign a post-modeling ntile to each estimated
 # value. Each ntile has an adjustment percentage stored in the postval_model obj
@@ -432,7 +456,7 @@ pv_postmodel_headers <- htmltools::withTags(table(
     tr(
       th("Total"), th("# Adj."), th("% Adj."),
       th("Total"), th("# Adj."), th("% Adj."),
-      th("N-tile"), th("Capped"), th("Townhome")
+      th("N-Tile"), th("Capped"), th("Townhome")
     )
   )
 ))
@@ -678,7 +702,11 @@ decile_plot_ratio <- function(data, col_var) {
     group_by({{col_var}}, decile_label) %>%
     mutate(count = n()) %>%
   ggplot() +
-    geom_boxplot(aes(x = ratio, color = name), outlier.alpha = 0.05) +
+    geom_boxplot(
+      aes(x = ratio, color = name),
+      outlier.alpha = 0.05,
+      varwidth = TRUE
+    ) +
     geom_text(
       aes(x = 3, y = 0, label = count),
       size = 3,
@@ -696,7 +724,7 @@ decile_plot_ratio <- function(data, col_var) {
     guides(color = guide_legend(reverse = TRUE)) +
     theme_minimal() +
     theme(
-      legend.position = "none",
+      legend.position = "bottom",
       axis.title.x = element_text(margin = margin(t = 10), size = 10),
       axis.text.y = element_blank(),
       panel.grid.major.y = element_blank(),
@@ -767,3 +795,95 @@ ggplot() +
   )
 
 ```
+
+<br>
+
+## Distribution of YoY Percent Change by Township by Final Value Decile
+
+```{r yoy_decile, warning=FALSE, message=FALSE, results='hide'}
+# Split YoY percent change by BoR value
+decile_data_yoy <- pv_final_values %>%
+  filter(
+    !is.na(board_yoy_pct_change), !is.na(pri_yr_board_est), pri_yr_board_est != 0,
+    !is.na(certified_yoy_pct_change), !is.na(certified_est), certified_est != 0
+  ) %>%
+  mutate(decile = ntile(final_value, 10)) %>%
+  group_by(decile) %>%
+  mutate(decile_label = paste(
+    dollar(min(final_value), 1, scale = 1/1000, suffix = "K"),
+    dollar(max(final_value), 1, scale = 1/1000, suffix = "K"),
+    sep = " - ")
+  ) %>%
+  ungroup() %>%
+  mutate(decile_label = fct_rev(fct_reorder(factor(decile_label), decile))) %>%
+  pivot_longer(
+    c(board_yoy_pct_change, certified_yoy_pct_change),
+    names_to = "name",
+    values_to = "value"
+  ) %>%
+  mutate(
+    name = case_when(
+      name == "board_yoy_pct_change" ~ glue("BoR ({sales_year - 1}) to Final Model"),
+      name == "certified_yoy_pct_change" ~ glue("Cert. ({sales_year}) to Final Model")
+    ),
+    name = factor(name, levels = c(
+      glue("Cert. ({sales_year}) to Final Model"),
+      glue("BoR ({sales_year - 1}) to Final Model")
+
+    ))
+  )
+
+# Function to create decile plot based on a grouping variable
+decile_plot_yoy <- function(data, col_var) {
+  
+  data %>%
+    group_by({{col_var}}, decile_label) %>%
+    mutate(count = n()) %>%
+  ggplot() +
+    geom_boxplot(
+      aes(x = value, color = name),
+      outlier.alpha = 0.05,
+      varwidth = TRUE
+    ) +
+    geom_text(
+      aes(x = 2, y = 0, label = count),
+      size = 3,
+      hjust = 1,
+      check_overlap = TRUE
+    ) +
+    scale_x_continuous(labels = scales::percent, limits = c(-1, 2)) +
+    scale_color_hue(name = "", direction = -1) +
+    facet_grid(
+      rows = vars(decile_label),
+      cols = vars({{col_var}}),
+      switch = "y"
+    ) +
+    labs(x = "% Change", y = "") +
+    guides(color = guide_legend(reverse = TRUE)) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      axis.title.x = element_text(margin = margin(t = 10), size = 10),
+      axis.text.y = element_blank(),
+      axis.text.x = element_text(angle = -45, hjust = 0),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      strip.text = element_text(size = 12),
+      strip.text.y.left = element_text(angle = 0, hjust = 1),
+      strip.text.x = element_text(margin = margin(b = 10)),
+      panel.grid.minor = element_blank()
+    )
+}
+
+
+# Split into a separate decile plot for every 4 townships
+chunk <- function(x, n) split(x, sort(rank(x) %% n))
+towns <- sort(unique(decile_data_yoy$town_name))
+towns <- chunk(towns, ceiling(length(towns) / 4))
+
+lapply(towns, function(chunk) decile_plot_yoy(
+  decile_data_yoy %>% filter(town_name %in% chunk),
+  town_name
+))
+```
+

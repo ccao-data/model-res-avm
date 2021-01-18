@@ -116,8 +116,8 @@ pv_model <- postval_model(
   class = meta_class,
   ntile_group_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
   ntile_probs = c(0.2, 0.4, 0.6, 0.8),
-  ntile_min_sales = 20,
-  ntile_min_turnover = 0,
+  ntile_min_sales = 15,
+  ntile_min_turnover = 0.09,
   townhome_group_cols = c(
     "meta_town_code", "meta_class", "char_age", "char_bsmt", "char_rooms",
     "char_gar1_size", "char_attic_fnsh", "char_bldg_sf", "char_beds"
@@ -169,3 +169,6 @@ rmarkdown::render(
 
 # Stop full script timer
 tictoc::toc()
+
+# BIG BEEP
+beepr::beep(8)
