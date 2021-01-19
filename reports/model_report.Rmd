@@ -3,7 +3,7 @@ title: "Model Summary"
 date: "`r format(Sys.time(), '%d %B, %Y @ %r')`"
 output: html_document
 params:
-  filter: "FALSE"
+  filter: "TRUE"
   triad: "City"
 ---
 
@@ -110,16 +110,13 @@ test_summary <- test_res %>%
     final_cod = ccao_cod(lgbm / meta_sale_price, suppress = TRUE)$COD,
     final_prd = ccao_prd(lgbm, meta_sale_price, suppress = TRUE)$PRD,
     final_prb = ccao_prb(lgbm, meta_sale_price, suppress = TRUE)$PRB,
-    final_med_ratio = median(
-      (lgbm / meta_sale_price)[
-        !assessr::is_outlier(lgbm / meta_sale_price, method = "quantile")
-      ]
-    )
+    final_ratio = median(lgbm / meta_sale_price, na.rm = TRUE)
   ) %>%
   mutate(
     final_cod_met = cod_met(round(final_cod, 2)),
     final_prd_met = prd_met(round(final_prd, 2)),
-    final_prb_met = prb_met(round(final_prb, 2))
+    final_prb_met = prb_met(round(final_prb, 2)),
+    final_ratio_met = between(final_ratio, 0.95, 1.05)
   ) %>%
   arrange(final_cod)
 
@@ -148,7 +145,6 @@ test_summary %>%
   datatable(
     rownames = FALSE,
     filter = "none",
-    autoHideNavigation = TRUE,
     selection = "none",
     container = headers,
     escape = FALSE,
@@ -157,7 +153,7 @@ test_summary %>%
       paging = FALSE,
       searching = FALSE,
       info = FALSE,
-      columnDefs = list(list(targets = 10:12, visible = FALSE))
+      columnDefs = list(list(targets = 10:13, visible = FALSE))
     )
   ) %>%
   formatCurrency(2, digits = 0) %>%
@@ -165,8 +161,8 @@ test_summary %>%
   formatPercentage(4, digits = 1) %>%
   formatRound(c(5:10)) %>%
   formatStyle(  
-    c("final_cod", "final_prd", "final_prb"),
-    c("final_cod_met", "final_prd_met", "final_prb_met"),
+    c("final_cod", "final_prd", "final_prb", "final_ratio"),
+    c("final_cod_met", "final_prd_met", "final_prb_met", "final_ratio_met"),
     backgroundColor = styleEqual(
       c(0, 1),
       c("transparent", "#81ca9c")

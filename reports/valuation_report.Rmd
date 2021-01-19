@@ -140,7 +140,7 @@ pv_calc_stats <- function(data) {
     final_cod = ccao_cod(final_value / `sale_price_yr-0`, na.rm = TRUE)$COD,
     final_prd = ccao_prd(final_value, `sale_price_yr-0`, na.rm = TRUE)$PRD,
     final_prb = ccao_prb(final_value, `sale_price_yr-0`, na.rm = TRUE)$PRB,
-    final_med = median(final_value / `sale_price_yr-0`, na.rm = TRUE),
+    final_med = median(final_value / `sale_price_yr-0`, na.rm = TRUE)
   ) %>%
   mutate(
     across(contains("_cod"), cod_met, .names = "{.col}_met"),
@@ -370,7 +370,10 @@ tibble(
     pv_model$ntile_min_sales,
     pv_model$townhome_min_sales
   ),
-  "Min. Turnover" = c(pv_model$ntile_min_turnover, ""),
+  "Min. Turnover" = c(
+    pv_model$ntile_min_turnover,
+    pv_model$townhome_min_turnover
+  ),
   "Cuts" = c(paste(pv_model$ntile_probs, collapse = ", "), "")
 ) %>%
   knitr::kable(format = "markdown")
@@ -390,8 +393,6 @@ tibble(
 sales_data_prev_2_years <- sales_data %>%
   filter(meta_year >= assessment_year - 2) %>%
   distinct(meta_pin, meta_sale_price)
-
-
 
 # Join the sales sample, then assign a post-modeling ntile to each estimated
 # value. Each ntile has an adjustment percentage stored in the postval_model obj
@@ -451,7 +452,7 @@ pv_postmodel_headers <- htmltools::withTags(table(
       th(rowspan = 2, "Township"),
       th(colspan = 3, "All Props."),
       th(colspan = 3, "Sales"),
-      th(colspan = 3, "Number of Adjustments."),
+      th(colspan = 3, "Number of Adjustments"),
     ),
     tr(
       th("Total"), th("# Adj."), th("% Adj."),
@@ -529,8 +530,8 @@ pv_postmodel_headers2 <- htmltools::withTags(table(
   thead(
     tr(
       th(rowspan = 2, "Township"),
-      th(colspan = 5, "Count Adj. (All Props.)"),
-      th(colspan = 5, "Median Pct. Adj."),
+      th(colspan = 5, "Num. Adj. by Quintile"),
+      th(colspan = 5, "Median Pct. Adj. by Quintile"),
       th(rowspan = 2, "Ratio Cap")
     ),
     tr(
@@ -608,7 +609,7 @@ ggplot() +
 
 <br>
 
-## Ratio Density Distribution by Township
+## Price Density Distribution by Township
 
 ```{r value_dist, warning=FALSE, message=FALSE, results='hide'}
 # Plot density of previous, predicted, adjusted value and sale price to look
@@ -630,16 +631,15 @@ pv_dist_vals <- pv_final_values %>%
     "Final Model Value" = "final_value",
   ))
 
-pv_dist_plot <- function(data, lims) {
+pv_dist_plot <- function(data) {
   data %>%
     ggplot() +
       geom_density(aes(x = value, color = name), size = 1.05) +
       scale_x_log10(
-        name = "Price",
-        limits = lims,
+        limits = c(1e4, 2.5e6),
         labels = scales::dollar
       ) +
-      labs(x = "Price", y = "Density") +
+      labs(x = "Price (log scale)", y = "Density") +
       guides(color = guide_legend(title = "Value Source")) +
       facet_wrap(vars(town_name), ncol = 1) +
       theme_minimal()
@@ -648,16 +648,11 @@ pv_dist_plot <- function(data, lims) {
 # Split into a separate decile plot for every 2 townships, otherwise all
 # townships would be in a single plot and would be squished
 chunk <- function(x, n) split(x, sort(rank(x) %% n))
-towns <- pv_final_values %>% 
-  group_by(town_name) %>%
-  summarize(med_val = median(final_value, na.rm = T)) %>%
-  arrange(med_val) %>%
-  pull(town_name)
+towns <- sort(unique(pv_dist_vals$town_name))
 towns <- chunk(towns, ceiling(length(towns) / 2))
 
 lapply(towns, function(chunk) pv_dist_plot(
-  pv_dist_vals %>% filter(town_name %in% chunk),
-  pv_final_values %>% filter(town_name %in% chunk) %>% pull(final_value) %>% quantile(., probs = c(0.05, 0.95))
+  pv_dist_vals %>% filter(town_name %in% chunk)
 ))
 ```
 
@@ -704,8 +699,7 @@ decile_plot_ratio <- function(data, col_var) {
   ggplot() +
     geom_boxplot(
       aes(x = ratio, color = name),
-      outlier.alpha = 0.05,
-      varwidth = TRUE
+      outlier.alpha = 0.05
     ) +
     geom_text(
       aes(x = 3, y = 0, label = count),
@@ -842,8 +836,7 @@ decile_plot_yoy <- function(data, col_var) {
   ggplot() +
     geom_boxplot(
       aes(x = value, color = name),
-      outlier.alpha = 0.05,
-      varwidth = TRUE
+      outlier.shape = NA
     ) +
     geom_text(
       aes(x = 2, y = 0, label = count),
