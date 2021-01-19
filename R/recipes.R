@@ -41,12 +41,6 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
       offset = 1
     ) %>%
 
-    # Remove variables that are highly correlated with one another
-    step_corr(
-      all_numeric(), -all_outcomes(), -has_role("id"),
-      threshold = 0.95
-    ) %>%
-
     # Create polynomial transformation of certain important characteristics
     step_poly(
       ends_with("_age"), ends_with("_sf"),
