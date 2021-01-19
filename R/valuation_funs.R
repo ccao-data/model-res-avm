@@ -42,8 +42,10 @@ val_limit_ratios <- function(truth, estimate, lower = 0.7, upper = 2.0) {
 # Within the same development, townhomes with the same characteristics
 # (nearly identical) should have the same value, so we manually set their value
 # to the median of their prediction + adjustment if there are any sales
-val_townhomes_by_group <- function(data, truth, estimate, class,
-                                   townhome_group_cols, townhome_min_sales) {
+val_townhomes_by_group <- function(
+  data, truth, estimate, class,
+  townhome_group_cols, townhome_min_sales, townhome_min_turnover) {
+  
   data %>%
     filter({{ class }} %in% c("210", "295")) %>%
     group_by(across(all_of(townhome_group_cols))) %>%
@@ -58,7 +60,11 @@ val_townhomes_by_group <- function(data, truth, estimate, class,
         estimate = {{ estimate }},
         min_n = townhome_min_sales
       ),
-      th_med_pct_adj = replace_na(th_med_pct_adj, 0)
+      th_med_pct_adj = replace_na(th_med_pct_adj, 0),
+      th_med_pct_adj = ifelse(
+        th_num_sales / th_num_in_group >= townhome_min_turnover,
+        th_med_pct_adj, 0
+      )
     ) %>%
     mutate(
       th_final_value = rowSums(
@@ -99,14 +105,13 @@ val_assign_ntile <- function(x, ntiles) {
 postval_model <- function(
   data, truth, estimate, class,
   ntile_group_cols, ntile_probs, ntile_min_sales, ntile_min_turnover,
-  townhome_group_cols, townhome_min_sales) {
+  townhome_group_cols, townhome_min_sales, townhome_min_turnover) {
   
-  # For every unique modeling group within neighborhood, calculate ntiles of
-  # sale prices
+  # For every modeling group within neighborhood, calculate ntiles of estimates
   ntiles_df <- data %>%
     group_by(across(all_of(ntile_group_cols))) %>%
     summarize(ntiles_lst = val_create_ntiles(
-      x = {{ truth }},
+      x = {{ estimate }},
       probs = ntile_probs
     )) %>%
     rowwise() %>%
@@ -117,7 +122,8 @@ postval_model <- function(
     ) %>%
     ungroup()
   
-  
+  # Assign each estimate a previously created ntile, then count the number of
+  # properties in each group
   ntile_prop_counts <- data %>%
     left_join(ntiles_df) %>%
     mutate(ntile = val_assign_ntile(
@@ -127,8 +133,9 @@ postval_model <- function(
     group_by(across(all_of(c(ntile_group_cols, "ntile")))) %>%
     summarize(ntile_num_props = n())
   
-  # For each property, assign an ntile within neighborhood and modeling group,
-  # then calculate the median adjustment for that ntile
+  # Now assign an ntile by sale price in order to calculate the median
+  # adjustment within each ntile. Adjustments will be 0 if there aren't enough
+  # sales or the sales don't represent a large enough proportion of the group
   ntile_adjustments <- data %>%
     left_join(ntiles_df) %>%
     mutate(ntile = val_assign_ntile(
@@ -162,7 +169,8 @@ postval_model <- function(
       estimate = {{ estimate }},
       class = {{ class }},
       townhome_group_cols = townhome_group_cols,
-      townhome_min_sales = townhome_min_sales
+      townhome_min_sales = townhome_min_sales,
+      townhome_min_turnover = townhome_min_turnover
     ) %>%
     ungroup()
 
@@ -176,7 +184,8 @@ postval_model <- function(
     ntile_min_turnover = ntile_min_turnover,
     townhome_adjustments = townhome_adjustments,
     townhome_group_cols = townhome_group_cols,
-    townhome_min_sales = townhome_min_sales
+    townhome_min_sales = townhome_min_sales,
+    townhome_min_turnover = townhome_min_turnover
   )
   class(output) <- "postval_model"
 
@@ -218,7 +227,7 @@ predict.postval_model <- function(object, new_data, truth, estimate) {
         !is.na(th_final_value),
         th_final_value,
         {{ estimate }}
-      ),
+      )
     ) %>%
     
     # Return the final estimated value
