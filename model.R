@@ -159,7 +159,7 @@ lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees arg here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 1000,
+  trees = 2000,
   num_leaves = tune(), tree_depth = tune(), min_n = tune(),
   mtry = tune(), loss_reduction = tune(), learn_rate = tune()
 ) %>%
