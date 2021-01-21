@@ -18,10 +18,10 @@
     },
     "DBI": {
       "Package": "DBI",
-      "Version": "1.1.0",
+      "Version": "1.1.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "4744be45519d675af66c28478720fce5"
+      "Hash": "030aaec5bc6553f35347cbb1e70b1a17"
     },
     "DT": {
       "Package": "DT",
@@ -67,10 +67,10 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.2-18",
+      "Version": "1.3-2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "08588806cba69f04797dab50627428ed"
+      "Hash": "ff280503079ad8623d3c4b1519b24ea2"
     },
     "R6": {
       "Package": "R6",
@@ -88,10 +88,10 @@
     },
     "Rcpp": {
       "Package": "Rcpp",
-      "Version": "1.0.5",
+      "Version": "1.0.6",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "125dc7a0ed375eb68c0ce533b48d291f"
+      "Hash": "dbb5e436998a7eba5a9d682060533338"
     },
     "RgoogleMaps": {
       "Package": "RgoogleMaps",
@@ -102,10 +102,10 @@
     },
     "SQUAREM": {
       "Package": "SQUAREM",
-      "Version": "2020.5",
+      "Version": "2021.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "e7cc49f49f2a4cf5fc79e94b42dc8391"
+      "Hash": "0cf10dab0d023d5b46a5a14387556891"
     },
     "abind": {
       "Package": "abind",
@@ -139,14 +139,14 @@
       "Package": "assessr",
       "Version": "0.4.3",
       "Source": "GitLab",
-      "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
-      "RemoteRepo": "packages/assessr",
       "RemoteUsername": "ccao-data-science---modeling",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "b4f8b9555add2378b544f113bdd4a1b12d83ce21",
-      "Hash": "25a6968b9069514d546533d467db0a7f"
+      "RemoteRepo": "packages/assessr",
+      "RemoteSubdir": "",
+      "RemoteRef": "master",
+      "RemoteSha": "34bd2f0772d94b9d346720ca650a760452df83d9",
+      "Hash": "54cc9706afd653d574e324387ef397fe"
     },
     "audio": {
       "Package": "audio",
@@ -157,10 +157,10 @@
     },
     "backports": {
       "Package": "backports",
-      "Version": "1.2.0",
+      "Version": "1.2.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "fb0efa7042b45dac543dd3995a6dac0b"
+      "Hash": "644043219fc24e190c2f620c1a380a69"
     },
     "base64enc": {
       "Package": "base64enc",
@@ -199,10 +199,10 @@
     },
     "brio": {
       "Package": "brio",
-      "Version": "1.1.0",
+      "Version": "1.1.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "570a24963009b9cce0869a0463c83580"
+      "Hash": "36758510e65a457efeefa50e1e7f0576"
     },
     "broom": {
       "Package": "broom",
@@ -232,16 +232,16 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "0.4.9",
+      "Version": "0.5.0",
       "Source": "GitLab",
-      "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
-      "RemoteRepo": "packages/ccao",
       "RemoteUsername": "ccao-data-science---modeling",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "926805c95534c6cf0019b2670a2f2f9a0f49c43d",
-      "Hash": "b2b5ed941f2ab0c8e0252d3ca9138639"
+      "RemoteRepo": "packages/ccao",
+      "RemoteSubdir": "",
+      "RemoteRef": "master",
+      "RemoteSha": "83a93edab4d65cd2ef7a801870ff1406678b4ad5",
+      "Hash": "a9abf0cf02aa9d59e535e681cd5195a5"
     },
     "class": {
       "Package": "class",
@@ -371,10 +371,10 @@
     },
     "dplyr": {
       "Package": "dplyr",
-      "Version": "1.0.2",
+      "Version": "1.0.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "d0509913b27ea898189ee664b6030dc2"
+      "Hash": "365f8c3650ab95582e600f160fd5fb88"
     },
     "e1071": {
       "Package": "e1071",
@@ -399,10 +399,10 @@
     },
     "fansi": {
       "Package": "fansi",
-      "Version": "0.4.1",
+      "Version": "0.4.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "7fce217eaaf8016e72065e85c73027b5"
+      "Hash": "fea074fb67fe4c25d47ad09087da847d"
     },
     "farver": {
       "Package": "farver",
@@ -553,10 +553,10 @@
     },
     "htmltools": {
       "Package": "htmltools",
-      "Version": "0.5.0",
+      "Version": "0.5.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "7d651b7131794fe007b1ad6f21aaa401"
+      "Hash": "4d5452ff42a254e861282931190d052a"
     },
     "htmlwidgets": {
       "Package": "htmlwidgets",
@@ -574,10 +574,10 @@
     },
     "infer": {
       "Package": "infer",
-      "Version": "0.5.3",
+      "Version": "0.5.4",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "f155de6e70e7746b970e6f95de2439dd"
+      "Hash": "b53abe478cd07312b8e09543f07c95f6"
     },
     "ini": {
       "Package": "ini",
@@ -791,10 +791,10 @@
     },
     "pROC": {
       "Package": "pROC",
-      "Version": "1.16.2",
+      "Version": "1.17.0.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "285ca01e793958ac6f2c264c84dbb16b"
+      "Hash": "e25078f6e770b81121672874474f69c0"
     },
     "parallelly": {
       "Package": "parallelly",
@@ -805,15 +805,16 @@
     },
     "parsnip": {
       "Package": "parsnip",
-      "Version": "0.1.4.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
+      "Version": "0.1.5",
+      "Source": "Local",
+      "Repository": "CRAN",
+      "RemoteType": "local",
       "RemoteUsername": "tidymodels",
       "RemoteRepo": "parsnip",
       "RemoteRef": "master",
-      "RemoteSha": "7b813787af86525774384c75e8c5034685ed1325",
+      "RemoteSha": "ed9e705e1f22f3a035a0bc5554f177200f637290",
       "RemoteHost": "api.github.com",
-      "Hash": "b616db6086866bb9fe54797533408cf2"
+      "Hash": "963a6c1fcb5dc1eb025a0961d4b57d66"
     },
     "pillar": {
       "Package": "pillar",
@@ -1041,10 +1042,10 @@
     },
     "stars": {
       "Package": "stars",
-      "Version": "0.4-3",
+      "Version": "0.5-0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "f95567051881abcceb27cf8aec08200c"
+      "Hash": "c3e4a512ba3e9d4525d01f56a937ebcf"
     },
     "stringi": {
       "Package": "stringi",
@@ -1083,10 +1084,10 @@
     },
     "tibble": {
       "Package": "tibble",
-      "Version": "3.0.4",
+      "Version": "3.0.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "71dffd8544691c520dd8e41ed2d7e070"
+      "Hash": "a1958587eb651a02273d685fff3819b1"
     },
     "tictoc": {
       "Package": "tictoc",
@@ -1130,10 +1131,10 @@
     },
     "tinytex": {
       "Package": "tinytex",
-      "Version": "0.28",
+      "Version": "0.29",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "ff73961a77fba606fbf944dc3468e5b9"
+      "Hash": "f0b0ba735febac9a8344253ae6fa93f5"
     },
     "tree": {
       "Package": "tree",
@@ -1150,9 +1151,9 @@
       "RemoteUsername": "curso-r",
       "RemoteRepo": "treesnip",
       "RemoteRef": "master",
-      "RemoteSha": "fc754060c9288b8ef17fc6763ee49662b8c17669",
+      "RemoteSha": "bf27cd871b7fb663a76818f66ea0a5f9bf09f444",
       "RemoteHost": "api.github.com",
-      "Hash": "364b6eceebda7c2f2c2b6854ad7a42a6"
+      "Hash": "3b02ec251d46c681cb2d0aa964e5d7f6"
     },
     "tune": {
       "Package": "tune",
@@ -1219,10 +1220,10 @@
     },
     "withr": {
       "Package": "withr",
-      "Version": "2.3.0",
+      "Version": "2.4.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "7307d79f58d1885b38c4f4f1a8cb19dd"
+      "Hash": "8e07f30a26bc288326edcfe14883fbac"
     },
     "workflows": {
       "Package": "workflows",

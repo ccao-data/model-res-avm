@@ -1,31 +1,31 @@
 Table of Contents
 ================
 
-  - [Model Overview](#model-overview)
-      - [How It Works](#how-it-works)
-      - [Choices Made](#choices-made)
-          - [Model Selection](#model-selection)
-          - [Hyperparameter Selection](#hyperparameter-selection)
-          - [Features Used](#features-used)
-          - [Data Used](#data-used)
-          - [Post-Modeling](#post-modeling)
-          - [Other Choices](#other-choices)
-      - [Major Changes from Previous
+-   [Model Overview](#model-overview)
+    -   [How It Works](#how-it-works)
+    -   [Choices Made](#choices-made)
+        -   [Model Selection](#model-selection)
+        -   [Hyperparameter Selection](#hyperparameter-selection)
+        -   [Features Used](#features-used)
+        -   [Data Used](#data-used)
+        -   [Post-Modeling](#post-modeling)
+        -   [Other Choices](#other-choices)
+    -   [Major Changes from Previous
         Versions](#major-changes-from-previous-versions)
-  - [Ongoing Issues](#ongoing-issues)
-      - [Data Quality and Integrity](#data-quality-and-integrity)
-      - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
-  - [FAQs](#faqs)
-  - [Usage](#usage)
-      - [Installation](#installation)
-      - [Running](#running)
-      - [Files](#files)
-      - [Options](#options)
-      - [Getting Data](#getting-data)
-      - [System Requirements](#system-requirements)
-      - [Troubleshooting](#troubleshooting)
-  - [License](#license)
-  - [Contributing](#contributing)
+-   [Ongoing Issues](#ongoing-issues)
+    -   [Data Quality and Integrity](#data-quality-and-integrity)
+    -   [Heterogeneity and Extremes](#heterogeneity-and-extremes)
+-   [FAQs](#faqs)
+-   [Usage](#usage)
+    -   [Installation](#installation)
+    -   [Running](#running)
+    -   [Files](#files)
+    -   [Options](#options)
+    -   [Getting Data](#getting-data)
+    -   [System Requirements](#system-requirements)
+    -   [Troubleshooting](#troubleshooting)
+-   [License](#license)
+-   [Contributing](#contributing)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -36,13 +36,13 @@ fair, accurate, and transparent way. The Assessor is committed to
 transparency throughout the assessment process. As such, this repository
 contains:
 
-  - [Nearly all code used to determine Cook County residential property
+-   [Nearly all code used to determine Cook County residential property
     values](./model.R).
-  - [Rationale for different modeling, feature, and code decisions that
+-   [Rationale for different modeling, feature, and code decisions that
     affect assessed property values](#choices-made).
-  - [An outline of ongoing data quality issues that affect assessed
+-   [An outline of ongoing data quality issues that affect assessed
     property values](#ongoing-issues).
-  - [Instructions to replicate our model and results using open
+-   [Instructions to replicate our model and results using open
     data](#installation).
 
 The repository itself contains code for the Computer Assisted Mass
@@ -170,37 +170,37 @@ stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/
 We chose LightGBM because it has the right mix of trade-offs for our
 needs. Specifically, LightGBM is:
 
-  - [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The
+-   [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The
     docs contain good explanations of LightGBM’s features and useful
     troubleshooting sections.
-  - Highly accurate. It consistently beat other methods in accuracy, as
+-   Highly accurate. It consistently beat other methods in accuracy, as
     [measured by RMSE (root mean squared error) using a test
     set](#faqs).
-  - Extremely fast. It trained faster than other model types by a nearly
+-   Extremely fast. It trained faster than other model types by a nearly
     2:1 margin using our data (CPU training only).
-  - [Capable of natively handling categorical
+-   [Capable of natively handling categorical
     features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support).
     This is extremely important as a large amount of our property data
     is categorical (type of roof, neighborhood, etc.). Other methods,
     such as XGBoost, require feature transformation such as one-hot
     encoding to use categorical data.
-  - Widely used in housing-specific machine learning models and
+-   Widely used in housing-specific machine learning models and
     competitions.
-  - Simpler to use and implement than ensemble methods or neural
+-   Simpler to use and implement than ensemble methods or neural
     networks, which can involve lots of fiddling and configuration.
-  - Easy to diagnose problems with, as it has built-in feature
+-   Easy to diagnose problems with, as it has built-in feature
     importance and contribution methods.
 
 The downsides of LightGBM are that it is:
 
-  - Relatively difficult to explain compared to simpler models such as
+-   Relatively difficult to explain compared to simpler models such as
     linear regression.
-  - Not particularly well-integrated into
+-   Not particularly well-integrated into
     [Tidymodels](https://www.tidymodels.org/) (yet), the R framework we
     use for machine learning.
-  - Painful to train, since it has a somewhat large number of
+-   Painful to train, since it has a somewhat large number of
     hyperparameters.
-  - Prone to over-fitting if not trained carefully, unlike other methods
+-   Prone to over-fitting if not trained carefully, unlike other methods
     such as random forest.
 
 Additionally, we run a regularized linear model (ElasticNet) to use as a
@@ -209,14 +209,14 @@ linear model, particularly in areas with high housing heterogeneity.
 
 ### Hyperparameter Selection
 
-[Hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_\(machine_learning\))
+[Hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning))
 define the structure and trade-offs of models. They must be
 well-specified in order for a model to be accurate and useful. LightGBM
 has a large number of tunable parameters, but we train the most
 important six in our model. These parameters are:
 
 | LightGBM<br>Parameter                                                                               | Tidymodels<br>Equivalent | Parameter Description                                                                                                                                                                                                                          |
-| --------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-----------------------------------------------------------------------------------------------------|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [num\_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | num\_leaves              | The main parameter to control model complexity. Most important.                                                                                                                                                                                |
 | [max\_depth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                  | tree\_depth              | The maximum tree depth of the model.                                                                                                                                                                                                           |
 | [min\_data\_in\_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)   | min\_n                   | The minimum data in a single tree leaf. Important to prevent over-fitting.                                                                                                                                                                     |
@@ -259,10 +259,10 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-17.
+model as of 2021-01-21.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
-| :-------------------------------- | :------------- | :---------- | :---------------------------------------------------------------------------------------------- |
+|:----------------------------------|:---------------|:------------|:------------------------------------------------------------------------------------------------|
 | Age                               | Characteristic | numeric     |                                                                                                 |
 | Central Air Conditioning          | Characteristic | categorical | Central A/C, No Central A/C                                                                     |
 | Apartments                        | Characteristic | categorical | Two, Three, Four, Five, Six, None                                                               |
@@ -294,7 +294,7 @@ model as of 2021-01-17.
 | Tax Rate                          | Economic       | numeric     |                                                                                                 |
 | FEMA Floodplain                   | Geospatial     | logical     |                                                                                                 |
 | O’Hare Noise Indicator            | Geospatial     | logical     |                                                                                                 |
-| Road Proximity \< 100 Feet        | Geospatial     | logical     |                                                                                                 |
+| Road Proximity &lt; 100 Feet      | Geospatial     | logical     |                                                                                                 |
 | Road Proximity 101 - 300 Feet     | Geospatial     | logical     |                                                                                                 |
 | Flood Risk Direction              | Geospatial     | numeric     |                                                                                                 |
 | Flood Risk Factor                 | Geospatial     | numeric     |                                                                                                 |
@@ -304,6 +304,8 @@ model as of 2021-01-17.
 | Garage Indicator                  | Indicator      | logical     |                                                                                                 |
 | Neighborhood Code                 | Meta           | character   |                                                                                                 |
 | Township Code                     | Meta           | character   |                                                                                                 |
+| Sale Year                         | Time           | numeric     |                                                                                                 |
+| Sale Quarter                      | Time           | numeric     |                                                                                                 |
 | Sale Week                         | Time           | numeric     |                                                                                                 |
 | Sale Quarter of Year              | Time           | character   |                                                                                                 |
 | Sale Month of Year                | Time           | character   |                                                                                                 |
@@ -320,7 +322,7 @@ be high-quality and error-free. A non-exhaustive list of features and
 their respective sources includes:
 
 | Feature                                           | Data Source                                                                                                                                                                                                                                                                                              |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Tax rate                                          | Cook County Clerk’s Office                                                                                                                                                                                                                                                                               |
 | O’Hare noise boundary                             | Buffering O’Hare airport spatial boundary                                                                                                                                                                                                                                                                |
 | Road proximity                                    | Buffering [OpenStreetMap](https://www.openstreetmap.org/#map=10/41.8129/-87.6871) motorway, trunk, and primary roads                                                                                                                                                                                     |
@@ -339,12 +341,12 @@ features which are *not* in the model, as well as rationale for why
 they’re excluded:
 
 | Feature                                                | Reason It’s Excluded                                                                                                                                                                                                                      |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|--------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Property condition                                     | We track property condition, but over 98% of the properties in our data have the same condition, meaning it’s not tracked effectively and there’s not enough variation for it to be predictive of sale price.                             |
-| Being in an unincorporated area                        | [We’re working on it\!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                                                  |
+| Being in an unincorporated area                        | [We’re working on it!](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/issues/45)                                                                                                                                   |
 | Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn’t add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County. |
 | Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can’t reliably observe interior property characteristics beyond what is available through building permits.                                                                       |
-| Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future\!                                                                                                                                                                                                 |
+| Proximity to parks, the lake, the CTA, etc.            | These features are coming in the future!                                                                                                                                                                                                  |
 | Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                            |
 | Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                              |
 
@@ -370,12 +372,12 @@ This repository uses two data sets that are constructed by the
 [etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
 repository:
 
-  - `modeldata` - Includes residential sales from ***the seven years
+-   `modeldata` - Includes residential sales from ***the seven years
     prior to the next assessment date***, which gives us a sufficient
     amount of data for accurate prediction without including outdated
     price information. This is the data used to train and evaluate the
     model. Its approximate size is 300K rows with 89 features.
-  - `assmntdata` - Includes all residential properties (sold and unsold)
+-   `assmntdata` - Includes all residential properties (sold and unsold)
     which need assessed values. This is the data the final model is used
     on. Its approximate size is 1.1 million rows with 89 features.
 
@@ -456,18 +458,18 @@ representative of the actual market. This means dropping non-arms-length
 sales, removing outliers, and manually reviewing suspect sales.
 Specifically, we:
 
-  - Drop any sales with a sale price of less than $10,000.
-  - Drop sales on any properties with more than 40 rooms or 18 bedrooms
+-   Drop any sales with a sale price of less than $10,000.
+-   Drop sales on any properties with more than 40 rooms or 18 bedrooms
     (these are usually data entry errors).
-  - Drop sales whose price is more than 4 standard deviations away from
+-   Drop sales whose price is more than 4 standard deviations away from
     the mean price of sales in the same class and township.
-  - Drop sales with a significant amount of missing data.
-  - Hand review and then potentially drop (if found to be not
+-   Drop sales with a significant amount of missing data.
+-   Hand review and then potentially drop (if found to be not
     arms-length) sales which:
-      - Have a very high or very low sales ratio (predicted value /
+    -   Have a very high or very low sales ratio (predicted value /
         actual sale value).
-      - Deviate significantly from the neighborhood average.
-      - Have a very large year-over-year change in valuation or sale
+    -   Deviate significantly from the neighborhood average.
+    -   Have a very large year-over-year change in valuation or sale
         price.
 
 ### Post-Modeling
@@ -481,13 +483,13 @@ predictions. Specifically, post-modeling will:
 1.  Shift distributions of predicted values such that their median sale
     ratio (predicted value / actual sale value) moves toward 1. This is
     done by applying a percentage multiplier to **all properties**
-    within a neighborhood, modeling group, and sale price quartile. This
-    percentage multiplier is capped at 40% and requires a minimum number
-    of sales (25) within each adjustment group. This is done to correct
-    some of the modeling bias caused by [ongoing data
-    issues](#ongoing-issues), as well as prevent broad over- or
-    under-assessment. Only a small proportion of all properties receive
-    this adjustment.
+    within a neighborhood, modeling group, and estimated value quantile.
+    This percentage multiplier is capped at 40% and requires a minimum
+    number of sales and minimum amount of turnover within each
+    adjustment group. This is done to correct some of the modeling bias
+    caused by [ongoing data issues](#ongoing-issues), as well as prevent
+    broad over- or under-assessment. Only a small proportion of all
+    properties receive this adjustment.
 
 2.  Alter assessed values for properties with sales in the last two
     years if and only if their sale ratio falls outside specific
@@ -520,8 +522,8 @@ certain processes.
 
 #### Home Improvement Exemptions
 
-Per Illinois statute [35
-ILCS 200/15-180](https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=003502000K15-180),
+Per Illinois statute [35 ILCS
+200/15-180](https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=003502000K15-180),
 [homeowners are entitled to deduct up to $75,000 per
 year](https://www.cookcountyassessor.com/home-improvement-exemption)
 from their fair market value based on any value created by improvements
@@ -576,31 +578,31 @@ resources to building models, applications, and other tools. As a
 result, we’ve made the following major changes to the residential
 modeling codebase:
 
-  - Reduced the size of the codebase substantially, from around 16,000
+-   Reduced the size of the codebase substantially, from around 16,000
     lines of R code to less than 1,000. This was accomplished by moving
     complicated data handling to our [internal R
     package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
     and abstracting away machine learning logic to
     [Tidymodels](https://www.tidymodels.org/).
-  - Unified modeling for the entire county. Prior iterations of the
+-   Unified modeling for the entire county. Prior iterations of the
     residential model used individual models for each township. This was
     difficult to implement and track and performed worse than a single
     large model. The new model can value any residential property in the
     county, is significantly faster to train, and is much easier to
     replicate.
-  - Split the residential codebase into separate models for
+-   Split the residential codebase into separate models for
     [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm)
     and
     [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
     Previously, these models were combined in the same scripts, leading
     to a lot of complications and unnecessary overhead. Separating them
     makes it much easier to understand and diagnose each model.
-  - Switched to using LightGBM as our primary valuation model. LightGBM
+-   Switched to using LightGBM as our primary valuation model. LightGBM
     is essentially the most bleeding-edge machine learning framework
     widely available that isn’t a neural network. Prior to LightGBM, we
     used linear models or R’s gbm package. Prior to 2018, the CCAO used
     linear models in SPSS for residential valuations.
-  - Improved dependency management via
+-   Improved dependency management via
     [renv](https://rstudio.github.io/renv/articles/renv.html).
     Previously, users trying replicate our model needed to manually
     install a list of needed R packages. By switching to renv, we’ve
@@ -630,16 +632,16 @@ those 40, about 25 are [usable in modeling](#data-used). The remaining
 Additionally, our data is missing features commonly used in property
 valuation, such as:
 
-  - Property condition.
-  - Lot frontage.
-  - Land slope.
-  - Percentage of property above grade.
-  - Quality of finishes.
-  - Electrical and utility systems.
-  - Interior characteristics like finish quality, recent remodeling, or
+-   Property condition.
+-   Lot frontage.
+-   Land slope.
+-   Percentage of property above grade.
+-   Quality of finishes.
+-   Electrical and utility systems.
+-   Interior characteristics like finish quality, recent remodeling, or
     kitchen quality.
-  - Any information about pools.
-  - Information about location desirability or views.
+-   Any information about pools.
+-   Information about location desirability or views.
 
 This lack of characteristics contributes to larger errors when modeling,
 as it becomes difficult to distinguish between individual properties.
@@ -804,15 +806,15 @@ place. Some properties will gain $50K in value from an additional
 bedroom, while others will gain almost nothing. However, some factors do
 stand out as more influential:
 
-  - Location. Two identical single-family homes, one in Wicker Park, the
+-   Location. Two identical single-family homes, one in Wicker Park, the
     other in Markham, will not receive the same valuation. Location is
     the largest driver of county-wide variation in property value. This
     is accounted for in our model through a number of [location-based
     features](#features-used) such as school district, neighborhood,
     township, and others.
-  - Square footage. Larger homes tend to be worth more than smaller
+-   Square footage. Larger homes tend to be worth more than smaller
     ones, though there are diminishing marginal returns.
-  - Number of bedrooms and bathrooms. Generally speaking, the more rooms
+-   Number of bedrooms and bathrooms. Generally speaking, the more rooms
     the better, though again there are diminishing returns. The value
     added by a second bedroom is much more than the value added by a
     twentieth bedroom.
@@ -848,11 +850,11 @@ Assessors tend to use [housing and assessment-specific
 measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf)
 to gauge the performance of their mass appraisal systems, including:
 
-  - [COD (Coefficient of
+-   [COD (Coefficient of
     Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
-  - [PRD (Price-Related
+-   [PRD (Price-Related
     Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
-  - [PRB (Price-Related
+-   [PRB (Price-Related
     Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
 
 These statistics can be found broken out by township in the [sample
@@ -864,13 +866,13 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-17 is shown in
+performance on the [test set](#data-used) as of 2021-01-21 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
-| :--------- | ------------: | :------- | :------ | :--- |
-| Linear     |          0.76 | $157,501 | $91,506 | 29%  |
-| LightGBM   |          0.83 | $131,539 | $69,507 | 24%  |
+|:-----------|--------------:|:---------|:--------|:-----|
+| Linear     |          0.76 | $157,510 | $91,511 | 29%  |
+| LightGBM   |          0.84 | $130,788 | $69,037 | 24%  |
 
 **Q: How often does the model change?**
 
@@ -882,7 +884,7 @@ place during the downtime between reassessments, so about once per year.
 
 The code in this repository is written primarily in
 [R](https://www.r-project.org/about.html). Please install the [latest
-version of R](https://cloud.r-project.org/) (requires R version \>=
+version of R](https://cloud.r-project.org/) (requires R version &gt;=
 4.0.0) and [RStudio](https://rstudio.com/products/rstudio/download/)
 before proceeding with the steps below. If you’re on Windows, you’ll
 also need to install
@@ -1005,46 +1007,46 @@ graph LR
 
 **Modeling**
 
-  - `model.R` - Trains the model, evaluates a test set, and generates a
+-   `model.R` - Trains the model, evaluates a test set, and generates a
     report on the model’s performance.
-  - `input/modeldata.parquet` - Training data. See [Data
+-   `input/modeldata.parquet` - Training data. See [Data
     Used](#data-used) and [Getting Data](#getting-data) for details.
-  - `output/data/testdata.parquet` - Test set used to evaluate model
+-   `output/data/testdata.parquet` - Test set used to evaluate model
     performance. Contains the predicted values from both LightGBM and a
     baseline linear model.
-  - `output/models/lgbm_model.zip` - Saved LightGBM model object. Can be
+-   `output/models/lgbm_model.zip` - Saved LightGBM model object. Can be
     used to generate new predicted values on unseen data.
-  - `output/models/lgbm_recipe.rds` - Saved Tidymodels recipe object.
+-   `output/models/lgbm_recipe.rds` - Saved Tidymodels recipe object.
     Must be used to preprocess unseen data before passing it to the
     model object.
-  - `output/params/lgbm_params.rds` - Saved set of trained model
+-   `output/params/lgbm_params.rds` - Saved set of trained model
     hyperparameters. If this file doesn’t exist, default set in
     `model.R` will be used.
-  - `output/params/model_timings.rds` - Time elapsed during model
+-   `output/params/model_timings.rds` - Time elapsed during model
     training, saved in a data frame. Used in modeling report to show
     total training time.
-  - `reports/model_report.Rmd` - Reports on model performance, errors,
+-   `reports/model_report.Rmd` - Reports on model performance, errors,
     and outliers. Broken out by township.
-  - (Optional) Set of environmental variables to change cross validation
+-   (Optional) Set of environmental variables to change cross validation
     behavior. See [Options](#options).
 
 **Valuation**
 
-  - `valuation.R` - Creates a [secondary adjustment
+-   `valuation.R` - Creates a [secondary adjustment
     model](#post-modeling) and generates predicted values for all
     properties that need assessment.
-  - `input/assmntdata.parquet` - Assessment data. This is the set of all
+-   `input/assmntdata.parquet` - Assessment data. This is the set of all
     properties which need assessed values. Note that `meta_sale_date` is
     set to date of assessment.
-  - `output/models/postval_model.rds` - Saved set of adjustments to make
+-   `output/models/postval_model.rds` - Saved set of adjustments to make
     to raw predicted values. Can be applied to unseen data using a
     `predict()` method.
-  - `output/data/finalvalues.parquet` - Set of final, adjusted predicted
+-   `output/data/finalvalues.parquet` - Set of final, adjusted predicted
     values for all properties in `assmntdata`.
-  - `reports/valuation_report.Rmd` - Reports on the quality of
+-   `reports/valuation_report.Rmd` - Reports on the quality of
     prediction/assessment using the final model. Also details the
     changes made by post-modeling adjustments.
-  - (Optional) Set of environmental variables to change cross validation
+-   (Optional) Set of environmental variables to change cross validation
     behavior. See [Options](#options).
 
 ## Options
@@ -1058,24 +1060,24 @@ variables are set, sensible defaults are used.
 
 **In `model.R`:**
 
-  - `R_CV_ENABLE` - If `TRUE`, model will determine best hyperparameters
+-   `R_CV_ENABLE` - If `TRUE`, model will determine best hyperparameters
     using k-fold cross validation. If `FALSE`, model will use saved
     hyperparameters from `output/params/lgbm_params.rds`. If that file
     doesn’t exist, model will use the hyperparameter defaults saved in
     `model.R`.
-  - `R_CV_WRITE_PARAMS` - If `TRUE`, model will overwrite
+-   `R_CV_WRITE_PARAMS` - If `TRUE`, model will overwrite
     `output/params/lgbm_params.rds` with new values after completing
     cross validation.
-  - `R_CV_NUM_FOLDS` - Integer. Number of folds to use for k-fold cross
+-   `R_CV_NUM_FOLDS` - Integer. Number of folds to use for k-fold cross
     validation.
 
 **In `model_report.Rmd` and `valuation_report.Rmd`:**
 
-  - `R_REPORT_FILTER` - If `TRUE`, only show township-level statistics
+-   `R_REPORT_FILTER` - If `TRUE`, only show township-level statistics
     for the triad selected by `R_REPORT_TRIAD`. If `FALSE`, show all
     statistics for all townships. Can also be set using R Markdown
     report parameters.
-  - `R_REPORT_TRIAD` - Name of Cook County triad to report on. Options
+-   `R_REPORT_TRIAD` - Name of Cook County triad to report on. Options
     are City, South, and North. Can also be set using R Markdown report
     parameters.
 
@@ -1108,15 +1110,15 @@ turned **off**, while parallel processing in LightGBM is turned **on**.
 This means that models are fit sequentially, but each model fitting is
 sped up using the parallel processing built-in to LightGBM. Note that:
 
-  - The total amount of RAM needed for overall model fitting is around
+-   The total amount of RAM needed for overall model fitting is around
     6GB.
-  - The number of threads is set via the
+-   The number of threads is set via the
     [num\_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads)
     parameter, which is passed to the model using the `set_args()`
     function from `parsnip`. By default, `num_threads` is equal to the
     full number of physical cores available. More (or faster) cores will
     decrease total training time.
-  - This repository uses the CPU version of LightGBM included with the
+-   This repository uses the CPU version of LightGBM included with the
     [LightGBM R
     package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If
     you’d like to use the GPU version you’ll need to [build it
@@ -1128,19 +1130,21 @@ The dependencies for this repository are numerous and not all of them
 may install correctly. Here are some common install issues (as seen in
 the R console) as well as their respective resolutions:
 
-  - Error: `Failed to retrieve package 'treesnip'` <br>Solution:
+-   Error: `Failed to retrieve package 'treesnip'` <br>Solution:
     Manually install treesnip [from
     GitHub](https://github.com/curso-r/treesnip), following the
     instructions listed.
 
-  - Error: `WARNING: Rtools is required to build R packages, but is not
-    currently installed` <br>Solution: Install the latest version of
-    Rtools [from CRAN](https://cran.r-project.org/bin/windows/Rtools/),
-    following the instructions listed.
+-   Error:
+    `WARNING: Rtools is required to build R packages, but is not currently installed`
+    <br>Solution: Install the latest version of Rtools [from
+    CRAN](https://cran.r-project.org/bin/windows/Rtools/), following the
+    instructions listed.
 
-  - Error: `DLL '<package-name>' not found: maybe not installed for this
-    architecture?` <br>Soluation: Try installing the package manually
-    with the `INSTALL_opts` flag set. See
+-   Error:
+    `DLL '<package-name>' not found: maybe not installed for this architecture?`
+    <br>Soluation: Try installing the package manually with the
+    `INSTALL_opts` flag set. See
     [here](https://github.com/rstudio/renv/issues/162#issuecomment-612380245)
     for an example.
 

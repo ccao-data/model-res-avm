@@ -23,8 +23,7 @@ library(vctrs)
 
 # Load helper functions from file
 source(here("R", "recipes.R"))
-source(here("R", "metrics.R"))
-source(here("R", "model_funs.R"))
+source(here("R", "bindings.R"))
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
@@ -34,9 +33,9 @@ num_threads <- parallel::detectCores(logical = FALSE)
 tictoc::tic(msg = "Full Modeling Complete!")
 
 # Toggle cross validation and set number of folds to use
-cv_enable <- as.logical(model_get_env("R_CV_ENABLE", FALSE))
-cv_write_params <- as.logical(model_get_env("R_CV_WRITE_PARAMS", FALSE))
-cv_num_folds <- as.numeric(model_get_env("R_CV_NUM_FOLDS", 5))
+cv_enable <- as.logical(ccao::model_get_env("R_CV_ENABLE", FALSE))
+cv_write_params <- as.logical(ccao::model_get_env("R_CV_WRITE_PARAMS", FALSE))
+cv_num_folds <- as.numeric(ccao::model_get_env("R_CV_NUM_FOLDS", 5))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 15, seed = 27)
 
 
@@ -134,7 +133,7 @@ enet_wflow_final_fit <- enet_wflow %>%
   fit(data = train)
 
 # Remove unnecessary objects created while modeling
-rm_intermediate("enet")
+ccao::rm_intermediate("enet")
 
 
 
@@ -225,7 +224,7 @@ if (cv_enable) {
     initial = 12,
     iter = 100,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, codm, rsq),
+    metrics = metric_set(rmse, rsq, mape),
     control = cv_control
   )
   tictoc::toc(log = TRUE)
@@ -235,12 +234,12 @@ if (cv_enable) {
   # CV iteration
   if (cv_write_params) {
     lgbm_search %>%
-      model_axe_tune_data() %>%
+      ccao::model_axe_tune_data() %>%
       saveRDS(lgbm_params_path)
   }
 
   # Choose the best model (whichever model minimizes RMSE)
-  lgbm_final_params <- model_cap_num_leaves(
+  lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(
     select_best(lgbm_search, metric = "rmse")
   )
 } else {
@@ -248,11 +247,11 @@ if (cv_enable) {
   # If CV is not enabled, load saved parameters from file if it exists
   # Otherwise use a set of sensible hand-chosen defaults
   if (file.exists(lgbm_params_path)) {
-    lgbm_final_params <- model_cap_num_leaves(
+    lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(
       select_best(readRDS(lgbm_params_path), metric = "rmse")
     )
   } else {
-    lgbm_final_params <- model_cap_num_leaves(data.frame(
+    lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(data.frame(
       mtry = 13, min_n = 17, tree_depth = 9, learn_rate = 0.0158,
       loss_reduction = 0.056, num_leaves = 167
     ))
@@ -265,17 +264,17 @@ if (cv_enable) {
 # Fit the final model using the training data and our final hyperparameters
 # This is the model used to measure performance on the test set
 lgbm_wflow_final_fit <- lgbm_wflow %>%
-  model_update_params(lgbm_final_params) %>%
+  ccao::model_lgbm_update_params(lgbm_final_params) %>%
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This is the model used for actually assessing all properties
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  model_update_params(lgbm_final_params) %>%
+  ccao::model_lgbm_update_params(lgbm_final_params) %>%
   fit(data = full_data)
 
 # Remove unnecessary objects created while modeling
-rm_intermediate("lgbm")
+ccao::rm_intermediate("lgbm")
 
 
 
@@ -290,12 +289,12 @@ rm_intermediate("lgbm")
 # predictions are used to evaluate model performance in model_report.Rmd
 test %>%
   mutate(
-    enet = model_predict(
+    enet = ccao::model_predict(
       enet_wflow_final_fit %>% pull_workflow_fit(),
       enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
       test
     ),
-    lgbm = model_predict(
+    lgbm = ccao::model_predict(
       lgbm_wflow_final_fit %>% pull_workflow_fit(),
       lgbm_wflow_final_fit %>% pull_workflow_prepped_recipe(),
       test
@@ -308,13 +307,13 @@ test %>%
 # lightgbm is picky about how its model objects are stored on disk
 lgbm_wflow_final_full_fit %>%
   pull_workflow_fit() %>%
-  model_save(here("output", "models", "lgbm_model.zip"))
+  ccao::model_lgbm_save(here("output", "models", "lgbm_model.zip"))
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data
 lgbm_wflow_final_full_fit %>%
   pull_workflow_prepped_recipe() %>%
-  model_axe_recipe() %>%
+  ccao::model_axe_recipe() %>%
   saveRDS(here("output", "models", "lgbm_recipe.rds"))
 
 
