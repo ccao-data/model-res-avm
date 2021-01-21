@@ -16,10 +16,6 @@ library(tictoc)
 library(tidymodels)
 library(treesnip)
 
-# Load helper functions from file
-source(here("R", "model_funs.R"))
-source(here("R", "valuation_funs.R"))
-
 # Start full script timer
 tictoc::tic(msg = "Full Valuation Complete!")
 
@@ -31,7 +27,9 @@ tictoc::tic(msg = "Full Valuation Complete!")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the final lightgbm model object and recipe from file
-lgbm_final_full_fit <- model_load(here("output", "models", "lgbm_model.zip"))
+lgbm_final_full_fit <- ccao::model_lgbm_load(
+  here("output", "models", "lgbm_model.zip")
+)
 lgbm_final_full_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 
 # Post-modeling adjustments (such as ratio capping) require sales to work.
@@ -53,7 +51,7 @@ assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
 # Generate predictions for all assessment data using the lightgbm model
 assmntdata <- assmntdata %>%
   mutate(
-    lgbm = model_predict(
+    lgbm = ccao::model_predict(
       spec = lgbm_final_full_fit,
       recipe = lgbm_final_full_recipe,
       data = .
@@ -74,7 +72,7 @@ assmntdata <- assmntdata %>%
 hiedata <- read_parquet(here("input", "hiedata.parquet")) %>%
   left_join(sales_data_prev_2_years, by = "meta_pin") %>%
   mutate(
-    lgbm_w_addchars = model_predict(
+    lgbm_w_addchars = ccao::model_predict(
       spec = lgbm_final_full_fit,
       recipe = lgbm_final_full_recipe,
       data = .
@@ -109,7 +107,7 @@ assmntdata <- assmntdata %>%
 # Create post-valuation model object to save aggregate adjustments. Here we are
 # capping large sales ratios, shifting distributions within neighborhood and
 # modeling group, and averaging values for identical townhomes
-pv_model <- postval_model(
+pv_model <- ccao::postval_model(
   data = assmntdata,
   truth = meta_sale_price,
   estimate = lgbm,
@@ -118,12 +116,16 @@ pv_model <- postval_model(
   ntile_probs = c(0.2, 0.4, 0.6, 0.8),
   ntile_min_sales = 10,
   ntile_min_turnover = 0.09,
+  ntile_max_abs_adj = 0.4,
   townhome_group_cols = c(
     "meta_town_code", "meta_class", "char_age", "char_bsmt", "char_rooms",
     "char_gar1_size", "char_attic_fnsh", "char_bldg_sf", "char_beds"
   ),
   townhome_min_sales = 3,
-  townhome_min_turnover = 0.15
+  townhome_min_turnover = 0.15,
+  townhome_max_abs_adj = 0.4,
+  ratio_cap_upper_bound = 2.0,
+  ratio_cap_lower_bound = 0.7
 )
 
 # Save postval model to file so it can be used for any future predictions
@@ -133,7 +135,14 @@ pv_model %>%
 # Applied the postval model to initial lightgbm predictions to get final
 # predicted values. Keep only the columns needed for final output
 pv_final_values <- assmntdata %>%
-  mutate(final_value = predict(pv_model, ., meta_sale_price, lgbm)) %>%
+  mutate(
+    final_value = predict(
+      object = pv_model,
+      new_data = .,
+      truth = meta_sale_price,
+      estimate = lgbm
+    )
+  ) %>%
   rename(lgbm_value = lgbm) %>%
   group_by(meta_pin) %>% 
   mutate(ind_multi_pin = n() > 1) %>%

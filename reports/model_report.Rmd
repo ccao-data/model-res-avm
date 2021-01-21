@@ -27,23 +27,16 @@ library(stringr)
 library(tidyr)
 library(tune)
 library(yardstick)
-source(here("R", "model_funs.R"))
 
 # Hide code output and make plots take 100% of page width
 knitr::opts_chunk$set(echo = FALSE, out.width = '100%')
 
 # Filter to specific triad. Set with system variable else param defined in yaml
-report_filter <- Sys.getenv("R_REPORT_FILTER", unset = NA)
-report_filter <- as.logical(ifelse(
-  !is.na(report_filter),
-  report_filter,
-  params$filter
-))
+report_filter <- as.logical(ccao::model_get_env("R_REPORT_FILTER", params$filter))
 
 # Triad to use for report if filtered. Set with system variable else param
 # defined in yaml
-report_triad <- Sys.getenv("R_REPORT_TRIAD", unset = NA)
-report_triad <- ifelse(!is.na(report_triad), report_triad, params$triad)
+report_triad <- ccao::model_get_env("R_REPORT_TRIAD", params$triad)
 ```
 
 ```{r model_timing, results='asis'}
@@ -458,7 +451,7 @@ outlier_dist %>%
 # functionality, which measures gain
 lgbm_model_path <- here("output", "models", "lgbm_model.zip")
 if (file.exists(lgbm_model_path)) {
-  lgbm_final_full_fit <- model_load(lgbm_model_path)
+  lgbm_final_full_fit <- ccao::model_lgbm_load(lgbm_model_path)
 
   # Get feature importance (gain) for lightgbm model (TAKES A LONG TIME TO RUN)
   lgbm_feat_imp <- lgb.importance(lgbm_final_full_fit$fit)
@@ -492,7 +485,7 @@ if (file.exists(lgbm_params_path)) {
   lgbm_final_params <- lgbm_params %>%
     mutate(iterations = max(.iter)) %>%
     select_best(metric = "rmse") %>%
-    model_cap_num_leaves() %>%
+    model_lgbm_cap_num_leaves() %>%
     mutate(.config = str_remove(.config, "Iter"))
 }
 
