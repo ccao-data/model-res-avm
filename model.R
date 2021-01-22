@@ -36,7 +36,7 @@ tictoc::tic(msg = "Full Modeling Complete!")
 cv_enable <- as.logical(ccao::model_get_env("R_CV_ENABLE", FALSE))
 cv_write_params <- as.logical(ccao::model_get_env("R_CV_WRITE_PARAMS", FALSE))
 cv_num_folds <- as.numeric(ccao::model_get_env("R_CV_NUM_FOLDS", 5))
-cv_control <- control_bayes(verbose = TRUE, no_improve = 15, seed = 27)
+cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
 
 
 
@@ -158,7 +158,7 @@ lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees arg here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 2000,
+  trees = 1000,
   num_leaves = tune(), tree_depth = tune(), min_n = tune(),
   mtry = tune(), loss_reduction = tune(), learn_rate = tune()
 ) %>%
@@ -192,7 +192,7 @@ if (cv_enable) {
 
       # Most important. Specific to lightgbm. Ideally equal to < 2 ^ tree_depth
       # Higher values increase training time and model complexity
-      num_leaves = num_leaves(c(2^5L, 2^13L)),
+      num_leaves = num_leaves(c(2 ^ 5L, 2 ^ 13L)),
 
       # Very important. Maps to max_depth in lightgbm. Higher values increase
       # model complexity but may cause overfitting
@@ -252,8 +252,8 @@ if (cv_enable) {
     )
   } else {
     lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(data.frame(
-      mtry = 13, min_n = 17, tree_depth = 9, learn_rate = 0.0158,
-      loss_reduction = 0.056, num_leaves = 167
+      mtry = 13, min_n = 197, tree_depth = 13, learn_rate = 0.0105,
+      loss_reduction = 0.0002, num_leaves = 3381
     ))
   }
 }

@@ -87,8 +87,8 @@ assmntdata <- assmntdata %>%
   left_join(hiedata) %>%
   mutate(
     diff = replace_na(lgbm_w_addchars - lgbm, 0),
-    meta_288_exceeds_cap = diff > 75000,
-    lgbm = ifelse(meta_288_exceeds_cap, lgbm + (diff - 75000), lgbm)
+    ind_288_exceeds_cap = diff > 75000,
+    lgbm = ifelse(ind_288_exceeds_cap, lgbm + (diff - 75000), lgbm)
   ) %>%
   select(-diff, -lgbm_w_addchars)
 
@@ -106,16 +106,16 @@ assmntdata <- assmntdata %>%
 
 # Create post-valuation model object to save aggregate adjustments. Here we are
 # capping large sales ratios, shifting distributions within neighborhood and
-# modeling group, and averaging values for identical townhomes
+# class, and averaging values for identical townhomes
 pv_model <- ccao::postval_model(
   data = assmntdata,
   truth = meta_sale_price,
   estimate = lgbm,
   class = meta_class,
-  ntile_group_cols = c("meta_town_code", "meta_nbhd", "meta_modeling_group"),
+  ntile_group_cols = c("meta_town_code", "meta_nbhd", "meta_class", "char_apts"),
   ntile_probs = c(0.2, 0.4, 0.6, 0.8),
   ntile_min_sales = 10,
-  ntile_min_turnover = 0.09,
+  ntile_min_turnover = 0.08,
   ntile_max_abs_adj = 0.4,
   townhome_group_cols = c(
     "meta_town_code", "meta_class", "char_age", "char_bsmt", "char_rooms",
@@ -153,14 +153,14 @@ sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length, meta_year == max(meta_year)) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
-  select(meta_pin, meta_year, meta_class, meta_sale_price) %>%
+  select(meta_pin, meta_year, meta_class, meta_sale_price, meta_sale_date) %>%
   ungroup()
 
 # Attach only the most recent year of sales to the final values for the
 # purpose of reporting and sales ratio study. The 2 years of sales for the post-
 # modeling adjustment are tossed out here
 pv_final_values <- pv_final_values %>%
-  select(-meta_sale_price) %>%
+  select(-meta_sale_price, -meta_sale_date) %>%
   left_join(sales_data, by = c("meta_pin", "meta_year", "meta_class")) %>%
   ccao::recp_clean_relocate()
 
