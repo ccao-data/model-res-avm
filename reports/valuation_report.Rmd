@@ -42,17 +42,16 @@ report_triad <- ccao::model_get_env("R_REPORT_TRIAD", params$triad)
 pv_final_values <- read_parquet(
     here("output", "data", "finalvalues.parquet")
   ) %>%
-  filter(meta_modeling_group != "BB") %>%
+  filter(meta_modeling_group != "BB", !ind_multi_pin) %>%
   mutate(
-    pri_yr_board_est = meta_pri_yr_board_est_bldg + meta_pri_yr_board_est_land,
-    mailed_est = meta_mailed_est_bldg + meta_mailed_est_land,
+    pri_board_est = meta_2yr_pri_board_est_bldg + meta_2yr_pri_board_est_land,
     certified_est = meta_certified_est_bldg + meta_certified_est_land,
     town_name = town_convert(meta_town_code),
     triad = factor(
       town_get_triad(meta_town_code, name = TRUE),
       levels = c("North", "City", "South")
     ),
-    board_yoy_pct_change = (final_value - pri_yr_board_est) / pri_yr_board_est,
+    board_yoy_pct_change = (final_value - pri_board_est) / pri_board_est,
     certified_yoy_pct_change = (final_value - certified_est) / certified_est
   )
 
@@ -64,19 +63,14 @@ assessment_year <- case_when(
   !is.na(as.numeric(params$assessment_year)) ~ as.numeric(params$assessment_year),
   TRUE ~ lubridate::year(max(pv_final_values$meta_sale_date))
 )
-sales_year <- assessment_year - 1
 
 # Load full sales data for use in reporting historical sales ratios and
 # recreating post-modeling
 sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
-  filter(ind_arms_length, meta_year >= sales_year - 2) %>%
-  group_by(meta_pin) %>%
-  filter(meta_sale_date == max(meta_sale_date)) %>%
-  distinct(meta_pin, meta_sale_price, meta_document_num, .keep_all = TRUE) %>%
-  ungroup() %>%
+  filter(ind_arms_length) %>%
   select(
     meta_pin, meta_year, meta_town_code, meta_class, meta_multi_code,
-    meta_document_num, meta_sale_price
+    meta_document_num, meta_sale_date, meta_sale_price
   ) %>%
   mutate(triad = town_get_triad(meta_town_code, name = TRUE))
 
@@ -97,11 +91,13 @@ if (report_filter) {
 # To conform to SOPs, we need to use lagged sales for all years prior to the
 # reporting/current year. See wiki SOPs section
 sales_data_wide <- sales_data %>%
+  filter(meta_year >= assessment_year - 4) %>%
   ungroup() %>%
   mutate(meta_year = case_when(
-    meta_year == sales_year ~ "yr-0",
-    meta_year == sales_year - 1 ~ "yr-1",
-    meta_year == sales_year - 2 ~ "yr-2"
+    meta_year == assessment_year - 1 ~ "yr-1",
+    meta_year == assessment_year - 2 ~ "yr-2",
+    meta_year == assessment_year - 3 ~ "yr-3",
+    meta_year == assessment_year - 4 ~ "yr-4"
   )) %>%
   pivot_wider(
     id_cols = c(meta_pin, meta_class, meta_multi_code),
@@ -115,25 +111,25 @@ sales_data_wide <- sales_data %>%
 pv_calc_stats <- function(data) {
   data %>%
   summarize(
-    bor_cod = ccao_cod(pri_yr_board_est / `sale_price_yr-0`, na.rm = TRUE)$COD,
-    bor_prd = ccao_prd(pri_yr_board_est, `sale_price_yr-0`, na.rm = TRUE)$PRD,
-    bor_prb = ccao_prb(pri_yr_board_est, `sale_price_yr-0`, na.rm = TRUE)$PRB,
-    bor_med = median(pri_yr_board_est / `sale_price_yr-0`, na.rm = TRUE),
+    bor_cod = ccao_cod(pri_board_est / `sale_price_yr-4`, na.rm = TRUE)$COD,
+    bor_prd = ccao_prd(pri_board_est, `sale_price_yr-4`, na.rm = TRUE)$PRD,
+    bor_prb = ccao_prb(pri_board_est, `sale_price_yr-4`, na.rm = TRUE)$PRB,
+    bor_med = median(pri_board_est / `sale_price_yr-4`, na.rm = TRUE),
     
-    cert_cod = ccao_cod(certified_est / `sale_price_yr-1`, na.rm = TRUE)$COD,
-    cert_prd = ccao_prd(certified_est, `sale_price_yr-1`, na.rm = TRUE)$PRD,
-    cert_prb = ccao_prb(certified_est, `sale_price_yr-1`, na.rm = TRUE)$PRB,
-    cert_med = median(certified_est / `sale_price_yr-1`, na.rm = TRUE),
+    cert_cod = ccao_cod(certified_est / `sale_price_yr-2`, na.rm = TRUE)$COD,
+    cert_prd = ccao_prd(certified_est, `sale_price_yr-2`, na.rm = TRUE)$PRD,
+    cert_prb = ccao_prb(certified_est, `sale_price_yr-2`, na.rm = TRUE)$PRB,
+    cert_med = median(certified_est / `sale_price_yr-2`, na.rm = TRUE),
     
-    init_cod = ccao_cod(lgbm_value / `sale_price_yr-0`, na.rm = TRUE)$COD,
-    init_prd = ccao_prd(lgbm_value, `sale_price_yr-0`, na.rm = TRUE)$PRD,
-    init_prb = ccao_prb(lgbm_value, `sale_price_yr-0`, na.rm = TRUE)$PRB,
-    init_med = median(lgbm_value / `sale_price_yr-0`, na.rm = TRUE),
+    init_cod = ccao_cod(lgbm_value / `sale_price_yr-1`, na.rm = TRUE)$COD,
+    init_prd = ccao_prd(lgbm_value, `sale_price_yr-1`, na.rm = TRUE)$PRD,
+    init_prb = ccao_prb(lgbm_value, `sale_price_yr-1`, na.rm = TRUE)$PRB,
+    init_med = median(lgbm_value / `sale_price_yr-1`, na.rm = TRUE),
     
-    final_cod = ccao_cod(final_value / `sale_price_yr-0`, na.rm = TRUE)$COD,
-    final_prd = ccao_prd(final_value, `sale_price_yr-0`, na.rm = TRUE)$PRD,
-    final_prb = ccao_prb(final_value, `sale_price_yr-0`, na.rm = TRUE)$PRB,
-    final_med = median(final_value / `sale_price_yr-0`, na.rm = TRUE)
+    final_cod = ccao_cod(final_value / `sale_price_yr-1`, na.rm = TRUE)$COD,
+    final_prd = ccao_prd(final_value, `sale_price_yr-1`, na.rm = TRUE)$PRD,
+    final_prb = ccao_prb(final_value, `sale_price_yr-1`, na.rm = TRUE)$PRB,
+    final_med = median(final_value / `sale_price_yr-1`, na.rm = TRUE)
   ) %>%
   mutate(
     across(contains("_cod"), cod_met, .names = "{.col}_met"),
@@ -147,7 +143,7 @@ pv_calc_stats <- function(data) {
 # Calculate performance stats by triad
 pv_model_perf_triad <- pv_final_values %>%
   left_join(sales_data_wide, by = c("meta_pin", "meta_class", "meta_multi_code")) %>%
-  filter(!ind_multi_pin, pri_yr_board_est != 0, certified_est != 0) %>%
+  filter(!ind_multi_pin, pri_board_est != 0, certified_est != 0) %>%
   group_by(triad) %>%
   pv_calc_stats()
 
@@ -157,10 +153,10 @@ pv_model_perf_headers <- htmltools::withTags(table(
   thead(
     tr(
       th(rowspan = 2, "Township"),
-      th(colspan = 4, glue("BoR ({sales_year - 1}) / {sales_year} Sales")),
-      th(colspan = 4, glue("Certified ({sales_year}) / {sales_year - 1} Sales")),
-      th(colspan = 4, glue("Initial Model / {sales_year} Sales")),
-      th(colspan = 4, glue("Final Model / {sales_year} Sales")),
+      th(colspan = 4, glue("BoR ({assessment_year - 3}) / {assessment_year - 4} Sales")),
+      th(colspan = 4, glue("Certified ({assessment_year - 1}) / {assessment_year - 2} Sales")),
+      th(colspan = 4, glue("Initial Model / {assessment_year - 1} Sales")),
+      th(colspan = 4, glue("Final Model / {assessment_year - 1} Sales")),
     ),
     tr(
       th("COD"), th("PRD"), th("PRB"), th("Med."),
@@ -207,7 +203,7 @@ pv_model_perf_triad %>%
 # Calculate sales ratio performance stats by township
 pv_model_perf_township <- pv_final_values %>%
   left_join(sales_data_wide, by = c("meta_pin", "meta_class", "meta_multi_code")) %>%
-  filter(!ind_multi_pin, pri_yr_board_est != 0, certified_est != 0) %>%
+  filter(!ind_multi_pin, pri_board_est != 0, certified_est != 0) %>%
   group_by(town_name) %>%
   pv_calc_stats()
 
@@ -253,7 +249,7 @@ pv_summary <- pv_final_values %>%
     triad = first(triad),
     num_props = n(),
     num_sales = sum(!is.na(meta_sale_price)),
-    median_board_est = median(pri_yr_board_est, na.rm = TRUE),
+    median_board_est = median(pri_board_est, na.rm = TRUE),
     median_certified_est = median(certified_est, na.rm = TRUE),
     median_sale_price = median(meta_sale_price, na.rm = TRUE),
     median_model_value = median(lgbm_value, na.rm = TRUE),
@@ -270,13 +266,13 @@ pv_summary_headers <- htmltools::withTags(table(
       th(rowspan = 2, "Township"),
       th(rowspan = 2, "Triad"),
       th(rowspan = 2, "Num. Props"),
-      th(rowspan = 2, glue("Num. Sales ({sales_year})")),
+      th(rowspan = 2, glue("Num. Sales ({assessment_year - 1})")),
       th(colspan = 8, "Median Values"),
     ),
     tr(
-      th(glue("BoR Value ({sales_year - 1})")),
-      th(glue("Certified Value ({sales_year})")),
-      th(glue("Sale Price ({sales_year})")),
+      th(glue("BoR Value ({assessment_year - 3})")),
+      th(glue("Certified Value ({assessment_year - 1})")),
+      th(glue("Sale Price ({assessment_year - 1})")),
       th("Initial Model Value"),
       th("Final Model Value"),
       th("Median Percent Change (BoR to Final)"),
@@ -389,7 +385,10 @@ tibble(
 # This is usually all sales from 2 years before the assessment date
 sales_data_prev_2_years <- sales_data %>%
   filter(meta_year >= assessment_year - 2) %>%
-  distinct(meta_pin, meta_sale_price)
+  group_by(meta_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date)) %>%
+  distinct(meta_pin, meta_sale_price, meta_document_num) %>%
+  ungroup()
 
 # Join the sales sample, then assign a post-modeling ntile to each estimated
 # value. Each ntile has an adjustment percentage stored in the postval_model obj
@@ -500,7 +499,7 @@ if (sum(pv_postmodel_vals2$diff)) {
 qnums <- pv_model$ntile_adjustments %>%
   mutate(sort_num = gsub("[()]", "", ntile)) %>%
   separate(sort_num, into = c("low_bound", "high_bound"), sep = ",") %>%
-  group_by(meta_town_code, meta_nbhd, meta_modeling_group) %>%
+  group_by(meta_town_code, meta_nbhd, meta_class) %>%
   arrange(as.numeric(low_bound), .by_group = TRUE) %>%
   mutate(qnum = paste0("Q", row_number())) %>%
   filter(!is.na(low_bound))
@@ -618,15 +617,15 @@ ggplot() +
 # for discrepancies or oddities in distributions
 pv_dist_vals <- pv_final_values %>%
   pivot_longer(c(
-    pri_yr_board_est, certified_est, meta_sale_price,
+    pri_board_est, certified_est, meta_sale_price,
     lgbm_value, final_value
   )) %>%
   mutate(name = fct_recode(
     factor(name, levels = c(
-      "pri_yr_board_est", "certified_est",
+      "pri_board_est", "certified_est",
       "meta_sale_price", "lgbm_value", "final_value"
     )),
-    "BoR Value (2 Years Ago)" = "pri_yr_board_est",
+    "BoR Value (2 Years Ago)" = "pri_board_est",
     "Certified Value (Prior Year)" = "certified_est",
     "Sale Price (Prior Year)" = "meta_sale_price",
     "Initial Model Value" = "lgbm_value",
@@ -800,7 +799,7 @@ ggplot() +
 # Split YoY percent change by BoR value
 decile_data_yoy <- pv_final_values %>%
   filter(
-    !is.na(board_yoy_pct_change), !is.na(pri_yr_board_est), pri_yr_board_est != 0,
+    !is.na(board_yoy_pct_change), !is.na(pri_board_est), pri_board_est != 0,
     !is.na(certified_yoy_pct_change), !is.na(certified_est), certified_est != 0
   ) %>%
   mutate(decile = ntile(final_value, 10)) %>%
@@ -819,13 +818,12 @@ decile_data_yoy <- pv_final_values %>%
   ) %>%
   mutate(
     name = case_when(
-      name == "board_yoy_pct_change" ~ glue("BoR ({sales_year - 1}) to Final Model"),
-      name == "certified_yoy_pct_change" ~ glue("Cert. ({sales_year}) to Final Model")
+      name == "board_yoy_pct_change" ~ glue("BoR ({assessment_year - 4}) to Final Model"),
+      name == "certified_yoy_pct_change" ~ glue("Cert. ({assessment_year - 1}) to Final Model")
     ),
     name = factor(name, levels = c(
-      glue("Cert. ({sales_year}) to Final Model"),
-      glue("BoR ({sales_year - 1}) to Final Model")
-
+      glue("Cert. ({assessment_year - 1}) to Final Model"),
+      glue("BoR ({assessment_year - 4}) to Final Model")
     ))
   )
 
