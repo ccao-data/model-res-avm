@@ -51,6 +51,7 @@ results/*
 # Folders
 scratch/
 secrets/
+misc/
 
 # Data
 *.parquet
