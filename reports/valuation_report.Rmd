@@ -499,7 +499,7 @@ if (sum(pv_postmodel_vals2$diff)) {
 qnums <- pv_model$ntile_adjustments %>%
   mutate(sort_num = gsub("[()]", "", ntile)) %>%
   separate(sort_num, into = c("low_bound", "high_bound"), sep = ",") %>%
-  group_by(meta_town_code, meta_nbhd, meta_class) %>%
+  group_by(across(any_of(pv_model$ntile_group_cols))) %>%
   arrange(as.numeric(low_bound), .by_group = TRUE) %>%
   mutate(qnum = paste0("Q", row_number())) %>%
   filter(!is.na(low_bound))

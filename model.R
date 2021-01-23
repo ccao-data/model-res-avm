@@ -35,7 +35,7 @@ tictoc::tic(msg = "Full Modeling Complete!")
 # Toggle cross validation and set number of folds to use
 cv_enable <- as.logical(ccao::model_get_env("R_CV_ENABLE", FALSE))
 cv_write_params <- as.logical(ccao::model_get_env("R_CV_WRITE_PARAMS", FALSE))
-cv_num_folds <- as.numeric(ccao::model_get_env("R_CV_NUM_FOLDS", 5))
+cv_num_folds <- as.numeric(ccao::model_get_env("R_CV_NUM_FOLDS", 7))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
 
 

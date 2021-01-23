@@ -67,10 +67,10 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.3-2",
+      "Version": "1.2-18",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "ff280503079ad8623d3c4b1519b24ea2"
+      "Hash": "08588806cba69f04797dab50627428ed"
     },
     "R6": {
       "Package": "R6",
@@ -139,14 +139,14 @@
       "Package": "assessr",
       "Version": "0.4.3",
       "Source": "GitLab",
+      "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
-      "RemoteUsername": "ccao-data-science---modeling",
       "RemoteRepo": "packages/assessr",
-      "RemoteSubdir": "",
-      "RemoteRef": "master",
+      "RemoteUsername": "ccao-data-science---modeling",
+      "RemoteRef": "HEAD",
       "RemoteSha": "34bd2f0772d94b9d346720ca650a760452df83d9",
-      "Hash": "54cc9706afd653d574e324387ef397fe"
+      "Hash": "5e0abff56af24f00ab306cfc3aa84b4f"
     },
     "audio": {
       "Package": "audio",
@@ -157,10 +157,10 @@
     },
     "backports": {
       "Package": "backports",
-      "Version": "1.2.1",
+      "Version": "1.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "644043219fc24e190c2f620c1a380a69"
+      "Hash": "fb0efa7042b45dac543dd3995a6dac0b"
     },
     "base64enc": {
       "Package": "base64enc",
@@ -213,15 +213,10 @@
     },
     "butcher": {
       "Package": "butcher",
-      "Version": "0.1.2.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteUsername": "tidymodels",
-      "RemoteRepo": "butcher",
-      "RemoteRef": "master",
-      "RemoteSha": "62c138bb5dfd7577ea0e3f28596f84853d8ead08",
-      "RemoteHost": "api.github.com",
-      "Hash": "d3bb801419c78cade43d02c1683495d8"
+      "Version": "0.1.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "c2b903552b4cfff5d42d02ee885e3ac7"
     },
     "callr": {
       "Package": "callr",
@@ -234,14 +229,14 @@
       "Package": "ccao",
       "Version": "0.5.0",
       "Source": "GitLab",
+      "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
-      "RemoteUsername": "ccao-data-science---modeling",
       "RemoteRepo": "packages/ccao",
-      "RemoteSubdir": "",
-      "RemoteRef": "master",
-      "RemoteSha": "83a93edab4d65cd2ef7a801870ff1406678b4ad5",
-      "Hash": "a9abf0cf02aa9d59e535e681cd5195a5"
+      "RemoteUsername": "ccao-data-science---modeling",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "466c2273c71c729cc0fc4de73d53d435f46a5e00",
+      "Hash": "44fc2d684c9aac6e449edb982dbb3fe7"
     },
     "class": {
       "Package": "class",
@@ -806,15 +801,9 @@
     "parsnip": {
       "Package": "parsnip",
       "Version": "0.1.5",
-      "Source": "Local",
+      "Source": "Repository",
       "Repository": "CRAN",
-      "RemoteType": "local",
-      "RemoteUsername": "tidymodels",
-      "RemoteRepo": "parsnip",
-      "RemoteRef": "master",
-      "RemoteSha": "ed9e705e1f22f3a035a0bc5554f177200f637290",
-      "RemoteHost": "api.github.com",
-      "Hash": "963a6c1fcb5dc1eb025a0961d4b57d66"
+      "Hash": "a6e96ada957f305bacbb4737f577b42b"
     },
     "pillar": {
       "Package": "pillar",
