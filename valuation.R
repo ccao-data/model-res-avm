@@ -112,7 +112,7 @@ pv_model <- ccao::postval_model(
   truth = meta_sale_price,
   estimate = lgbm,
   class = meta_class,
-  ntile_group_cols = c("meta_town_code", "meta_nbhd", "meta_class", "char_apts"),
+  ntile_group_cols = c("meta_town_code", "meta_class", "char_apts"),
   ntile_probs = c(0.2, 0.4, 0.6, 0.8),
   ntile_min_sales = 10,
   ntile_min_turnover = 0.08,
@@ -153,14 +153,17 @@ sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length, meta_year == max(meta_year)) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
-  select(meta_pin, meta_year, meta_class, meta_sale_price, meta_sale_date) %>%
+  select(
+    meta_pin, meta_year, meta_class,
+    meta_sale_price, meta_sale_date, meta_document_num
+  ) %>%
   ungroup()
 
 # Attach only the most recent year of sales to the final values for the
 # purpose of reporting and sales ratio study. The 2 years of sales for the post-
 # modeling adjustment are tossed out here
 pv_final_values <- pv_final_values %>%
-  select(-meta_sale_price, -meta_sale_date) %>%
+  select(-meta_sale_price, -meta_sale_date, -meta_document_num) %>%
   left_join(sales_data, by = c("meta_pin", "meta_year", "meta_class")) %>%
   ccao::recp_clean_relocate()
 
