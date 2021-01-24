@@ -5,7 +5,7 @@
 mod_recp_prep <- function(data, keep_vars, id_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
 
-    # Set PIN role to "id" so it's not included in the actual fit
+    # Set some vars to role to "id" so they're not included in the actual fit
     # Convert PIN to numeric so it's not set to NA for missing factor levels
     update_role(any_of(id_vars), new_role = "id") %>%
     step_mutate_at(has_role("id"), fn = ~ as.numeric(as.character(.))) %>%
@@ -33,15 +33,18 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
       skip = TRUE
     ) %>%
 
-    # Log transform price and income variables (these are all extremely skewed)
+    # Log transform price and income variables (these are all extremely
+    # positively skewed). Likely not necessary for lightgbm but helps for linear
+    # model
     step_log(
       all_outcomes(),
       ends_with("_sf"),
       contains("income"),
       offset = 1
     ) %>%
-
+    
     # Create polynomial transformation of certain important characteristics
+    # Idea here is to model potential diminishing returns 
     step_poly(
       ends_with("_age"), ends_with("_sf"),
       degree = 2
@@ -49,8 +52,8 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
 }
 
 
-# Extra recipe step for concerting categoricals to one-hot encoding. Only used
-# in cases where categoricals are not handled natively
+# Extra recipe step for converting categoricals to one-hot encoding. Only used
+# in cases where categoricals are not handled natively such as linear models
 dummy_recp_prep <- function(recipe) {
   recipe %>%
     step_mutate_at(starts_with("ind_"), fn = ~ as.numeric(.)) %>%

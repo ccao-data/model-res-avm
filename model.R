@@ -21,7 +21,7 @@ library(tidymodels)
 library(treesnip)
 library(vctrs)
 
-# Load helper functions from file
+# Load helper recipes and lightgbm parsnip bindings from file
 source(here("R", "recipes.R"))
 source(here("R", "bindings.R"))
 
@@ -46,7 +46,7 @@ cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Create list of variables that uniquely identify each structure or sale, these
-# must be kept in the training data even though they are not regressors
+# can be kept in the training data even though they are not regressors
 mod_id_vars <- c(
   "meta_pin", "meta_class", "meta_multi_code", "meta_document_num"
 )
@@ -100,22 +100,22 @@ gc()
 ##### ElasticNet Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Simple linear model to use as a baseline for comparison to lightgbm.
-# Uses glmnet since it seems to be a bit faster than lm() in this case.
+# Simple linear model to use as a baseline for comparison to lightgbm
+# Uses glmnet since it seems to be a bit faster than lm() in this case
 
 # NOTE: Although hyperparameters for elasticnet are used, they have very little
 # effect on performance with this dataset unless set to extreme values, so we
-# don't bother tuning them here
+# don't bother tuning them here. Again, just a baseline
 
 
 ### Step 1 - Model initialization
 
-# Setup basic ElasticNet model specification
+# Setup basic elasticnet model specification with hyperparameters
 enet_model <- linear_reg(penalty = 1e-7, mixture = 0.15) %>%
   set_engine("glmnet") %>%
   set_mode("regression")
 
-# Define basic ElasticNet model workflow, which includes the model and
+# Define basic elasticnet model workflow, which includes the model and
 # preprocessing steps. NOTE: While enet uses the same preprocessing recipe as
 # lightgbm, there is an additional step/recipe here which one-hot encodes all
 # categorical variables. This is necessary since glmnet does not natively handle
@@ -132,7 +132,7 @@ enet_wflow <- workflow() %>%
 enet_wflow_final_fit <- enet_wflow %>%
   fit(data = train)
 
-# Remove unnecessary objects created while modeling
+# Remove unnecessary objects created while modeling. This is to save memory
 ccao::rm_intermediate("enet")
 
 
@@ -143,8 +143,8 @@ ccao::rm_intermediate("enet")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This is the main model used to value 200-class residential property. It uses
-# lightgbm as a backend, which is a boosted tree model somewhat similar to
-# xgboost or catboost, but with better performance and faster training.
+# lightgbm as a backend, which is a boosted tree model similar to xgboost or
+# catboost, but with better performance and faster training in our use case
 # See https://lightgbm.readthedocs.io/ for more information
 
 
@@ -156,7 +156,7 @@ lgbm_params_path <- here("output", "params", "lgbm_params.rds")
 
 # Initialize lightgbm model specification Note that categorical columns are
 # detected automatically by treesnip's lightgbm implementation as long as they
-# are factors. trees arg here maps to num_iterations in lightgbm
+# are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
   trees = 2000,
   num_leaves = tune(), tree_depth = tune(), min_n = tune(),
@@ -184,7 +184,7 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
 
   # Create the parameter search space for hyperparameter optimization
-  # Param boundaries are taken directly from the lightgbm docs and hand-tuned
+  # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
   lgbm_params <- lgbm_model %>%
     parameters() %>%
@@ -224,7 +224,7 @@ if (cv_enable) {
     initial = 12,
     iter = 100,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, rsq, mape),
+    metrics = metric_set(rmse, mae, mape),
     control = cv_control
   )
   tictoc::toc(log = TRUE)

@@ -65,7 +65,7 @@ test_res <- read_parquet(here("output", "data", "testdata.parquet")) %>%
     )
   )
   
-# Get aggregate model performance by type (LightGBM and linear)
+# Get aggregate model performance by type (lightgm and linear)
 test_res %>%
   pivot_longer(enet:lgbm, names_to = "Model Type") %>%
   group_by(`Model Type`) %>%
@@ -84,7 +84,7 @@ test_res %>%
 ## Model Breakdown by Township
 
 ```{r model_summary_by_town, message=FALSE, warning=FALSE}
-# Filter to specific triad based on report parameter
+# Filter test data to specific triad based on report parameter
 if (report_filter) {
 test_res <- test_res %>%
   filter(triad == report_triad)
@@ -198,12 +198,13 @@ lgbm_recipe <- readRDS(here("output", "models", "lgbm_recipe.rds"))
 # Get the predictors used in the model and rename them to their human-readable
 # format
 test_vars <- bake(lgbm_recipe, test_res, all_predictors()) %>%
-  vars_rename(names_from = "standard", names_to = "pretty") %>%
+  vars_rename(names_from = "standard", names_to = "pretty") %>% 
   rename(
     "Age" = char_age_poly_1, "Age ^ 2" = char_age_poly_2,
     "Building Sqft." = char_bldg_sf_poly_1, "Building Sqft. ^ 2" = char_bldg_sf_poly_2,
     "Land Sqft." = char_hd_sf_poly_1, "Land Sqft. ^ 2" = char_hd_sf_poly_2
   )
+
 
 # Create a table of variable names and attributes
 tibble(
@@ -520,7 +521,7 @@ param_headers <- htmltools::withTags(table(
 lgbm_final_params %>%
   select(-any_of(c(
     "n", "std_err", ".iter", ".metric", ".estimator",
-    ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb"
+    ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb", "mape"
   ))) %>%
   relocate(c(iterations, .config), .before = NULL) %>%
   datatable(
