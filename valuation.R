@@ -25,12 +25,6 @@ assessment_year <- as.numeric(model_get_env(
   "R_ASSESSMENT_YEAR", lubridate::year(Sys.Date())
 ))
 
-# Year of sales to attach to the final output data for the purpose of comparison
-# and sales ratios studies. Typically the year prior to the assessment year
-sales_ratio_year <- as.numeric(model_get_env(
-  "R_SALES_RATIO_YEAR", assessment_year - 1
-))
-
 # Minimum year of sales to use to calculate post-modeling adjustment. Typically
 # equal to assessment year - 2. We want 2 years worth of sales in order to get
 # a large sample and counter any weirdness in the most recent year
@@ -61,19 +55,20 @@ sales_data_prev_2_years <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length, meta_year >= sales_pv_min_year) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
-  distinct(meta_pin, meta_sale_price, meta_document_num) %>%
+  distinct(meta_pin, meta_sale_price, meta_sale_date, meta_document_num) %>%
   ungroup()
 
 # Load the full set of residential properties that need values, join the sales
 # where available
 assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
+  select(-meta_sale_date) %>%
   left_join(sales_data_prev_2_years, by = "meta_pin")
 
 # Generate predictions for all assessment data using the lightgbm model created
 # in model.R
 assmntdata <- assmntdata %>%
   mutate(
-    lgbm = ccao::model_predict(
+    lgbm_value = ccao::model_predict(
       spec = lgbm_final_full_fit,
       recipe = lgbm_final_full_recipe,
       data = .
@@ -108,9 +103,13 @@ hiedata <- read_parquet(here("input", "hiedata.parquet")) %>%
 assmntdata <- assmntdata %>%
   left_join(hiedata) %>%
   mutate(
-    diff = replace_na(lgbm_w_addchars - lgbm, 0),
+    diff = replace_na(lgbm_w_addchars - lgbm_value, 0),
     ind_288_exceeds_cap = diff > 75000,
-    lgbm = ifelse(ind_288_exceeds_cap, lgbm + (diff - 75000), lgbm)
+    lgbm_value = ifelse(
+      ind_288_exceeds_cap,
+      lgbm_value + (diff - 75000),
+      lgbm_value
+    )
   ) %>%
   select(-diff, -lgbm_w_addchars)
 
@@ -132,7 +131,7 @@ assmntdata <- assmntdata %>%
 pv_model <- ccao::postval_model(
   data = assmntdata,
   truth = meta_sale_price,
-  estimate = lgbm,
+  estimate = lgbm_value,
   class = meta_class,
   ntile_group_cols = c("meta_town_code", "meta_class", "char_apts"),
   ntile_probs = c(0.2, 0.4, 0.6, 0.8),
@@ -162,35 +161,13 @@ pv_final_values <- assmntdata %>%
       object = pv_model,
       new_data = .,
       truth = meta_sale_price,
-      estimate = lgbm
+      estimate = lgbm_value
     )
-  ) %>%
-  rename(lgbm_value = lgbm)
-
-# Load most recent year of sales, taking the most recent sale within the year
-sales_data_prev_1_year <- read_parquet(here("input", "modeldata.parquet")) %>%
-  filter(ind_arms_length, meta_year == sales_ratio_year) %>%
-  group_by(meta_pin) %>%
-  filter(meta_sale_date == max(meta_sale_date)) %>%
-  select(
-    meta_pin, meta_year, meta_class,
-    meta_sale_price, meta_sale_date, meta_document_num
-  ) %>%
-  ungroup()
-
-# Attach only the most recent year of sales to the final values for the
-# purpose of reporting and sales ratio study. The 2 years of sales for the post-
-# modeling adjustment are tossed out here
-pv_final_values <- pv_final_values %>%
-  select(-meta_sale_price, -meta_sale_date, -meta_document_num) %>%
-  left_join(
-    sales_data_prev_1_year,
-    by = c("meta_pin", "meta_year", "meta_class")
-  ) %>%
-  ccao::recp_clean_relocate()
+  )
 
 # Save final values to file so they can be uploaded to AS/400 or Tyler iasWorld
 pv_final_values %>%
+  ccao::recp_clean_relocate() %>%
   write_parquet(here("output", "data", "finalvalues.parquet"))
 
 

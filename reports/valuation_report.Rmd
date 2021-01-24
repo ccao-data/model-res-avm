@@ -79,6 +79,15 @@ pv_final_values <- read_parquet(
     certified_yoy_pct_change = (final_value - certified_est) / certified_est
   )
 
+# For sales ratio studies, we want to keep only sales in the year prior to the
+# assessment year
+pv_final_values_fil <- pv_final_values %>% 
+  mutate(meta_sale_price = ifelse(
+    lubridate::year(meta_sale_date) >= sales_ratio_year,
+    meta_sale_price,
+    NA
+  ))
+
 # Load full sales data for use in reporting historical sales ratios and
 # recreating post-modeling
 sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
@@ -95,6 +104,9 @@ sales_data <- read_parquet(here("input", "modeldata.parquet")) %>%
 # Filter data to specific triad based on report parameters
 if (report_filter) {
   pv_final_values <- pv_final_values %>%
+    filter(triad == report_triad)
+  
+  pv_final_values_fil <- pv_final_values_fil %>%
     filter(triad == report_triad)
   
   sales_data <- sales_data %>%
@@ -274,7 +286,7 @@ pv_model_perf_township %>%
 ```{r val_summary, message=FALSE}
 # Goal here is to summarize YoY changes in terms of median values and percentage
 # changes in value from year to year
-pv_summary <- pv_final_values %>%
+pv_summary <- pv_final_values_fil %>%
   group_by(town_name) %>%
   summarize(
     triad = first(triad),
@@ -339,7 +351,7 @@ pv_summary %>%
 ```{r val_map, warning=FALSE, message=FALSE, fig.width=9, fig.height=9, results='hide'}
 # Summarize YoY changes at the census tract level, both from the initial model
 # value and the final model value
-pv_summary_tract <- pv_final_values %>%
+pv_summary_tract <- pv_final_values_fil %>%
   group_by(geo_geoid) %>%
   summarize(
     med_yoy_pct_change_board = median(board_yoy_pct_change, na.rm = T),
@@ -443,20 +455,9 @@ tibble(
 # step, so that we can see the effect of each step independently and confirm
 # that the adjustments are doing what's expected
 
-# Load the set of sales that were used to generate post-modeling values
-# This is usually all sales from 2 years before the assessment date
-sales_data_prev_2_years <- sales_data %>%
-  filter(meta_year >= sales_pv_min_year) %>%
-  group_by(meta_pin) %>%
-  filter(meta_sale_date == max(meta_sale_date)) %>%
-  distinct(meta_pin, meta_sale_price, meta_document_num) %>%
-  ungroup()
-
-# Join the sales sample, then assign a post-modeling ntile to each estimated
-# value. Each ntile has an adjustment percentage stored in the postval_model obj
+# The final values already contain the most recent sale in the past 2 years, so
+# we can just start by joining the ntiles from the postmodel
 pv_postmodel_vals <- pv_final_values %>%
-  select(-meta_sale_price) %>%
-  left_join(sales_data_prev_2_years, by = "meta_pin") %>%
   left_join(pv_model$ntiles) %>%
   mutate(ntile = ccao:::val_assign_ntile(lgbm_value, ntiles_lst))
   
@@ -467,7 +468,10 @@ pv_postmodel_vals2 <- pv_postmodel_vals %>%
   # Add the ntile adjustment to the unadjusted value, then cap ratio if a sale
   # exists
   mutate(
-    value_ntile_adj = rowSums(data.frame(lgbm_value, lgbm_value * ntile_med_pct_adj), na.rm = T),
+    value_ntile_adj = rowSums(
+      data.frame(lgbm_value, lgbm_value * ntile_med_pct_adj),
+      na.rm = TRUE
+      ),
     value_cap_adj = ccao::val_limit_ratios(
       meta_sale_price,
       value_ntile_adj,
@@ -638,7 +642,7 @@ pv_postmodel_summary2 %>%
 # Plot histogram of ratios by modeling class (single-family vs multi-family)
 # Ratios here are calculated using the last year of sales, not the two years
 # used for post-modeling
-pv_final_values %>%
+pv_final_values_fil %>%
   mutate(
     meta_modeling_group = fct_recode(
       factor(meta_modeling_group, levels = c("SF", "MF")),
@@ -683,7 +687,7 @@ ggplot() +
 ```{r value_dist, warning=FALSE, message=FALSE, results='hide'}
 # Plot density of previous, predicted, adjusted value and sale price to look
 # for discrepancies or oddities in distributions
-pv_dist_vals <- pv_final_values %>%
+pv_dist_vals <- pv_final_values_fil %>%
   pivot_longer(c(
     pri_board_est, certified_est, meta_sale_price,
     lgbm_value, final_value
@@ -732,7 +736,7 @@ lapply(towns, function(chunk) pv_dist_plot(
 ```{r ratio_decile, warning=FALSE, message=FALSE, results='hide'}
 # Split final values into decile by sale price, get count and distribution for
 # each decile
-decile_data_ratio <- pv_final_values %>%
+decile_data_ratio <- pv_final_values_fil %>%
   filter(
     !is.na(meta_sale_price), !is.na(final_value),
     !is.na(lgbm_value)
@@ -824,7 +828,7 @@ lapply(towns, function(chunk) decile_plot_ratio(
 ```{r outlier_map, message=FALSE}
 # Create a township level map showing the location of the largest YoY percentage
 # changes. Goal is to look for patterns of changes
-pv_final_values %>%
+pv_final_values_fil %>%
   filter(!is.infinite(certified_yoy_pct_change)) %>%
   mutate(
     dir = ifelse(certified_yoy_pct_change > 0, "Increase", "Decrease"),
@@ -869,7 +873,7 @@ ggplot() +
 
 ```{r yoy_decile, warning=FALSE, message=FALSE, results='hide'}
 # Split YoY percent change by BoR value
-decile_data_yoy <- pv_final_values %>%
+decile_data_yoy <- pv_final_values_fil %>%
   filter(
     !is.na(board_yoy_pct_change), !is.na(pri_board_est), pri_board_est != 0,
     !is.na(certified_yoy_pct_change), !is.na(certified_est), certified_est != 0
