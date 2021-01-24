@@ -420,6 +420,13 @@
       "Repository": "CRAN",
       "Hash": "e32cfc0973caba11b65b1fa691b4d8c9"
     },
+    "foreign": {
+      "Package": "foreign",
+      "Version": "0.8-81",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "74628ea7a3be5ee8a7b5bb0a8e84882e"
+    },
     "fs": {
       "Package": "fs",
       "Version": "1.5.0",
@@ -721,6 +728,13 @@
       "Repository": "CRAN",
       "Hash": "41287f1ac7d28a92f0a286ed507928d3"
     },
+    "maptools": {
+      "Package": "maptools",
+      "Version": "1.0-2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "1cb5cb7bbab76318944e3794ff2512ae"
+    },
     "markdown": {
       "Package": "markdown",
       "Version": "1.1",
@@ -924,6 +938,13 @@
       "Repository": "CRAN",
       "Hash": "5c0cdb37f063c58cdab3c7e9fbb8bd2c"
     },
+    "rgdal": {
+      "Package": "rgdal",
+      "Version": "1.5-19",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "2c2f770bce01f5057a6e3754cb87a797"
+    },
     "rjson": {
       "Package": "rjson",
       "Version": "0.2.20",
@@ -1111,6 +1132,13 @@
       "Repository": "CRAN",
       "Hash": "6ea435c354e8448819627cf686f66e0a"
     },
+    "tigris": {
+      "Package": "tigris",
+      "Version": "1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "aee2de0b104694cd563e52f2f23b8ea8"
+    },
     "timeDate": {
       "Package": "timeDate",
       "Version": "3043.102",
@@ -1171,6 +1199,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "4a5081acfb7b81a572e4384a7aaf2af1"
+    },
+    "uuid": {
+      "Package": "uuid",
+      "Version": "0.1-4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "e4169eb989a5d03ccb6b628cad1b1b50"
     },
     "vctrs": {
       "Package": "vctrs",
