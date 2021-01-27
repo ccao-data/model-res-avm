@@ -398,13 +398,15 @@ ggplot() +
     name = "Median\n% Change",
     palette = "Spectral",
     labels = scales::percent,
-    direction = -1
+    direction = -1,
+    limits = c(-0.75, 1.25)
   ) +
-    scale_color_distiller(
+  scale_color_distiller(
     name = "Median\n% Change",
     palette = "Spectral",
     labels = scales::percent,
-    direction = -1
+    direction = -1,
+    limits = c(-0.75, 1.25)
   ) +
   facet_wrap(vars(type), nrow = 2) +
   theme_void() +
