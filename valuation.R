@@ -79,44 +79,6 @@ assmntdata <- assmntdata %>%
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Valuation for HIEs (288s) ####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# For the subset of properties with Home Improvement Exemptions (288s), we value
-# their improved version separately, then compare to the unimproved version to
-# see if the improvement adds more than $75K value. If it does, then then
-# remainder is added to the original unimproved value
-hiedata <- read_parquet(here("input", "hiedata.parquet")) %>%
-  left_join(sales_data_prev_2_years, by = "meta_pin") %>%
-  mutate(
-    lgbm_w_addchars = ccao::model_predict(
-      spec = lgbm_final_full_fit,
-      recipe = lgbm_final_full_recipe,
-      data = .
-    )
-  ) %>%
-  select(meta_pin, meta_year, meta_class, meta_multi_code, lgbm_w_addchars)
-
-# Calculate difference between improved and non-improved property, if the
-# difference exceeds the cap, add the difference minus the cap to the original
-# property value
-assmntdata <- assmntdata %>%
-  left_join(hiedata) %>%
-  mutate(
-    diff = replace_na(lgbm_w_addchars - lgbm_value, 0),
-    ind_288_exceeds_cap = diff > 75000,
-    lgbm_value = ifelse(
-      ind_288_exceeds_cap,
-      lgbm_value + (diff - 75000),
-      lgbm_value
-    )
-  ) %>%
-  select(-diff, -lgbm_w_addchars)
-
-
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### Post-Valuation Model ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
