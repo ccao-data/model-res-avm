@@ -9,7 +9,6 @@ Table of Contents
         -   [Features Used](#features-used)
         -   [Data Used](#data-used)
         -   [Post-Modeling](#post-modeling)
-        -   [Other Choices](#other-choices)
     -   [Major Changes from Previous
         Versions](#major-changes-from-previous-versions)
 -   [Ongoing Issues](#ongoing-issues)
@@ -50,7 +49,7 @@ Appraisal (CAMA) system used to generate initial assessed values for all
 single-family and multi-family residential properties in Cook County.
 This system is effectively an advanced statistical/machine learning
 model (hereafter referred to as “the model”) which uses previous sales
-to generate predicted sale values (assessments) for unsold properties.
+to generate estimated sale values (assessments) for unsold properties.
 
 Note that data extraction/preparation, feature engineering, and data
 validation for this model are handled in a [separate
@@ -259,7 +258,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-21.
+model as of 2021-01-27.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 |:----------------------------------|:---------------|:------------|:------------------------------------------------------------------------------------------------|
@@ -513,59 +512,6 @@ These adjustments have been collectively approved by the senior
 leadership of the CCAO. They are designed to limit the impact of data
 integrity issues, prevent regressivity in assessment, and ensure that
 people with the same property receive the same value.
-
-### Other Choices
-
-In addition the major choices listed above, there are a number of
-smaller choices which impact model results, such as how to administer
-certain processes.
-
-#### Home Improvement Exemptions
-
-Per Illinois statute [35 ILCS
-200/15-180](https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=003502000K15-180),
-[homeowners are entitled to deduct up to $75,000 per
-year](https://www.cookcountyassessor.com/home-improvement-exemption)
-from their fair market value based on any value created by improvements
-to a residential property.
-
-This has the effect of essentially “freezing” a home’s characteristics
-at whatever they were prior to the start of the improvement project. For
-example, if a property owner adds an additional bedroom and applies for
-a home improvement exemption, the property will be valued as if the new
-bedroom does not exist until the exemption expires and as long as the
-increase in valuation is less than $75,000.
-
-The exemption expires after 4 years or after the next assessment cycle,
-whichever is longer. For example, an exemption received in 2016 for a
-property in Northfield (with assessment years 2016, 2019, and 2022) will
-last 6 years (our system updates the property characteristics in 2021,
-the year before the 2022 reassessment).
-
-The goal of home improvement exemptions is to prevent penalizing
-homeowners for improving their property. However, these exemptions also
-make modeling more complicated. Homes that are sold while an improvement
-exemption is active may have updated characteristics (more bedrooms, new
-garage, etc.) that are reflected in the sale price but *not* in our
-data. These properties can bias the model if not corrected, as their old
-characteristics do not accurately reflect their sale price.
-
-To fix this, we [developed
-code](https://ccao-data-science---modeling.gitlab.io/packages/ccao/reference/chars_update.html)
-to update the characteristics of properties with home improvement
-exemptions. This code is used to:
-
-1.  Update sales data so that characteristic improvements are included
-    when training the model.
-2.  Update and then value properties **with improvements** to see if the
-    improvements add more value than the $75,000 statutory limit. If
-    they do, then `(improved_value - unimproved_value) - 75000` is added
-    to the predicted market value of the unimproved property.
-
-Updating this data is complicated and imperfect (see [ongoing
-issues](#ongoing-issues)), so if properties with an active home
-improvement exemption cannot have their characteristics accurately
-updated, they are dropped from the training data (`modeldata`).
 
 ## Major Changes from Previous Versions
 
@@ -866,13 +812,13 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-21 is shown in
+performance on the [test set](#data-used) as of 2021-01-27 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
 |:-----------|--------------:|:---------|:--------|:-----|
-| Linear     |          0.76 | $157,510 | $91,511 | 29%  |
-| LightGBM   |          0.84 | $130,788 | $69,037 | 24%  |
+| Linear     |          0.77 | $153,764 | $89,910 | 29%  |
+| LightGBM   |          0.84 | $125,977 | $67,657 | 24%  |
 
 **Q: How often does the model change?**
 
@@ -1080,6 +1026,9 @@ variables are set, sensible defaults are used.
 -   `R_REPORT_TRIAD` - Name of Cook County triad to report on. Options
     are City, South, and North. Can also be set using R Markdown report
     parameters.
+-   `R_ASSESSMENT_YEAR` - The assessment year of the data/report. If not
+    set, will be set automatically by taking the `max(year)` in
+    `assmntdata`.
 
 ## Getting Data
 
@@ -1143,10 +1092,16 @@ the R console) as well as their respective resolutions:
 
 -   Error:
     `DLL '<package-name>' not found: maybe not installed for this architecture?`
-    <br>Soluation: Try installing the package manually with the
+    <br>Solution: Try installing the package manually with the
     `INSTALL_opts` flag set. See
     [here](https://github.com/rstudio/renv/issues/162#issuecomment-612380245)
     for an example.
+
+-   Error:
+    `Error in if (remove_intercept & any(grepl("Intercept",names(new_data)))) { argument is of length zero`
+    <br>Solution: Be sure to load the `treesnip` library before using
+    any `predict()` methods. `treesnip` contains the `parsnip` binding
+    to interface with LightGBM, which is otherwise unsupported.
 
 # License
 
