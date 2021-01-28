@@ -258,7 +258,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-27.
+model as of 2021-01-28.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 |:----------------------------------|:---------------|:------------|:------------------------------------------------------------------------------------------------|
@@ -487,10 +487,9 @@ predictions. Specifically, post-modeling will:
     number of sales and minimum amount of turnover within each
     adjustment group. This is done to correct some of the modeling bias
     caused by [ongoing data issues](#ongoing-issues), as well as prevent
-    broad over- or under-assessment. Only a small proportion of all
-    properties receive this adjustment.
+    broad over- or under-assessment.
 
-2.  Alter assessed values for properties with sales in the last two
+2.  Alter assessed values for properties with sales in the last three
     years if and only if their sale ratio falls outside specific
     thresholds. If a property’s sale ratio (predicted value / actual
     sale value) is less than 0.7 or greater than 2, its predicted value
@@ -812,7 +811,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-27 is shown in
+performance on the [test set](#data-used) as of 2021-01-28 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |

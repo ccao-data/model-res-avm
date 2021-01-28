@@ -51,10 +51,10 @@ sales_ratio_year <- as.numeric(model_get_env(
 ))
 
 # Minimum year of sales to use to calculate post-modeling adjustment. Typically
-# equal to assessment year - 2. We want 2 years worth of sales in order to get
+# equal to assessment year - 3. We want 3 years worth of sales in order to get
 # a large sample and counter any weirdness in the most recent year
 sales_pv_min_year <- as.numeric(model_get_env(
-  "R_SALES_PV_MIN_YEAR", assessment_year - 2
+  "R_SALES_PV_MIN_YEAR", assessment_year - 3
 ))
 ```
 

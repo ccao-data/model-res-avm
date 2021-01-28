@@ -26,10 +26,10 @@ assessment_year <- as.numeric(model_get_env(
 ))
 
 # Minimum year of sales to use to calculate post-modeling adjustment. Typically
-# equal to assessment year - 2. We want 2 years worth of sales in order to get
+# equal to assessment year - 3. We want 3 years worth of sales in order to get
 # a large sample and counter any weirdness in the most recent year
 sales_pv_min_year <- as.numeric(model_get_env(
-  "R_SALES_PV_MIN_YEAR", assessment_year - 2
+  "R_SALES_PV_MIN_YEAR", assessment_year - 3
 ))
 
 
@@ -49,9 +49,9 @@ lgbm_final_full_recipe <- readRDS(
 
 # Post-modeling adjustments (such as ratio capping) require sales to work.
 # As such, we need to append the most recent sale (closest to the assessment
-# date within 2 years) to each PIN. Not all PINs will have sales, as our sales
-# sample is limited to 7 years prior to the assessment date
-sales_data_prev_2_years <- read_parquet(here("input", "modeldata.parquet")) %>%
+# date within 3 years) to each PIN. Not all PINs will have sales, as our overall
+# sales sample is limited to 7 years prior to the assessment date
+sales_data_prev_3_years <- read_parquet(here("input", "modeldata.parquet")) %>%
   filter(ind_arms_length, meta_year >= sales_pv_min_year) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
@@ -62,7 +62,7 @@ sales_data_prev_2_years <- read_parquet(here("input", "modeldata.parquet")) %>%
 # where available
 assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
   select(-meta_sale_date) %>%
-  left_join(sales_data_prev_2_years, by = "meta_pin")
+  left_join(sales_data_prev_3_years, by = "meta_pin")
 
 # Generate predictions for all assessment data using the lightgbm model created
 # in model.R
@@ -97,8 +97,8 @@ pv_model <- ccao::postval_model(
   class = meta_class,
   ntile_group_cols = c("meta_town_code", "meta_class", "char_apts"),
   ntile_probs = c(0.2, 0.4, 0.6, 0.8),
-  ntile_min_sales = 10,
-  ntile_min_turnover = 0.08,
+  ntile_min_sales = 15,
+  ntile_min_turnover = 0.09,
   ntile_max_abs_adj = 0.4,
   townhome_group_cols = c(
     "meta_town_code", "meta_class", "char_age", "char_bsmt", "char_rooms",
