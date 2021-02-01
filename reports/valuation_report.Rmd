@@ -642,7 +642,7 @@ pv_postmodel_summary2 %>%
 
 ```{r ratio_dist, warning=FALSE, message=FALSE}
 # Plot histogram of ratios by modeling class (single-family vs multi-family)
-# Ratios here are calculated using the last year of sales, not the two years
+# Ratios here are calculated using the last year of sales, not the three years
 # used for post-modeling
 pv_final_values_fil %>%
   mutate(
