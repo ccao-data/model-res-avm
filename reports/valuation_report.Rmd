@@ -141,31 +141,46 @@ sales_data_wide <- sales_data %>%
 pv_calc_stats <- function(data) {
   data %>%
   summarize(
-    bor_cod = ccao_cod(pri_board_est / `sale_price_yr-4`, na.rm = TRUE)$COD,
-    bor_prd = ccao_prd(pri_board_est, `sale_price_yr-4`, na.rm = TRUE)$PRD,
-    bor_prb = ccao_prb(pri_board_est, `sale_price_yr-4`, na.rm = TRUE)$PRB,
+    bor_cod = list(ccao_cod(pri_board_est / `sale_price_yr-4`, na.rm = TRUE)),
+    bor_prd = list(ccao_prd(pri_board_est, `sale_price_yr-4`, na.rm = TRUE)),
+    bor_prb = list(ccao_prb(pri_board_est, `sale_price_yr-4`, na.rm = TRUE)),
     bor_med = median(pri_board_est / `sale_price_yr-4`, na.rm = TRUE),
     
-    cert_cod = ccao_cod(certified_est / `sale_price_yr-2`, na.rm = TRUE)$COD,
-    cert_prd = ccao_prd(certified_est, `sale_price_yr-2`, na.rm = TRUE)$PRD,
-    cert_prb = ccao_prb(certified_est, `sale_price_yr-2`, na.rm = TRUE)$PRB,
+    cert_cod = list(ccao_cod(certified_est / `sale_price_yr-2`, na.rm = TRUE)),
+    cert_prd = list(ccao_prd(certified_est, `sale_price_yr-2`, na.rm = TRUE)),
+    cert_prb = list(ccao_prb(certified_est, `sale_price_yr-2`, na.rm = TRUE)),
     cert_med = median(certified_est / `sale_price_yr-2`, na.rm = TRUE),
     
-    init_cod = ccao_cod(lgbm_value / `sale_price_yr-1`, na.rm = TRUE)$COD,
-    init_prd = ccao_prd(lgbm_value, `sale_price_yr-1`, na.rm = TRUE)$PRD,
-    init_prb = ccao_prb(lgbm_value, `sale_price_yr-1`, na.rm = TRUE)$PRB,
+    init_cod = list(ccao_cod(lgbm_value / `sale_price_yr-1`, na.rm = TRUE)),
+    init_prd = list(ccao_prd(lgbm_value, `sale_price_yr-1`, na.rm = TRUE)),
+    init_prb = list(ccao_prb(lgbm_value, `sale_price_yr-1`, na.rm = TRUE)),
     init_med = median(lgbm_value / `sale_price_yr-1`, na.rm = TRUE),
     
-    final_cod = ccao_cod(final_value / `sale_price_yr-1`, na.rm = TRUE)$COD,
-    final_prd = ccao_prd(final_value, `sale_price_yr-1`, na.rm = TRUE)$PRD,
-    final_prb = ccao_prb(final_value, `sale_price_yr-1`, na.rm = TRUE)$PRB,
+    final_cod = list(ccao_cod(final_value / `sale_price_yr-1`, na.rm = TRUE)),
+    final_prd = list(ccao_prd(final_value, `sale_price_yr-1`, na.rm = TRUE)),
+    final_prb = list(ccao_prb(final_value, `sale_price_yr-1`, na.rm = TRUE)),
     final_med = median(final_value / `sale_price_yr-1`, na.rm = TRUE)
   ) %>%
   mutate(
-    across(contains("_cod"), cod_met, .names = "{.col}_met"),
-    across(contains("_prd"), prd_met, .names = "{.col}_met"),
-    across(contains("_prb"), prb_met, .names = "{.col}_met"),
-    across(contains("_med"), ~ between(.x, 0.95, 1.05), .names = "{.col}_met")
+    across(
+      contains("_cod"),
+      function(x) map_lgl(x, ~ any(cod_met(.x$COD_CI))), 
+      .names = "{.col}_met"
+    ),
+    across(
+      contains("_prd"),
+      function(x) map_lgl(x, ~ any(prd_met(.x$PRD_CI))),
+      .names = "{.col}_met"
+    ),
+    across(
+      contains("_prb"),
+      function(x) map_lgl(x, ~ any(prb_met(.x$PRB_CI))),
+      .names = "{.col}_met"
+    ),    
+    across(ends_with("_med"), ~ between(.x, 0.95, 1.05), .names = "{.col}_met"),
+    across(ends_with("_cod"), function(x) map_dbl(x, ~ .x$COD)),
+    across(ends_with("_prd"), function(x) map_dbl(x, ~ .x$PRD)),
+    across(ends_with("_prb"), function(x) map_dbl(x, ~ .x$PRB))
   )
 }
 

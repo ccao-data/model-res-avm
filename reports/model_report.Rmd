@@ -100,17 +100,19 @@ test_summary <- test_res %>%
     count = n(),
     prop = n() / nrow(.),
     across(enet:lgbm, ~ cod(.x / meta_sale_price), .names = "{.col}_cod"),
-    final_cod = ccao_cod(lgbm / meta_sale_price, suppress = TRUE)$COD,
-    final_prd = ccao_prd(lgbm, meta_sale_price, suppress = TRUE)$PRD,
-    final_prb = ccao_prb(lgbm, meta_sale_price, suppress = TRUE)$PRB,
+    final_cod = list(ccao_cod(lgbm / meta_sale_price, suppress = TRUE)),
+    final_prd = list(ccao_prd(lgbm, meta_sale_price, suppress = TRUE)),
+    final_prb = list(ccao_prb(lgbm, meta_sale_price, suppress = TRUE)),
+    final_cod_met = map_lgl(final_cod, ~ any(cod_met(.x$COD_CI))),
+    final_prd_met = map_lgl(final_prd, ~ any(prd_met(.x$PRD_CI))),
+    final_prb_met = map_lgl(final_prb, ~ any(prb_met(.x$PRB_CI))),
+    final_cod = map_dbl(final_cod, ~ .x$COD),
+    final_prd = map_dbl(final_prd, ~ .x$PRD),
+    final_prb = map_dbl(final_prb, ~ .x$PRB),
     final_ratio = median(lgbm / meta_sale_price, na.rm = TRUE)
   ) %>%
-  mutate(
-    final_cod_met = cod_met(round(final_cod, 2)),
-    final_prd_met = prd_met(round(final_prd, 2)),
-    final_prb_met = prb_met(round(final_prb, 2)),
-    final_ratio_met = between(final_ratio, 0.95, 1.05)
-  ) %>%
+  mutate(final_ratio_met = between(final_ratio, 0.95, 1.05)) %>%
+  relocate(ends_with("_met"), .after = final_ratio) %>%
   arrange(final_cod)
 
 # Create a container with custom column headers for model summary table. This
