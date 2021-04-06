@@ -24,7 +24,7 @@ The duty of the Cook County Assessor's Office is to value property in a fair, ac
 * [Nearly all code used to determine Cook County residential property values](./model.R).
 * [Rationale for different modeling, feature, and code decisions that affect assessed property values](#choices-made).
 * [An outline of ongoing data quality issues that affect assessed property values](#ongoing-issues).
-* [Instructions to replicate our model and results using open data](#installation).
+* [Instructions to replicate our model and results using sample data](#installation).
 
 The repository itself contains code for the Computer Assisted Mass Appraisal (CAMA) system used to generate initial assessed values for all single-family and multi-family residential properties in Cook County. This system is effectively an advanced statistical/machine learning model (hereafter referred to as "the model") which uses previous sales to generate estimated sale values (assessments) for unsold properties. 
 
@@ -34,7 +34,7 @@ Note that data extraction/preparation, feature engineering, and data validation 
 
 The goal of the model is to answer the question "What would the sale price of every home be if it had sold last year?" To answer this question, we use a two-step process:
 
-1. **Modeling**: First, we use the code in this repository to train an predictive machine learning model. The model predicts the sale price (fair market value) of unsold properties using the known sale price of similar and nearby properties. Training the model involves iteratively updating a mathematical function to recognize patterns in the data. The output of this step is a model object which can be used to predict any property's sale price given a [set of characteristics (such as location, number of bedrooms, etc.)](#features-used).
+1. **Modeling**: First, we use the code in this repository to train a predictive machine learning model. The model predicts the sale price (fair market value) of unsold properties using the known sale price of similar and nearby properties. Training the model involves iteratively updating a mathematical function to recognize patterns in the data. The output of this step is a model object which can be used to predict any property's sale price given a [set of characteristics (such as location, number of bedrooms, etc.)](#features-used).
 
 2. **Valuation**: Second, we use the model created in Step 1 to predict values for all residential properties in Cook County. We then train a secondary, much simpler model (which we call the post-modeling adjustment model) to correct for any systemic bias introduced by the first model. Finally, we combine the first and second model to produce initial assessed property values - the ones printed on Residential Reassessment Notices that are mailed when properties are reassessed. However, note that values produced by the model and mailed values may not be identical, as there are additional rounds of automated and human review between modeling and mailing.
 
@@ -206,12 +206,12 @@ Spatial features included in this model use the most recently available data, ev
 
 ### Data Used
 
-This repository uses two data sets that are constructed by the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository:
+This repository uses two data sets that are constructed by the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository. These data sets are included in the [`input/`](input/) directory for the purpose of replication.
 
-* `modeldata` - Includes residential sales from ***the seven years prior to the next assessment date***, which gives us a sufficient amount of data for accurate prediction without including outdated price information. This is the data used to train and evaluate the model. Its approximate size is 300K rows with 89 features.
-* `assmntdata` - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 89 features.
+* [`modeldata`](input/modeldata.parquet) - Includes residential sales from ***the seven years prior to the next assessment date***, which gives us a sufficient amount of data for accurate prediction without including outdated price information. This is the data used to train and evaluate the model. Its approximate size is 300K rows with 89 features.
+* [`assmntdata`](input/assmntdata.parquet) - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 89 features.
 
-These data sets contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+These data sets contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling, but are typically valued later by hand. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
 
 #### Using `modeldata`
 
@@ -257,7 +257,7 @@ To counter this problem and ensure high-quality prediction, we do our best to en
   * Have a very high or very low sales ratio (predicted value / actual sale value).
   * Deviate significantly from the neighborhood average.
   * Have a very large year-over-year change in valuation or sale price.
-
+  
 ### Post-Modeling
 
 In addition to the first-pass modeling done by LightGBM, the CCAO also runs a much simpler second-pass model on the predicted values from `assmntdata`. This second model is internally called "post-modeling", and is responsible for correcting any deficiencies in the first model's predictions. Specifically, post-modeling will:
@@ -274,7 +274,7 @@ These adjustments have been collectively approved by the senior leadership of th
 
 This repository represents a significant departure from the [residential modeling codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev) used to create assessed values in 2019 and 2020. As the Data Science department at the CCAO has grown, we've been able to dedicate more resources to building models, applications, and other tools. As a result, we've made the following major changes to the residential modeling codebase:
 
-* Reduced the size of the codebase substantially, from around 16,000 lines of R code to less than 1,000. This was accomplished by moving complicated data handling to our [internal R package](https://gitlab.com/ccao-data-science---modeling/packages/ccao) and abstracting away machine learning logic to [Tidymodels](https://www.tidymodels.org/).
+* Reduced the size of the codebase substantially, from around 16,000 lines of R code to less than 1,500. This was accomplished by moving complicated data handling to our [internal R package](https://gitlab.com/ccao-data-science---modeling/packages/ccao) and abstracting away machine learning logic to [Tidymodels](https://www.tidymodels.org/).
 * Unified modeling for the entire county. Prior iterations of the residential model used individual models for each township. This was difficult to implement and track and performed worse than a single large model. The new model can value any residential property in the county, is significantly faster to train, and is much easier to replicate.
 * Split the residential codebase into separate models for [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm) and [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm). Previously, these models were combined in the same scripts, leading to a lot of complications and unnecessary overhead. Separating them makes it much easier to understand and diagnose each model.
 * Switched to using LightGBM as our primary valuation model. LightGBM is essentially the most bleeding-edge machine learning framework widely available that isn't a neural network. Prior to LightGBM, we used linear models or R's gbm package. Prior to 2018, the CCAO used linear models in SPSS for residential valuations.
@@ -531,7 +531,6 @@ The code in this repository is written primarily in [R](https://www.r-project.or
 2. Set your working directory to the local folder containing this repository's files, either using R's `setwd()` command or (preferably) using RStudio's [projects](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects).
 3. Install `renv`, R's package manager, by running `install.packages("renv")`.
 4. Install all R package dependencies using `renv` by running `renv::restore()`. This step may take awhile.
-5. Place [modeling and assessment data parquet files](#files) in the `input/` directory within the repo, or generate them yourself using [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data). See [Files](#files) for details.
 
 For installation issues, particularly related to package installation and dependencies, see [Troubleshooting](#troubleshooting).
 
@@ -658,9 +657,11 @@ Various aspects of modeling and reporting are controlled by optional [environmen
 
 ## Getting Data
 
-The [data required](#data-used) to run these scripts is produced by the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository, which uses SQL pulls from the CCAO's internal database as a primary data source. This makes it impossible for outside parties to recreate the data currently used for modeling.
+The [data required](#data-used) to run these scripts is produced by the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) repository, which uses SQL pulls from the CCAO's internal database as a primary data source.
 
-In the short term, parties interested in recreating our model can reach out directly to the [CCAO Data Science Department](mailto:datascience@cookcountyassessor.com) for data extracts. As a permanent fix, the CCAO plans to publish these data extracts on the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/) in early 2021.
+Sample data sets are provided in the [`input/`](input/) directory for the purpose of replication and experimentation. Note that these data sets may not be the *exact* data used to produce assessments, but they'll be very close. 
+
+For the most recent available data, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 
 ## System Requirements
 

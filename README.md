@@ -41,7 +41,7 @@ contains:
     affect assessed property values](#choices-made).
 -   [An outline of ongoing data quality issues that affect assessed
     property values](#ongoing-issues).
--   [Instructions to replicate our model and results using open
+-   [Instructions to replicate our model and results using sample
     data](#installation).
 
 The repository itself contains code for the Computer Assisted Mass
@@ -66,7 +66,7 @@ The goal of the model is to answer the question “What would the sale
 price of every home be if it had sold last year?” To answer this
 question, we use a two-step process:
 
-1.  **Modeling**: First, we use the code in this repository to train an
+1.  **Modeling**: First, we use the code in this repository to train a
     predictive machine learning model. The model predicts the sale price
     (fair market value) of unsold properties using the known sale price
     of similar and nearby properties. Training the model involves
@@ -258,7 +258,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-01-28.
+model as of 2021-04-06.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 |:----------------------------------|:---------------|:------------|:------------------------------------------------------------------------------------------------|
@@ -369,24 +369,27 @@ to use time-invariant spatial features for a few reasons. Namely:
 
 This repository uses two data sets that are constructed by the
 [etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
-repository:
+repository. These data sets are included in the [`input/`](input/)
+directory for the purpose of replication.
 
--   `modeldata` - Includes residential sales from ***the seven years
-    prior to the next assessment date***, which gives us a sufficient
-    amount of data for accurate prediction without including outdated
-    price information. This is the data used to train and evaluate the
-    model. Its approximate size is 300K rows with 89 features.
--   `assmntdata` - Includes all residential properties (sold and unsold)
-    which need assessed values. This is the data the final model is used
-    on. Its approximate size is 1.1 million rows with 89 features.
+-   [`modeldata`](input/modeldata.parquet) - Includes residential sales
+    from ***the seven years prior to the next assessment date***, which
+    gives us a sufficient amount of data for accurate prediction without
+    including outdated price information. This is the data used to train
+    and evaluate the model. Its approximate size is 300K rows with 89
+    features.
+-   [`assmntdata`](input/assmntdata.parquet) - Includes all residential
+    properties (sold and unsold) which need assessed values. This is the
+    data the final model is used on. Its approximate size is 1.1 million
+    rows with 89 features.
 
 These data sets contain only *residential single- and multi-family
 properties*. Single-family includes property classes 202, 203, 204, 205,
 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes
 property classes 211 and 212. Bed and breakfast properties (class 218
-and 219) are considered single-family for the sake of modeling. Other
-residential properties, such as condominiums (class 299 and 399) are
-valued [using a different
+and 219) are considered single-family for the sake of modeling, but are
+typically valued later by hand. Other residential properties, such as
+condominiums (class 299 and 399) are valued [using a different
 model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
 
 #### Using `modeldata`
@@ -524,7 +527,7 @@ result, we’ve made the following major changes to the residential
 modeling codebase:
 
 -   Reduced the size of the codebase substantially, from around 16,000
-    lines of R code to less than 1,000. This was accomplished by moving
+    lines of R code to less than 1,500. This was accomplished by moving
     complicated data handling to our [internal R
     package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
     and abstracting away machine learning logic to
@@ -811,7 +814,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-01-28 is shown in
+performance on the [test set](#data-used) as of 2021-04-06 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
@@ -848,10 +851,6 @@ build the necessary packages.
     `install.packages("renv")`.
 4.  Install all R package dependencies using `renv` by running
     `renv::restore()`. This step may take awhile.
-5.  Place [modeling and assessment data parquet files](#files) in the
-    `input/` directory within the repo, or generate them yourself using
-    [etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data).
-    See [Files](#files) for details.
 
 For installation issues, particularly related to package installation
 and dependencies, see [Troubleshooting](#troubleshooting).
@@ -1034,15 +1033,15 @@ variables are set, sensible defaults are used.
 The [data required](#data-used) to run these scripts is produced by the
 [etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
 repository, which uses SQL pulls from the CCAO’s internal database as a
-primary data source. This makes it impossible for outside parties to
-recreate the data currently used for modeling.
+primary data source.
 
-In the short term, parties interested in recreating our model can reach
-out directly to the [CCAO Data Science
-Department](mailto:datascience@cookcountyassessor.com) for data
-extracts. As a permanent fix, the CCAO plans to publish these data
-extracts on the [Cook County Data
-Portal](https://datacatalog.cookcountyil.gov/) in early 2021.
+Sample data sets are provided in the [`input/`](input/) directory for
+the purpose of replication and experimentation. Note that these data
+sets may not be the *exact* data used to produce assessments, but
+they’ll be very close.
+
+For the most recent available data, please visit the [Cook County Data
+Portal](https://datacatalog.cookcountyil.gov/).
 
 ## System Requirements
 
