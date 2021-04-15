@@ -258,7 +258,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-04-06.
+model as of 2021-04-15.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 |:----------------------------------|:---------------|:------------|:------------------------------------------------------------------------------------------------|
@@ -814,7 +814,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-04-06 is shown in
+performance on the [test set](#data-used) as of 2021-04-15 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
@@ -1042,6 +1042,13 @@ they’ll be very close.
 
 For the most recent available data, please visit the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/).
+
+> :warning: **NOTE** :warning:
+>
+> The parquet files in this repository are stored using [Git
+> LFS](https://docs.gitlab.com/ee/topics/git/lfs/). You will need to
+> install Git LFS in order to properly clone the files (or manually
+> download them via GitLab’s website).
 
 ## System Requirements
 

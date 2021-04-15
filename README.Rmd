@@ -663,6 +663,10 @@ Sample data sets are provided in the [`input/`](input/) directory for the purpos
 
 For the most recent available data, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 
+> :warning: **NOTE** :warning:
+>
+> The parquet files in this repository are stored using [Git LFS](https://docs.gitlab.com/ee/topics/git/lfs/). You will need to install Git LFS in order to properly clone the files (or manually download them via GitLab's website).
+
 ## System Requirements
 
 Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html#parallel-processing) and [LightGBM](https://lightgbm.readthedocs.io/en/latest/Parallel-Learning-Guide.html) support parallel processing to speed up model training. However, the current parallel implementation in Tidymodels is extremely memory-intensive, as it needs to carry loaded packages and objects into each worker process. As such, parallel processing in Tidymodels is turned **off**, while parallel processing in LightGBM is turned **on**. This means that models are fit sequentially, but each model fitting is sped up using the parallel processing built-in to LightGBM. Note that:
