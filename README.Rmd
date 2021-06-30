@@ -28,7 +28,7 @@ The duty of the Cook County Assessor's Office is to value property in a fair, ac
 
 The repository itself contains code for the Computer Assisted Mass Appraisal (CAMA) system used to generate initial assessed values for all single-family and multi-family residential properties in Cook County. This system is effectively an advanced statistical/machine learning model (hereafter referred to as "the model") which uses previous sales to generate estimated sale values (assessments) for unsold properties. 
 
-Note that data extraction/preparation, feature engineering, and data validation for this model are handled in a [separate repository](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data). Values for [residential condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm) and [commercial apartments](https://gitlab.com/ccao-data-science---modeling/models/commercial-apartments-automated-valuation-model) are determined by separate models.
+Note that data extraction/preparation, feature engineering, and data validation for this model are handled in a [separate repository](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data). Values for [residential condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm) and other property types are determined by separate models.
 
 ## How It Works
 

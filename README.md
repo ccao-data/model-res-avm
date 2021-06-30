@@ -56,9 +56,7 @@ validation for this model are handled in a [separate
 repository](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data).
 Values for [residential
 condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm)
-and [commercial
-apartments](https://gitlab.com/ccao-data-science---modeling/models/commercial-apartments-automated-valuation-model)
-are determined by separate models.
+and other property types are determined by separate models.
 
 ## How It Works
 
@@ -258,7 +256,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2021-04-15.
+model as of 2021-06-30.
 
 | Feature Name                      | Category       | Type        | Possible Values                                                                                 |
 |:----------------------------------|:---------------|:------------|:------------------------------------------------------------------------------------------------|
@@ -814,7 +812,7 @@ not reflect the current state of the model.
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
 (MAPE) to gauge overall model performance and fit. Overall model
-performance on the [test set](#data-used) as of 2021-04-15 is shown in
+performance on the [test set](#data-used) as of 2021-06-30 is shown in
 the table below and generally stays within this range.
 
 | Model Type | R<sup>2</sup> | RMSE     | MAE     | MAPE |
