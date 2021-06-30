@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.0.3",
+    "Version": "4.1.0",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -139,8 +139,8 @@
       "Package": "assessr",
       "Version": "0.4.3",
       "Source": "GitLab",
-      "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteType": "gitlab",
+      "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "RemoteHost": "gitlab.com",
       "RemoteRepo": "packages/assessr",
       "RemoteUsername": "ccao-data-science---modeling",
@@ -229,8 +229,8 @@
       "Package": "ccao",
       "Version": "0.5.0",
       "Source": "GitLab",
-      "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
       "RemoteType": "gitlab",
+      "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
       "RemoteHost": "gitlab.com",
       "RemoteRepo": "packages/ccao",
       "RemoteUsername": "ccao-data-science---modeling",
@@ -1101,10 +1101,10 @@
     },
     "tictoc": {
       "Package": "tictoc",
-      "Version": "1.0",
+      "Version": "1.0.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "f8cc5adf4671b013434bbe127f35b28c"
+      "Hash": "5acb66b0266ad1f0ebf7ffe1aa36ff4c"
     },
     "tidymodels": {
       "Package": "tidymodels",
