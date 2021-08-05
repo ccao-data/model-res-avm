@@ -53,7 +53,7 @@
     },
     "KernSmooth": {
       "Package": "KernSmooth",
-      "Version": "2.23-18",
+      "Version": "2.23-20",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "9e703ad8bf0e99f3691f05da32dfe68b"
@@ -116,7 +116,7 @@
     },
     "arrow": {
       "Package": "arrow",
-      "Version": "2.0.0",
+      "Version": "5.0.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "04a9e87326777f5205bacdf3ec4ffa02"
@@ -492,7 +492,7 @@
     },
     "glmnet": {
       "Package": "glmnet",
-      "Version": "4.1",
+      "Version": "4.1-2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "d5d038d2f66d7ed2f95045c62d42e7b4"
@@ -716,7 +716,7 @@
     },
     "lwgeom": {
       "Package": "lwgeom",
-      "Version": "0.2-5",
+      "Version": "0.2-7",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "cf96b08482dfbed1b7ab7d0ba4395077"
@@ -772,7 +772,7 @@
     },
     "nlme": {
       "Package": "nlme",
-      "Version": "3.1-151",
+      "Version": "3.1-152",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "42c8ba2b6a32a6bf0874e93e3bd86a43"
@@ -940,7 +940,7 @@
     },
     "rgdal": {
       "Package": "rgdal",
-      "Version": "1.5-19",
+      "Version": "1.5-23",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "2c2f770bce01f5057a6e3754cb87a797"
@@ -1017,7 +1017,7 @@
     },
     "sf": {
       "Package": "sf",
-      "Version": "0.9-7",
+      "Version": "1.0-2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "9d6831c4c002137d99be6b946ac9da07"
@@ -1052,7 +1052,7 @@
     },
     "stars": {
       "Package": "stars",
-      "Version": "0.5-0",
+      "Version": "0.5-3",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "c3e4a512ba3e9d4525d01f56a937ebcf"
@@ -1134,7 +1134,7 @@
     },
     "tigris": {
       "Package": "tigris",
-      "Version": "1.0",
+      "Version": "1.4.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "aee2de0b104694cd563e52f2f23b8ea8"
@@ -1181,7 +1181,7 @@
     },
     "units": {
       "Package": "units",
-      "Version": "0.6-7",
+      "Version": "0.7-2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "4a3df844d6d35ca2ba2b7ba95446b955"
