@@ -919,10 +919,10 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "0.14.0",
-      "Source": "Repository",
+      "Version": "0.15.0",
+      "OS_type": NA,
       "Repository": "CRAN",
-      "Hash": "30e5eba91b67f7f4d75d31de14bbfbdc"
+      "Source": "Repository"
     },
     "rgdal": {
       "Package": "rgdal",
