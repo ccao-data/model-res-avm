@@ -1,2 +1,5 @@
 [core]
     analytics = false
+    remote = storage
+['remote "storage"']
+    url = s3://ccao-data-warehouse-us-east-1/model/dvcstore
