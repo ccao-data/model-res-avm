@@ -9,13 +9,6 @@
     ]
   },
   "Packages": {
-    "DBI": {
-      "Package": "DBI",
-      "Version": "1.1.2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "dcd1743af4336156873e3ce3c950b8b9"
-    },
     "DiceDesign": {
       "Package": "DiceDesign",
       "Version": "1.9",
@@ -205,13 +198,6 @@
       "Repository": "CRAN",
       "Hash": "1593b7beb067c8381c0d24e38bd778e0"
     },
-    "classInt": {
-      "Package": "classInt",
-      "Version": "0.4-3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "17bdfa3c51df4a6c82484d13b11fb380"
-    },
     "cli": {
       "Package": "cli",
       "Version": "3.1.0",
@@ -323,13 +309,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "36f1ae62f026c8ba9f9b5c9a08c03297"
-    },
-    "e1071": {
-      "Package": "e1071",
-      "Version": "1.7-9",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "32885be243a29301c90d33db37c3aad8"
     },
     "ellipsis": {
       "Package": "ellipsis",
@@ -599,10 +578,10 @@
     },
     "lightgbm": {
       "Package": "lightgbm",
-      "Version": "3.3.1",
+      "Version": "3.3.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "57876eac20d6b9b8c5f411a2ed326278"
+      "Hash": "ecc246cde256d55d352b2f64ccd11b73"
     },
     "listenv": {
       "Package": "listenv",
@@ -765,13 +744,6 @@
       "Repository": "CRAN",
       "Hash": "7df448f5ae46ab0a1af0fb619349d3fd"
     },
-    "proxy": {
-      "Package": "proxy",
-      "Version": "0.4-26",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "50b405c6419e921b9e9360cc9ebbcf2d"
-    },
     "purrr": {
       "Package": "purrr",
       "Version": "0.3.4",
@@ -842,26 +814,12 @@
       "Repository": "CRAN",
       "Hash": "06c85365a03fdaf699966cc1d3cf53ea"
     },
-    "s2": {
-      "Package": "s2",
-      "Version": "1.0.7",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "cedf9ef196a446ee8080c14267e69410"
-    },
     "scales": {
       "Package": "scales",
       "Version": "1.1.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "6f76f71042411426ec8df6c54f34e6dd"
-    },
-    "sf": {
-      "Package": "sf",
-      "Version": "1.0-5",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "200bfddf8f0ca222a7edfd2d64425fb9"
     },
     "shape": {
       "Package": "shape",
@@ -980,13 +938,6 @@
       "Repository": "CRAN",
       "Hash": "3cabba58cec834867411b81e03acfa7b"
     },
-    "units": {
-      "Package": "units",
-      "Version": "0.7-2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "e0f85712d5371ab2841f63cdb33fe0f0"
-    },
     "usethis": {
       "Package": "usethis",
       "Version": "2.1.5",
@@ -1035,13 +986,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "a376b424c4817cda4920bbbeb3364e85"
-    },
-    "wk": {
-      "Package": "wk",
-      "Version": "0.6.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "d6bc0432436a0aefbf29d5de8588b876"
     },
     "workflows": {
       "Package": "workflows",
