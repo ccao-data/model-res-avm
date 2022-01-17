@@ -6,23 +6,14 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
   recipe(meta_sale_price ~ ., data = data) %>%
 
     # Set some vars to role to "id" so they're not included in the actual fit
-    # Convert PIN to numeric so it's not set to NA for missing factor levels
     update_role(any_of(id_vars), new_role = "id") %>%
-    step_mutate_at(has_role("id"), fn = ~ as.numeric(as.character(.))) %>%
 
     # Remove any variables not an outcome var or in mod_predictors vector
     # created in model.R
     step_rm(-any_of(keep_vars), -all_outcomes(), -has_role("id")) %>%
 
-    # Replace NA in factors with "Unknown" and gather rare factor values into
-    # "Other" category
+    # Replace NA in factors with "Unknown" 
     step_unknown(all_nominal(), -has_role("id")) %>%
-    step_other(
-      all_nominal(), -has_role("id"),
-      -any_of(c("meta_town_code", "meta_nbhd")),
-      -starts_with("geo_school_"),
-      threshold = 0.005
-    ) %>%
 
     # Drop any remaining rows with missing values in their predictors. Note that
     # this will be skipped when baking on new data, so the # of predicted values
@@ -31,24 +22,17 @@ mod_recp_prep <- function(data, keep_vars, id_vars) {
     step_naomit(
       all_predictors(), all_outcomes(),
       skip = TRUE
-    ) %>%
+    )
 
     # Log transform price and income variables (these are all extremely
     # positively skewed). Likely not necessary for lightgbm but helps for linear
     # model
-    step_log(
-      all_outcomes(),
-      ends_with("_sf"),
-      contains("income"),
-      offset = 1
-    ) %>%
-    
-    # Create polynomial transformation of certain important characteristics
-    # Idea here is to model potential diminishing returns 
-    step_poly(
-      ends_with("_age"), ends_with("_sf"),
-      degree = 2
-    )
+    # step_log(
+    #   all_outcomes(),
+    #   ends_with("_sf"),
+    #   contains("income"),
+    #   offset = 1
+    # )
 }
 
 

@@ -14,7 +14,6 @@ library(glmnet)
 library(here)
 library(lightgbm)
 library(purrr)
-library(sf)
 library(stringr)
 library(tictoc)
 library(tidymodels)
@@ -24,6 +23,7 @@ library(vctrs)
 # Load helper recipes and lightgbm parsnip bindings from file
 source(here("R", "recipes.R"))
 source(here("R", "bindings.R"))
+source(here("R", "helpers.R"))
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
@@ -33,9 +33,9 @@ num_threads <- parallel::detectCores(logical = FALSE)
 tictoc::tic(msg = "Full Modeling Complete!")
 
 # Toggle cross validation and set number of folds to use
-cv_enable <- as.logical(ccao::model_get_env("R_CV_ENABLE", FALSE))
-cv_write_params <- as.logical(ccao::model_get_env("R_CV_WRITE_PARAMS", FALSE))
-cv_num_folds <- as.numeric(ccao::model_get_env("R_CV_NUM_FOLDS", 7))
+cv_enable <- as.logical(Sys.getenv("R_CV_ENABLE", FALSE))
+cv_write_params <- as.logical(Sys.getenv("R_CV_WRITE_PARAMS", FALSE))
+cv_num_folds <- as.numeric(Sys.getenv("R_CV_NUM_FOLDS", 7))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
 
 
@@ -48,28 +48,27 @@ cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
 # Create list of variables that uniquely identify each structure or sale, these
 # can be kept in the training data even though they are not regressors
 mod_id_vars <- c(
-  "meta_pin", "meta_class", "meta_multi_code", "meta_document_num"
+  "meta_pin", "meta_class", "meta_card_num", "meta_sale_document_num"
 )
 
 # Get the full list of right-hand side predictors from ccao::vars_dict. To
 # manually add new features, append the name of the feature as it is stored in
-# modeldata to this vector
+# training_data to this vector
 mod_predictors <- ccao::vars_dict %>%
   filter(var_is_predictor) %>%
-  pull(var_name_standard) %>%
+  pull(var_name_model) %>%
   unique() %>%
   na.omit()
 
 # Load the full set of training data, keep only good, complete observations
 # Arrange by sale date in order to facilitate out-of-time sampling/validation
-full_data <- read_parquet(here("input", "modeldata.parquet")) %>%
-  filter(ind_arms_length & ind_complete_predictors & !is.na(geo_longitude)) %>%
+training_data_full <- read_parquet(here("input", "training_data.parquet")) %>%
   arrange(meta_sale_date)
   
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
-time_split <- initial_time_split(full_data, prop = 0.90)
+time_split <- initial_time_split(training_data_full, prop = 0.90)
 test <- testing(time_split)
 train <- training(time_split)
 
@@ -99,41 +98,41 @@ gc()
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### ElasticNet Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# Simple linear model to use as a baseline for comparison to lightgbm
-# Uses glmnet since it seems to be a bit faster than lm() in this case
-
-# NOTE: Although hyperparameters for elasticnet are used, they have very little
-# effect on performance with this dataset unless set to extreme values, so we
-# don't bother tuning them here. Again, just a baseline
-
-
-### Step 1 - Model initialization
-
-# Setup basic elasticnet model specification with hyperparameters
-enet_model <- linear_reg(penalty = 1e-7, mixture = 0.15) %>%
-  set_engine("glmnet") %>%
-  set_mode("regression")
-
-# Define basic elasticnet model workflow, which includes the model and
-# preprocessing steps. NOTE: While enet uses the same preprocessing recipe as
-# lightgbm, there is an additional step/recipe here which one-hot encodes all
-# categorical variables. This is necessary since glmnet does not natively handle
-# factor variables like lightgbm does
-enet_wflow <- workflow() %>%
-  add_model(enet_model) %>%
-  add_recipe(train_recipe %>% dummy_recp_prep())
-
-
-### Step 2 - Fit the model
-
-# Fit the final model using the training data, this will be used on the test set
-# and compared to the performance of lightgbm
-enet_wflow_final_fit <- enet_wflow %>%
-  fit(data = train)
-
-# Remove unnecessary objects created while modeling. This is to save memory
-ccao::rm_intermediate("enet")
+# 
+# # Simple linear model to use as a baseline for comparison to lightgbm
+# # Uses glmnet since it seems to be a bit faster than lm() in this case
+# 
+# # NOTE: Although hyperparameters for elasticnet are used, they have very little
+# # effect on performance with this dataset unless set to extreme values, so we
+# # don't bother tuning them here. Again, just a baseline
+# 
+# 
+# ### Step 1 - Model initialization
+# 
+# # Setup basic elasticnet model specification with hyperparameters
+# enet_model <- linear_reg(penalty = 1e-7, mixture = 0.15) %>%
+#   set_engine("glmnet") %>%
+#   set_mode("regression")
+# 
+# # Define basic elasticnet model workflow, which includes the model and
+# # preprocessing steps. NOTE: While enet uses the same preprocessing recipe as
+# # lightgbm, there is an additional step/recipe here which one-hot encodes all
+# # categorical variables. This is necessary since glmnet does not natively handle
+# # factor variables like lightgbm does
+# enet_wflow <- workflow() %>%
+#   add_model(enet_model) %>%
+#   add_recipe(train_recipe %>% dummy_recp_prep())
+# 
+# 
+# ### Step 2 - Fit the model
+# 
+# # Fit the final model using the training data, this will be used on the test set
+# # and compared to the performance of lightgbm
+# enet_wflow_final_fit <- enet_wflow %>%
+#   fit(data = train)
+# 
+# # Remove unnecessary objects created while modeling. This is to save memory
+# ccao::rm_intermediate("enet")
 
 
 
@@ -166,7 +165,7 @@ lgbm_model <- lgbm_tree(
   set_mode("regression") %>%
   set_args(
     num_threads = num_threads,
-    verbose = -1
+    verbose = 1
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -276,7 +275,17 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # Remove unnecessary objects created while modeling
 ccao::rm_intermediate("lgbm")
 
+model_axe_recipe <- function(x) {
+  stopifnot("recipe" %in% class(x))
+  
+  axed <- rapply(x, butcher::butcher, how = "replace")
+  axed <- purrr::list_modify(axed, orig_lvls = NULL)
+  class(axed) <- "recipe"
+  
+  return(axed)
+}
 
+ccao::model_lgbm_save(lgbm_wflow_final_fit$fit, "lgbm_fit.zip")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -287,17 +296,17 @@ ccao::rm_intermediate("lgbm")
 
 # Get predictions on the test set using all models then save to file. These
 # predictions are used to evaluate model performance in model_report.Rmd
-test %>%
+temp <- test %>%
   mutate(
-    enet = ccao::model_predict(
-      enet_wflow_final_fit %>% pull_workflow_fit(),
-      enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
-      test
-    ),
-    lgbm = ccao::model_predict(
-      lgbm_wflow_final_fit %>% pull_workflow_fit(),
-      lgbm_wflow_final_fit %>% pull_workflow_prepped_recipe(),
-      test
+    # enet = ccao::model_predict(
+    #   enet_wflow_final_fit %>% pull_workflow_fit(),
+    #   enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
+    #   test
+    # ),
+    lgbm = model_predict(
+      temp2 %>% extract_fit_parsnip(),
+      temp2 %>% extract_recipe(),
+      test, exp = F
     )
   ) %>%
   write_parquet(here("output", "data", "testdata.parquet"))
@@ -305,16 +314,16 @@ test %>%
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # model_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
-lgbm_wflow_final_full_fit %>%
-  pull_workflow_fit() %>%
-  ccao::model_lgbm_save(here("output", "models", "lgbm_model.zip"))
+lgbm_wflow_final_fit %>%
+  extract_fit_parsnip() %>%
+  ccao::model_lgbm_save(here("lgbm_model.zip"))
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data
-lgbm_wflow_final_full_fit %>%
-  pull_workflow_prepped_recipe() %>%
+lgbm_wflow_final_fit %>%
+  extract_recipe() %>%
   ccao::model_axe_recipe() %>%
-  saveRDS(here("output", "models", "lgbm_recipe.rds"))
+  saveRDS(here("lgbm_recipe.rds"))
 
 
 ### Generate reports
