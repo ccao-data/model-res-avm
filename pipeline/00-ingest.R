@@ -33,8 +33,8 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
 )
 
 # Set the assessment year of the data (data year to base assessment on)
-model_assessment_year <- Sys.getenv(
-  "MODEL_ASSESSMENT_YEAR", unset = lubridate::year(Sys.Date())
+model_assessment_data_year <- Sys.getenv(
+  "MODEL_ASSESSMENT_DATA_YEAR", unset = lubridate::year(Sys.Date())
 )
 
 # Set the assessment date, usually Jan 1st
@@ -46,11 +46,11 @@ model_assessment_date <- Sys.getenv(
 # Get the minimum and maximum years to use for the training data (sales) sample
 model_min_sale_year <- Sys.getenv(
   "MODEL_MIN_SALE_YEAR",
-  unset = as.numeric(model_assessment_year) - 7
+  unset = as.numeric(model_assessment_data_year) - 7
 )
 model_max_sale_year <- Sys.getenv(
   "MODEL_MAX_SALE_YEAR",
-  unset = as.numeric(model_assessment_year)
+  unset = as.numeric(model_assessment_data_year)
 )
 
 
@@ -93,7 +93,7 @@ assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
   FROM model.vw_res_input
-  WHERE meta_year = '{model_assessment_year}'
+  WHERE meta_year = '{model_assessment_data_year}'
   ")
 )
 tictoc::toc()

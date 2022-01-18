@@ -24,3 +24,81 @@ model_predict <- function(spec, recipe, data, exp = TRUE) {
   
   return(pred)
 }
+
+
+# Function to generate a dictionary of file names, local paths, and mirrored
+# S3 location URIs
+model_file_dict <- function(model_s3_bucket = NULL,
+                            model_run_id = NULL,
+                            model_assessment_year = NULL) {
+  wd <- here::here("output")
+  mpq <- paste0(model_run_id, ".parquet")
+  list(
+    "input" = list(
+      "training" = list(
+        "local" = here::here("input", "training_data.parquet"),
+        "dvc" = here::here("input", "training_data.parquet.dvc")
+      ),
+      "assessment" = list(
+        "local" = here::here("input", "training_data.parquet"),
+        "dvc" = here::here("input", "training_data.parquet.dvc")
+      )
+    ),
+    "output" = list(
+      "assessment" = list(
+        "local" = here::here(wd, "assessment", "model_assessment.parquet"),
+        "s3" = file.path(
+          model_s3_bucket, "assessment",
+          paste0("year=", model_assessment_year), mpq
+        )
+      ),
+      "metadata" = list(
+        "local" = here::here(wd, "metadata", "model_metadata.parquet"),
+        "s3" = file.path(
+          model_s3_bucket, "metadata", 
+          paste0("year=", model_assessment_year), mpq
+        )
+      ),
+      "parameter" = list(
+        "local" = here::here(wd, "parameter", "model_parameter.parquet"),
+        "s3" = file.path(
+          model_s3_bucket, "parameter", 
+          paste0("year=", model_assessment_year), mpq
+        )
+      ),
+      "performance" = list(
+        "local" = here::here(wd, "performance", "model_performance.parquet"),
+        "s3" = file.path(
+          model_s3_bucket, "performance", 
+          paste0("year=", model_assessment_year), mpq
+        )
+      ),
+      "test" = list(
+        "local" = here::here(wd, "performance", "test_data.parquet")
+      ),
+      "timing" = list(
+        "local" = here::here(wd, "timing", "model_timing.parquet"),
+        "s3" = file.path(
+          model_s3_bucket, "timing", 
+          paste0("year=", model_assessment_year), mpq
+        )
+      ),
+      "workflow" = list(
+        "fit" = list(
+          "local" = here::here(wd, "workflow", "fit", "fit.zip"),
+          "s3" = file.path(
+            model_s3_bucket, "workflow", "fit",
+            paste0("year=", model_assessment_year), paste0(model_run_id, ".zip")
+          )
+        ),
+        "recipe" = list(
+          "local" = here::here(wd, "workflow", "recipe", "recipe.rds"),
+          "s3" = file.path(
+            model_s3_bucket, "workflow", "recipe",
+            paste0("year=", model_assessment_year), paste0(model_run_id, ".zip")
+          )
+        )
+      )
+    )
+  )
+}

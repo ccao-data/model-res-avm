@@ -1,6 +1,9 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Start the script timer
+tictoc::tic("Train model")
 
 # Load R libraries
 options(tidymodels.dark = TRUE)
@@ -20,25 +23,29 @@ library(tidymodels)
 library(treesnip)
 library(vctrs)
 
-# Load helper recipes and lightgbm parsnip bindings from file
-source(here("R", "recipes.R"))
-source(here("R", "bindings.R"))
-source(here("R", "helpers.R"))
+# Load helpers, recipes, and lightgbm parsnip bindings from files
+walk(list.files("R", full.names = TRUE), source)
+
+# Initialize a dictionary of file paths and URIs. See R/helpers.R
+paths <- model_file_dict()
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
 num_threads <- parallel::detectCores(logical = FALSE)
 
-# Start full script timer
-tictoc::tic(msg = "Full Modeling Complete!")
-
-# Toggle cross validation and set number of folds to use
-cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
-cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 7))
-cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
-
-# Get train/test proportion
+# Get train/test split proportion and model seed
 model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
+model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
+set.seed(model_seed)
+
+# Setup cross-validation parameters using .Renviron file
+model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 7))
+model_cv_control <- control_bayes(
+  verbose = TRUE,
+  no_improve = 5, ###############
+  seed = model_seed
+)
 
 
 
@@ -49,22 +56,22 @@ model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
 
 # Create list of variables that uniquely identify each structure or sale, these
 # can be kept in the training data even though they are not regressors
-mod_id_vars <- c(
+model_id_vars <- c(
   "meta_pin", "meta_class", "meta_card_num", "meta_sale_document_num"
 )
 
 # Get the full list of right-hand side predictors from ccao::vars_dict. To
 # manually add new features, append the name of the feature as it is stored in
 # training_data to this vector
-mod_predictors <- ccao::vars_dict %>%
-  filter(var_is_predictor) %>%
-  pull(var_name_model) %>%
+model_predictors <- ccao::vars_dict %>%
+  dplyr::filter(var_is_predictor) %>%
+  dplyr::pull(var_name_model) %>%
   unique() %>%
   na.omit()
 
-# Load the full set of training data, keep only good, complete observations
-# Arrange by sale date in order to facilitate out-of-time sampling/validation
-training_data_full <- read_parquet(here("input", "training_data.parquet")) %>%
+# Load the full set of training data, then arrange by sale date in order to
+# facilitate out-of-time sampling/validation
+training_data_full <- read_parquet(paths$input$training$local) %>%
   arrange(meta_sale_date)
   
 # Create train/test split by time, with most recent observations in the test set
@@ -75,14 +82,14 @@ test <- testing(time_split)
 train <- training(time_split)
 
 # Create v-fold CV splits of the main training set
-train_folds <- vfold_cv(train, v = cv_num_folds)
+train_folds <- vfold_cv(train, v = model_cv_num_folds)
 
 # Create a recipe for the training data which removes non-predictor columns,
 # normalizes/logs data, and removes/imputes missing values
-train_recipe <- mod_recp_prep(
+train_recipe <- model_main_recipe(
   data = train,
-  keep_vars = mod_predictors,
-  id_vars = mod_id_vars
+  keep_vars = model_predictors,
+  id_vars = model_id_vars
 )
 
 # Extract number of columns actually used in model (P). This is needed to
@@ -93,48 +100,6 @@ train_p <- ncol(juiced_train)
 # Remove unnecessary data from setup
 rm(time_split, juiced_train)
 gc()
-
-
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### ElasticNet Model #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 
-# # Simple linear model to use as a baseline for comparison to lightgbm
-# # Uses glmnet since it seems to be a bit faster than lm() in this case
-# 
-# # NOTE: Although hyperparameters for elasticnet are used, they have very little
-# # effect on performance with this dataset unless set to extreme values, so we
-# # don't bother tuning them here. Again, just a baseline
-# 
-# 
-# ### Step 1 - Model initialization
-# 
-# # Setup basic elasticnet model specification with hyperparameters
-# enet_model <- linear_reg(penalty = 1e-7, mixture = 0.15) %>%
-#   set_engine("glmnet") %>%
-#   set_mode("regression")
-# 
-# # Define basic elasticnet model workflow, which includes the model and
-# # preprocessing steps. NOTE: While enet uses the same preprocessing recipe as
-# # lightgbm, there is an additional step/recipe here which one-hot encodes all
-# # categorical variables. This is necessary since glmnet does not natively handle
-# # factor variables like lightgbm does
-# enet_wflow <- workflow() %>%
-#   add_model(enet_model) %>%
-#   add_recipe(train_recipe %>% dummy_recp_prep())
-# 
-# 
-# ### Step 2 - Fit the model
-# 
-# # Fit the final model using the training data, this will be used on the test set
-# # and compared to the performance of lightgbm
-# enet_wflow_final_fit <- enet_wflow %>%
-#   fit(data = train)
-# 
-# # Remove unnecessary objects created while modeling. This is to save memory
-# ccao::rm_intermediate("enet")
 
 
 
@@ -151,11 +116,7 @@ gc()
 
 ### Step 1 - Model initialization
 
-# Set model params save path. This is where the final set of hyperparameters
-# will be saved/loaded from
-lgbm_params_path <- here("output", "params", "lgbm_params.rds")
-
-# Initialize lightgbm model specification Note that categorical columns are
+# Initialize lightgbm model specification. Note that categorical columns are
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
@@ -171,10 +132,13 @@ lgbm_model <- lgbm_tree(
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
-# preprocessing steps needed to prepare the raw data
+# pre-processing steps needed to prepare the raw data
 lgbm_wflow <- workflow() %>%
   add_model(lgbm_model) %>%
-  add_recipe(train_recipe)
+  add_recipe(
+    recipe = train_recipe
+    # blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
+  )
 
 
 ### Step 2 - Cross-validation
@@ -182,8 +146,11 @@ lgbm_wflow <- workflow() %>%
 # Begin CV tuning if enabled. We use Bayesian tuning due to the high number of
 # hyperparameters, as grid search or random search take a very long time to
 # produce similarly accurate results
-if (cv_enable) {
+if (model_cv_enable) {
 
+  # Begin cross-validation timer. This step typically takes the longest time
+  tictoc::tic("CV model")
+  
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
@@ -218,49 +185,49 @@ if (cv_enable) {
 
   # Use Bayesian tuning to find best performing params. This part takes quite
   # a long time, depending on the compute resources available
-  tictoc::tic(msg = "LightGBM CV model fitting complete!")
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 12,
-    iter = 100,
+    initial = 7,  ###############
+    iter = 10,  ##################
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
-    control = cv_control
+    control = model_cv_control
   )
-  tictoc::toc(log = TRUE)
   beepr::beep(2)
 
   # Save tuning results to file. This is a data frame where each row is one
   # CV iteration
-  if (cv_write_params) {
-    lgbm_search %>%
-      ccao::model_axe_tune_data() %>%
-      saveRDS(lgbm_params_path)
-  }
+  lgbm_search %>%
+    ccao::model_axe_tune_data() %>%
+    arrow::write_parquet(paths$output$parameter$local)
 
   # Choose the best model (whichever model minimizes RMSE)
-  lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(
-    select_best(lgbm_search, metric = "rmse")
-  )
+  lgbm_final_params <- lgbm_search %>%
+    select_best(metric = "rmse") %>%
+    ccao::model_lgbm_cap_num_leaves()
+  
+  # End the cross-validation timer
+  tictoc::toc(log = TRUE)
 } else {
 
   # If CV is not enabled, load saved parameters from file if it exists
   # Otherwise use a set of sensible hand-chosen defaults
-  if (file.exists(lgbm_params_path)) {
-    lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(
-      select_best(readRDS(lgbm_params_path), metric = "rmse")
-    )
+  if (file.exists(paths$output$parameter$local)) {
+    lgbm_final_params <- read_parquet(paths$output$parameter$local) %>%
+      select_best(metric = "rmse") %>%
+      ccao::model_lgbm_cap_num_leaves()
   } else {
-    lgbm_final_params <- ccao::model_lgbm_cap_num_leaves(data.frame(
+    lgbm_final_params <- data.frame(
       mtry = 13, min_n = 197, tree_depth = 13, learn_rate = 0.0105,
       loss_reduction = 0.0002, num_leaves = 3381
-    ))
+    ) %>%
+      ccao::model_lgbm_cap_num_leaves()
   }
 }
 
 
-### Step 3 - Finalize model
+### Step 3 - Fit models
 
 # Fit the final model using the training data and our final hyperparameters
 # This is the model used to measure performance on the test set
@@ -272,78 +239,43 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
 # hyperparameters. This is the model used for actually assessing all properties
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   ccao::model_lgbm_update_params(lgbm_final_params) %>%
-  fit(data = full_data)
+  fit(data = training_data_full)
 
 # Remove unnecessary objects created while modeling
 ccao::rm_intermediate("lgbm")
 
-model_axe_recipe <- function(x) {
-  stopifnot("recipe" %in% class(x))
-  
-  axed <- rapply(x, butcher::butcher, how = "replace")
-  axed <- purrr::list_modify(axed, orig_lvls = NULL)
-  class(axed) <- "recipe"
-  
-  return(axed)
-}
 
-ccao::model_lgbm_save(lgbm_wflow_final_fit$fit, "lgbm_fit.zip")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### Finalize Models #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-### Get predictions and save objects
-
-# Get predictions on the test set using all models then save to file. These
-# predictions are used to evaluate model performance in model_report.Rmd
-temp <- test %>%
+# Get predictions on the test set using the training data model then save to
+# file. These predictions are used to evaluate model performance on the test set 
+test %>%
   mutate(
-    # enet = ccao::model_predict(
-    #   enet_wflow_final_fit %>% pull_workflow_fit(),
-    #   enet_wflow_final_fit %>% pull_workflow_prepped_recipe(),
-    #   test
-    # ),
     lgbm = model_predict(
-      temp2 %>% extract_fit_parsnip(),
-      temp2 %>% extract_recipe(),
-      test, exp = F
+      lgbm_wflow_final_fit %>% extract_fit_parsnip(),
+      lgbm_wflow_final_fit %>% extract_recipe(),
+      test
     )
   ) %>%
-  write_parquet(here("output", "data", "testdata.parquet"))
+  write_parquet(paths$output$test$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
-# model_save() function, which uses lgb.save() rather than saveRDS(), since
+# model_lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
-lgbm_wflow_final_fit %>%
+lgbm_wflow_final_full_fit %>%
   extract_fit_parsnip() %>%
-  ccao::model_lgbm_save(here("lgbm_model.zip"))
+  ccao::model_lgbm_save(paths$output$workflow$fit$local)
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data
-lgbm_wflow_final_fit %>%
+lgbm_wflow_final_full_fit %>%
   extract_recipe() %>%
   ccao::model_axe_recipe() %>%
-  saveRDS(here("lgbm_recipe.rds"))
+  saveRDS(paths$output$workflow$recipe$local)
 
-
-### Generate reports
-
-# Stop all timers and write to file. This is to track how long it takes the
-# entire model to train
+# End the script timer
 tictoc::toc(log = TRUE)
-if (cv_enable & cv_write_params) {
-  bind_rows(tic.log(format = FALSE)) %>%
-    mutate(elapsed = toc - tic, model = tolower(word(msg, 1))) %>%
-    saveRDS(here("output", "params", "model_timings.rds"))
-}
-
-# Generate modeling diagnostic/performance report
-rmarkdown::render(
-  input = here("reports", "model_report.Rmd"),
-  output_file = here("output", "reports", "model_report.html")
-)
-
-# BIG BEEP
-beepr::beep(8)

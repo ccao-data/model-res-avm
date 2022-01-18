@@ -23,27 +23,13 @@ model_main_recipe <- function(data, keep_vars, id_vars) {
     # Remove any variables not an outcome var or in the keep_vars vector
     step_rm(-any_of(keep_vars), -all_outcomes(), -has_role("ID")) %>%
 
-    # Replace NA in factors with "Unknown" 
+    # Replace NA in factors with "unknown" 
     step_unknown(all_nominal(), -has_role("ID")) %>%
-
-    # Drop any remaining rows with missing values in their predictors. Note that
-    # this will be skipped when baking on new data, so the # of predicted values
-    # will always be equal to the number of rows in the input data, regardless
-    # of whether the input data has missing values
-    step_naomit(
-      all_predictors(), all_outcomes(),
-      skip = TRUE
-    )
-
-    # Log transform price and income variables (these are all extremely
-    # positively skewed). Likely not necessary for lightgbm but helps for linear
-    # model
-    # step_log(
-    #   all_outcomes(),
-    #   ends_with("_sf"),
-    #   contains("income"),
-    #   offset = 1
-    # )
+    
+    # Condense rare factor levels into "other"
+    step_other(all_nominal(), -has_role("ID"), threshold = 0.01) %>%
+    
+    step_novel(all_nominal(), -has_role("ID")) 
 }
 
 
