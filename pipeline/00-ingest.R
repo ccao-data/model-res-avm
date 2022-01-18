@@ -46,11 +46,11 @@ model_assessment_date <- Sys.getenv(
 # Get the minimum and maximum years to use for the training data (sales) sample
 model_min_sale_year <- Sys.getenv(
   "MODEL_MIN_SALE_YEAR",
-  unset = as.numeric(assessment_year) - 7
+  unset = as.numeric(model_assessment_year) - 7
 )
 model_max_sale_year <- Sys.getenv(
   "MODEL_MAX_SALE_YEAR",
-  unset = as.numeric(assessment_year)
+  unset = as.numeric(model_assessment_year)
 )
 
 
@@ -130,7 +130,7 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 }
 
 
-##### Training Data #####
+### Training Data
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, filling, etc. is handled via recipes
@@ -165,7 +165,7 @@ training_data_clean <- training_data %>%
   write_parquet(here("input", "training_data.parquet"))
 
 
-##### Assessment Data #####
+### Assessment Data
 
 # Clean the assessment data. This the target data that the trained model used on
 # The cleaning steps are the same as above, with the exception of the time vars
