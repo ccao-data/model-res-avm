@@ -137,7 +137,7 @@ model_metadata <- tibble::tibble(
   model_ratio_study_year,
   model_ratio_study_stage,
   model_cv_enable,
-  model_cv_num_folds,
+  model_cv_num_folds = as.integer(model_cv_num_folds),
   model_split_prop,
   model_predictor_count = length(model_predictors),
   model_predictor_name = list(model_predictors)

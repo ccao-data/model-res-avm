@@ -65,7 +65,7 @@ source("pipeline/05-timing.R")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # If enabled, upload pipeline run to S3
-#if (model_upload_to_s3) source("pipeline/06-upload.R")
+if (model_upload_to_s3) source("pipeline/06-upload.R")
 
 # BIG beep once pipeline finished
 beepr::beep(8)

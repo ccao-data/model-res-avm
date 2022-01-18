@@ -31,7 +31,7 @@ paths <- model_file_dict()
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
-num_threads <- parallel::detectCores(logical = FALSE)
+num_threads <- parallel::detectCores(logical = TRUE) ###########
 
 # Get train/test split proportion and model seed
 model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
@@ -41,9 +41,8 @@ set.seed(model_seed)
 # Setup cross-validation parameters using .Renviron file
 model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 7))
-model_cv_control <- control_bayes(
-  verbose = TRUE,
-  no_improve = 5, ###############
+model_cv_control <- control_bayes(verbose = TRUE,
+  no_improve = 8,
   seed = model_seed
 )
 
@@ -67,7 +66,8 @@ model_predictors <- ccao::vars_dict %>%
   dplyr::filter(var_is_predictor) %>%
   dplyr::pull(var_name_model) %>%
   unique() %>%
-  na.omit()
+  na.omit() %>%
+  .[c(1, 7, 10, 18)] #######################
 
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
@@ -97,10 +97,6 @@ train_recipe <- model_main_recipe(
 juiced_train <- juice(prep(train_recipe), all_predictors())
 train_p <- ncol(juiced_train)
 
-# Remove unnecessary data from setup
-rm(time_split, juiced_train)
-gc()
-
 
 
 
@@ -120,7 +116,7 @@ gc()
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 2000,
+  trees = 500,  ####################
   num_leaves = tune(), tree_depth = tune(), min_n = tune(),
   mtry = tune(), loss_reduction = tune(), learn_rate = tune()
 ) %>%
@@ -136,8 +132,8 @@ lgbm_model <- lgbm_tree(
 lgbm_wflow <- workflow() %>%
   add_model(lgbm_model) %>%
   add_recipe(
-    recipe = train_recipe
-    # blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
+    recipe = train_recipe,
+    blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
 
@@ -188,12 +184,14 @@ if (model_cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 7,  ###############
-    iter = 10,  ##################
+    initial = 8,
+    iter = 25,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
     control = model_cv_control
   )
+  
+  # Beep once CV is finished
   beepr::beep(2)
 
   # Save tuning results to file. This is a data frame where each row is one
@@ -240,9 +238,6 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   ccao::model_lgbm_update_params(lgbm_final_params) %>%
   fit(data = training_data_full)
-
-# Remove unnecessary objects created while modeling
-ccao::rm_intermediate("lgbm")
 
 
 

@@ -1,8 +1,14 @@
 # Load the necessary libraries
 library(arrow)
+library(beepr)
 library(dplyr)
 library(stringr)
 library(tidyr)
+library(tictoc)
+source(here("R", "helpers.R"))
+
+# Initialize a dictionary of file paths and URIs. See R/helpers.R
+paths <- model_file_dict()
 
 # Convert input timing logs to data frame, then save to file
 if (exists("model_run_id") & exists("model_run_start_timestamp")) {
@@ -19,7 +25,7 @@ if (exists("model_run_id") & exists("model_run_start_timestamp")) {
       names_from = stage,
       values_from = elapsed
     ) %>%
-    arrow::write_parquet(here("output", "timing", "model_timing.parquet"))
+    arrow::write_parquet(paths$output$timing$local)
   
   # Clear any logs from tictoc
   tictoc::tic.clearlog()
