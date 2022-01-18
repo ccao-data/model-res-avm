@@ -14,7 +14,7 @@
 #' @return A vector of predictions from the model given the data and recipe
 #'   specified.
 #'
-model_predict <- function(spec, recipe, data, exp = TRUE) {
+model_predict <- function(spec, recipe, data, exp = FALSE) {
   pred <- parsnip::predict.model_fit(
     object = spec,
     new_data = recipes::bake(recipe, data, recipes::all_predictors())
@@ -64,6 +64,10 @@ model_file_dict <- function(model_s3_bucket = NULL,
         "s3" = file.path(
           model_s3_bucket, "parameter", 
           paste0("year=", model_assessment_year), mpq
+        ),
+        "s3_raw" = file.path(
+          model_s3_bucket, "parameter_raw", 
+          paste0("year=", model_assessment_year), mpq
         )
       ),
       "performance" = list(
@@ -95,7 +99,7 @@ model_file_dict <- function(model_s3_bucket = NULL,
           "local" = here::here(wd, "workflow", "recipe", "recipe.rds"),
           "s3" = file.path(
             model_s3_bucket, "workflow", "recipe",
-            paste0("year=", model_assessment_year), paste0(model_run_id, ".zip")
+            paste0("year=", model_assessment_year), paste0(model_run_id, ".rds")
           )
         )
       )
