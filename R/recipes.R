@@ -22,14 +22,16 @@ model_main_recipe <- function(data, keep_vars, id_vars) {
 
     # Remove any variables not an outcome var or in the keep_vars vector
     step_rm(-any_of(keep_vars), -all_outcomes(), -has_role("ID")) %>%
+    
+    # Replace novel levels with "new"
+    step_novel(all_nominal(), -has_role("ID")) %>%
 
     # Replace NA in factors with "unknown" 
     step_unknown(all_nominal(), -has_role("ID")) %>%
     
     # Condense rare factor levels into "other"
-    step_other(all_nominal(), -has_role("ID"), threshold = 0.01) %>%
+    step_other(all_nominal(), -has_role("ID"), threshold = 0.01)
     
-    step_novel(all_nominal(), -has_role("ID")) 
 }
 
 
