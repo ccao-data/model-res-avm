@@ -193,7 +193,7 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "1.0.0",
+      "Version": "1.0.1",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -201,9 +201,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "f11fc329520881e7e9e10c1566f7680a7b1750ac",
+      "RemoteSha": "4272284885c94bbddb8318ce98f4054485182283",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "1f9ea25a0a5bed105199e102a1015e0e"
+      "Hash": "aa93f76f3a218f161e073aa30b655dfc"
     },
     "class": {
       "Package": "class",
