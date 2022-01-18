@@ -32,14 +32,28 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
   Schema = "Default"
 )
 
-# Set valuation parameters. Here we're setting the assessment year of the data
-# and the date of assessment
-assessment_year <- Sys.getenv(
-  "R_ASSESSMENT_YEAR", unset = lubridate::year(Sys.Date())
+# Set the assessment year of the data (data year to base assessment on)
+model_assessment_year <- Sys.getenv(
+  "MODEL_ASSESSMENT_YEAR", unset = lubridate::year(Sys.Date())
 )
-assessment_date <- Sys.getenv(
-  "R_ASSESSMENT_DATE", unset = lubridate::make_date(lubridate::year(Sys.Date()))
+
+# Set the assessment date, usually Jan 1st
+model_assessment_date <- Sys.getenv(
+  "MODEL_ASSESSMENT_DATE",
+  unset = lubridate::make_date(lubridate::year(Sys.Date()))
 )
+
+# Get the minimum and maximum years to use for the training data (sales) sample
+model_min_sale_year <- Sys.getenv(
+  "MODEL_MIN_SALE_YEAR",
+  unset = as.numeric(assessment_year) - 7
+)
+model_max_sale_year <- Sys.getenv(
+  "MODEL_MAX_SALE_YEAR",
+  unset = as.numeric(assessment_year)
+)
+
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -50,7 +64,7 @@ assessment_date <- Sys.getenv(
 # from the residential input view. Drop multi-code property and outlier sales
 tictoc::tic()
 training_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, "
+  conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT
       sale.sale_price AS meta_sale_price,
       sale.sale_date AS meta_sale_date,
@@ -60,13 +74,15 @@ training_data <- dbGetQuery(
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.meta_year
-  WHERE res.meta_year >= '2015'
+  WHERE res.meta_year 
+      BETWEEN '{model_min_sale_year}' 
+      AND '{model_max_sale_year}'
   AND NOT res.ind_pin_is_multicard
   AND ((sale.sale_price_log10
       BETWEEN sale.sale_filter_lower_limit
       AND sale.sale_filter_upper_limit)
       AND sale.sale_filter_count >= 10)
-  "
+  ")
 )
 tictoc::toc()
 
@@ -77,7 +93,7 @@ assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
   FROM model.vw_res_input
-  WHERE meta_year = '{assessment_year}'
+  WHERE meta_year = '{model_assessment_year}'
   ")
 )
 tictoc::toc()
@@ -161,7 +177,7 @@ assessment_data_clean <- assessment_data %>%
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
   dplyr::mutate(
-    meta_sale_date = as_date(assessment_date),
+    meta_sale_date = as_date(model_assessment_date),
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
     time_sale_year = year(meta_sale_date),
     time_sale_week = time_interval %/% weeks(1),
@@ -172,3 +188,9 @@ assessment_data_clean <- assessment_data %>%
   ) %>%
   select(-any_of("time_interval")) %>%
   write_parquet(here("input", "assessment_data.parquet"))
+
+# Reminder to upload to DVC store
+message(
+  "Be sure to add updated input data to DVC and finalized data to git LFS!\n",
+  "See https://dvc.org/doc/start/data-and-model-versioning for more information"
+)
