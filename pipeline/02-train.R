@@ -30,7 +30,7 @@ paths <- model_file_dict()
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
-num_threads <- parallel::detectCores(logical = TRUE) ###########
+num_threads <- parallel::detectCores(logical = FALSE)
 
 # Get train/test split proportion and model seed
 model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
@@ -39,7 +39,7 @@ set.seed(model_seed)
 
 # Setup cross-validation parameters using .Renviron file
 model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
-model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 7))
+model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
 model_cv_control <- control_bayes(verbose = TRUE,
   no_improve = 8,
   seed = model_seed
@@ -71,7 +71,8 @@ model_predictors <- ccao::vars_dict %>%
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  arrange(meta_sale_date)
+  arrange(meta_sale_date) %>%
+  sample_n(50000)
   
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -183,7 +184,7 @@ if (model_cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 8,
+    initial = 6,
     iter = 25,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
