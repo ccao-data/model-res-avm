@@ -9,7 +9,6 @@ tictoc::tic("Train model")
 options(tidymodels.dark = TRUE)
 library(arrow)
 library(assessr)
-library(beepr)
 library(butcher)
 library(ccao)
 library(dplyr)
@@ -124,7 +123,7 @@ lgbm_model <- lgbm_tree(
   set_mode("regression") %>%
   set_args(
     num_threads = num_threads,
-    verbose = 1
+    verbosity = -1L
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -190,9 +189,6 @@ if (model_cv_enable) {
     metrics = metric_set(rmse, mae, mape),
     control = model_cv_control
   )
-  
-  # Beep once CV is finished
-  beepr::beep(2)
 
   # Save tuning results to file. This is a data frame where each row is one
   # CV iteration

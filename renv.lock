@@ -114,13 +114,6 @@
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
       "Hash": "8ffbec0a79386153ab93b1c82967ef9b"
     },
-    "audio": {
-      "Package": "audio",
-      "Version": "0.1-10",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "d0c2f6b09c666cc84cd64813f43a54fc"
-    },
     "aws.s3": {
       "Package": "aws.s3",
       "Version": "0.3.21",
@@ -148,13 +141,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "543776ae6848fde2f48ff3816d0628bc"
-    },
-    "beepr": {
-      "Package": "beepr",
-      "Version": "1.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "b3158a579ecef0e8f7626f4dadc369d0"
     },
     "bit": {
       "Package": "bit",

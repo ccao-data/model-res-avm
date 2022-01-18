@@ -5,7 +5,6 @@
 # Load R libraries
 library(arrow)
 library(assessr)
-library(beepr)
 library(ccao)
 library(dplyr)
 library(here)
@@ -143,6 +142,3 @@ rmarkdown::render(
 
 # Stop full script timer
 tictoc::toc()
-
-# BIG BEEP
-beepr::beep(8)

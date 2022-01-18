@@ -15,7 +15,6 @@
 
 # Load reporting and timing libraries. Other libraries are loaded by each
 # specific script
-library(beepr)
 library(here)
 library(tictoc)
 
@@ -66,6 +65,3 @@ source("pipeline/05-timing.R")
 
 # If enabled, upload pipeline run to S3
 if (model_upload_to_s3) source("pipeline/06-upload.R")
-
-# BIG beep once pipeline finished
-beepr::beep(8)

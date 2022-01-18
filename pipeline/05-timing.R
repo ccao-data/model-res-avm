@@ -1,6 +1,5 @@
 # Load the necessary libraries
 library(arrow)
-library(beepr)
 library(dplyr)
 library(stringr)
 library(tidyr)
