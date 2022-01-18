@@ -5,17 +5,15 @@
 #' default.
 #'
 #' @param spec A parsnip model specification object. Must be trained.
-#' @param recipe A prepped (trained) recipe object. Must be trained.
-#' @param data New data to get predictions from. Will be preprocessed by the
+#' @param recipe A prepped recipe object. Must be trained.
+#' @param data New data to get predictions from. Will be pre-processed by the
 #'   specified \code{recipe}.
-#' @param exp Exponentiate the returned prediction (assumed to be log). Default
-#'   TRUE.
+#' @param exp Exponentiate the returned prediction (assumed to be natural log).
+#'   Default TRUE.
 #'
 #' @return A vector of predictions from the model given the data and recipe
 #'   specified.
 #'
-#' @family model_funs
-#' @export
 model_predict <- function(spec, recipe, data, exp = TRUE) {
   pred <- parsnip::predict.model_fit(
     object = spec,
