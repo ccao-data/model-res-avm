@@ -1,2 +1,2 @@
 README.Rmd
-R/ingest.R
+pipeline/00-ingest.R
