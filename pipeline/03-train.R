@@ -33,10 +33,12 @@ num_threads <- parallel::detectCores(logical = FALSE)
 tictoc::tic(msg = "Full Modeling Complete!")
 
 # Toggle cross validation and set number of folds to use
-cv_enable <- as.logical(Sys.getenv("R_CV_ENABLE", FALSE))
-cv_write_params <- as.logical(Sys.getenv("R_CV_WRITE_PARAMS", FALSE))
-cv_num_folds <- as.numeric(Sys.getenv("R_CV_NUM_FOLDS", 7))
+cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 7))
 cv_control <- control_bayes(verbose = TRUE, no_improve = 20, seed = 27)
+
+# Get train/test proportion
+model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
 
 
 
@@ -68,7 +70,7 @@ training_data_full <- read_parquet(here("input", "training_data.parquet")) %>%
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
-time_split <- initial_time_split(training_data_full, prop = 0.90)
+time_split <- initial_time_split(training_data_full, prop = model_split_prop)
 test <- testing(time_split)
 train <- training(time_split)
 
