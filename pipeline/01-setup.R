@@ -34,7 +34,7 @@ model_max_sale_year <- Sys.getenv("MODEL_MAX_SALE_YEAR", "2021")
 
 # Get model type, seed, group, and triad
 model_type <- Sys.getenv("MODEL_TYPE", "lightgbm")
-model_seed <- as.numeric(Sys.getenv("MODEL_SEED", 27))
+model_seed <- as.integer(Sys.getenv("MODEL_SEED", 27))
 model_group <- Sys.getenv("MODEL_GROUP", "residential")
 model_triad <- Sys.getenv("MODEL_TRIAD", "North")
 
@@ -125,8 +125,8 @@ model_metadata <- tibble::tibble(
   git_message = gsub("\n", "", git_commit$message),
   git_author = git_commit$author$name,
   git_email = git_commit$author$email,
-  training_data_dvc_id = training_md5,
-  assessment_data_dvc_id = assessment_md5,
+  model_training_data_dvc_id = training_md5,
+  model_assessment_data_dvc_id = assessment_md5,
   model_min_sale_year,
   model_max_sale_year,
   model_ratio_study_year,
@@ -137,16 +137,3 @@ model_metadata <- tibble::tibble(
   model_predictor_count = length(model_predictors),
   model_predictor_name = list(model_predictors)
 )
-
-# Save the metadata for the run to a local file.
-model_metadata_file <- here("output", "metadata", "model_metadata.parquet")
-arrow::write_parquet(model_metadata, model_metadata_file)
-
-# If remote upload is enabled, upload the file to S3 with the run ID
-# as the filename
-if (model_upload_to_s3) {
-  aws.s3::put_object(
-    model_metadata_file,
-    file.path(model_s3_bucket, "metadata", paste0(model_run_id, ".parquet"))
-  )
-}
