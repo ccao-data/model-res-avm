@@ -849,6 +849,13 @@
       "Repository": "CRAN",
       "Hash": "5237bd176dc0c4dd7eb8dcdafe514de3"
     },
+    "spatialsample": {
+      "Package": "spatialsample",
+      "Version": "0.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "45adf19430475ff300a8dc575ab58808"
+    },
     "stringi": {
       "Package": "stringi",
       "Version": "1.7.6",

@@ -16,6 +16,7 @@ library(glmnet)
 library(here)
 library(lightgbm)
 library(purrr)
+library(spatialsample)
 library(stringr)
 library(tictoc)
 library(tidymodels)
@@ -40,10 +41,6 @@ set.seed(model_seed)
 # Setup cross-validation parameters using .Renviron file
 model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
-model_cv_control <- control_bayes(verbose = TRUE,
-  no_improve = 8,
-  seed = model_seed
-)
 
 
 
@@ -71,6 +68,7 @@ model_predictors <- ccao::vars_dict %>%
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
 training_data_full <- read_parquet(paths$input$training$local) %>%
+  filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
   arrange(meta_sale_date) %>%
   sample_n(50000)
   
@@ -81,8 +79,14 @@ time_split <- initial_time_split(training_data_full, prop = model_split_prop)
 test <- testing(time_split)
 train <- training(time_split)
 
-# Create v-fold CV splits of the main training set
-train_folds <- vfold_cv(train, v = model_cv_num_folds)
+# Create V CV folds, where each fold is a distinct area in Cook County. The idea
+# here is to create a model that performs well on all areas. This also prevents
+# leakage from the training data and overfitting
+train_folds <- spatialsample::spatial_clustering_cv(
+  data = train,
+  coords = c(loc_longitude, loc_latitude),
+  v = model_cv_num_folds
+)
 
 # Create a recipe for the training data which removes non-predictor columns,
 # normalizes/logs data, and removes/imputes missing values
@@ -184,11 +188,11 @@ if (model_cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 6,
+    initial = 8,
     iter = 25,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
-    control = model_cv_control
+    control = control_bayes(verbose = TRUE, no_improve = 8, seed = model_seed)
   )
 
   # Save tuning results to file. This is a data frame where each row is one
