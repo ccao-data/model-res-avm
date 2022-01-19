@@ -62,15 +62,13 @@ model_predictors <- ccao::vars_dict %>%
   dplyr::filter(var_is_predictor) %>%
   dplyr::pull(var_name_model) %>%
   unique() %>%
-  na.omit() %>%
-  .[c(1, 7, 10, 18)] #######################
+  na.omit() 
 
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
-  arrange(meta_sale_date) %>%
-  sample_n(50000)
+  arrange(meta_sale_date)
   
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -120,7 +118,7 @@ train_p <- ncol(juiced_train)
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 500,  ####################
+  trees = 1000,  ####################
   num_leaves = tune(), tree_depth = tune(), min_n = tune(),
   mtry = tune(), loss_reduction = tune(), learn_rate = tune()
 ) %>%
@@ -160,27 +158,27 @@ if (model_cv_enable) {
 
       # Most important. Specific to lightgbm. Ideally equal to < 2 ^ tree_depth
       # Higher values increase training time and model complexity
-      num_leaves = num_leaves(c(2 ^ 5L, 2 ^ 13L)),
+      num_leaves = num_leaves(c(20L, 2 ^ 17L)),
 
       # Very important. Maps to max_depth in lightgbm. Higher values increase
       # model complexity but may cause overfitting
-      tree_depth = tree_depth(c(5L, 13L)),
+      tree_depth = tree_depth(c(3L, 17L)),
 
       # Very important. Maps to min_data_in_leaf in lightgbm. Optimal/large
       # values can help prevent overfitting
-      min_n = min_n(c(2L, 200L)),
+      min_n = min_n(c(5L, 5000L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
-      mtry = mtry(c(5L, train_p)),
+      mtry = mtry(c(2L, train_p)),
 
       # Maps to min_gain_to_split in lightgbm. Will prevent splitting if the
       # training gain is too small. Higher values reduce training time
-      loss_reduction = loss_reduction(c(-4, -2)),
+      loss_reduction = loss_reduction(c(0, 20), trans = NULL),
 
       # Maps to learning_rate in lightgbm. Should be changed in tune with
       # number of trees
-      learn_rate = learn_rate(c(-3, -0.5))
+      learn_rate = learn_rate(c(-4, -0.5))
     )
 
   # Use Bayesian tuning to find best performing params. This part takes quite
