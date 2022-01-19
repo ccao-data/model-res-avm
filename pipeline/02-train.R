@@ -31,6 +31,7 @@ paths <- model_file_dict()
 
 # Get number of available physical cores to use for lightgbm multithreading
 # lightgbm docs recommend using only real cores, not logical
+# https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
 
 # Get train/test split proportion and model seed
@@ -118,15 +119,21 @@ train_p <- ncol(juiced_train)
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 1000,  ####################
-  num_leaves = tune(), tree_depth = tune(), min_n = tune(),
-  mtry = tune(), loss_reduction = tune(), learn_rate = tune()
+  trees = 500,  ####################
+  min_n = tune(), mtry = tune(), loss_reduction = tune(), learn_rate = tune(),
+  lambda_l2 = tune(), min_data_per_group = tune(),
+  cat_smooth = tune(), cat_l2 = tune()
 ) %>%
   set_engine("lightgbm") %>%
   set_mode("regression") %>%
   set_args(
+    # These are lightgbm-specific parameters that are passed to lgb.train
     num_threads = num_threads,
-    verbosity = -1L
+    verbosity = -1L,
+    
+    # IMPORTANT: Max number of possible splits for categorical features
+    # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
+    max_cat_threshold = 500L
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -152,21 +159,19 @@ if (model_cv_enable) {
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
+  #
+  # NOTE: max_depth and num_leaves are implicitly constrained by min_n (which is
+  # min_data_in_leaf in lightgbm). Therefore, we don't explicitly tune them
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
+      
+      ### These are lightgbm tuning parameters included with treesnip. They each
+      ### map to lightgbm parameters of different names
 
-      # Most important. Specific to lightgbm. Ideally equal to < 2 ^ tree_depth
-      # Higher values increase training time and model complexity
-      num_leaves = num_leaves(c(20L, 2 ^ 17L)),
-
-      # Very important. Maps to max_depth in lightgbm. Higher values increase
-      # model complexity but may cause overfitting
-      tree_depth = tree_depth(c(3L, 17L)),
-
-      # Very important. Maps to min_data_in_leaf in lightgbm. Optimal/large
+      # Maps to min_data_in_leaf in lightgbm. Most important. Optimal/large
       # values can help prevent overfitting
-      min_n = min_n(c(5L, 5000L)),
+      min_n = min_n(c(2L, 500L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
@@ -174,11 +179,18 @@ if (model_cv_enable) {
 
       # Maps to min_gain_to_split in lightgbm. Will prevent splitting if the
       # training gain is too small. Higher values reduce training time
-      loss_reduction = loss_reduction(c(0, 20), trans = NULL),
+      loss_reduction = loss_reduction(c(0.0, 20.0), trans = NULL),
 
       # Maps to learning_rate in lightgbm. Should be changed in tune with
-      # number of trees
-      learn_rate = learn_rate(c(-4, -0.5))
+      # number of iterations
+      learn_rate = learn_rate(c(-4.0, -0.5)),
+      
+      ### These are custom tuning parameters. See R/bindings.R for more
+      ### information about each parameter and its purpose
+      lambda_l2 = lambda_l2(c(0.0, 100.0)),
+      min_data_per_group = min_data_per_group(c(4L, 200L)),
+      cat_smooth = cat_smooth(c(10.0, 100.0)),
+      cat_l2 = cat_l2(c(10.0, 100.0))
     )
 
   # Use Bayesian tuning to find best performing params. This part takes quite
@@ -186,11 +198,11 @@ if (model_cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 8,
+    initial = 10,
     iter = 25,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
-    control = control_bayes(verbose = TRUE, no_improve = 8, seed = model_seed)
+    control = control_bayes(verbose = TRUE, no_improve = 10, seed = model_seed)
   )
 
   # Save tuning results to file. This is a data frame where each row is one
