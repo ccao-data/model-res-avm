@@ -41,15 +41,28 @@ model_min_sale_year <- Sys.getenv("MODEL_MIN_SALE_YEAR", "2015")
 model_max_sale_year <- Sys.getenv("MODEL_MAX_SALE_YEAR", "2021")
 
 # Get model type, seed, group, and triad
-model_type <- Sys.getenv("MODEL_TYPE", "lightgbm")
-model_seed <- as.integer(Sys.getenv("MODEL_SEED", 27))
 model_group <- Sys.getenv("MODEL_GROUP", "residential")
+model_type <- Sys.getenv("MODEL_TYPE", "lightgbm")
 model_triad <- Sys.getenv("MODEL_TRIAD", "North")
+model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 
 # Get info on cross-validation setup and split proportion
-model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE"), FALSE)
-model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 7))
+model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
+model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
+model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
+model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
+
+# Get train/test split proportion and model seed
 model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
+
+# Retrieve hard-coded model hyperparameters from .Renviron
+model_param_num_iterations <- as.numeric(
+  Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
+)
+model_param_max_cat_threshold <- as.numeric(
+  Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
+)
 
 # Info on type and year of values used for assessemnt reporting
 model_ratio_study_year <- Sys.getenv("MODEL_RATIO_STUDY_YEAR", "2020")
@@ -138,7 +151,12 @@ model_metadata <- tibble::tibble(
   model_ratio_study_stage,
   model_cv_enable,
   model_cv_num_folds = as.integer(model_cv_num_folds),
+  model_cv_initial_set = as.integer(model_cv_initial_set),
+  model_cv_max_iterations = as.integer(model_cv_max_iterations),
+  model_cv_no_improve = as.integer(model_cv_no_improve),
   model_split_prop,
+  model_param_num_iterations = as.integer(model_param_num_iterations),
+  model_param_max_cat_threshold = as.integer(model_param_max_cat_threshold),
   model_predictor_count = length(model_predictors),
   model_predictor_name = list(model_predictors)
 )

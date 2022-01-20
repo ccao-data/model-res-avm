@@ -39,9 +39,20 @@ model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
 model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 set.seed(model_seed)
 
+# Retrieve hard-coded model hyperparameters from .Renviron
+model_param_num_iterations <- as.numeric(
+  Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
+)
+model_param_max_cat_threshold <- as.numeric(
+  Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
+)
+
 # Setup cross-validation parameters using .Renviron file
 model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
+model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
+model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
+model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 
 
 
@@ -119,7 +130,7 @@ train_p <- ncol(juiced_train)
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = 500,  ####################
+  trees = model_param_num_iterations,
   min_n = tune(), mtry = tune(), loss_reduction = tune(), learn_rate = tune(),
   lambda_l2 = tune(), min_data_per_group = tune(),
   cat_smooth = tune(), cat_l2 = tune()
@@ -131,9 +142,10 @@ lgbm_model <- lgbm_tree(
     num_threads = num_threads,
     verbosity = -1L,
     
-    # IMPORTANT: Max number of possible splits for categorical features
+    # IMPORTANT: Max number of possible splits for categorical features. Needs
+    # to be set high for our data due to high cardinality
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
-    max_cat_threshold = 500L
+    max_cat_threshold = model_param_max_cat_threshold
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -189,8 +201,8 @@ if (model_cv_enable) {
       ### information about each parameter and its purpose
       lambda_l2 = lambda_l2(c(0.0, 100.0)),
       min_data_per_group = min_data_per_group(c(4L, 200L)),
-      cat_smooth = cat_smooth(c(10.0, 100.0)),
-      cat_l2 = cat_l2(c(10.0, 100.0))
+      cat_smooth = cat_smooth(c(1.0, 100.0)),
+      cat_l2 = cat_l2(c(1.0, 100.0))
     )
 
   # Use Bayesian tuning to find best performing params. This part takes quite
@@ -198,11 +210,15 @@ if (model_cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = 10,
-    iter = 25,
+    initial = model_cv_initial_set,
+    iter = model_cv_num_iterations,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
-    control = control_bayes(verbose = TRUE, no_improve = 10, seed = model_seed)
+    control = control_bayes(
+      verbose = TRUE,
+      no_improve = model_cv_no_improve,
+      seed = model_seed
+    )
   )
 
   # Save tuning results to file. This is a data frame where each row is one

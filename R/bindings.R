@@ -90,22 +90,18 @@ parsnip::set_model_arg(
   has_submodel = FALSE
 )
 
-# Replicated parsnip::boost_tree() function with additional arg for taking
+# Replicated parsnip::boost_tree() function with additional arguments for taking
 # custom hyperparameters
 lgbm_tree <- function(
     mode = "unknown", mtry = NULL, trees = NULL,
     min_n = NULL, tree_depth = NULL, learn_rate = NULL,
     loss_reduction = NULL, sample_size = NULL,
-    
-    # Custom added parameters
     lambda_l2 = NULL, min_data_per_group = NULL,
     cat_smooth = NULL, cat_l2 = NULL) {
   args <- list(
     mtry = enquo(mtry), trees = enquo(trees), min_n = enquo(min_n),
     tree_depth = enquo(tree_depth), learn_rate = enquo(learn_rate),
     loss_reduction = enquo(loss_reduction), sample_size = enquo(sample_size),
-    
-    # Custom parameters
     lambda_l2 = enquo(lambda_l2),
     min_data_per_group = enquo(min_data_per_group),
     cat_smooth = enquo(cat_smooth),
