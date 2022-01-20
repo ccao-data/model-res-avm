@@ -11,7 +11,9 @@ library(assessr)
 library(ccao)
 library(dplyr)
 library(here)
+library(furrr)
 library(purrr)
+library(rlang)
 library(recipes)
 library(stringr)
 library(tictoc)
@@ -19,57 +21,69 @@ library(tidyr)
 library(treesnip)
 library(yardstick)
 
+# Enable parallel backend for generating stats more quickly
+plan(multisession, workers = parallel::detectCores(logical = FALSE))
+
 # Load helpers, recipes, and lightgbm parsnip bindings from files
 walk(list.files("R", full.names = TRUE), source)
 
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
 paths <- model_file_dict()
 
-# Get year/stage to use for previous comparison
-model_assessment_data_year <- Sys.getenv(
-  "MODEL_ASSESSMENT_DATA_YEAR", unset = lubridate::year(Sys.Date())
-)
-model_ratio_study_year <- Sys.getenv("MODEL_RATIO_STUDY_YEAR", "2020")
-model_ratio_study_stage <- Sys.getenv("MODEL_RATIO_STUDY_STAGE", "board")
+# Get year/stage to use for previous comparison/ratio study
+model_assessment_data_year <- Sys.getenv("MODEL_ASSESSMENT_DATA_YEAR")
+rs_year <- Sys.getenv("MODEL_RATIO_STUDY_YEAR", "2020")
+rs_stage <- Sys.getenv("MODEL_RATIO_STUDY_STAGE", "board")
+rs_study_source <- str_to_title(paste(rs_year, rs_stage))
+rs_study_col <- get_rs_col_name(model_assessment_data_year, rs_year, rs_stage)
+
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### Generate Stats ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Load the test data created by 02-train.R. This will be the most recent 10%
-# of sales and already includes predictions
+# Load the test results at the end of 02-train.R. This will be the most recent
+# 10% of sales and already includes predictions
 test_data <- as_tibble(read_parquet(paths$output$test$local))
 
-generate_performance_stat <- function(data,
-                                      truth,
-                                      estimate,
-                                      bldg_sqft,
-                                      ratio_study_source,
-                                      ratio_study_col,
-                                      triad,
-                                      geography,
-                                      class
-                                      ) {
+# Function to take either test set results or assessment results and generate
+# aggregate performance statistics for different levels of geography
+gen_agg_stats <- function(data, truth, estimate, bldg_sqft, ratio_study_source,
+                          ratio_study_col, triad, geography, class) {
 
-  # List of summary stat/performance functions applied within summarize()
+  # List of summary stat/performance functions applied within summarize() below
+  # Each function is listed on the right while the name of the function is on
+  # the left
+  rs_fns_list <- list(
+    cod_no_sops = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x/ .y, na.rm = T), NA),
+    prd_no_sops = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = T), NA),
+    prb_no_sops = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = T), NA),
+    cod = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_cod(.x/ .y, na.rm = T)), NA),
+    prd = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prd(.x, .y, na.rm = T)), NA),
+    prb = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prb(.x, .y, na.rm = T)), NA)
+  )
   ys_fns_list <- list(
-    rmse = rmse_vec, r_squared = rsq_vec, mae = mae_vec,
-    mpe = mpe_vec, mape = mape_vec
+    rmse        = rmse_vec,
+    r_squared   = rsq_vec,
+    mae         = mae_vec,
+    mpe         = mpe_vec,
+    mape        = mape_vec
   )
   sum_fns_list <- list(
-    min =    ~ min(.x, na.rm = TRUE),
-    q25 =    ~ quantile(.x, na.rm = TRUE, probs = 0.25),
-    median = ~ median(.x, na.rm = TRUE),
-    q75 =    ~ quantile(.x, na.rm = TRUE, probs = 0.75),
-    max =    ~ max(.x, na.rm = TRUE)
+    min         = ~ min(.x, na.rm = T),
+    q25         = ~ quantile(.x, na.rm = T, probs = 0.25),
+    median      = ~ median(.x, na.rm = T),
+    q75         = ~ quantile(.x, na.rm = T, probs = 0.75),
+    max         = ~ max(.x, na.rm = T)
   )
   sum_sqft_fns_list <- list(
-    min =    ~ min(.x / .y, na.rm = TRUE),
-    q25 =    ~ quantile(.x / .y, na.rm = TRUE, probs = 0.25),
-    median = ~ median(.x / .y, na.rm = TRUE),
-    q75 =    ~ quantile(.x / .y, na.rm = TRUE, probs = 0.75),
-    max =    ~ max(.x / .y, na.rm = TRUE)
+    min         = ~ min(.x / .y, na.rm = T),
+    q25         = ~ quantile(.x / .y, na.rm = T, probs = 0.25),
+    median      = ~ median(.x / .y, na.rm = T),
+    q75         = ~ quantile(.x / .y, na.rm = T, probs = 0.75),
+    max         = ~ max(.x / .y, na.rm = T)
   )
   
   # Generate aggregate performance stats by group
@@ -78,9 +92,9 @@ generate_performance_stat <- function(data,
     group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
     summarize(
       cnt = n(),
-      cod = ifelse(cnt >= 34, list(ccao_cod({{ estimate }} / {{ truth }})), NA),
-      prd = ifelse(cnt >= 34, list(ccao_prd({{ estimate }}, {{ truth }})), NA),
-      prb = ifelse(cnt >= 34, list(ccao_prb({{ estimate }}, {{ truth }})), NA),
+      
+      # Assessment-specific statistics
+      across(.fns = rs_fns_list, {{ estimate }}, {{ truth }}, .names = "{.fn}"),
 
       # Yardstick (ML-specific) performance stats
       across(.fns = ys_fns_list, {{ truth }}, {{ estimate }}, .names = "{.fn}"),
@@ -141,7 +155,8 @@ generate_performance_stat <- function(data,
       values_from = c(median_ratio, lower_bound, upper_bound)
     )
   
-  # Renaming dictionary for input columns
+  # Renaming dictionary for input columns. We want actual value of the column
+  # to become geography_id and the NAME of the column to become geography_name
   col_rename_dict <- c(
     "triad_code" = "meta_triad_code",
     "class" = "meta_class",
@@ -157,7 +172,7 @@ generate_performance_stat <- function(data,
     "geography_id" = "loc_school_unified_district_geoid"
   )
   
-  # Combine both data sets and add identification variables
+  # Combine agg stats data with ntile data and add identification variables
   df_stat %>%
     left_join(df_ntile) %>%
     ungroup() %>%
@@ -181,34 +196,42 @@ generate_performance_stat <- function(data,
 }
 
 
-study_source <- str_to_title(paste(
-  model_ratio_study_year,
-  model_ratio_study_stage
-))
-study_col <- get_rs_col_name(
-  model_assessment_data_year,
-  model_ratio_study_year,
-  model_ratio_study_stage
+# Use fancy tidyeval to create a list of all the geography levels with a
+# class or no class option for each level
+geographies_list <- purrr::cross2(
+  rlang::quos(
+    meta_township_code,
+    meta_nbhd_code,
+    loc_cook_municipality_name,
+    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+    loc_school_unified_district_geoid,
+    NULL
+  ),
+  rlang::quos(
+    meta_class,
+    NULL
+  )
 )
 
-temp <- future_map_dfr(
-  quos(meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
-       loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-       loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-       loc_school_unified_district_geoid, NULL),
-  ~ generate_performance_stat(
-      data = test_data,
-      truth = meta_sale_price,
-      estimate = lgbm,
-      bldg_sqft = char_bldg_sf,
-      ratio_study_source = study_source,
-      ratio_study_col = study_col,
-      triad = meta_triad_code,
-      geography = !!.x,
-      class = NULL
-    )
-  )
-
+# Use parallel map to calculate aggregate stats for every geography level and
+# class combination for the test set
+performance_model <- future_map_dfr(
+  geographies_list,
+  ~ gen_agg_stats(
+    data = test_data,
+    truth = meta_sale_price,
+    estimate = lgbm,
+    bldg_sqft = char_bldg_sf,
+    ratio_study_source = rs_study_source,
+    ratio_study_col = rs_study_col,
+    triad = meta_triad_code,
+    geography = !!.x[[1]],
+    class = !!.x[[2]]
+  ),
+  .options = furrr_options(seed = TRUE, stdout = FALSE),
+  .progress = TRUE
+)
 
 
 # End the script timer
