@@ -26,6 +26,21 @@ model_predict <- function(spec, recipe, data, exp = FALSE) {
 }
 
 
+# Function to translate the ratio study year and stage into a column name within
+# used in the input data
+get_rs_col_name <- function(data_year, study_year, study_stage) {
+  stopifnot(study_stage %in% c("board", "mailed", "certified"))
+  year_diff <- as.numeric(data_year) - as.numeric(study_year)
+  time_prefix <- ifelse(
+    year_diff > 0,
+    paste0(as.integer(year_diff), "yr_pri"),
+    NA_character_
+  )
+  
+  paste(na.omit(c("meta", time_prefix, study_stage, "tot")), collapse = "_")
+}
+
+
 # Function to generate a dictionary of file names, local paths, and mirrored
 # S3 location URIs
 model_file_dict <- function(model_s3_bucket = NULL,
@@ -71,14 +86,27 @@ model_file_dict <- function(model_s3_bucket = NULL,
         )
       ),
       "performance" = list(
-        "local" = here::here(wd, "performance", "model_performance.parquet"),
-        "s3" = file.path(
-          model_s3_bucket, "performance", 
-          paste0("year=", model_assessment_year), mpq
+        "model" = list(
+          "local" = here::here(
+            wd, "performance_model", "performance_model.parquet"
+          ),
+          "s3" = file.path(
+            model_s3_bucket, "performance_model", 
+            paste0("year=", model_assessment_year), mpq
+          )
+        ),
+        "assessment" = list(
+          "local" = here::here(
+            wd, "performance_assessment", "performance_assessment.parquet"
+          ),
+          "s3" = file.path(
+            model_s3_bucket, "performance_assessment", 
+            paste0("year=", model_assessment_year), mpq
+          )
         )
       ),
       "test" = list(
-        "local" = here::here(wd, "performance", "test_data.parquet")
+        "local" = here::here(wd, "performance_model", "test_set_result.parquet")
       ),
       "timing" = list(
         "local" = here::here(wd, "timing", "model_timing.parquet"),
