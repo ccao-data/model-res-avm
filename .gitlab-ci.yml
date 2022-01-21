@@ -1,0 +1,59 @@
+# TEMPLATE GITLAB-CI FOR CCAO MODELS
+
+image: rocker/r-ver:4.1.2
+
+# Defining static variables used throughout the CI pipeline
+variables:
+  DOCKER_DRIVER: "overlay2" # Docker FS driver, don't change this
+  GIT_SUBMODULE_STRATEGY: "recursive" # Set how GitLab handles submodules
+  # If a package has a linux dependency that isn't already listed, add it here
+  APT_DEPS: "libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev git libudunits2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev python3-pip"
+  # Specify vars to enable caching and dependency management via renv
+  RENV_CONFIG_REPOS_OVERRIDE: "https://cloud.r-project.org/"
+  RENV_PATHS_CACHE: ${CI_PROJECT_DIR}/cache
+  RENV_PATHS_LIBRARY: ${CI_PROJECT_DIR}/renv/library
+
+# Cache settings. R libraries are installed into the renv cache based
+# on the libraries listed in the renv.lock file. These libraries are then
+# copied between each build as a .zip file. This mitigates the need to reinstall
+# libraries for every build (which takes a long time). The cache will be re-used
+# until the renv.lock file changes
+cache:
+  - key:
+      files:
+        - renv.lock
+    paths:
+      - .apt
+      - ${RENV_PATHS_CACHE}
+      - ${RENV_PATHS_LIBRARY}
+  - key:
+      files:
+        - ${CI_PROJECT_DIR}/input/assessment_data.parquet.dvc
+        - ${CI_PROJECT_DIR}/input/training_data.parquet.dvc
+    paths:
+      - ${CI_PROJECT_DIR}/input
+
+# Run all of these commands before starting any jobs
+before_script:
+  # These are commands for caching installed APT_DEPS, they slightly speed up
+  # overall build times but aren't strictly necessary
+  - rm -f /etc/apt/apt.conf.d/docker-clean
+  - mkdir -p .apt && mkdir -p /var/cache/apt/archives && mount --bind .apt /var/cache/apt/archives/
+
+  # Install apt dependencies listed in APT_DEPS variable
+  - apt-get update && apt-get install --no-install-recommends -y ${APT_DEPS}
+  
+  # Pip install DVC to fetch data
+  - pip install dvc[s3] boto3
+  - dvc pull
+  
+  # Install R dependencies listed in DESCRIPTION using renv
+  - Rscript -e 'renv::restore()'
+  
+stages:
+  - run
+
+run:
+  stage: run
+  script:
+    - Rscript -e 'run.R' 
