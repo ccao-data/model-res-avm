@@ -63,12 +63,14 @@ if (upload_bool) {
   # Load run info from the saved metadata file. This will let us rename the
   # uploaded files by run ID and determine what to upload
   metadata <- read_parquet(paths$output$metadata$local)
+  model_run_id <- metadata$run_id[1]
+  model_assessment_year <- metadata$model_assessment_year[1]
   
   # Initialize a new dictionary of file paths AND S3 URIs. See R/helpers.R
   paths <- model_file_dict(
     model_s3_bucket = model_s3_bucket,
-    model_run_id = metadata$run_id[1],
-    model_assessment_year = metadata$model_assessment_year[1]
+    model_run_id = model_run_id,
+    model_assessment_year = model_assessment_year
   )
 
 
