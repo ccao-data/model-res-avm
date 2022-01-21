@@ -2,9 +2,9 @@
 # The steps involved are described under each heading below.
 #
 # NOTES:
-#   - Each of the pipeline scripts (except for pipeline/05-timing.R and
-#     06-upload.R) and can be run independently and without first running this
-#     script (as long as their requisite files exist from previous runs)
+#   - Each of the pipeline scripts can be run independently as long as their
+#     requisite files exist from previous runs. If a run dies, simply re-run
+#     whichever script failed to continue the run
 #   - By default, this script will upload model artifacts to S3 (for CCAO
 #     employees only). Set MODEL_UPLOAD_TO_S3 to FALSE in the .Renviron file
 #     if you don't want this behavior
@@ -12,14 +12,28 @@
 #     pipeline/00-ingest.R) but is not run automatically. Use DVC (CCAO) or 
 #     git LFS (public users) to retrieve training and assessment data before
 #     running this script
-
-# Load reporting and timing libraries. Other libraries are loaded by each
-# specific script
 library(here)
-library(tictoc)
+source(here("R", "helpers.R"))
 
-# Start overall pipeline timer
-tictoc::tic("Overall model pipeline")
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Clear Previous Output #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+### WARNING: By default, this script will clear the output of previous runs
+# when it is run. This is to prevent the artifacts of multiple runs from
+# becoming jumbled. Disable this behavior in the included .Renviron file
+model_clear_on_new_run <- as.logical(
+  Sys.getenv("MODEL_CLEAR_ON_NEW_RUN", FALSE)
+)
+
+if (model_clear_on_new_run) {
+  paths <- model_file_dict()
+  local_paths <- unlist(paths)[
+    grepl("local", names(unlist(paths)), fixed = TRUE)
+  ]
+  for (path in local_paths) if (file.exists(path)) file.remove(path)
+}
 
 
 
@@ -28,8 +42,8 @@ tictoc::tic("Overall model pipeline")
 ##### 01. Setup Model #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Run the setup script to fetch environmental variables, metadata, etc. Begin
-# the overall script timer
+# Run the setup script to fetch environmental variables, metadata, etc. Will
+# output a metadata file which stores run information. All further
 source("pipeline/01-setup.R")
 
 
