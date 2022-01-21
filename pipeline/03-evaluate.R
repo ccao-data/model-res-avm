@@ -373,11 +373,15 @@ test_performance <- future_map_dfr(
   .progress = TRUE
 )
 
-# Save test set performance to file
-write_parquet(
-  test_performance,
-  paths$output$performance$test$local
-)
+# Save test set performance to file. Remove all non-informative Inf and NaN
+# values and NA ntile columns
+test_performance %>%
+  mutate(across(
+    -(contains("_max") & contains("yoy")) & where(is.numeric),
+    ~ replace(.x, !is.finite(.x), NA)
+  )) %>%
+  select(-starts_with("qNA_", ignore.case = FALSE)) %>%
+  write_parquet(paths$output$performance$test$local)
 
 
 ### Assessment set
@@ -401,11 +405,15 @@ assessment_performance <- future_map_dfr(
   .progress = TRUE
 )
 
-# Save assessment set performance to file
-write_parquet(
-  assessment_performance,
-  paths$output$performance$assessment$local
-)
+# Save assessment set performance to file. Remove all non-informative Inf and
+# NaN values and NA ntile columns
+assessment_performance %>%
+  mutate(across(
+    -(contains("_max") & contains("yoy")) & where(is.numeric),
+    ~ replace(.x, !is.finite(.x), NA)
+  )) %>%
+  select(-starts_with("qNA_", ignore.case = FALSE)) %>%
+  write_parquet(paths$output$performance$assessment$local)
 
 # End the script timer
 tictoc::toc(log = TRUE)
