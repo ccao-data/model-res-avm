@@ -100,7 +100,7 @@ model_file_dict <- function(model_s3_bucket = NULL,
             wd, "performance", "assessment_performance.parquet"
           ),
           "s3" = file.path(
-            model_s3_bucket, "peformance", 
+            model_s3_bucket, "performance", 
             paste0("year=", model_assessment_year), "stage=assessment", mpq
           )
         )

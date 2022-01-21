@@ -150,7 +150,7 @@ lgbm_model <- lgbm_tree(
     # IMPORTANT: Max number of possible splits for categorical features. Needs
     # to be set high for our data due to high cardinality
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
-    # max_cat_threshold = model_param_max_cat_threshold
+    max_cat_threshold = model_param_max_cat_threshold
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -192,7 +192,7 @@ if (model_cv_enable) {
       
       # Very important. Maps to max_depth in lightgbm. Higher values increase
       # model complexity but may cause overfitting
-      tree_depth = tree_depth(c(6L, 12L)),
+      tree_depth = tree_depth(c(6L, 17L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
@@ -220,7 +220,7 @@ if (model_cv_enable) {
     object = lgbm_wflow,
     resamples = train_folds,
     initial = model_cv_initial_set,
-    iter = model_cv_num_iterations,
+    iter = model_cv_max_iterations,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mae, mape),
     control = control_bayes(

@@ -25,6 +25,8 @@ if (all(sapply(c("model_run_id", "model_run_id", "model_assessment_year"), exist
   stop("This script should only be run from run.R!")
 }
 
+model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+
 
 ### 01-setup.R
 
@@ -50,52 +52,54 @@ aws.s3::put_object(
   paths$output$workflow$recipe$s3
 )
 
-# Upload the parameters object. Requires some cleaning since the Tidymodels
-# output is stored as a nested data frame
-# Get the best/chosen parameter run from cross-validation
-model_best_parameter <- read_parquet(paths$output$parameter$local) %>%
-  select_best(metric = "rmse") %>%
-  ccao::model_lgbm_cap_num_leaves() %>%
-  mutate(chosen_parameters = TRUE)
+# Upload the parameters objects if CV was enabled. Requires some cleaning
+# since the Tidymodels output is stored as a nested data frame
+if (model_cv_enable) {
 
-# Write the raw parameters object to S3 in case we need to use it later
-aws.s3::put_object(
-  paths$output$parameter$local,
-  paths$output$parameter$s3_raw
-)
+  # Get the best/chosen parameter run from cross-validation
+  model_best_parameter <- read_parquet(paths$output$parameter$local) %>%
+    select_best(metric = "rmse") %>%
+    mutate(chosen_parameters = TRUE)
+  
+  # Write the raw parameters object to S3 in case we need to use it later
+  aws.s3::put_object(
+    paths$output$parameter$local,
+    paths$output$parameter$s3_raw
+  )
 
-# Clean and unnest the raw parameters data, then write directly to S3
-model_parameter <- read_parquet(paths$output$parameter$local) %>%
-  tidyr::unnest(cols = .metrics) %>%
-  mutate(
-    run_id = model_run_id,
-    num_leaves_capped = num_leaves > (2 ^ tree_depth) - 1
-  ) %>%
-  ccao::model_lgbm_cap_num_leaves() %>%
-  left_join(
-    rename(., notes = .notes) %>%
-      tidyr::unnest(cols = notes) %>%
-      rename(notes = .notes)
-  ) %>%
-  left_join(model_best_parameter) %>%
-  select(-.notes) %>%
-  rename_with(~ gsub("^\\.", "", .x)) %>%
-  tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
-  select(
-    run_id, iteration = iter, configuration = config, fold_id = id,
-    chosen_parameters, rmse:mape,
-    mtry:num_leaves, num_leaves_capped, notes
-  ) %>%
-  mutate(chosen_parameters = tidyr::replace_na(chosen_parameters, FALSE)) %>%
-  write_parquet(paths$output$parameter$s3)
-
+  # Clean and unnest the raw parameters data, then write directly to S3
+  model_parameter <- read_parquet(paths$output$parameter$local) %>%
+    tidyr::unnest(cols = .metrics) %>%
+    mutate(run_id = model_run_id) %>%
+    left_join(
+      rename(., notes = .notes) %>%
+        tidyr::unnest(cols = notes) %>%
+        rename(notes = .notes)
+    ) %>%
+    left_join(model_best_parameter) %>%
+    select(-.notes) %>%
+    rename_with(~ gsub("^\\.", "", .x)) %>%
+    tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
+    select(
+      run_id, iteration = iter, configuration = config, fold_id = id,
+      chosen_parameters, rmse:mape, mtry:cat_l2, notes
+    ) %>%
+    mutate(chosen_parameters = tidyr::replace_na(chosen_parameters, FALSE)) %>%
+    write_parquet(paths$output$parameter$s3)
+}
 
 ### 03-evaluate.R
 
-# Upload test set peformance
+# Upload test set performance
 aws.s3::put_object(
   paths$output$performance$test$local,
   paths$output$performance$test$s3
+)
+
+# Upload assessment set performance
+aws.s3::put_object(
+  paths$output$performance$assessment$local,
+  paths$output$performance$assessment$s3
 )
 
 

@@ -47,7 +47,7 @@ source("pipeline/02-train.R")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 02. Evaluate Results #####
+##### 03. Evaluate Results #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Evaluate the model's performance using two methods:
