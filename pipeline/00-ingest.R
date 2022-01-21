@@ -61,7 +61,7 @@ model_max_sale_year <- Sys.getenv(
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Pull the training data, which contains actual sales + attached characteristics
-# from the residential input view. Drop multi-code property and outlier sales
+# from the residential input view
 tictoc::tic()
 training_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
@@ -74,10 +74,9 @@ training_data <- dbGetQuery(
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.meta_year
-  WHERE res.meta_year 
+  WHERE (res.meta_year 
       BETWEEN '{model_min_sale_year}' 
-      AND '{model_max_sale_year}'
-  AND NOT res.ind_pin_is_multicard
+      AND '{model_max_sale_year}')
   AND ((sale.sale_price_log10
       BETWEEN sale.sale_filter_lower_limit
       AND sale.sale_filter_upper_limit)

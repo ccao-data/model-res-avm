@@ -61,6 +61,16 @@ model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 ##### Prepare Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# Load the full set of training data, then arrange by sale date in order to
+# facilitate out-of-time sampling/validation.
+#
+# NOTE: It is critical to trim "multicard" sales when training. Multicard means
+# there is multiple buildings on a PIN. Sales for multicard PINs are therefore
+# often for multiple buildings and will therefore bias the model training
+training_data_full <- read_parquet(paths$input$training$local) %>%
+  filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
+  arrange(meta_sale_date)
+
 # Create list of variables that uniquely identify each structure or sale, these
 # can be kept in the training data even though they are not regressors
 model_id_vars <- c(
@@ -75,12 +85,6 @@ model_predictors <- ccao::vars_dict %>%
   dplyr::pull(var_name_model) %>%
   unique() %>%
   na.omit() 
-
-# Load the full set of training data, then arrange by sale date in order to
-# facilitate out-of-time sampling/validation
-training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
-  arrange(meta_sale_date)
   
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
