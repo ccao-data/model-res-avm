@@ -40,19 +40,19 @@ model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 set.seed(model_seed)
 
 # Retrieve hard-coded model hyperparameters from .Renviron
-model_param_num_iterations <- as.numeric(
+model_param_num_iterations <- as.integer(
   Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
 )
-model_param_max_cat_threshold <- as.numeric(
+model_param_max_cat_threshold <- as.integer(
   Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
 )
 
 # Setup cross-validation parameters using .Renviron file
 model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
-model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
-model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
-model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
-model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
+model_cv_num_folds <- as.integer(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
+model_cv_initial_set <- as.integer(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
+model_cv_max_iterations <- as.integer(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
+model_cv_no_improve <- as.integer(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 
 
 
@@ -135,7 +135,8 @@ train_p <- ncol(juiced_train)
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
   trees = model_param_num_iterations,
-  min_n = tune(), mtry = tune(), loss_reduction = tune(), learn_rate = tune(),
+  min_n = tune(), tree_depth = tune(),
+  mtry = tune(), loss_reduction = tune(), learn_rate = tune(),
   lambda_l2 = tune(), min_data_per_group = tune(),
   cat_smooth = tune(), cat_l2 = tune()
 ) %>%
@@ -149,7 +150,7 @@ lgbm_model <- lgbm_tree(
     # IMPORTANT: Max number of possible splits for categorical features. Needs
     # to be set high for our data due to high cardinality
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
-    max_cat_threshold = model_param_max_cat_threshold
+    # max_cat_threshold = model_param_max_cat_threshold
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -176,8 +177,8 @@ if (model_cv_enable) {
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
   #
-  # NOTE: max_depth and num_leaves are implicitly constrained by min_n (which is
-  # min_data_in_leaf in lightgbm). Therefore, we don't explicitly tune them
+  # NOTE: num_leaves is implicitly constrained by min_n (which is
+  # min_data_in_leaf in lightgbm). Therefore, we don't explicitly tune it
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
@@ -188,6 +189,10 @@ if (model_cv_enable) {
       # Maps to min_data_in_leaf in lightgbm. Most important. Optimal/large
       # values can help prevent overfitting
       min_n = min_n(c(2L, 500L)),
+      
+      # Very important. Maps to max_depth in lightgbm. Higher values increase
+      # model complexity but may cause overfitting
+      tree_depth = tree_depth(c(6L, 12L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
@@ -233,8 +238,7 @@ if (model_cv_enable) {
 
   # Choose the best model (whichever model minimizes RMSE)
   lgbm_final_params <- lgbm_search %>%
-    select_best(metric = "rmse") %>%
-    ccao::model_lgbm_cap_num_leaves()
+    select_best(metric = "rmse")
   
   # End the cross-validation timer
   tictoc::toc(log = TRUE)
@@ -244,14 +248,13 @@ if (model_cv_enable) {
   # Otherwise use a set of sensible hand-chosen defaults
   if (file.exists(paths$output$parameter$local)) {
     lgbm_final_params <- read_parquet(paths$output$parameter$local) %>%
-      select_best(metric = "rmse") %>%
-      ccao::model_lgbm_cap_num_leaves()
+      select_best(metric = "rmse")
   } else {
     lgbm_final_params <- data.frame(
-      mtry = 13, min_n = 197, tree_depth = 13, learn_rate = 0.0105,
-      loss_reduction = 0.0002, num_leaves = 3381
-    ) %>%
-      ccao::model_lgbm_cap_num_leaves()
+      min_n = 190L, tree_depth = 12L, mtry = 20L,
+      learn_rate = 0.017, loss_reduction = 7.5, lambda_l2 = 0.0,
+      min_data_per_group = 30L, cat_smooth = 60.0, cat_l2 = 70.0
+    )
   }
 }
 
