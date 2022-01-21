@@ -56,4 +56,4 @@ stages:
 run:
   stage: run
   script:
-    - Rscript -e 'run.R' 
+    - echo 'test' 
