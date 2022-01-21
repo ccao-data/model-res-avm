@@ -58,8 +58,25 @@ rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the test results at the end of 02-train.R. This will be the most recent
-# 10% of sales and already includes predictions
-test_data <- as_tibble(read_parquet(paths$output$test$local))
+# 10% of sales and already includes predictions. This data will NOT include
+# mutlicard sales. The unit of observation is improvements (1 impr per row)
+test_data <- read_parquet(paths$output$test$local) %>% as_tibble()
+
+# Load the final lightgbm model object and recipe from file
+lgbm_final_full_fit <- ccao::model_lgbm_load(paths$output$workflow$fit$local)
+lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
+
+# Load the full set of residential improvements that need values
+assessment_data <- read_parquet(paths$input$assessment$local) %>%
+  as_tibble() %>%
+  mutate(
+    lgbm = model_predict(
+      spec = lgbm_final_full_fit,
+      recipe = lgbm_final_full_recipe,
+      data = .
+    )
+  )
+
 
 
 

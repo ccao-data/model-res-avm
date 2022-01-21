@@ -55,8 +55,8 @@ model_file_dict <- function(model_s3_bucket = NULL,
         "dvc" = here::here("input", "training_data.parquet.dvc")
       ),
       "assessment" = list(
-        "local" = here::here("input", "training_data.parquet"),
-        "dvc" = here::here("input", "training_data.parquet.dvc")
+        "local" = here::here("input", "assessment_data.parquet"),
+        "dvc" = here::here("input", "assessment_data.parquet.dvc")
       )
     ),
     "output" = list(

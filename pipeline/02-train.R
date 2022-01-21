@@ -65,7 +65,7 @@ model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 # facilitate out-of-time sampling/validation.
 #
 # NOTE: It is critical to trim "multicard" sales when training. Multicard means
-# there is multiple buildings on a PIN. Sales for multicard PINs are therefore
+# there is multiple buildings on a PIN. Sales for multicard PINs are
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
