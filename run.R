@@ -47,6 +47,22 @@ source("pipeline/02-train.R")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### 02. Evaluate Results #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Evaluate the model's performance using two methods:
+#   1. The standard holdout test set, in this case the most recent 10% of sales
+#   2. An assessor-specific ratio study, comparing future assessments to 
+#      current sales
+#
+# The script will generate a very large data frame of aggregate performance
+# statistics for different levels of geography
+source("pipeline/03-evaluate.R")
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### 05. Record Timings #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
