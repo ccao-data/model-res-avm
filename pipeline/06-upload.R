@@ -81,7 +81,7 @@ if (model_cv_enable) {
   )
 
   # Clean and unnest the raw parameters data, then write directly to S3
-  model_parameter <- read_parquet(paths$output$parameter$local) %>%
+  read_parquet(paths$output$parameter$local) %>%
     tidyr::unnest(cols = .metrics) %>%
     mutate(run_id = model_run_id) %>%
     left_join(
@@ -104,16 +104,16 @@ if (model_cv_enable) {
 ### 03-evaluate.R
 
 # Upload test set performance
-aws.s3::put_object(
-  paths$output$performance$test$local,
-  paths$output$performance$test$s3
-)
+read_parquet(paths$output$performance$test$local) %>%
+  mutate(run_id = model_run_id) %>%
+  relocate(run_id, .before = everything()) %>%
+  write_parquet(paths$output$performance$test$s3)
 
 # Upload assessment set performance
-aws.s3::put_object(
-  paths$output$performance$assessment$local,
-  paths$output$performance$assessment$s3
-)
+read_parquet(paths$output$performance$assessment$local) %>%
+  mutate(run_id = model_run_id) %>%
+  relocate(run_id, .before = everything()) %>%
+  write_parquet(paths$output$performance$assessment$s3)
 
 
 ### 05-timing.R
