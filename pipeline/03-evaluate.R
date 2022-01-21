@@ -30,12 +30,25 @@ walk(list.files("R", full.names = TRUE), source)
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
 paths <- model_file_dict()
 
-# Get year/stage to use for previous comparison/ratio study
+# Get year/stage to use for previous comparison/ratio studies
 model_assessment_data_year <- Sys.getenv("MODEL_ASSESSMENT_DATA_YEAR")
-rs_year <- Sys.getenv("MODEL_RATIO_STUDY_YEAR", "2020")
-rs_stage <- Sys.getenv("MODEL_RATIO_STUDY_STAGE", "board")
-rs_study_source <- str_to_title(paste(rs_year, rs_stage))
-rs_study_col <- get_rs_col_name(model_assessment_data_year, rs_year, rs_stage)
+rsn_year <- Sys.getenv(
+  "MODEL_RATIO_STUDY_NEAR_YEAR", model_assessment_data_year
+)
+rsn_stage <- Sys.getenv(
+  "MODEL_RATIO_STUDY_NEAR_STAGE", "mailed"
+)
+rsf_year <- Sys.getenv(
+  "MODEL_RATIO_STUDY_FAR_YEAR", "2019"
+)
+rsf_stage <- Sys.getenv(
+  "MODEL_RATIO_STUDY_FAR_STAGE",
+  as.character(as.numeric(model_assessment_data_year) - 3)
+)
+
+# Column names to use for previous ratio study comparison
+rsf_column <- get_rs_col_name(model_assessment_data_year, rsf_year, rsf_stage)
+rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 
 
 
@@ -50,8 +63,8 @@ test_data <- as_tibble(read_parquet(paths$output$test$local))
 
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
-gen_agg_stats <- function(data, truth, estimate, bldg_sqft, ratio_study_source,
-                          ratio_study_col, triad, geography, class) {
+gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
+                          rsn_col, rsf_col, triad, geography, class) {
 
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
@@ -88,10 +101,29 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft, ratio_study_source,
   
   # Generate aggregate performance stats by group
   df_stat <- data %>%
-    mutate(pv_x10 = .[[ratio_study_col]] * 10) %>%
+    mutate(rsn_x10 = .[[rsn_col]] * 10, rsf_x10 = .[[rsf_col]] * 10) %>%
+    
+    # Aggregate to get counts by geography without class
+    group_by({{ triad }}, {{ geography }}) %>%
+    mutate(
+      num_impr_no_class = n(),
+      num_sales_no_class = sum(!is.na({{ truth }}))
+    ) %>%
+  
+    # Aggregate including class
     group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
     summarize(
-      cnt = n(),
+      
+      # Basic summary stats, counts, proportions, etc
+      num_improvements = n(),
+      num_sales = sum(!is.na({{ truth }})),
+      pct_of_total_impr_by_class = num_improvements / first(num_impr_no_class),
+      pct_of_total_sale_by_class = num_sales / first(num_sales_no_class),
+      pct_impr_sold = num_improvements / num_sales,
+      
+      prior_far_total_av = sum(.[[rsf_col]], na.rm = TRUE),
+      prior_near_total_av = sum(.[[rsn_col]], na.rm = TRUE),
+      estimate_total_av = sum({{ estimate }}, na.rm = TRUE),
       
       # Assessment-specific statistics
       across(.fns = rs_fns_list, {{ estimate }}, {{ truth }}, .names = "{.fn}"),
@@ -100,28 +132,34 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft, ratio_study_source,
       across(.fns = ys_fns_list, {{ truth }}, {{ estimate }}, .names = "{.fn}"),
 
       # Summary stats of sale price and sale price per sqft
-      across(.fns = sum_fns_list, {{ truth }}, .names = "sale_{.fn}"),
+      across(.fns = sum_fns_list, {{ truth }}, .names = "sale_fmv_{.fn}"),
       across(
         .fns = sum_sqft_fns_list, {{ truth }}, {{ bldg_sqft }},
         .names = "sale_per_sqft_{.fn}"
       ),
-      sale_num_missing = sum(is.na({{ truth }})),
 
-      # Summary stats of prior year value and value per sqft. Need to multiply
+      # Summary stats of prior values and value per sqft. Need to multiply
       # by 10 first since pin history is in AV, not FMV
-      prior_val_source = ratio_study_source,
-      across(.fns = sum_fns_list, pv_x10, .names = "prior_val_{.fn}"),
+      prior_far_source_col = rsf_col,
+      across(.fns = sum_fns_list, rsf_x10, .names = "prior_far_fmv_{.fn}"),
       across(
-        .fns = sum_sqft_fns_list, pv_x10, {{ bldg_sqft }},
-        .names = "prior_val_per_sqft_{.fn}"
+        .fns = sum_sqft_fns_list, rsf_x10, {{ bldg_sqft }},
+        .names = "prior_far_fmv_per_sqft_{.fn}"
       ),
-      prior_val_num_missing = sum(is.na(pv_x10)),
+      prior_far_num_missing = sum(is.na(rsf_x10)),
+      prior_near_source_col = rsn_col,
+      across(.fns = sum_fns_list, rsn_x10, .names = "prior_near_fmv_{.fn}"),
+      across(
+        .fns = sum_sqft_fns_list, rsn_x10, {{ bldg_sqft }},
+        .names = "prior_near_fmv_per_sqft_{.fn}"
+      ),
+      prior_near_num_missing = sum(is.na(rsn_x10)),
 
       # Summary stats of estimate value and estimate per sqft
-      across(.fns = sum_fns_list, {{ estimate }}, .names = "estimate_{.fn}"),
+      across(.fns = sum_fns_list, {{ estimate }}, .names = "estimate_fmv_{.fn}"),
       across(
         .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
-        .names = "estimate_per_sqft_{.fn}"
+        .names = "estimate_fmv_per_sqft_{.fn}"
       ),
       estimate_num_missing = sum(is.na({{ estimate }}))
     ) %>%
@@ -201,11 +239,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft, ratio_study_source,
 geographies_list <- purrr::cross2(
   rlang::quos(
     meta_township_code,
-    meta_nbhd_code,
-    loc_cook_municipality_name,
-    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-    loc_school_unified_district_geoid,
+    # meta_nbhd_code,
+    # loc_cook_municipality_name,
+    # loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+    # loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+    # loc_school_unified_district_geoid,
     NULL
   ),
   rlang::quos(
@@ -223,8 +261,8 @@ performance_model <- future_map_dfr(
     truth = meta_sale_price,
     estimate = lgbm,
     bldg_sqft = char_bldg_sf,
-    ratio_study_source = rs_study_source,
-    ratio_study_col = rs_study_col,
+    rsn_col = rsn_column,
+    rsf_col = rsf_column,
     triad = meta_triad_code,
     geography = !!.x[[1]],
     class = !!.x[[2]]
@@ -232,7 +270,6 @@ performance_model <- future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 )
-
 
 # End the script timer
 tictoc::toc(log = TRUE)

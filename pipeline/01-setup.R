@@ -64,9 +64,22 @@ model_param_max_cat_threshold <- as.numeric(
   Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
 )
 
-# Info on type and year of values used for assessemnt reporting
-model_ratio_study_year <- Sys.getenv("MODEL_RATIO_STUDY_YEAR", "2020")
-model_ratio_study_stage <- Sys.getenv("MODEL_RATIO_STUDY_STAGE", "board")
+# Info on type and year of values used for assessment reporting. Typically the
+# "near" year is 1 year prior and the "far" year is values after the last
+# triennial assessment
+model_ratio_study_near_year <- Sys.getenv(
+  "MODEL_RATIO_STUDY_NEAR_YEAR", model_assessment_data_year
+)
+model_ratio_study_near_stage <- Sys.getenv(
+  "MODEL_RATIO_STUDY_NEAR_STAGE", "mailed"
+)
+model_ratio_study_far_year <- Sys.getenv(
+  "MODEL_RATIO_STUDY_FAR_YEAR", "2019"
+)
+model_ratio_study_far_stage <- Sys.getenv(
+  "MODEL_RATIO_STUDY_FAR_STAGE",
+  as.character(as.numeric(model_assessment_year) - 3)
+)
 
 
 
@@ -147,8 +160,10 @@ model_metadata <- tibble::tibble(
   model_assessment_data_dvc_id = assessment_md5,
   model_min_sale_year,
   model_max_sale_year,
-  model_ratio_study_year,
-  model_ratio_study_stage,
+  model_ratio_study_far_year,
+  model_ratio_study_far_stage,
+  model_ratio_study_near_year,
+  model_ratio_study_near_stage,
   model_cv_enable,
   model_cv_num_folds = as.integer(model_cv_num_folds),
   model_cv_initial_set = as.integer(model_cv_initial_set),
