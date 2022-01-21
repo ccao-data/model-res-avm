@@ -25,7 +25,7 @@ library(yardstick)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 # Load helpers, recipes, and lightgbm parsnip bindings from files
-walk(list.files("R", full.names = TRUE), source)
+walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
 paths <- model_file_dict()
