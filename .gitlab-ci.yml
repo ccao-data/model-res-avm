@@ -51,9 +51,44 @@ before_script:
   - Rscript -e 'renv::restore()'
   
 stages:
-  - run
+  - setup
+  - train
+  - evaluate
+  - finalize
 
-run:
-  stage: run
+setup:
+  stage: setup
   script:
-    - echo 'test' 
+    - Rscript pipeline/01-setup.R
+  artifacts:
+    paths:
+      - output/
+    expire_in: 1 day
+    
+train:
+  stage: train
+  script:
+    - Rscript pipeline/02-train.R
+  artifacts:
+    paths:
+      - output/
+    expire_in: 1 day
+
+evaluate:
+  stage: evaluate
+  script:
+    - Rscript pipeline/03-evaluate.R
+  artifacts:
+    paths:
+      - output/
+    expire_in: 1 day
+
+finalize:
+  stage: finalize
+  script:
+    - Rscript pipeline/05-timing.R
+    - Rscript pipeline/06-upload.R
+  artifacts:
+    paths:
+      - output/
+    expire_in: 1 day
