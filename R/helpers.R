@@ -30,7 +30,7 @@ model_predict <- function(spec,  recipe,  data,  exp = FALSE) {
 # https://github.com/moby/moby/blob/master/pkg/namesgenerator/names-generator.go
 # Used to generate a memorable run ID. Added some CCAO names :)
 model_generate_id <- function(n = 1, date = Sys.Date()) {
-  docker_names <- readRDS("R/docker_names.rds")
+  docker_names <- readRDS(here::here("R", "docker_names.rds"))
   l <- docker_names$left
   r <- docker_names$right
   
