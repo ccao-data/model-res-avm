@@ -2,7 +2,8 @@
 ##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Start the script timer
+# Start the script timer and clear logs from prior script
+tictoc::tic.clearlog()
 tictoc::tic("Setup model environment")
 
 # The purpose of this file is to set up the environment and variables needed for
@@ -178,5 +179,7 @@ model_metadata <- tibble::tibble(
 # Save the metadata for the run to a local file
 arrow::write_parquet(model_metadata, paths$output$metadata$local)
 
-# End the script timer
+# End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)
+bind_rows(tictoc::tic.log(format = FALSE)) %>%
+  arrow::write_parquet(paths$output$timing$local)

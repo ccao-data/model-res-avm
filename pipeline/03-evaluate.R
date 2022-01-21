@@ -2,7 +2,8 @@
 ##### Setup ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Start full script timer
+# Start the script timer and clear logs from prior script
+tictoc::tic.clearlog()
 tictoc::tic(msg = "Evaluate test set")
 
 # Load R libraries
@@ -415,5 +416,8 @@ assessment_performance %>%
   select(-starts_with("qNA_", ignore.case = FALSE)) %>%
   write_parquet(paths$output$performance$assessment$local)
 
-# End the script timer
+# End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)
+arrow::read_parquet(paths$output$timing$local) %>%
+  bind_rows(., tictoc::tic.log(format = FALSE)) %>%
+  arrow::write_parquet(paths$output$timing$local)
