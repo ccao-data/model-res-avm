@@ -8,11 +8,17 @@
 # Load the necessary libraries
 library(arrow)
 library(aws.s3)
+library(ccao)
 library(dplyr)
 library(here)
+library(lubridate)
+library(paws.application.integration)
 library(tidyr)
 library(tune)
 source(here("R", "helpers.R"))
+
+# Only upload parameters if CV was enabled for this run
+model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
 if (all(sapply(c("model_run_id", "model_run_id", "model_assessment_year"), exists))) {
@@ -24,8 +30,6 @@ if (all(sapply(c("model_run_id", "model_run_id", "model_assessment_year"), exist
 } else {
   stop("This script should only be run from run.R!")
 }
-
-model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 
 
 ### 01-setup.R
@@ -110,3 +114,46 @@ aws.s3::put_object(
   paths$output$timing$local,
   paths$output$timing$s3
 )
+
+
+### SNS Notification
+
+# If SNS ARN is available, notify subscribers via email upon run completion
+if (!is.na(Sys.getenv("AWS_SNS_ARN_MODEL_STATUS", unset = NA))) {
+  pipeline_sns <- paws.application.integration::sns()
+  
+  # Get pipeline total run time from file
+  pipeline_sns_total_time <- arrow::read_parquet(paths$output$timing$local) %>%
+    mutate(dur = lubridate::seconds_to_period(round(overall_sec_elapsed))) %>%
+    pull(dur)
+  
+  # Get overall stats by township for the triad of interest, collapsed into
+  # a plaintext table
+  pipeline_sns_results <- arrow::read_parquet(
+    paths$output$performance$assessment$local,
+    col_select = c("geography_type", "geography_id", "by_class", "cod")
+  ) %>%
+    filter(
+      town_get_triad(geography_id, name = TRUE) == Sys.getenv("MODEL_TRIAD"),
+      !by_class, geography_type == "township_code"
+    ) %>%
+    mutate(township_name = town_convert(geography_id)) %>%
+    select(cod, township_name) %>%
+    mutate(across(where(is.numeric), round, 2)) %>%
+    arrange(cod) %>%
+    knitr::kable(format = "rst") %>%
+    as.character() %>%
+    .[!grepl("=", .)] %>%
+    paste0(collapse = "\n")
+  
+  # Publish to SNS
+  pipeline_sns$publish(
+    Subject = paste("Model Run Complete:", model_run_id),
+    Message = paste0(
+      "Model run: ", model_run_id, " complete\n",
+      "Finished in: ", pipeline_sns_total_time, "\n\n",
+      pipeline_sns_results
+    ),
+    TopicArn = Sys.getenv("AWS_SNS_ARN_MODEL_STATUS")
+  )
+}
