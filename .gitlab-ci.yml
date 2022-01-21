@@ -12,6 +12,7 @@ variables:
   RENV_CONFIG_REPOS_OVERRIDE: "https://cloud.r-project.org/"
   RENV_PATHS_CACHE: ${CI_PROJECT_DIR}/cache
   RENV_PATHS_LIBRARY: ${CI_PROJECT_DIR}/renv/library
+  PIP_CACHE_DIR: ${CI_PROJECT_DIR}/cache 
 
 # Cache settings. R libraries are installed into the renv cache based
 # on the libraries listed in the renv.lock file. These libraries are then
