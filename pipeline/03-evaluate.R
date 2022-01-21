@@ -57,17 +57,35 @@ rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 ##### Load Data ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+### Test set
+
 # Load the test results at the end of 02-train.R. This will be the most recent
 # 10% of sales and already includes predictions. This data will NOT include
-# mutlicard sales. The unit of observation is improvements (1 impr per row)
+# multicard sales. The unit of observation is improvements (1 imprv per row)
 test_data <- read_parquet(paths$output$test$local) %>% as_tibble()
+
+
+### Assessment set
 
 # Load the final lightgbm model object and recipe from file
 lgbm_final_full_fit <- ccao::model_lgbm_load(paths$output$workflow$fit$local)
 lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
 
-# Load the full set of residential improvements that need values
-assessment_data <- read_parquet(paths$input$assessment$local) %>%
+# Load the MOST RECENT sale per PIN for the same year as the assessment data. We
+# want our assessed value to be as close to the most recent sale as possible
+training_data <- read_parquet(paths$input$training$local) %>%
+  filter(meta_year == model_assessment_data_year) %>%
+  group_by(meta_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date)) %>%
+  distinct(
+    meta_pin, meta_year, meta_sale_price,
+    meta_sale_date, meta_sale_document_num
+  ) %>%
+  ungroup()
+
+# Load the data for assessment. This is the universe of IMPROVEMENTs (not PINs)
+# that needs values. Use the trained lightgbm model to estimate a value
+assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
   mutate(
     lgbm = model_predict(
@@ -77,8 +95,34 @@ assessment_data <- read_parquet(paths$input$assessment$local) %>%
     )
   )
 
+# Join sales data to each PIN, then collapse the improvement-level assessment
+# data to the PIN level, summing the predicted value for multicard PINs. Keep
+# only columns needed for performance calculations
+assessment_data <- assessment_data_pred %>%
+  select(-meta_sale_date) %>%
+  left_join(training_data, by = c("meta_year", "meta_pin")) %>%
+  group_by(
+    meta_year, meta_pin, meta_triad_code,
+    meta_class, ind_pin_is_multicard
+  ) %>%
+  summarize(
+    meta_sale_price = first(meta_sale_price),
+    char_bldg_sf = sum(char_bldg_sf),
+    lgbm = sum(lgbm),
+    across(
+      c(any_of(c(rsf_column, rsn_column)),
+        meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
+        loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+        loc_school_elementary_district_geoid,
+        loc_school_secondary_district_geoid,
+        loc_school_unified_district_geoid
+      ),
+      first
+    )
+  ) %>%
+  ungroup()
 
-
+  
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -94,9 +138,9 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   # Each function is listed on the right while the name of the function is on
   # the left
   rs_fns_list <- list(
-    cod_no_sops = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x/ .y, na.rm = T), NA),
-    prd_no_sops = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = T), NA),
-    prb_no_sops = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = T), NA),
+    cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x/ .y, na.rm = T), NA),
+    prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = T), NA),
+    prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = T), NA),
     cod = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_cod(.x/ .y, na.rm = T)), NA),
     prd = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prd(.x, .y, na.rm = T)), NA),
     prb = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prb(.x, .y, na.rm = T)), NA)
@@ -137,8 +181,8 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     # Aggregate to get counts by geography without class
     group_by({{ triad }}, {{ geography }}) %>%
     mutate(
-      num_impr_no_class = n(),
-      num_sales_no_class = sum(!is.na({{ truth }}))
+      num_pin_no_class = n(),
+      num_sale_no_class = sum(!is.na({{ truth }}))
     ) %>%
   
     # Aggregate including class
@@ -146,11 +190,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     summarize(
       
       # Basic summary stats, counts, proportions, etc
-      num_improvements = n(),
-      num_sales = sum(!is.na({{ truth }})),
-      pct_of_total_impr_by_class = num_improvements / first(num_impr_no_class),
-      pct_of_total_sale_by_class = num_sales / first(num_sales_no_class),
-      pct_impr_sold = num_improvements / num_sales,
+      num_pin = n(),
+      num_sale = sum(!is.na({{ truth }})),
+      pct_of_total_impr_by_class = num_pin / first(num_pin_no_class),
+      pct_of_total_sale_by_class = num_sale / first(num_sale_no_class),
+      pct_of_pin_sold =  num_sale / num_pin,
       
       prior_far_total_av = sum(rsf_x10 / 10, na.rm = TRUE),
       prior_near_total_av = sum(rsn_x10 / 10, na.rm = TRUE),
@@ -166,7 +210,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       across(.fns = sum_fns_list, {{ truth }}, .names = "sale_fmv_{.fn}"),
       across(
         .fns = sum_sqft_fns_list, {{ truth }}, {{ bldg_sqft }},
-        .names = "sale_per_sqft_{.fn}"
+        .names = "sale_fmv_per_sqft_{.fn}"
       ),
 
       # Summary stats of prior values and value per sqft. Need to multiply
@@ -307,6 +351,9 @@ geographies_list <- purrr::cross2(
   )
 )
 
+
+### Test set
+
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
 test_performance <- future_map_dfr(
@@ -327,7 +374,38 @@ test_performance <- future_map_dfr(
 )
 
 # Save test set performance to file
-write_parquet(test_performance, paths$output$performance$test$local)
+write_parquet(
+  test_performance,
+  paths$output$performance$test$local
+)
+
+
+### Assessment set
+
+# Do the same thing for the assessment set. This will have accurate property
+# counts and proportions, since it also has unsold properties
+assessment_performance <- future_map_dfr(
+  geographies_list,
+  ~ gen_agg_stats(
+    data = assessment_data,
+    truth = meta_sale_price,
+    estimate = lgbm,
+    bldg_sqft = char_bldg_sf,
+    rsn_col = rsn_column,
+    rsf_col = rsf_column,
+    triad = meta_triad_code,
+    geography = !!.x[[1]],
+    class = !!.x[[2]]
+  ),
+  .options = furrr_options(seed = TRUE, stdout = FALSE),
+  .progress = TRUE
+)
+
+# Save assessment set performance to file
+write_parquet(
+  assessment_performance,
+  paths$output$performance$assessment$local
+)
 
 # End the script timer
 tictoc::toc(log = TRUE)
