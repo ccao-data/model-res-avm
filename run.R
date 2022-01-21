@@ -80,9 +80,6 @@ source("pipeline/03-evaluate.R")
 ##### 05. Record Timings #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Close and log the highest level timing for the entire pipeline
-tictoc::toc(log = TRUE)
-
 # Save overall pipeline timings to file
 source("pipeline/05-timing.R")
 

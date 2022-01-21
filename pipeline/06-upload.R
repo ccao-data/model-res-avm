@@ -1,3 +1,7 @@
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Setup ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 # This script will upload all the locally stored objects created by a pipeline
 # run. Uploaded objects will be renamed by their run_id and/or have the run_id
 # inserted into their data in the left-most position.
@@ -31,6 +35,11 @@ if (all(sapply(c("model_run_id", "model_run_id", "model_assessment_year"), exist
   stop("This script should only be run from run.R!")
 }
 
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Upload ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ### 01-setup.R
 
