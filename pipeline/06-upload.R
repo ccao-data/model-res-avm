@@ -90,6 +90,15 @@ model_parameter <- read_parquet(paths$output$parameter$local) %>%
   write_parquet(paths$output$parameter$s3)
 
 
+### 03-evaluate.R
+
+# Upload test set peformance
+aws.s3::put_object(
+  paths$output$performance$test$local,
+  paths$output$performance$test$s3
+)
+
+
 ### 05-timing.R
 
 # Upload run timings 

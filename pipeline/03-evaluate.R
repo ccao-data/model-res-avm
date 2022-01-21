@@ -54,12 +54,19 @@ rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Generate Stats ####
+##### Load Data ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the test results at the end of 02-train.R. This will be the most recent
 # 10% of sales and already includes predictions
 test_data <- as_tibble(read_parquet(paths$output$test$local))
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Define Stats Function ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
@@ -98,10 +105,17 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     q75         = ~ quantile(.x / .y, na.rm = T, probs = 0.75),
     max         = ~ max(.x / .y, na.rm = T)
   )
+  yoy_fns_list <- list(
+    min         = ~ min((.x - .y) / .y, na.rm = T),
+    q25         = ~ quantile((.x - .y) / .y, na.rm = T, probs = 0.25),
+    median      = ~ median((.x - .y) / .y, na.rm = T),
+    q75         = ~ quantile((.x - .y) / .y, na.rm = T, probs = 0.75),
+    max         = ~ max((.x - .y) / .y, na.rm = T)
+  )
   
   # Generate aggregate performance stats by group
   df_stat <- data %>%
-    mutate(rsn_x10 = .[[rsn_col]] * 10, rsf_x10 = .[[rsf_col]] * 10) %>%
+    mutate(rsf_x10 = .[[rsf_col]] * 10, rsn_x10 = .[[rsn_col]] * 10) %>%
     
     # Aggregate to get counts by geography without class
     group_by({{ triad }}, {{ geography }}) %>%
@@ -121,8 +135,8 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       pct_of_total_sale_by_class = num_sales / first(num_sales_no_class),
       pct_impr_sold = num_improvements / num_sales,
       
-      prior_far_total_av = sum(.[[rsf_col]], na.rm = TRUE),
-      prior_near_total_av = sum(.[[rsn_col]], na.rm = TRUE),
+      prior_far_total_av = sum(rsf_x10 / 10, na.rm = TRUE),
+      prior_near_total_av = sum(rsn_x10 / 10, na.rm = TRUE),
       estimate_total_av = sum({{ estimate }}, na.rm = TRUE),
       
       # Assessment-specific statistics
@@ -141,27 +155,35 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       # Summary stats of prior values and value per sqft. Need to multiply
       # by 10 first since pin history is in AV, not FMV
       prior_far_source_col = rsf_col,
+      prior_far_num_missing = sum(is.na(rsf_x10)),
       across(.fns = sum_fns_list, rsf_x10, .names = "prior_far_fmv_{.fn}"),
       across(
         .fns = sum_sqft_fns_list, rsf_x10, {{ bldg_sqft }},
         .names = "prior_far_fmv_per_sqft_{.fn}"
       ),
-      prior_far_num_missing = sum(is.na(rsf_x10)),
+      across(
+        .fns = yoy_fns_list, {{ estimate }}, rsf_x10,
+        .names = "prior_far_yoy_pct_chg_{.fn}"
+      ),
       prior_near_source_col = rsn_col,
+      prior_near_num_missing = sum(is.na(rsn_x10)),
       across(.fns = sum_fns_list, rsn_x10, .names = "prior_near_fmv_{.fn}"),
       across(
         .fns = sum_sqft_fns_list, rsn_x10, {{ bldg_sqft }},
         .names = "prior_near_fmv_per_sqft_{.fn}"
       ),
-      prior_near_num_missing = sum(is.na(rsn_x10)),
+      across(
+        .fns = yoy_fns_list, {{ estimate }}, rsn_x10,
+        .names = "prior_near_yoy_pct_chg_{.fn}"
+      ),
 
       # Summary stats of estimate value and estimate per sqft
+      estimate_num_missing = sum(is.na({{ estimate }})),
       across(.fns = sum_fns_list, {{ estimate }}, .names = "estimate_fmv_{.fn}"),
       across(
         .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
         .names = "estimate_fmv_per_sqft_{.fn}"
-      ),
-      estimate_num_missing = sum(is.na({{ estimate }}))
+      )
     ) %>%
 
     # COD, PRD, and PRB all output to a list. We can unnest each list to get
@@ -179,18 +201,28 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   # Calculate the median ratio by ntile of sale price, plus the upper and lower
   # bounds of each ntile
   df_ntile <- data %>%
+    mutate(rsf_x10 = .[[rsf_col]] * 10, rsn_x10 = .[[rsn_col]] * 10) %>%
     group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
     mutate(ntile = ntile({{ truth }}, n = 5)) %>%
     group_by({{ triad }}, {{ geography }}, {{ class }}, ntile) %>%
     summarize(
       median_ratio = median( ({{ estimate }} / {{ truth }}), na.rm = TRUE),
       lower_bound = min( {{ truth }}, na.rm = TRUE),
-      upper_bound = max( {{ truth }}, na.rm = TRUE)
+      upper_bound = max( {{ truth }}, na.rm = TRUE),
+      prior_near_yoy_pct_chg_median = median(
+        ({{ estimate }} - rsn_x10) / rsn_x10, na.rm = TRUE
+      ),
+      prior_far_yoy_pct_chg_median = median(
+        ({{ estimate }} - rsf_x10) / rsf_x10, na.rm = TRUE
+      )
     ) %>%
     pivot_wider(
       names_from = ntile,
       names_glue = "q{ntile}_{.value}",
-      values_from = c(median_ratio, lower_bound, upper_bound)
+      values_from = c(
+        median_ratio, lower_bound, upper_bound,
+        prior_near_yoy_pct_chg_median, prior_far_yoy_pct_chg_median
+      )
     )
   
   # Renaming dictionary for input columns. We want actual value of the column
@@ -234,16 +266,22 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 }
 
 
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Generate Stats ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 # Use fancy tidyeval to create a list of all the geography levels with a
 # class or no class option for each level
 geographies_list <- purrr::cross2(
   rlang::quos(
     meta_township_code,
-    # meta_nbhd_code,
-    # loc_cook_municipality_name,
-    # loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-    # loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-    # loc_school_unified_district_geoid,
+    meta_nbhd_code,
+    loc_cook_municipality_name,
+    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+    loc_school_unified_district_geoid,
     NULL
   ),
   rlang::quos(
@@ -254,7 +292,7 @@ geographies_list <- purrr::cross2(
 
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
-performance_model <- future_map_dfr(
+test_performance <- future_map_dfr(
   geographies_list,
   ~ gen_agg_stats(
     data = test_data,
@@ -270,6 +308,9 @@ performance_model <- future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 )
+
+# Save test set performance to file
+write_parquet(test_performance, paths$output$performance$test$local)
 
 # End the script timer
 tictoc::toc(log = TRUE)
