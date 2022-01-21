@@ -30,7 +30,8 @@ model_clear_on_new_run <- as.logical(
 if (model_clear_on_new_run) {
   paths <- model_file_dict()
   local_paths <- unlist(paths)[
-    grepl("local", names(unlist(paths)), fixed = TRUE)
+    grepl("local", names(unlist(paths)), fixed = TRUE) &
+    grepl("output", names(unlist(paths)), fixed = TRUE)
   ]
   for (path in local_paths) if (file.exists(path)) file.remove(path)
 }
@@ -80,7 +81,8 @@ source("pipeline/03-evaluate.R")
 ##### 05. Record Timings #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Save overall pipeline timings to file
+# Save overall pipeline timings to file with one row per run and one column
+# per stage
 source("pipeline/05-timing.R")
 
 
@@ -90,5 +92,5 @@ source("pipeline/05-timing.R")
 ##### 06. Upload Results #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# If enabled, upload pipeline run to S3
-if (model_upload_to_s3) source("pipeline/06-upload.R")
+# Upload pipeline run results to S3 for visualization and storage
+source("pipeline/06-upload.R")

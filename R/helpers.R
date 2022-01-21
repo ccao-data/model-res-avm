@@ -72,13 +72,6 @@ model_file_dict <- function(model_s3_bucket = NULL,
       )
     ), 
     "output" = list(
-      "assessment" = list(
-        "local" = here::here(wd,  "assessment",  "model_assessment.parquet"), 
-        "s3" = file.path(
-          model_s3_bucket,  "assessment", 
-          paste0("year=",  model_assessment_year),  mpq
-        )
-      ), 
       "metadata" = list(
         "local" = here::here(wd,  "metadata",  "model_metadata.parquet"), 
         "s3" = file.path(

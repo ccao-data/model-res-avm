@@ -23,15 +23,8 @@ source(here("R", "helpers.R"))
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
 paths <- model_file_dict()
 
-# Read initial configuration parameters from the included .Renviron file
 
-# Whether or not to upload model artifacts (objects, results, parameters) to S3
-# Only available to CCAO employees
-model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", FALSE))
-
-# Location of files uploaded to S3. AWS_S3_WAREHOUSE_BUCKET should be set in
-# your root .Renviron file (if you are a CCAO employee)
-model_s3_bucket <- file.path(Sys.getenv("AWS_S3_WAREHOUSE_BUCKET"), "model")
+### Read initial configuration parameters from the included .Renviron file
 
 # Get information about the assessment year, date, and the sales sample
 model_assessment_year <- Sys.getenv("MODEL_ASSESSMENT_YEAR", "2022")
