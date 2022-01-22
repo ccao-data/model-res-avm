@@ -1,5 +1,14 @@
 # TEMPLATE GITLAB-CI FOR CCAO MODELS
 
+# This CI script creates the R environment to run the CCAO's automated valuation
+# models. It uses the same basic pipeline as the run.R script included with
+# every model, but runs each script as a separate stage on GitLab's CI runners.
+
+# This setup uses dependency caching to speed up build times, see below for
+# more details
+
+# Base R image to build the model with. Should be version locked to the highest
+# version most CCAO employees are using locally
 image: rocker/r-ver:4.1.2
 
 # Defining static variables used throughout the CI pipeline
@@ -8,7 +17,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: "recursive" # Set how GitLab handles submodules
   # If a package has a linux dependency that isn't already listed, add it here
   APT_DEPS: "libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev git libudunits2-dev python3-dev python3-pip"
-  # Specify vars to enable caching and dependency management via renv
+  # Specify vars to enable caching and dependency management via renv and pip
   RENV_CONFIG_REPOS_OVERRIDE: "https://cloud.r-project.org/"
   RENV_PATHS_CACHE: ${CI_PROJECT_DIR}/cache
   RENV_PATHS_LIBRARY: ${CI_PROJECT_DIR}/renv/library
@@ -19,6 +28,9 @@ variables:
 # copied between each build as a .zip file. This mitigates the need to reinstall
 # libraries for every build (which takes a long time). The cache will be re-used
 # until the renv.lock file changes
+
+# The input data is also versioned using DVC. If the .dvc file of any input data
+# changes, then the cache will be busted and new data will be pulled from S3
 cache:
   - key:
       files:
@@ -44,13 +56,17 @@ before_script:
   # Install apt dependencies listed in APT_DEPS variable
   - apt-get update && apt-get install --no-install-recommends -y ${APT_DEPS}
   
-  # Pip install DVC to fetch data
+  # pip install DVC to fetch data from S3 using dvc pull
   - pip install dvc[s3] boto3
   - dvc pull
   
-  # Install R dependencies listed in DESCRIPTION using renv
+  # Install R dependencies listed in renv.lock using renv
   - Rscript -e 'renv::restore()'
-  
+
+# Each of the stages listed below corresponds to a script in the pipeline/
+# directory. The purpose of each stage is described in run.R. Artifacts are used
+# to pass objects between stages. They expire quickly because they're typically
+# uploaded to S3
 stages:
   - setup
   - train
