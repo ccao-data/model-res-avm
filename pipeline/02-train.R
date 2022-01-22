@@ -188,15 +188,15 @@ if (model_cv_enable) {
 
       # Maps to min_data_in_leaf in lightgbm. Most important. Optimal/large
       # values can help prevent overfitting
-      min_n = min_n(c(2L, 500L)),
+      min_n = min_n(c(4L, 500L)),
       
       # Very important. Maps to max_depth in lightgbm. Higher values increase
       # model complexity but may cause overfitting
-      tree_depth = tree_depth(c(6L, 17L)),
+      tree_depth = tree_depth(c(6L, 18L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
-      mtry = mtry(c(2L, train_p)),
+      mtry = mtry(c(5L, train_p)),
 
       # Maps to min_gain_to_split in lightgbm. Will prevent splitting if the
       # training gain is too small. Higher values reduce training time
@@ -225,6 +225,7 @@ if (model_cv_enable) {
     metrics = metric_set(rmse, mae, mape),
     control = control_bayes(
       verbose = TRUE,
+      uncertain = model_cv_no_improve - 2,
       no_improve = model_cv_no_improve,
       seed = model_seed
     )
