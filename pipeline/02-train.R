@@ -47,12 +47,19 @@ model_param_max_cat_threshold <- as.integer(
   Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
 )
 
+# Disable CV for non-interactive sessions (GitLab CI)
+if (interactive()) {
+  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+} else {
+  model_cv_enable <- FALSE
+}
+
 # Setup cross-validation parameters using .Renviron file
-model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 model_cv_num_folds <- as.integer(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
 model_cv_initial_set <- as.integer(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.integer(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
 model_cv_no_improve <- as.integer(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
+
 
 
 

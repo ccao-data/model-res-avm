@@ -22,9 +22,19 @@ library(tune)
 source(here("R", "helpers.R"))
 
 # Whether or not to upload model artifacts (objects, results, parameters) to S3
-# Only available to CCAO employees
-model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", FALSE))
-model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+# Only available to CCAO employees via interactive sessions
+if (interactive()) {
+  model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", FALSE))
+} else {
+  model_upload_to_s3 <- FALSE
+}
+
+# Disable CV for non-interactive sessions (GitLab CI)
+if (interactive()) {
+  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+} else {
+  model_cv_enable <- FALSE
+}
 
 # Location of files uploaded to S3. AWS_S3_WAREHOUSE_BUCKET should be set in
 # your root .Renviron file (if you are a CCAO employee)

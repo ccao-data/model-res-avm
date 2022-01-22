@@ -39,8 +39,14 @@ model_type <- Sys.getenv("MODEL_TYPE", "lightgbm")
 model_triad <- Sys.getenv("MODEL_TRIAD", "North")
 model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 
+# Disable CV for non-interactive sessions (GitLab CI)
+if (interactive()) {
+  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+} else {
+  model_cv_enable <- FALSE
+}
+
 # Get info on cross-validation setup and split proportion
-model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
 model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
@@ -157,7 +163,7 @@ model_metadata <- tibble::tibble(
   model_ratio_study_far_stage,
   model_ratio_study_near_year,
   model_ratio_study_near_stage,
-  model_cv_enable,
+  model_cv_enable = model_cv_enable,
   model_cv_num_folds = as.integer(model_cv_num_folds),
   model_cv_initial_set = as.integer(model_cv_initial_set),
   model_cv_max_iterations = as.integer(model_cv_max_iterations),
