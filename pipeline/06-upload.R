@@ -138,7 +138,7 @@ if (upload_bool) {
       tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
       select(
         run_id, iteration = iter, configuration = config, fold_id = id,
-        chosen_parameters, rmse:mape, mtry:cat_l2, notes
+        chosen_parameters, rmse:mape, mtry:cat_smooth, notes
       ) %>%
       mutate(chosen_parameters = tidyr::replace_na(chosen_parameters, FALSE)) %>%
       write_parquet(paths$output$parameter$s3)

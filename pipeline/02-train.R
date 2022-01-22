@@ -43,8 +43,14 @@ set.seed(model_seed)
 model_param_num_iterations <- as.integer(
   Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
 )
+model_param_learning_rate <- as.numeric(
+  Sys.getenv("MODEL_PARAM_LEARNING_RATE", 0.1)
+)
 model_param_max_cat_threshold <- as.integer(
   Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
+)
+model_param_min_data_per_group <- as.integer(
+  Sys.getenv("MODEL_PARAM_MIN_DATA_PER_GROUP", 100)
 )
 
 # Disable CV for non-interactive sessions (GitLab CI) unless overridden
@@ -141,23 +147,22 @@ train_p <- ncol(juiced_train)
 # detected automatically by treesnip's lightgbm implementation as long as they
 # are factors. trees argument here maps to num_iterations in lightgbm
 lgbm_model <- lgbm_tree(
-  trees = model_param_num_iterations,
-  min_n = tune(), tree_depth = tune(),
-  mtry = tune(), loss_reduction = tune(), learn_rate = tune(),
-  lambda_l2 = tune(), min_data_per_group = tune(),
-  cat_smooth = tune(), cat_l2 = tune()
+  trees = model_param_num_iterations, learn_rate = model_param_learning_rate,
+  min_n = tune(), tree_depth = tune(), mtry = tune(),
+  lambda_l1 = tune(), lambda_l2 = tune(), cat_smooth = tune()
 ) %>%
   set_engine("lightgbm") %>%
   set_mode("regression") %>%
   set_args(
     # These are lightgbm-specific parameters that are passed to lgb.train
     num_threads = num_threads,
-    verbosity = -1L,
+    verbosity = 1L,
     
     # IMPORTANT: Max number of possible splits for categorical features. Needs
     # to be set high for our data due to high cardinality
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
-    max_cat_threshold = model_param_max_cat_threshold
+    max_cat_threshold = model_param_max_cat_threshold,
+    min_data_per_group = model_param_min_data_per_group
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -183,7 +188,7 @@ if (model_cv_enable) {
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
-  #
+
   # NOTE: num_leaves is implicitly constrained by min_n (which is
   # min_data_in_leaf in lightgbm). Therefore, we don't explicitly tune it
   lgbm_params <- lgbm_model %>%
@@ -194,31 +199,23 @@ if (model_cv_enable) {
       ### map to lightgbm parameters of different names
 
       # Maps to min_data_in_leaf in lightgbm. Most important. Optimal/large
-      # values can help prevent overfitting
-      min_n = min_n(c(4L, 500L)),
+      # values can help prevent overfitting. This implicitly defines the number
+      # of leaves
+      min_n = min_n(c(20L, 1200L)),
       
       # Very important. Maps to max_depth in lightgbm. Higher values increase
-      # model complexity but may cause overfitting
-      tree_depth = tree_depth(c(6L, 18L)),
+      # model complexity but may cause overfitting (also increases train time)
+      tree_depth = tree_depth(c(6L, 17L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
-      mtry = mtry(c(5L, train_p)),
-
-      # Maps to min_gain_to_split in lightgbm. Will prevent splitting if the
-      # training gain is too small. Higher values reduce training time
-      loss_reduction = loss_reduction(c(0.0, 20.0), trans = NULL),
-
-      # Maps to learning_rate in lightgbm. Should be changed in tune with
-      # number of iterations
-      learn_rate = learn_rate(c(-4.0, -0.5)),
+      mtry = mtry(c(floor(train_p * 0.2), train_p)),
       
       ### These are custom tuning parameters. See R/bindings.R for more
       ### information about each parameter and its purpose
+      lambda_l1 = lambda_l1(c(0.0, 100.0)),
       lambda_l2 = lambda_l2(c(0.0, 100.0)),
-      min_data_per_group = min_data_per_group(c(4L, 200L)),
-      cat_smooth = cat_smooth(c(1.0, 100.0)),
-      cat_l2 = cat_l2(c(1.0, 100.0))
+      cat_smooth = cat_smooth(c(10.0, 100.0))
     )
 
   # Use Bayesian tuning to find best performing params. This part takes quite
@@ -259,9 +256,8 @@ if (model_cv_enable) {
       select_best(metric = "rmse")
   } else {
     lgbm_final_params <- data.frame(
-      min_n = 190L, tree_depth = 12L, mtry = 20L,
-      learn_rate = 0.017, loss_reduction = 7.5, lambda_l2 = 0.0,
-      min_data_per_group = 30L, cat_smooth = 60.0, cat_l2 = 70.0
+      min_n = 190L, tree_depth = 13L, mtry = floor(train_p * 0.7),
+      lambda_l1 = 1.0, lambda_l2 = 5.0, cat_smooth = 60.0
     )
   }
 }
