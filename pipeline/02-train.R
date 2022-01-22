@@ -47,9 +47,9 @@ model_param_max_cat_threshold <- as.integer(
   Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
 )
 
-# Disable CV for non-interactive sessions (GitLab CI)
-if (interactive()) {
-  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+# Disable CV for non-interactive sessions (GitLab CI) unless overridden
+if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
+  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", TRUE))
 } else {
   model_cv_enable <- FALSE
 }

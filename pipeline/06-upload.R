@@ -22,16 +22,16 @@ library(tune)
 source(here("R", "helpers.R"))
 
 # Whether or not to upload model artifacts (objects, results, parameters) to S3
-# Only available to CCAO employees via interactive sessions
-if (interactive()) {
-  model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", FALSE))
+# Only available to CCAO employees via interactive sessions (unless overridden)
+if (interactive() | as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3_OVERRIDE", FALSE))) {
+  model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", TRUE))
 } else {
   model_upload_to_s3 <- FALSE
 }
 
-# Disable CV for non-interactive sessions (GitLab CI)
-if (interactive()) {
-  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
+# Disable CV for non-interactive sessions (GitLab CI) unless overridden
+if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
+  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", TRUE))
 } else {
   model_cv_enable <- FALSE
 }
