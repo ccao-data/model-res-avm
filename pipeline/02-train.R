@@ -156,7 +156,7 @@ lgbm_model <- lgbm_tree(
   set_args(
     # These are lightgbm-specific parameters that are passed to lgb.train
     num_threads = num_threads,
-    verbosity = 1L,
+    verbosity = -1L,
     
     # IMPORTANT: Max number of possible splits for categorical features. Needs
     # to be set high for our data due to high cardinality
@@ -201,15 +201,15 @@ if (model_cv_enable) {
       # Maps to min_data_in_leaf in lightgbm. Most important. Optimal/large
       # values can help prevent overfitting. This implicitly defines the number
       # of leaves
-      min_n = min_n(c(20L, 1200L)),
-      
-      # Very important. Maps to max_depth in lightgbm. Higher values increase
-      # model complexity but may cause overfitting (also increases train time)
-      tree_depth = tree_depth(c(6L, 17L)),
+      min_n = min_n(c(20L, 1000L)),
 
       # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
       # by treesnip and becomes mtry / ncol(data). Max value of 1
       mtry = mtry(c(floor(train_p * 0.2), train_p)),
+      
+      # Very important. Maps to max_depth in lightgbm. Higher values increase
+      # model complexity but may cause overfitting (also increases train time)
+      tree_depth = tree_depth(c(6L, 17L)),
       
       ### These are custom tuning parameters. See R/bindings.R for more
       ### information about each parameter and its purpose
