@@ -209,7 +209,7 @@ if (model_cv_enable) {
       
       # Very important. Maps to max_depth in lightgbm. Higher values increase
       # model complexity but may cause overfitting (also increases train time)
-      tree_depth = tree_depth(c(6L, 17L)),
+      tree_depth = tree_depth(c(6L, 15L)),
       
       ### These are custom tuning parameters. See R/bindings.R for more
       ### information about each parameter and its purpose
@@ -239,26 +239,29 @@ if (model_cv_enable) {
   # CV iteration
   lgbm_search %>%
     ccao::model_axe_tune_data() %>%
-    arrow::write_parquet(paths$output$parameter$local)
+    arrow::write_parquet(paths$output$parameter_search$local)
 
   # Choose the best model (whichever model minimizes RMSE)
   lgbm_final_params <- lgbm_search %>%
-    select_best(metric = "rmse")
+    select_best(metric = "rmse") %>%
+    arrow::write_parquet(paths$output$parameter_final$local)
   
   # End the cross-validation timer
   tictoc::toc(log = TRUE)
 } else {
 
   # If CV is not enabled, load saved parameters from file if it exists
-  # Otherwise use a set of sensible hand-chosen defaults
-  if (file.exists(paths$output$parameter$local)) {
-    lgbm_final_params <- read_parquet(paths$output$parameter$local) %>%
-      select_best(metric = "rmse")
+  # Otherwise use a set of hand-chosen parameters
+  if (file.exists(paths$output$parameter_search$local)) {
+    lgbm_final_params <- read_parquet(paths$output$parameter_search$local) %>%
+      select_best(metric = "rmse") %>%
+      arrow::write_parquet(paths$output$parameter_final$local)
   } else {
     lgbm_final_params <- data.frame(
-      min_n = 190L, tree_depth = 13L, mtry = floor(train_p * 0.7),
-      lambda_l1 = 1.0, lambda_l2 = 5.0, cat_smooth = 60.0
-    )
+      min_n = 190L, tree_depth = 15L, mtry = floor(train_p * 0.7),
+      lambda_l1 = 1.0, lambda_l2 = 5.0, cat_smooth = 60.0, .config = "Manual"
+    ) %>%
+    arrow::write_parquet(paths$output$parameter_final$local)
   }
 }
 

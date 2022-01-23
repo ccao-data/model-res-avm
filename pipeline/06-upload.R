@@ -55,8 +55,8 @@ output_paths <- unlist(paths)[
 #   2. The parameter file, which may not exists if CV is disabled, so check that
 #   3. S3 upload is enabled
 upload_bool <- all(sapply(output_paths, file.exists)) & (
-  (!file.exists(paths$output$parameter$local) & !model_cv_enable) |
-  (file.exists(paths$output$parameter$local) & model_cv_enable) &
+  (!file.exists(paths$output$parameter_search$local) & !model_cv_enable) |
+  (file.exists(paths$output$parameter_search$local) & model_cv_enable) &
   model_upload_to_s3
 )
 
@@ -108,23 +108,25 @@ if (upload_bool) {
     paths$output$workflow$recipe$s3
   )
   
-  # Upload the parameters objects if CV was enabled. Requires some cleaning
-  # since the Tidymodels output is stored as a nested data frame
+  # Always write the chosen/final parameters to S3
+  arrow::read_parquet(paths$output$parameter_final$local) %>%
+    rename(any_of(c("configuration" = ".config"))) %>%
+    mutate(run_id = model_run_id) %>%
+    relocate(any_of(c("run_id", "configuration")), .before = everything()) %>%
+    arrow::write_parquet(paths$output$parameter_final$s3)
+  
+  # Upload the parameter search objects if CV was enabled. Requires some 
+  # cleaning since the Tidymodels output is stored as a nested data frame
   if (model_cv_enable) {
   
-    # Get the best/chosen parameter run from cross-validation
-    model_best_parameter <- read_parquet(paths$output$parameter$local) %>%
-      select_best(metric = "rmse") %>%
-      mutate(chosen_parameters = TRUE)
-    
     # Write the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
-      paths$output$parameter$local,
-      paths$output$parameter$s3_raw
+      paths$output$parameter_search$local,
+      paths$output$parameter_search$s3_raw
     )
   
     # Clean and unnest the raw parameters data, then write directly to S3
-    read_parquet(paths$output$parameter$local) %>%
+    read_parquet(paths$output$parameter_search$local) %>%
       tidyr::unnest(cols = .metrics) %>%
       mutate(run_id = model_run_id) %>%
       left_join(
@@ -132,16 +134,14 @@ if (upload_bool) {
           tidyr::unnest(cols = notes) %>%
           rename(notes = .notes)
       ) %>%
-      left_join(model_best_parameter) %>%
       select(-.notes) %>%
       rename_with(~ gsub("^\\.", "", .x)) %>%
       tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
       select(
         run_id, iteration = iter, configuration = config, fold_id = id,
-        chosen_parameters, rmse:mape, mtry:cat_smooth, notes
+        rmse:mape, mtry:cat_smooth, notes
       ) %>%
-      mutate(chosen_parameters = tidyr::replace_na(chosen_parameters, FALSE)) %>%
-      write_parquet(paths$output$parameter$s3)
+      write_parquet(paths$output$parameter_search$s3)
   }
   
   ### 03-evaluate.R

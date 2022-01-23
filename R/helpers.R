@@ -79,14 +79,25 @@ model_file_dict <- function(model_s3_bucket = NULL,
           paste0("year=",  model_assessment_year),  mpq
         )
       ), 
-      "parameter" = list(
-        "local" = here::here(wd,  "parameter",  "model_parameter.parquet"), 
+      "parameter_search" = list(
+        "local" = here::here(
+          wd,  "parameter_search",  "model_parameter_search.parquet"
+        ), 
         "s3" = file.path(
-          model_s3_bucket,  "parameter",  
+          model_s3_bucket,  "parameter_search",  
           paste0("year=",  model_assessment_year),  mpq
         ), 
         "s3_raw" = file.path(
           model_s3_bucket,  "parameter_raw",  
+          paste0("year=",  model_assessment_year),  mpq
+        )
+      ), 
+      "parameter_final" = list(
+        "local" = here::here(
+          wd,  "parameter_final",  "model_parameter_final.parquet"
+        ), 
+        "s3" = file.path(
+          model_s3_bucket,  "parameter_final",  
           paste0("year=",  model_assessment_year),  mpq
         )
       ), 
