@@ -94,8 +94,8 @@ model_ratio_study_far_stage <- Sys.getenv(
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate a random identifier for this run. This will serve as the primary key/
-# identifier for this run in perpetuity. See helper function for details
-model_run_id <- model_generate_id()
+# identifier for this run in perpetuity. See ?ccao_generate_id for details
+model_run_id <- ccao::ccao_generate_id()
 
 # Get the current timestamp for when the run started
 model_run_start_timestamp <- lubridate::now()
