@@ -11,7 +11,6 @@ library(arrow)
 library(assessr)
 library(ccao)
 library(dplyr)
-library(dtplyr)
 library(here)
 library(furrr)
 library(purrr)
@@ -76,7 +75,6 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
 # Load the MOST RECENT sale per PIN for the same year as the assessment data. We
 # want our assessed value to be as close to the most recent sale as possible
 training_data <- read_parquet(paths$input$training$local) %>%
-  dtplyr::lazy_dt() %>%
   filter(meta_year == model_assessment_data_year) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
@@ -84,8 +82,7 @@ training_data <- read_parquet(paths$input$training$local) %>%
     meta_pin, meta_year, meta_sale_price,
     meta_sale_date, meta_sale_document_num
   ) %>%
-  ungroup() %>%
-  dplyr::collect()
+  ungroup()
 
 # Load the data for assessment. This is the universe of IMPROVEMENTs (not PINs)
 # that needs values. Use the trained lightgbm model to estimate a value
@@ -103,7 +100,6 @@ assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
 # data to the PIN level, summing the predicted value for multicard PINs. Keep
 # only columns needed for performance calculations
 assessment_data <- assessment_data_pred %>%
-  dtplyr::lazy_dt() %>%
   select(-meta_sale_date) %>%
   left_join(training_data, by = c("meta_year", "meta_pin")) %>%
   group_by(
@@ -125,8 +121,7 @@ assessment_data <- assessment_data_pred %>%
       first
     )
   ) %>%
-  ungroup() %>%
-  dplyr::collect()
+  ungroup()
 
   
 
