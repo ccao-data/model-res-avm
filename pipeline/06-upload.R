@@ -177,7 +177,7 @@ if (upload_bool) {
     # Get pipeline total run time from file
     pipeline_sns_total_time <- arrow::read_parquet(paths$output$timing$local) %>%
       mutate(dur = lubridate::seconds_to_period(round(overall_sec_elapsed))) %>%
-      pull(dur)
+      dplyr::pull(dur)
     
     # Get overall stats by township for the triad of interest, collapsed into
     # a plaintext table
