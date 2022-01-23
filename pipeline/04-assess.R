@@ -8,12 +8,12 @@ library(assessr)
 library(ccao)
 library(dplyr)
 library(here)
+library(lightsnip)
 library(purrr)
 library(recipes)
 library(stringr)
 library(tictoc)
 library(tidymodels)
-library(treesnip)
 
 # Start full script timer
 tictoc::tic(msg = "Full Valuation Complete!")
@@ -39,7 +39,7 @@ sales_pv_min_year <- as.numeric(model_get_env(
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the final lightgbm model object and recipe from file
-lgbm_final_full_fit <- ccao::model_lgbm_load(
+lgbm_final_full_fit <- lightsnip::lgbm_load(
   here("output", "models", "lgbm_model.zip")
 )
 lgbm_final_full_recipe <- readRDS(
@@ -67,7 +67,7 @@ assmntdata <- read_parquet(here("input", "assmntdata.parquet")) %>%
 # in model.R
 assmntdata <- assmntdata %>%
   mutate(
-    lgbm_value = ccao::model_predict(
+    lgbm_value = lightsnip::lgbm_predict(
       spec = lgbm_final_full_fit,
       recipe = lgbm_final_full_recipe,
       data = .

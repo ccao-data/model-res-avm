@@ -15,6 +15,7 @@ library(ccao)
 library(dplyr)
 library(here)
 library(lightgbm)
+library(lightsnip)
 library(purrr)
 library(spatialsample)
 library(stringr)
@@ -238,7 +239,7 @@ if (model_cv_enable) {
   # Save tuning results to file. This is a data frame where each row is one
   # CV iteration
   lgbm_search %>%
-    ccao::model_axe_tune_data() %>%
+    lightsnip::axe_tune_data() %>%
     arrow::write_parquet(paths$output$parameter_search$local)
 
   # Choose the best model (whichever model minimizes RMSE)
@@ -271,13 +272,13 @@ if (model_cv_enable) {
 # Fit the final model using the training data and our final hyperparameters
 # This is the model used to measure performance on the test set
 lgbm_wflow_final_fit <- lgbm_wflow %>%
-  ccao::model_lgbm_update_params(lgbm_final_params) %>%
+  lightsnip::lgbm_update_params(lgbm_final_params) %>%
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This is the model used for actually assessing all properties
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  ccao::model_lgbm_update_params(lgbm_final_params) %>%
+  lightsnip::lgbm_update_params(lgbm_final_params) %>%
   fit(data = training_data_full)
 
 
@@ -291,7 +292,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # file. These predictions are used to evaluate model performance on the test set 
 test %>%
   mutate(
-    lgbm = model_predict(
+    lgbm = lightsnip::lgbm_predict(
       lgbm_wflow_final_fit %>% extract_fit_parsnip(),
       lgbm_wflow_final_fit %>% extract_recipe(),
       test
@@ -304,13 +305,13 @@ test %>%
 # lightgbm is picky about how its model objects are stored on disk
 lgbm_wflow_final_full_fit %>%
   extract_fit_parsnip() %>%
-  ccao::model_lgbm_save(paths$output$workflow$fit$local)
+  lightsnip::lgbm_save(paths$output$workflow$fit$local)
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data
 lgbm_wflow_final_full_fit %>%
   extract_recipe() %>%
-  ccao::model_axe_recipe() %>%
+  lightsnip::axe_recipe() %>%
   saveRDS(paths$output$workflow$recipe$local)
 
 # End the script timer and write the time elapsed to file

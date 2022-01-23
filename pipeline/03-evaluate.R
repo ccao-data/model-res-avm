@@ -13,13 +13,13 @@ library(ccao)
 library(dplyr)
 library(here)
 library(furrr)
+library(lightsnip)
 library(purrr)
 library(rlang)
 library(recipes)
 library(stringr)
 library(tictoc)
 library(tidyr)
-library(treesnip)
 library(yardstick)
 
 # Enable parallel backend for generating stats more quickly
@@ -69,7 +69,7 @@ test_data <- read_parquet(paths$output$test$local) %>% as_tibble()
 ### Assessment set
 
 # Load the final lightgbm model object and recipe from file
-lgbm_final_full_fit <- ccao::model_lgbm_load(paths$output$workflow$fit$local)
+lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow$fit$local)
 lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
 
 # Load the MOST RECENT sale per PIN for the same year as the assessment data. We
@@ -89,7 +89,7 @@ training_data <- read_parquet(paths$input$training$local) %>%
 assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
   mutate(
-    lgbm = model_predict(
+    lgbm = lightsnip::lgbm_predict(
       spec = lgbm_final_full_fit,
       recipe = lgbm_final_full_recipe,
       data = .
