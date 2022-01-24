@@ -21,10 +21,9 @@ library(spatialsample)
 library(stringr)
 library(tictoc)
 library(tidymodels)
-library(treesnip)
 library(vctrs)
 
-# Load helpers, recipes, and lightgbm parsnip bindings from files
+# Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
@@ -76,8 +75,8 @@ model_cv_no_improve <- as.integer(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the full set of training data, then arrange by sale date in order to
-# facilitate out-of-time sampling/validation.
-#
+# facilitate out-of-time sampling/validation
+
 # NOTE: It is critical to trim "multicard" sales when training. Multicard means
 # there is multiple buildings on a PIN. Sales for multicard PINs are
 # often for multiple buildings and will therefore bias the model training
@@ -144,18 +143,17 @@ train_p <- ncol(juiced_train)
 
 ### Step 1 - Model initialization
 
-# Initialize lightgbm model specification. Note that categorical columns are
-# detected automatically by treesnip's lightgbm implementation as long as they
-# are factors. trees argument here maps to num_iterations in lightgbm
-lgbm_model <- lgbm_tree(
+# Initialize lightgbm model specification. Most hyperparameters are passed to
+# lightgbm as "engine arguments" i.e. things specific to lightgm
+lgbm_model <- parsnip::boost_tree(
   trees = model_param_num_iterations, learn_rate = model_param_learning_rate,
-  min_n = tune(), tree_depth = tune(), mtry = tune(),
-  lambda_l1 = tune(), lambda_l2 = tune(), cat_smooth = tune()
+  min_n = tune(), tree_depth = tune(), mtry = tune()
 ) %>%
-  set_engine("lightgbm") %>%
   set_mode("regression") %>%
-  set_args(
-    # These are lightgbm-specific parameters that are passed to lgb.train
+  set_engine(
+    engine = "lightgbm",
+    
+    # These are static lightgbm-specific parameters that are passed to lgb.train
     num_threads = num_threads,
     verbosity = -1L,
     
@@ -163,7 +161,10 @@ lgbm_model <- lgbm_tree(
     # to be set high for our data due to high cardinality
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
     max_cat_threshold = model_param_max_cat_threshold,
-    min_data_per_group = model_param_min_data_per_group
+    min_data_per_group = model_param_min_data_per_group,
+    
+    # These are engine-specific hyperparamenters that must be tuned with CV
+    lambda_l1 = tune(), lambda_l2 = tune(), cat_smooth = tune(),
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -272,13 +273,13 @@ if (model_cv_enable) {
 # Fit the final model using the training data and our final hyperparameters
 # This is the model used to measure performance on the test set
 lgbm_wflow_final_fit <- lgbm_wflow %>%
-  lightsnip::lgbm_update_params(lgbm_final_params) %>%
+  finalize_workflow(lgbm_final_params) %>%
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This is the model used for actually assessing all properties
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  lightsnip::lgbm_update_params(lgbm_final_params) %>%
+  finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
 
 
@@ -291,26 +292,20 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # Get predictions on the test set using the training data model then save to
 # file. These predictions are used to evaluate model performance on the test set 
 test %>%
-  mutate(
-    lgbm = lightsnip::lgbm_predict(
-      lgbm_wflow_final_fit %>% extract_fit_parsnip(),
-      lgbm_wflow_final_fit %>% extract_recipe(),
-      test
-    )
-  ) %>%
+  mutate(lgbm = predict(lgbm_wflow_final_fit, test)$.pred) %>%
   write_parquet(paths$output$test$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # model_lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
 lgbm_wflow_final_full_fit %>%
-  extract_fit_parsnip() %>%
+  workflows::extract_fit_parsnip() %>%
   lightsnip::lgbm_save(paths$output$workflow$fit$local)
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data
 lgbm_wflow_final_full_fit %>%
-  extract_recipe() %>%
+  workflows::extract_recipe() %>%
   lightsnip::axe_recipe() %>%
   saveRDS(paths$output$workflow$recipe$local)
 

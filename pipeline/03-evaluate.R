@@ -25,7 +25,7 @@ library(yardstick)
 # Enable parallel backend for generating stats more quickly
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
-# Load helpers, recipes, and lightgbm parsnip bindings from files
+# Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Initialize a dictionary of file paths and URIs. See R/helpers.R

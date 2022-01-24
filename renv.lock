@@ -464,13 +464,6 @@
       "Repository": "CRAN",
       "Hash": "8eb36c8125038e648e5d111c0d7b2ed4"
     },
-    "htmltools": {
-      "Package": "htmltools",
-      "Version": "0.5.2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "526c484233f42522278ab06fb185cb26"
-    },
     "httr": {
       "Package": "httr",
       "Version": "1.4.2",
@@ -512,13 +505,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "64778782a89480e9a644f69aad9a2877"
-    },
-    "jquerylib": {
-      "Package": "jquerylib",
-      "Version": "0.1.4",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "5aab57a3bd297eee1c1d862735972182"
     },
     "jsonlite": {
       "Package": "jsonlite",
@@ -575,6 +561,19 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "ecc246cde256d55d352b2f64ccd11b73"
+    },
+    "lightsnip": {
+      "Package": "lightsnip",
+      "Version": "0.0.1",
+      "Source": "GitLab",
+      "RemoteType": "gitlab",
+      "RemoteHost": "gitlab.com",
+      "RemoteUsername": "ccao-data-science---modeling",
+      "RemoteRepo": "packages/lightsnip",
+      "RemoteSubdir": "",
+      "RemoteRef": "master",
+      "RemoteSha": "589956cdefd1f46f7306272f0ce5df93af76ff10",
+      "Hash": "dc29fc139f40f4fd4845a0bdfa85ba89"
     },
     "listenv": {
       "Package": "listenv",
@@ -786,13 +785,6 @@
       "Repository": "CRAN",
       "Hash": "0879f5388fe6e4d56d7ef0b7ccb031e5"
     },
-    "rmarkdown": {
-      "Package": "rmarkdown",
-      "Version": "2.11",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "320017b52d05a943981272b295750388"
-    },
     "rpart": {
       "Package": "rpart",
       "Version": "4.1-15",
@@ -911,32 +903,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "fde4fc571f5f61978652c229d4713845"
-    },
-    "tinytex": {
-      "Package": "tinytex",
-      "Version": "0.36",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "130fe4c61e55b271a2655b3a284a205f"
-    },
-    "tree": {
-      "Package": "tree",
-      "Version": "1.0-41",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "65259917f358289aab75bc04e6ef9d44"
-    },
-    "treesnip": {
-      "Package": "treesnip",
-      "Version": "0.1.0.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteUsername": "curso-r",
-      "RemoteRepo": "treesnip",
-      "RemoteRef": "master",
-      "RemoteSha": "3e4c2207cd137f1764b10ea019cea2218875bc48",
-      "RemoteHost": "api.github.com",
-      "Hash": "e6afbf385604e3f9ab832ed7e4f2047c"
     },
     "tune": {
       "Package": "tune",
