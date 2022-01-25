@@ -180,9 +180,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "0b3d853bac27579cec01ce246703f284e7048b75",
+      "RemoteSha": "91d29ea30110feb7748313ffa330aac42c87cbcd",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "242f72f294fecb8a87b43988db4375b3"
+      "Hash": "3acb56c4b248c514df5666e6fd78f12a"
     },
     "class": {
       "Package": "class",
@@ -564,7 +564,7 @@
     },
     "lightsnip": {
       "Package": "lightsnip",
-      "Version": "0.0.1",
+      "Version": "0.0.2",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -572,8 +572,8 @@
       "RemoteRepo": "packages/lightsnip",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "323050e8647c467bf6d4a8f73869a00a5b37c484",
-      "Hash": "c46bc9d167e9d09230c64e15a85aadc1"
+      "RemoteSha": "72348e63fb42c3e1e65066649dcfda2e2e88289d",
+      "Hash": "026510f603e3666218144c1d6ae31b34"
     },
     "listenv": {
       "Package": "listenv",
