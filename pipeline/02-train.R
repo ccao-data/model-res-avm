@@ -84,7 +84,6 @@ model_cv_split_prop <- as.numeric(Sys.getenv("MODEL_CV_SPLIT_PROP", 0.90))
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
-  sample_n(30000) %>% ############
   arrange(meta_sale_date)
 
 # Create list of variables that uniquely identify each structure or sale, these

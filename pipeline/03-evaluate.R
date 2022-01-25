@@ -93,7 +93,7 @@ assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
       lgbm_final_full_fit,
       new_data = bake(
         lgbm_final_full_recipe,
-        new_data = assessment_data_pred,
+        new_data = .,
         all_predictors()
       )
     )$.pred
