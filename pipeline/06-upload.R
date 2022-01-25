@@ -217,7 +217,9 @@ if (upload_bool) {
   
   # If SNS ARN is available, notify subscribers via email upon run completion
   if (!is.na(Sys.getenv("AWS_SNS_ARN_MODEL_STATUS", unset = NA))) {
-    pipeline_sns <- paws.application.integration::sns()
+    pipeline_sns <- paws.application.integration::sns(
+      config = list(region = Sys.getenv("AWS_REGION"))
+    )
     
     # Get pipeline total run time from file
     pipeline_sns_total_time <- arrow::read_parquet(paths$output$timing$local) %>%
