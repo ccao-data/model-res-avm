@@ -29,13 +29,12 @@ walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # Initialize a dictionary of file paths and URIs. See R/helpers.R
 paths <- model_file_dict()
 
-# Get number of available physical cores to use for lightgbm multithreading
+# Get number of available physical cores to use for lightgbm multi-threading
 # lightgbm docs recommend using only real cores, not logical
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
 
 # Get train/test split proportion and model seed
-model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
 model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 set.seed(model_seed)
 
@@ -46,11 +45,14 @@ model_param_num_iterations <- as.integer(
 model_param_learning_rate <- as.numeric(
   Sys.getenv("MODEL_PARAM_LEARNING_RATE", 0.1)
 )
-model_param_max_cat_threshold <- as.integer(
-  Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
+model_param_validation_prop <- as.numeric(
+  Sys.getenv("MODEL_PARAM_VALIDATION_PROP", 0.1)
 )
-model_param_min_data_per_group <- as.integer(
-  Sys.getenv("MODEL_PARAM_MIN_DATA_PER_GROUP", 100)
+model_param_validation_metric <- as.character(
+  Sys.getenv("MODEL_PARAM_VALIDATION_METRIC", "rmse")
+)
+model_param_link_max_depth <- as.logical(
+  Sys.getenv("MODEL_PARAM_LINK_MAX_DEPTH", TRUE)
 )
 
 # Disable CV for non-interactive sessions (GitLab CI) unless overridden
@@ -65,7 +67,7 @@ model_cv_num_folds <- as.integer(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
 model_cv_initial_set <- as.integer(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.integer(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
 model_cv_no_improve <- as.integer(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
-
+model_cv_split_prop <- as.numeric(Sys.getenv("MODEL_CV_SPLIT_PROP", 0.90))
 
 
 
@@ -82,6 +84,7 @@ model_cv_no_improve <- as.integer(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
+  sample_n(30000) %>% ############
   arrange(meta_sale_date)
 
 # Create list of variables that uniquely identify each structure or sale, these
@@ -98,11 +101,22 @@ model_predictors <- ccao::vars_dict %>%
   dplyr::pull(var_name_model) %>%
   unique() %>%
   na.omit() 
+
+# Get list only of categorical predictors to pass to lightgbm when training
+model_predictors_categorical = ccao::vars_dict %>%
+  dplyr::filter(
+    var_is_predictor,
+    var_data_type %in% c("categorical", "character"),
+    var_name_model %in% names(training_data_full)
+  ) %>%
+  dplyr::pull(var_name_model) %>%
+  unique() %>%
+  na.omit()
   
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
-time_split <- initial_time_split(training_data_full, prop = model_split_prop)
+time_split <- initial_time_split(training_data_full, prop = model_cv_split_prop)
 test <- testing(time_split)
 train <- training(time_split)
 
@@ -123,11 +137,6 @@ train_recipe <- model_main_recipe(
   id_vars = model_id_vars
 )
 
-# Extract number of columns actually used in model (P). This is needed to
-# properly set certain tuning parameters
-juiced_train <- juice(prep(train_recipe), all_predictors())
-train_p <- ncol(juiced_train)
-
 
 
 
@@ -137,34 +146,66 @@ train_p <- ncol(juiced_train)
 
 # This is the main model used to value 200-class residential property. It uses
 # lightgbm as a backend, which is a boosted tree model similar to xgboost or
-# catboost, but with better performance and faster training in our use case
+# catboost, but with better performance and faster training time in our use case
 # See https://lightgbm.readthedocs.io/ for more information
 
 
 ### Step 1 - Model initialization
 
 # Initialize lightgbm model specification. Most hyperparameters are passed to
-# lightgbm as "engine arguments" i.e. things specific to lightgm
+# lightgbm as "engine arguments" i.e. things specific to lightgbm
 lgbm_model <- parsnip::boost_tree(
-  trees = model_param_num_iterations, learn_rate = model_param_learning_rate,
-  min_n = tune(), tree_depth = tune(), mtry = tune()
-) %>%
+    trees = model_param_num_iterations,
+    stop_iter = tune()
+  ) %>%
   set_mode("regression") %>%
   set_engine(
     engine = "lightgbm",
     
-    # These are static lightgbm-specific parameters that are passed to lgb.train
+    ##### Static Parameters #####
+    
+    # These are static lightgbm-specific engine parameters passed to lgb.train()
+    # See lightsnip::train_lightgbm for details
     num_threads = num_threads,
-    verbosity = -1L,
+    verbose = -1L,
     
-    # IMPORTANT: Max number of possible splits for categorical features. Needs
-    # to be set high for our data due to high cardinality
-    # https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold
-    max_cat_threshold = model_param_max_cat_threshold,
-    min_data_per_group = model_param_min_data_per_group,
+    # Typically set statically along with the number of iterations (trees)
+    learning_rate = model_param_learning_rate,
     
-    # These are engine-specific hyperparamenters that must be tuned with CV
-    lambda_l1 = tune(), lambda_l2 = tune(), cat_smooth = tune(),
+    # Names of integer-encoded categorical columns. This is CRITICAL else
+    # lightgbm will treat these columns as numeric
+    categorical_feature = model_predictors_categorical,
+
+    # Enable early stopping using a proportion of each training sample as a
+    # validation set. If lgb.train goes stop_iter() rounds without improvement
+    # in the provided metric, then it will end training early
+    validation = model_param_validation_prop,
+    metric = model_param_validation_metric,
+    
+    # Lightsnip custom parameter. Links the value of max_depth to num_leaves
+    # using floor(log2(num_leaves)) + add_to_linked_depth. Useful since
+    # otherwise Bayesian opt spends time exploring irrelevant parameter space
+    link_max_depth = model_param_link_max_depth,
+    
+    
+    ##### Varying Parameters #####
+    
+    # These are parameters that are tuned using cross-validation. These are the
+    # main parameters determining model complexity
+    num_leaves = tune(),
+    add_to_linked_depth = tune(),
+    feature_fraction = tune(),
+    min_gain_to_split = tune(),
+
+    # Categorical-specific paramters
+    max_cat_threshold = tune(),
+    min_data_per_group = tune(),
+    cat_smooth = tune(),
+    cat_l2 = tune(),
+
+    # Regularization parameters
+    lambda_l1 = tune(),
+    lambda_l2 = tune()
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -179,8 +220,8 @@ lgbm_wflow <- workflow() %>%
 
 ### Step 2 - Cross-validation
 
-# Begin CV tuning if enabled. We use Bayesian tuning due to the high number of
-# hyperparameters, as grid search or random search take a very long time to
+# Begin CV tuning if enabled. We use Bayesian tuning as due to the high number
+# of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (model_cv_enable) {
 
@@ -190,34 +231,19 @@ if (model_cv_enable) {
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
-
-  # NOTE: num_leaves is implicitly constrained by min_n (which is
-  # min_data_in_leaf in lightgbm). Therefore, we don't explicitly tune it
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
-      
-      ### These are lightgbm tuning parameters included with treesnip. They each
-      ### map to lightgbm parameters of different names
-
-      # Maps to min_data_in_leaf in lightgbm. Most important. Optimal/large
-      # values can help prevent overfitting. This implicitly defines the number
-      # of leaves
-      min_n = min_n(c(20L, 1000L)),
-
-      # Maps to feature_fraction in lightgbm. NOTE: this value is transformed
-      # by treesnip and becomes mtry / ncol(data). Max value of 1
-      mtry = mtry(c(floor(train_p * 0.2), train_p)),
-      
-      # Very important. Maps to max_depth in lightgbm. Higher values increase
-      # model complexity but may cause overfitting (also increases train time)
-      tree_depth = tree_depth(c(6L, 15L)),
-      
-      ### These are custom tuning parameters. See R/bindings.R for more
-      ### information about each parameter and its purpose
-      lambda_l1 = lambda_l1(c(0.0, 100.0)),
-      lambda_l2 = lambda_l2(c(0.0, 100.0)),
-      cat_smooth = cat_smooth(c(10.0, 100.0))
+      num_leaves          = lightsnip::num_leaves(c(1000L, 5000L)),
+      add_to_linked_depth = lightsnip::add_to_linked_depth(c(1, 3)),
+      feature_fraction    = lightsnip::feature_fraction(),
+      min_gain_to_split   = lightsnip::min_gain_to_split(),
+      max_cat_threshold   = lightsnip::max_cat_threshold(),
+      min_data_per_group  = lightsnip::min_data_per_group(),
+      cat_smooth          = lightsnip::cat_smooth(),
+      cat_l2              = lightsnip::cat_l2(),
+      lambda_l1           = lightsnip::lambda_l1(),
+      lambda_l2           = lightsnip::lambda_l2()
     )
 
   # Use Bayesian tuning to find best performing params. This part takes quite

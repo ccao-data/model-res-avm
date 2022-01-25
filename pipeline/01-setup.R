@@ -51,23 +51,7 @@ model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
 model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
 model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
-
-# Get train/test split proportion and model seed
-model_split_prop <- as.numeric(Sys.getenv("MODEL_SPLIT_PROP", 0.90))
-
-# Retrieve hard-coded model hyperparameters from .Renviron
-model_param_num_iterations <- as.numeric(
-  Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
-)
-model_param_learning_rate <- as.numeric(
-  Sys.getenv("MODEL_PARAM_LEARNING_RATE", 0.1)
-)
-model_param_max_cat_threshold <- as.numeric(
-  Sys.getenv("MODEL_PARAM_MAX_CAT_THRESHOLD", 200)
-)
-model_param_min_data_per_group <- as.integer(
-  Sys.getenv("MODEL_PARAM_MIN_DATA_PER_GROUP", 100)
-)
+model_cv_split_prop <- as.numeric(Sys.getenv("MODEL_CV_SPLIT_PROP", 0.90))
 
 # Info on type and year of values used for assessment reporting. Typically the
 # "near" year is 1 year prior and the "far" year is values after the last
@@ -174,11 +158,7 @@ model_metadata <- tibble::tibble(
   model_cv_initial_set = as.integer(model_cv_initial_set),
   model_cv_max_iterations = as.integer(model_cv_max_iterations),
   model_cv_no_improve = as.integer(model_cv_no_improve),
-  model_split_prop,
-  model_param_num_iterations = as.integer(model_param_num_iterations),
-  model_param_learning_rate,
-  model_param_max_cat_threshold = as.integer(model_param_max_cat_threshold),
-  model_param_min_data_per_group = as.integer(model_param_min_data_per_group),
+  model_cv_split_prop = as.numeric(model_cv_split_prop),
   model_predictor_count = length(model_predictors),
   model_predictor_name = list(model_predictors)
 )

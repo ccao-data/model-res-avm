@@ -572,8 +572,8 @@
       "RemoteRepo": "packages/lightsnip",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "589956cdefd1f46f7306272f0ce5df93af76ff10",
-      "Hash": "dc29fc139f40f4fd4845a0bdfa85ba89"
+      "RemoteSha": "323050e8647c467bf6d4a8f73869a00a5b37c484",
+      "Hash": "c46bc9d167e9d09230c64e15a85aadc1"
     },
     "listenv": {
       "Package": "listenv",

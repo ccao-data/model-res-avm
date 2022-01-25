@@ -89,11 +89,14 @@ training_data <- read_parquet(paths$input$training$local) %>%
 assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
   mutate(
-    lgbm = lightsnip::lgbm_predict(
-      spec = lgbm_final_full_fit,
-      recipe = lgbm_final_full_recipe,
-      data = .
-    )
+    lgbm = predict(
+      lgbm_final_full_fit,
+      new_data = bake(
+        lgbm_final_full_recipe,
+        new_data = assessment_data_pred,
+        all_predictors()
+      )
+    )$.pred
   )
 
 # Join sales data to each PIN, then collapse the improvement-level assessment

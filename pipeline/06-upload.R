@@ -5,7 +5,7 @@
 # This script will upload all the locally stored objects created by a pipeline
 # run. Uploaded objects will be renamed by their run_id and/or have the run_id
 # inserted into their data in the left-most position.
-#
+
 # NOTE: This script requires CCAO employee access. See wiki for S3 credentials
 # setup
 
@@ -60,7 +60,22 @@ upload_bool <- all(sapply(output_paths, file.exists)) & (
   model_upload_to_s3
 )
 
-
+# Retrieve hard-coded model hyperparameters from .Renviron
+model_param_num_iterations <- as.integer(
+  Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
+)
+model_param_learning_rate <- as.numeric(
+  Sys.getenv("MODEL_PARAM_LEARNING_RATE", 0.1)
+)
+model_param_validation_prop <- as.numeric(
+  Sys.getenv("MODEL_PARAM_VALIDATION_PROP", 0.1)
+)
+model_param_validation_metric <- as.character(
+  Sys.getenv("MODEL_PARAM_VALIDATION_METRIC", "rmse")
+)
+model_param_link_max_depth <- as.logical(
+  Sys.getenv("MODEL_PARAM_LINK_MAX_DEPTH", TRUE)
+)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -108,10 +123,23 @@ if (upload_bool) {
     paths$output$workflow$recipe$s3
   )
   
-  # Always write the chosen/final parameters to S3
+  # Always write the chosen/final parameters to S3. Get parameters not tuned in
+  # CV from the environment
   arrow::read_parquet(paths$output$parameter_final$local) %>%
     rename(any_of(c("configuration" = ".config"))) %>%
-    mutate(run_id = model_run_id) %>%
+    mutate(
+      run_id = model_run_id,
+      num_iterations = model_param_num_iterations,
+      learning_rate = model_param_learning_rate,
+      validation_prop = model_param_validation_prop,
+      validation_metric = model_param_validation_metric,
+      link_max_depth = model_param_link_max_depth,
+      max_depth = ifelse(
+        link_max_depth,
+        floor(log2(num_leaves)) + add_to_linked_depth,
+        max_depth
+      )
+    ) %>%
     relocate(any_of(c("run_id", "configuration")), .before = everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$s3)
   
@@ -137,10 +165,15 @@ if (upload_bool) {
       select(-.notes) %>%
       rename_with(~ gsub("^\\.", "", .x)) %>%
       tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
-      select(
-        run_id, iteration = iter, configuration = config, fold_id = id,
-        rmse:mape, mtry:cat_smooth, notes
+      relocate(
+        all_of(c(
+          "run_id", "iteration" = "iter",
+          "configuration" = "config", "fold_id" = "id"
+        )),
+        .before = everything()
       ) %>%
+      relocate(notes, .after = everything()) %>%
+      dplyr::select(-any_of(c("estimator"))) %>%
       write_parquet(paths$output$parameter_search$s3)
   }
   

@@ -29,16 +29,9 @@ model_main_recipe <- function(data, keep_vars, id_vars) {
     # Replace NA in factors with "unknown" 
     step_unknown(all_nominal(), -has_role("ID")) %>%
     
-    # Condense rare factor levels into "other"
-    step_other(all_nominal(), -has_role("ID"), threshold = 0.01)
-    
-}
-
-
-# Extra recipe step for converting categoricals to one-hot encoding. Only used
-# in cases where categoricals are not handled natively such as linear models
-dummy_recp_prep <- function(recipe) {
-  recipe %>%
-    step_mutate_at(starts_with("ind_"), fn = ~ as.numeric(.)) %>%
-    step_dummy(all_nominal(), -all_outcomes(), -has_role("ID"))
+    # Convert factors to 0-indexed integers
+    step_integer(
+      all_nominal(), -has_role("ID"),
+      strict = TRUE, zero_based = TRUE
+    )
 }
