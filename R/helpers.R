@@ -110,3 +110,20 @@ model_file_dict <- function(model_s3_bucket = NULL,
     )
   )
 }
+
+
+# Used to delete erroneous, incomplete, or otherwise broken runs
+# Use with caution!
+model_delete_run <- function(model_s3_bucket, 
+                             model_run_id, 
+                             model_assessment_year) {
+  
+  paths <- model_file_dict(
+    file.path(model_s3_bucket, "model"),
+    model_run_id,
+    model_assessment_year
+  )
+  
+  s3_objs <- grep("s3://", unlist(paths), value = TRUE)
+  purrr::walk(s3_objs, aws.s3::delete_object)
+}

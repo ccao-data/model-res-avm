@@ -227,7 +227,7 @@ if (upload_bool) {
     # Get overall stats by township for the triad of interest, collapsed into
     # a plaintext table
     pipeline_sns_results <- arrow::read_parquet(
-      paths$output$performance$assessment$local,
+      paths$output$performance$test$local,
       col_select = c("geography_type", "geography_id", "by_class", "cod")
     ) %>%
       filter(
