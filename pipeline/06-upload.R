@@ -47,18 +47,28 @@ paths <- model_file_dict()
 output_paths <- unlist(paths)[
   grepl("local", names(unlist(paths)), fixed = TRUE) &
   grepl("output", names(unlist(paths)), fixed = TRUE) &
-  !grepl("parameter", names(unlist(paths)), fixed = TRUE)
+  !grepl("parameter", names(unlist(paths)), fixed = TRUE) &
+  !grepl("assessment", names(unlist(paths)), fixed = TRUE) 
 ]
 
 # Check whether all conditions are met for upload:
 #   1. All output files must exist, except...
-#   2. The parameter file, which may not exists if CV is disabled, so check that
+#   2. The parameter file, which may not exist if CV is disabled, so check that
+#   3. The assessment performance data exists OR this is an automated run
 #   3. S3 upload is enabled
-upload_bool <- all(sapply(output_paths, file.exists)) & (
+upload_all_files <- all(sapply(output_paths, file.exists))
+upload_search <- (
   (!file.exists(paths$output$parameter_search$local) & !model_cv_enable) |
-  (file.exists(paths$output$parameter_search$local) & model_cv_enable) &
-  model_upload_to_s3
+  (file.exists(paths$output$parameter_search$local) & model_cv_enable)
 )
+upload_assessment <- (
+  (!file.exists(paths$output$performance$assessment$local) & !interactive()) |
+  (file.exists(paths$output$performance$assessment$local) & interactive())
+)
+upload_bool <- upload_all_files &
+  upload_search &
+  upload_assessment &
+  model_upload_to_s3
 
 # Retrieve hard-coded model hyperparameters from .Renviron
 model_param_num_iterations <- as.integer(
