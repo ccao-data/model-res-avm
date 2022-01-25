@@ -185,11 +185,13 @@ if (upload_bool) {
     relocate(run_id, .before = everything()) %>%
     write_parquet(paths$output$performance$test$s3)
   
-  # Upload assessment set performance
-  read_parquet(paths$output$performance$assessment$local) %>%
-    mutate(run_id = model_run_id) %>%
-    relocate(run_id, .before = everything()) %>%
-    write_parquet(paths$output$performance$assessment$s3)
+  # Upload assessment set performance if running locally
+  if (interactive()) {
+    read_parquet(paths$output$performance$assessment$local) %>%
+      mutate(run_id = model_run_id) %>%
+      relocate(run_id, .before = everything()) %>%
+      write_parquet(paths$output$performance$assessment$s3)
+  }
   
   
   ### 05-timing.R

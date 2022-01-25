@@ -68,65 +68,70 @@ test_data <- read_parquet(paths$output$test$local) %>% as_tibble()
 
 ### Assessment set
 
-# Load the final lightgbm model object and recipe from file
-lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow$fit$local)
-lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
+# Only create the assessment performance set if running in a local (non CI)
+# session
+if (interactive()) {
 
-# Load the MOST RECENT sale per PIN for the same year as the assessment data. We
-# want our assessed value to be as close to the most recent sale as possible
-training_data <- read_parquet(paths$input$training$local) %>%
-  filter(meta_year == model_assessment_data_year) %>%
-  group_by(meta_pin) %>%
-  filter(meta_sale_date == max(meta_sale_date)) %>%
-  distinct(
-    meta_pin, meta_year, meta_sale_price,
-    meta_sale_date, meta_sale_document_num
-  ) %>%
-  ungroup()
-
-# Load the data for assessment. This is the universe of IMPROVEMENTs (not PINs)
-# that needs values. Use the trained lightgbm model to estimate a value
-assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
-  as_tibble() %>%
-  mutate(
-    lgbm = predict(
-      lgbm_final_full_fit,
-      new_data = bake(
-        lgbm_final_full_recipe,
-        new_data = .,
-        all_predictors()
-      )
-    )$.pred
-  )
-
-# Join sales data to each PIN, then collapse the improvement-level assessment
-# data to the PIN level, summing the predicted value for multicard PINs. Keep
-# only columns needed for performance calculations
-assessment_data <- assessment_data_pred %>%
-  select(-meta_sale_date) %>%
-  left_join(training_data, by = c("meta_year", "meta_pin")) %>%
-  group_by(
-    meta_year, meta_pin, meta_triad_code,
-    meta_class, ind_pin_is_multicard
-  ) %>%
-  summarize(
-    meta_sale_price = first(meta_sale_price),
-    char_bldg_sf = sum(char_bldg_sf),
-    lgbm = sum(lgbm),
-    across(
-      c(any_of(c(rsf_column, rsn_column)),
-        meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
-        loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-        loc_school_elementary_district_geoid,
-        loc_school_secondary_district_geoid,
-        loc_school_unified_district_geoid
-      ),
-      first
-    )
-  ) %>%
-  ungroup()
-
+  # Load the final lightgbm model object and recipe from file
+  lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow$fit$local)
+  lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
   
+  # Load the MOST RECENT sale per PIN for the same year as the assessment data.
+  # We want our assessed value to be as close to the most recent sale
+  training_data <- read_parquet(paths$input$training$local) %>%
+    filter(meta_year == model_assessment_data_year) %>%
+    group_by(meta_pin) %>%
+    filter(meta_sale_date == max(meta_sale_date)) %>%
+    distinct(
+      meta_pin, meta_year, meta_sale_price,
+      meta_sale_date, meta_sale_document_num
+    ) %>%
+    ungroup()
+  
+  # Load the data for assessment. This is the universe of IMPROVEMENTs (not
+  # PINs) that needs values. Use the trained lightgbm model to estimate a value
+  assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
+    as_tibble() %>%
+    mutate(
+      lgbm = predict(
+        lgbm_final_full_fit,
+        new_data = bake(
+          lgbm_final_full_recipe,
+          new_data = .,
+          all_predictors()
+        )
+      )$.pred
+    )
+  
+  # Join sales data to each PIN, then collapse the improvement-level assessment
+  # data to the PIN level, summing the predicted value for multicard PINs. Keep
+  # only columns needed for performance calculations
+  assessment_data <- assessment_data_pred %>%
+    select(-meta_sale_date) %>%
+    left_join(training_data, by = c("meta_year", "meta_pin")) %>%
+    group_by(
+      meta_year, meta_pin, meta_triad_code,
+      meta_class, ind_pin_is_multicard
+    ) %>%
+    summarize(
+      meta_sale_price = first(meta_sale_price),
+      char_bldg_sf = sum(char_bldg_sf),
+      lgbm = sum(lgbm),
+      across(
+        c(any_of(c(rsf_column, rsn_column)),
+          meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
+          loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+          loc_school_elementary_district_geoid,
+          loc_school_secondary_district_geoid,
+          loc_school_unified_district_geoid
+        ),
+        first
+      )
+    ) %>%
+    ungroup()
+}
+
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -390,34 +395,38 @@ test_performance %>%
 
 ### Assessment set
 
-# Do the same thing for the assessment set. This will have accurate property
-# counts and proportions, since it also has unsold properties
-assessment_performance <- future_map_dfr(
-  geographies_list,
-  ~ gen_agg_stats(
-    data = assessment_data,
-    truth = meta_sale_price,
-    estimate = lgbm,
-    bldg_sqft = char_bldg_sf,
-    rsn_col = rsn_column,
-    rsf_col = rsf_column,
-    triad = meta_triad_code,
-    geography = !!.x[[1]],
-    class = !!.x[[2]]
-  ),
-  .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = TRUE
-)
-
-# Save assessment set performance to file. Remove all non-informative Inf and
-# NaN values and NA ntile columns
-assessment_performance %>%
-  mutate(across(
-    -(contains("_max") & contains("yoy")) & where(is.numeric),
-    ~ replace(.x, !is.finite(.x), NA)
-  )) %>%
-  select(-starts_with("qNA_", ignore.case = FALSE)) %>%
-  write_parquet(paths$output$performance$assessment$local)
+# Only value the assessment set for non-CI (local) runs
+if (interactive()) {
+  
+  # Do the same thing for the assessment set. This will have accurate property
+  # counts and proportions, since it also has unsold properties
+  assessment_performance <- future_map_dfr(
+    geographies_list,
+    ~ gen_agg_stats(
+      data = assessment_data,
+      truth = meta_sale_price,
+      estimate = lgbm,
+      bldg_sqft = char_bldg_sf,
+      rsn_col = rsn_column,
+      rsf_col = rsf_column,
+      triad = meta_triad_code,
+      geography = !!.x[[1]],
+      class = !!.x[[2]]
+    ),
+    .options = furrr_options(seed = TRUE, stdout = FALSE),
+    .progress = TRUE
+  )
+  
+  # Save assessment set performance to file. Remove all non-informative Inf and
+  # NaN values and NA ntile columns
+  assessment_performance %>%
+    mutate(across(
+      -(contains("_max") & contains("yoy")) & where(is.numeric),
+      ~ replace(.x, !is.finite(.x), NA)
+    )) %>%
+    select(-starts_with("qNA_", ignore.case = FALSE)) %>%
+    write_parquet(paths$output$performance$assessment$local)
+}
 
 # End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)

@@ -119,14 +119,8 @@ time_split <- initial_time_split(training_data_full, prop = model_cv_split_prop)
 test <- testing(time_split)
 train <- training(time_split)
 
-# Create V CV folds, where each fold is a distinct area in Cook County. The idea
-# here is to create a model that performs well on all areas. This also prevents
-# leakage from the training data and overfitting
-train_folds <- spatialsample::spatial_clustering_cv(
-  data = train,
-  coords = c(loc_longitude, loc_latitude),
-  v = model_cv_num_folds
-)
+# Create v-fold CV splits of the main training set
+train_folds <- vfold_cv(data = train, v = model_cv_num_folds)
 
 # Create a recipe for the training data which removes non-predictor columns,
 # normalizes/logs data, and removes/imputes missing values
@@ -195,6 +189,7 @@ lgbm_model <- parsnip::boost_tree(
     add_to_linked_depth = tune(),
     feature_fraction = tune(),
     min_gain_to_split = tune(),
+    min_data_in_leaf = tune(),
 
     # Categorical-specific paramters
     max_cat_threshold = tune(),
@@ -237,7 +232,8 @@ if (model_cv_enable) {
       num_leaves          = lightsnip::num_leaves(c(500L, 5000L)),
       add_to_linked_depth = lightsnip::add_to_linked_depth(c(1, 3)),
       feature_fraction    = lightsnip::feature_fraction(),
-      min_gain_to_split   = lightsnip::min_gain_to_split(),
+      min_gain_to_split   = lightsnip::min_gain_to_split(c(-4, 1.5)),
+      min_data_in_leaf    = lightsnip::min_data_in_leaf(c(2L, 200L)),
       max_cat_threshold   = lightsnip::max_cat_threshold(),
       min_data_per_group  = lightsnip::min_data_per_group(),
       cat_smooth          = lightsnip::cat_smooth(),
@@ -286,11 +282,11 @@ if (model_cv_enable) {
       arrow::write_parquet(paths$output$parameter_final$local)
   } else {
     lgbm_final_params <- data.frame(
-      stop_iter = 13L, num_leaves = 3348L, add_to_linked_depth = 2L,
-      feature_fraction = 0.814, min_gain_to_split = 26.28,
-      max_cat_threshold = 113L, min_data_per_group = 40L,
-      cat_smooth = 71.25, cat_l2 = 28.15, lambda_l1 = 2.07,
-      lambda_l2 = 0.0015, .config = "Manual"
+      stop_iter = 4L, num_leaves = 1500L, add_to_linked_depth = 2L,
+      feature_fraction = 0.9, min_gain_to_split = 5.0,
+      max_cat_threshold = 100L, min_data_per_group = 40L,
+      cat_smooth = 70.0, cat_l2 = 28.0, lambda_l1 = 2.1,
+      lambda_l2 = 0.0015, .config = "Default"
     ) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
   }

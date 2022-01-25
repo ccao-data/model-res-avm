@@ -88,7 +88,7 @@ model_run_start_timestamp <- lubridate::now()
 git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
 # If in an interactive session, prompt the user for notes and
-# a type related to this run. Otherwise, use the commit message and "experiment"
+# a type related to this run. Otherwise, use the commit message and "automated"
 if (interactive()) {
   model_run_note <- readline("Run notes/message: ")
   model_run_type <- switch(
@@ -103,7 +103,7 @@ if (interactive()) {
   )
 } else {
   model_run_note <- gsub("\n", "", git_commit$message)
-  model_run_type <- "experiment"
+  model_run_type <- "automated"
 }
 
 # Read the MD5 hash of each input dataset. These are created by DVC and used to
