@@ -233,7 +233,8 @@ if (model_cv_enable) {
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
-      num_leaves          = lightsnip::num_leaves(c(1000L, 5000L)),
+      stop_iter           = dials::stop_iter(c(5L, 30L)),
+      num_leaves          = lightsnip::num_leaves(c(500L, 5000L)),
       add_to_linked_depth = lightsnip::add_to_linked_depth(c(1, 3)),
       feature_fraction    = lightsnip::feature_fraction(),
       min_gain_to_split   = lightsnip::min_gain_to_split(),
@@ -285,8 +286,11 @@ if (model_cv_enable) {
       arrow::write_parquet(paths$output$parameter_final$local)
   } else {
     lgbm_final_params <- data.frame(
-      min_n = 190L, tree_depth = 15L, mtry = floor(train_p * 0.7),
-      lambda_l1 = 1.0, lambda_l2 = 5.0, cat_smooth = 60.0, .config = "Manual"
+      stop_iter = 13L, num_leaves = 3348L, add_to_linked_depth = 2L,
+      feature_fraction = 0.814, min_gain_to_split = 26.28,
+      max_cat_threshold = 113L, min_data_per_group = 40L,
+      cat_smooth = 71.25, cat_l2 = 28.15, lambda_l1 = 2.07,
+      lambda_l2 = 0.0015, .config = "Manual"
     ) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
   }
