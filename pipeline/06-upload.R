@@ -71,6 +71,9 @@ upload_bool <- upload_all_files &
   model_upload_to_s3
 
 # Retrieve hard-coded model hyperparameters from .Renviron
+model_param_objective <- as.character(
+  Sys.getenv("MODEL_PARAM_OBJECTIVE", "regression")
+)
 model_param_num_iterations <- as.integer(
   Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
 )
@@ -139,6 +142,7 @@ if (upload_bool) {
     rename(any_of(c("configuration" = ".config"))) %>%
     mutate(
       run_id = model_run_id,
+      objective_func = model_param_objective,
       num_iterations = model_param_num_iterations,
       learning_rate = model_param_learning_rate,
       validation_prop = model_param_validation_prop,

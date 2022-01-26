@@ -39,6 +39,9 @@ model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 set.seed(model_seed)
 
 # Retrieve hard-coded model hyperparameters from .Renviron
+model_param_objective <- as.character(
+  Sys.getenv("MODEL_PARAM_OBJECTIVE", "regression")
+)
 model_param_num_iterations <- as.integer(
   Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
 )
@@ -68,6 +71,7 @@ model_cv_initial_set <- as.integer(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.integer(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
 model_cv_no_improve <- as.integer(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 model_cv_split_prop <- as.numeric(Sys.getenv("MODEL_CV_SPLIT_PROP", 0.90))
+model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 
 
 
@@ -162,6 +166,9 @@ lgbm_model <- parsnip::boost_tree(
     num_threads = num_threads,
     verbose = -1L,
     
+    # Set the objective function. This is what lightgbm will try to minimize
+    objective = model_param_objective,
+    
     # Typically set statically along with the number of iterations (trees)
     learning_rate = model_param_learning_rate,
     
@@ -250,7 +257,7 @@ if (model_cv_enable) {
     initial = model_cv_initial_set,
     iter = model_cv_max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mae, mape),
+    metrics = metric_set(mape, rmse),
     control = control_bayes(
       verbose = TRUE,
       uncertain = model_cv_no_improve - 2,
@@ -265,9 +272,9 @@ if (model_cv_enable) {
     lightsnip::axe_tune_data() %>%
     arrow::write_parquet(paths$output$parameter_search$local)
 
-  # Choose the best model (whichever model minimizes RMSE)
+  # Choose the best model (whichever model minimizes the chosen objective)
   lgbm_final_params <- lgbm_search %>%
-    select_best(metric = "rmse") %>%
+    select_best(metric = model_param_objective) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
   
   # End the cross-validation timer
@@ -278,7 +285,7 @@ if (model_cv_enable) {
   # Otherwise use a set of hand-chosen parameters
   if (file.exists(paths$output$parameter_search$local)) {
     lgbm_final_params <- read_parquet(paths$output$parameter_search$local) %>%
-      select_best(metric = "rmse") %>%
+      select_best(metric = model_param_objective) %>%
       arrow::write_parquet(paths$output$parameter_final$local)
   } else {
     lgbm_final_params <- data.frame(

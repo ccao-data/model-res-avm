@@ -52,6 +52,7 @@ model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
 model_cv_no_improve <- as.numeric(Sys.getenv("MODEL_CV_NO_IMPROVE", 8))
 model_cv_split_prop <- as.numeric(Sys.getenv("MODEL_CV_SPLIT_PROP", 0.90))
+model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 
 # Info on type and year of values used for assessment reporting. Typically the
 # "near" year is 1 year prior and the "far" year is values after the last
@@ -159,6 +160,7 @@ model_metadata <- tibble::tibble(
   model_cv_max_iterations = as.integer(model_cv_max_iterations),
   model_cv_no_improve = as.integer(model_cv_no_improve),
   model_cv_split_prop = as.numeric(model_cv_split_prop),
+  model_cv_best_metric = as.character(model_cv_best_metric),
   model_predictor_count = length(model_predictors),
   model_predictor_name = list(model_predictors)
 )
