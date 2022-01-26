@@ -257,7 +257,7 @@ if (model_cv_enable) {
     initial = model_cv_initial_set,
     iter = model_cv_max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(mape, rmse),
+    metrics = metric_set(mae, rmse, mape),
     control = control_bayes(
       verbose = TRUE,
       uncertain = model_cv_no_improve - 2,
