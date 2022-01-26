@@ -290,7 +290,7 @@ if (model_cv_enable) {
   } else {
     lgbm_final_params <- data.frame(
       stop_iter = 4L, num_leaves = 1500L, add_to_linked_depth = 2L,
-      feature_fraction = 0.9, min_gain_to_split = 5.0, min_data_in_leaf = 30,
+      feature_fraction = 0.9, min_gain_to_split = 5.0, min_data_in_leaf = 30L,
       max_cat_threshold = 100L, min_data_per_group = 40L,
       cat_smooth = 70.0, cat_l2 = 28.0, lambda_l1 = 2.1,
       lambda_l2 = 0.0015, .config = "Default"

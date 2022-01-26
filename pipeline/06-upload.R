@@ -150,7 +150,7 @@ if (upload_bool) {
       link_max_depth = model_param_link_max_depth,
       max_depth = ifelse(
         link_max_depth,
-        floor(log2(num_leaves)) + add_to_linked_depth,
+        as.integer(floor(log2(num_leaves)) + add_to_linked_depth),
         max_depth
       )
     ) %>%
