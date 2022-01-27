@@ -81,6 +81,7 @@ training_data <- dbGetQuery(
       BETWEEN sale.sale_filter_lower_limit
       AND sale.sale_filter_upper_limit)
       AND sale.sale_filter_count >= 10)
+  AND NOT is_multisale
   ")
 )
 tictoc::toc()
