@@ -103,7 +103,7 @@ model_predictors <- ccao::vars_dict %>%
   dplyr::filter(var_is_predictor) %>%
   dplyr::pull(var_name_model) %>%
   unique() %>%
-  na.omit() 
+  na.omit()
 
 # Get list only of categorical predictors to pass to lightgbm when training
 model_predictors_categorical = ccao::vars_dict %>%
@@ -257,7 +257,7 @@ if (model_cv_enable) {
     initial = model_cv_initial_set,
     iter = model_cv_max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(mae, rmse, mape),
+    metrics = metric_set(rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
       uncertain = model_cv_no_improve - 2,
