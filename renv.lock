@@ -65,12 +65,26 @@
       "Repository": "CRAN",
       "Hash": "dab19adae4440ae55aa8a9d238b246bb"
     },
+    "RcppArmadillo": {
+      "Package": "RcppArmadillo",
+      "Version": "0.10.8.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "303dcd8a3fca86087e341ed5cc360abf"
+    },
     "SQUAREM": {
       "Package": "SQUAREM",
       "Version": "2021.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "0cf10dab0d023d5b46a5a14387556891"
+    },
+    "abind": {
+      "Package": "abind",
+      "Version": "1.4-5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "4f57884290cc75ab22f4af9e9d4ca862"
     },
     "arrow": {
       "Package": "arrow",
@@ -338,6 +352,13 @@
       "Repository": "CRAN",
       "Hash": "77bd60a6157420d4ffa93b27cf6a58b8"
     },
+    "fastshap": {
+      "Package": "fastshap",
+      "Version": "0.0.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "8772351ba12c5bd0412f99859553a8e0"
+    },
     "foreach": {
       "Package": "foreach",
       "Version": "1.5.1",
@@ -435,6 +456,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "be6a2b3529928bd803d1c437d1d43152"
+    },
+    "gridExtra": {
+      "Package": "gridExtra",
+      "Version": "2.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "7d7f283939f563670a697165b2cf5560"
     },
     "gtable": {
       "Package": "gtable",
@@ -572,8 +600,8 @@
       "RemoteRepo": "packages/lightsnip",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "72348e63fb42c3e1e65066649dcfda2e2e88289d",
-      "Hash": "026510f603e3666218144c1d6ae31b34"
+      "RemoteSha": "f00180f13f99a0374d9b32fb0b7d4f416d95a12d",
+      "Hash": "ce2dc92a4e446e042d3783e546a41bfb"
     },
     "listenv": {
       "Package": "listenv",
@@ -602,6 +630,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "41287f1ac7d28a92f0a286ed507928d3"
+    },
+    "matrixStats": {
+      "Package": "matrixStats",
+      "Version": "0.61.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b8e6221fc11247b12ab1b055a6f66c27"
     },
     "memoise": {
       "Package": "memoise",
