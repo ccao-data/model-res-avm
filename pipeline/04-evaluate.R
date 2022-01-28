@@ -324,24 +324,21 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 
 # Use fancy tidyeval to create a list of all the geography levels with a
 # class or no class option for each level
+geographies_quosures <- rlang::quos(
+  meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
+  loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+  loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+  loc_school_unified_district_geoid,
+  NULL
+)
 geographies_list <- purrr::cross2(
-  rlang::quos(
-    meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
-    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-    loc_school_unified_district_geoid, NULL
-  ),
+  geographies_quosures,
   rlang::quos(meta_class, NULL)
 )
 
 # Same as above, but add quantile breakouts to the grid expansion
 geographies_list_quantile <- purrr::cross3(
-  rlang::quos(
-    meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
-    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-    loc_school_unified_district_geoid, NULL
-  ),
+  geographies_quosures,
   rlang::quos(meta_class, NULL),
   rs_num_quantile
 )
@@ -419,7 +416,7 @@ if (interactive()) {
   
   # Same as above, but calculate stats per quantile of sale price
   future_map_dfr(
-    geographies_list,
+    geographies_list_quantile,
     ~ gen_agg_stats_quantile(
       data = assessment_data,
       truth = meta_sale_price,
@@ -430,7 +427,7 @@ if (interactive()) {
       geography = !!.x[[1]],
       class = !!.x[[2]],
       col_dict = col_rename_dict,
-      num_quantile = rs_num_quantile
+      num_quantile = .x[[3]]
     ),
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
