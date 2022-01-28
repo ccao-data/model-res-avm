@@ -83,7 +83,8 @@ source("pipeline/03-assess.R")
 #      current sales
 
 # The script will generate a very large data frame of aggregate performance
-# statistics for different levels of geography
+# statistics for different levels of geography, as well as a secondary data
+# frame for each quantile
 source("pipeline/04-evaluate.R")
 
 

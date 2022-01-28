@@ -51,6 +51,26 @@ rsf_stage <- Sys.getenv(
 rsf_column <- get_rs_col_name(model_assessment_data_year, rsf_year, rsf_stage)
 rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 
+# Renaming dictionary for input columns. We want actual value of the column
+# to become geography_id and the NAME of the column to become geography_name
+col_rename_dict <- c(
+  "triad_code" = "meta_triad_code",
+  "class" = "meta_class",
+  "geography_id" = "meta_township_code",
+  "geography_id" = "meta_township_name",
+  "geography_id" = "meta_nbhd_code",
+  "geography_id" = "loc_cook_municipality_name",
+  "geography_id" = "loc_chicago_ward_num",
+  "geography_id" = "loc_census_puma_geoid",
+  "geography_id" = "loc_census_tract_geoid",
+  "geography_id" = "loc_school_elementary_district_geoid",
+  "geography_id" = "loc_school_secondary_district_geoid",
+  "geography_id" = "loc_school_unified_district_geoid"
+)
+
+rs_num_quantile <- as.integer(Sys.getenv(
+  "MODEL_RATIO_STUDY_NUM_QUANTILE", 5
+))
 
 
 
@@ -76,13 +96,13 @@ if (interactive()) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Define Stats Function ####
+##### Define Stats Functions ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
-                          rsn_col, rsf_col, triad, geography, class) {
+                          rsn_col, rsf_col, triad, geography, class, col_dict) {
 
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
@@ -190,7 +210,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 
       # Summary stats of estimate value and estimate per sqft
       estimate_num_missing = sum(is.na({{ estimate }})),
-      across(.fns = sum_fns_list, {{ estimate }}, .names = "estimate_fmv_{.fn}"),
+      across(
+        .fns = sum_fns_list, {{ estimate }},
+        .names = "estimate_fmv_{.fn}"
+      ),
       across(
         .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
         .names = "estimate_fmv_per_sqft_{.fn}"
@@ -207,56 +230,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     tidyr::unnest_wider(PRB_CI, names_sep = "_") %>%
 
     # Rename columns resulting from unnesting
-    rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
+    rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x)))) %>%
+    ungroup()
   
-  # Calculate the median ratio by ntile of sale price, plus the upper and lower
-  # bounds of each ntile
-  df_ntile <- data %>%
-    mutate(rsf_x10 = .[[rsf_col]] * 10, rsn_x10 = .[[rsn_col]] * 10) %>%
-    group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
-    mutate(ntile = ntile({{ truth }}, n = 5)) %>%
-    group_by({{ triad }}, {{ geography }}, {{ class }}, ntile) %>%
-    summarize(
-      median_ratio = median( ({{ estimate }} / {{ truth }}), na.rm = TRUE),
-      lower_bound = min( {{ truth }}, na.rm = TRUE),
-      upper_bound = max( {{ truth }}, na.rm = TRUE),
-      prior_near_yoy_pct_chg_median = median(
-        ({{ estimate }} - rsn_x10) / rsn_x10, na.rm = TRUE
-      ),
-      prior_far_yoy_pct_chg_median = median(
-        ({{ estimate }} - rsf_x10) / rsf_x10, na.rm = TRUE
-      )
-    ) %>%
-    pivot_wider(
-      names_from = ntile,
-      names_glue = "q{ntile}_{.value}",
-      values_from = c(
-        median_ratio, lower_bound, upper_bound,
-        prior_near_yoy_pct_chg_median, prior_far_yoy_pct_chg_median
-      )
-    )
-  
-  # Renaming dictionary for input columns. We want actual value of the column
-  # to become geography_id and the NAME of the column to become geography_name
-  col_rename_dict <- c(
-    "triad_code" = "meta_triad_code",
-    "class" = "meta_class",
-    "geography_id" = "meta_township_code",
-    "geography_id" = "meta_township_name",
-    "geography_id" = "meta_nbhd_code",
-    "geography_id" = "loc_cook_municipality_name",
-    "geography_id" = "loc_chicago_ward_num",
-    "geography_id" = "loc_census_puma_geoid",
-    "geography_id" = "loc_census_tract_geoid",
-    "geography_id" = "loc_school_elementary_district_geoid",
-    "geography_id" = "loc_school_secondary_district_geoid",
-    "geography_id" = "loc_school_unified_district_geoid"
-  )
-  
-  # Combine agg stats data with ntile data and add identification variables
+  # Clean up the stats output (rename cols, relocate cols, etc.)
   df_stat %>%
-    left_join(df_ntile) %>%
-    ungroup() %>%
     mutate(
       by_class = !is.null( {{ class }}),
       geography_type = ifelse(
@@ -269,11 +247,68 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         "triad_code"
       )
     ) %>%
-    rename(any_of(col_rename_dict)) %>%
+    rename(any_of(col_dict)) %>%
     relocate(
       any_of(c("geography_type", "geography_id", "by_class", "class")),
       .after = "triad_code"
+    ) %>%
+    mutate(across(
+      -(contains("_max") & contains("yoy")) & where(is.numeric),
+      ~ replace(.x, !is.finite(.x), NA)
+    ))
+}
+
+
+# Same as the gen_agg_stats function, but with different statistics and broken
+# out by quantile
+gen_agg_stats_quantile <- function(data, truth, estimate,
+                                   rsn_col, rsf_col, triad, geography,
+                                   class, col_dict, num_quantile) {
+
+  # Calculate the median ratio by quantile of sale price, plus the upper and
+  # lower bounds of each quantile
+  df_quantile <- data %>%
+    mutate(rsf_x10 = .[[rsf_col]] * 10, rsn_x10 = .[[rsn_col]] * 10) %>%
+    group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
+    mutate(quantile = ntile({{ truth }}, n = num_quantile)) %>%
+    group_by({{ triad }}, {{ geography }}, {{ class }}, quantile) %>%
+    summarize(
+      num_sale = sum(!is.na({{ truth }})),
+      median_ratio = median( ({{ estimate }} / {{ truth }}), na.rm = TRUE),
+      lower_bound = min( {{ truth }}, na.rm = TRUE),
+      upper_bound = max( {{ truth }}, na.rm = TRUE),
+      prior_near_yoy_pct_chg_median = median(
+        ({{ estimate }} - rsn_x10) / rsn_x10, na.rm = TRUE
+      ),
+      prior_far_yoy_pct_chg_median = median(
+        ({{ estimate }} - rsf_x10) / rsf_x10, na.rm = TRUE
+      )
     )
+  
+  # Clean up the quantile output
+  df_quantile %>%
+    mutate(
+      by_class = !is.null( {{ class }}),
+      geography_type = ifelse(
+        !is.null( {{ geography }}),
+        ccao::vars_rename(
+          rlang::as_string(rlang::ensym(geography)),
+          names_from = "model",
+          names_to = "athena"
+        ),
+        "triad_code"
+      )
+    ) %>%
+    filter(!is.na(quantile)) %>%
+    rename(any_of(col_dict)) %>%
+    relocate(
+      any_of(c("geography_type", "geography_id", "by_class", "class")),
+      .after = "triad_code"
+    ) %>%
+    mutate(across(
+      -(contains("_max") & contains("yoy")) & where(is.numeric),
+      ~ replace(.x, !is.finite(.x), NA)
+    ))
 }
 
 
@@ -288,11 +323,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 geographies_list <- purrr::cross2(
   rlang::quos(
     meta_township_code,
-    meta_nbhd_code,
-    loc_cook_municipality_name,
-    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-    loc_school_unified_district_geoid,
+    # meta_nbhd_code,
+    # loc_cook_municipality_name,
+    # loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+    # loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+    # loc_school_unified_district_geoid,
     NULL
   ),
   rlang::quos(
@@ -306,7 +341,7 @@ geographies_list <- purrr::cross2(
 
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
-test_performance <- future_map_dfr(
+future_map_dfr(
   geographies_list,
   ~ gen_agg_stats(
     data = test_data,
@@ -317,21 +352,33 @@ test_performance <- future_map_dfr(
     rsf_col = rsf_column,
     triad = meta_triad_code,
     geography = !!.x[[1]],
-    class = !!.x[[2]]
+    class = !!.x[[2]],
+    col_dict = col_rename_dict
   ),
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
-)
-
-# Save test set performance to file. Remove all non-informative Inf and NaN
-# values and NA ntile columns
-test_performance %>%
-  mutate(across(
-    -(contains("_max") & contains("yoy")) & where(is.numeric),
-    ~ replace(.x, !is.finite(.x), NA)
-  )) %>%
-  select(-starts_with("qNA_", ignore.case = FALSE)) %>%
+) %>%
   write_parquet(paths$output$performance$test$local)
+
+# Same as above, but calculate stats per quantile of sale price
+future_map_dfr(
+  geographies_list,
+  ~ gen_agg_stats_quantile(
+    data = test_data,
+    truth = meta_sale_price,
+    estimate = lgbm,
+    rsn_col = rsn_column,
+    rsf_col = rsf_column,
+    triad = meta_triad_code,
+    geography = !!.x[[1]],
+    class = !!.x[[2]],
+    col_dict = col_rename_dict,
+    num_quantile = rs_num_quantile
+  ),
+  .options = furrr_options(seed = TRUE, stdout = FALSE),
+  .progress = TRUE
+) %>%
+  write_parquet(paths$output$performance_quantile$test$local)
 
 
 ### Assessment set
@@ -341,7 +388,7 @@ if (interactive()) {
   
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also has unsold properties
-  assessment_performance <- future_map_dfr(
+  future_map_dfr(
     geographies_list,
     ~ gen_agg_stats(
       data = assessment_data,
@@ -352,21 +399,33 @@ if (interactive()) {
       rsf_col = rsf_column,
       triad = meta_triad_code,
       geography = !!.x[[1]],
-      class = !!.x[[2]]
+      class = !!.x[[2]],
+      col_dict = col_rename_dict
     ),
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
-  )
-  
-  # Save assessment set performance to file. Remove all non-informative Inf and
-  # NaN values and NA ntile columns
-  assessment_performance %>%
-    mutate(across(
-      -(contains("_max") & contains("yoy")) & where(is.numeric),
-      ~ replace(.x, !is.finite(.x), NA)
-    )) %>%
-    select(-starts_with("qNA_", ignore.case = FALSE)) %>%
+  ) %>%
     write_parquet(paths$output$performance$assessment$local)
+  
+  # Same as above, but calculate stats per quantile of sale price
+  future_map_dfr(
+    geographies_list,
+    ~ gen_agg_stats_quantile(
+      data = assessment_data,
+      truth = meta_sale_price,
+      estimate = lgbm,
+      rsn_col = rsn_column,
+      rsf_col = rsf_column,
+      triad = meta_triad_code,
+      geography = !!.x[[1]],
+      class = !!.x[[2]],
+      col_dict = col_rename_dict,
+      num_quantile = rs_num_quantile
+    ),
+    .options = furrr_options(seed = TRUE, stdout = FALSE),
+    .progress = TRUE
+  ) %>%
+    write_parquet(paths$output$performance_quantile$assessment$local)
 }
 
 # End the script timer and write the time elapsed to file

@@ -79,7 +79,7 @@ model_file_dict <- function(model_s3_bucket = NULL,
             model_s3_bucket,  "performance",  
             paste0("year=",  model_assessment_year),  "stage=test",  mpq
           )
-        ), 
+        ),
         "assessment" = list(
           "local" = here::here(
             wd,  "performance",  "assessment_performance.parquet"
@@ -89,7 +89,29 @@ model_file_dict <- function(model_s3_bucket = NULL,
             paste0("year=",  model_assessment_year),  "stage=assessment",  mpq
           )
         )
-      ), 
+      ),
+      "performance_quantile" = list(
+        "test" = list(
+          "local" = here::here(
+            wd,  "performance_quantile",
+            "test_performance_quantile.parquet"
+          ), 
+          "s3" = file.path(
+            model_s3_bucket,  "performance_quantile",  
+            paste0("year=",  model_assessment_year),  "stage=test",  mpq
+          )
+        ),
+        "assessment" = list(
+          "local" = here::here(
+            wd,  "performance_quantile",
+            "assessment_performance_quantile.parquet"
+          ), 
+          "s3" = file.path(
+            model_s3_bucket,  "performance_quantile",  
+            paste0("year=",  model_assessment_year),  "stage=assessment",  mpq
+          )
+        )
+      ),
       "data" = list(
         "test" = list(
           "local" = here::here(wd,  "data",  "test_data.parquet")

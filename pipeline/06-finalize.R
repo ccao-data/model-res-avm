@@ -250,6 +250,10 @@ if (upload_bool) {
     mutate(run_id = model_run_id) %>%
     relocate(run_id, .before = everything()) %>%
     write_parquet(paths$output$performance$test$s3)
+  read_parquet(paths$output$performance_quantile$test$local) %>%
+    mutate(run_id = model_run_id) %>%
+    relocate(run_id, .before = everything()) %>%
+    write_parquet(paths$output$performance_quantile$test$s3)
   
   # Upload assessment set performance if running locally
   if (interactive()) {
@@ -257,6 +261,10 @@ if (upload_bool) {
       mutate(run_id = model_run_id) %>%
       relocate(run_id, .before = everything()) %>%
       write_parquet(paths$output$performance$assessment$s3)
+    read_parquet(paths$output$performance_quantile$assessment$local) %>%
+      mutate(run_id = model_run_id) %>%
+      relocate(run_id, .before = everything()) %>%
+      write_parquet(paths$output$performance_quantile$assessment$s3)
   }
   
   
