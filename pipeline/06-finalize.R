@@ -17,6 +17,7 @@ library(dplyr)
 library(here)
 library(lubridate)
 library(paws.application.integration)
+library(stringr)
 library(tidyr)
 library(tune)
 source(here("R", "helpers.R"))
@@ -44,7 +45,7 @@ if (file.exists(paths$output$metadata$local) &
       run_id = metadata$run_id[1],
       run_start_timestamp = metadata$run_start_timestamp[1],
       elapsed = round(toc - tic, 2),
-      stage = paste0(tolower(word(msg, 1)), "_sec_elapsed")
+      stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed")
     ) %>%
     select(-c(tic:toc, msg)) %>%
     tidyr::pivot_wider(
