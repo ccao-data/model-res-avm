@@ -237,6 +237,7 @@ if (upload_bool) {
     # Write the parameter range with run ID to a separate table
     read_parquet(paths$output$parameter_range$local) %>%
       mutate(run_id = model_run_id) %>%
+      relocate(run_id, .before = everything()) %>%
       write_parquet(paths$output$parameter_range$s3)
   }
   

@@ -65,9 +65,12 @@ test_data <- read_parquet(paths$output$data$test$local) %>%
   as_tibble()
 
 # Load the assessment results from the previous stage. This will include every
-# residential PIN that needs a value. It WILL include multicard properties
-assessment_data <- read_parquet(paths$output$data$assessment$local) %>%
-  as_tibble()
+# residential PIN that needs a value. It WILL include multicard properties. Only
+# runs for local (non-CI) runs
+if (interactive()) {
+  assessment_data <- read_parquet(paths$output$data$assessment$local) %>%
+    as_tibble()
+}
 
 
 
