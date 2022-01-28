@@ -21,6 +21,51 @@ library(tidyr)
 library(tune)
 source(here("R", "helpers.R"))
 
+# Initialize a dictionary of file paths and URIs. See R/helpers.R
+paths <- model_file_dict()
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Save Timings ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Convert input timing logs to data frame, then save to file
+if (file.exists(paths$output$metadata$local) &
+    file.exists(paths$output$timing$local)) {
+  
+  # Load info from the saved metadata file to append run ID and start time
+  metadata <- read_parquet(paths$output$metadata$local)
+  
+  # Load the built timing file and munge it into a more useful format
+  read_parquet(paths$output$timing$local) %>%
+    mutate(
+      run_id = metadata$run_id[1],
+      run_start_timestamp = metadata$run_start_timestamp[1],
+      elapsed = round(toc - tic, 2),
+      stage = paste0(tolower(word(msg, 1)), "_sec_elapsed")
+    ) %>%
+    select(-c(tic:toc, msg)) %>%
+    tidyr::pivot_wider(
+      id_cols = c(run_id, run_start_timestamp),
+      names_from = stage,
+      values_from = elapsed
+    ) %>%
+    mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) %>%
+    write_parquet(paths$output$timing$local)
+  
+  # Clear any remaining logs from tictoc
+  tictoc::tic.clearlog()
+}
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### Upload Prep ####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 # Whether or not to upload model artifacts (objects, results, parameters) to S3
 # Only available to CCAO employees via interactive sessions (unless overridden)
 if (interactive() | as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3_OVERRIDE", FALSE))) {
@@ -39,9 +84,6 @@ if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
 # Location of files uploaded to S3. AWS_S3_WAREHOUSE_BUCKET should be set in
 # your root .Renviron file (if you are a CCAO employee)
 model_s3_bucket <- file.path(Sys.getenv("AWS_S3_WAREHOUSE_BUCKET"), "model")
-
-# Initialize a dictionary of file paths and URIs. See R/helpers.R
-paths <- model_file_dict()
 
 # Get a list of all pipeline outputs that should exist for upload
 output_paths <- unlist(paths)[
@@ -89,6 +131,8 @@ model_param_validation_metric <- as.character(
 model_param_link_max_depth <- as.logical(
   Sys.getenv("MODEL_PARAM_LINK_MAX_DEPTH", TRUE)
 )
+
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -189,9 +233,15 @@ if (upload_bool) {
       relocate(notes, .after = everything()) %>%
       dplyr::select(-any_of(c("estimator"))) %>%
       write_parquet(paths$output$parameter_search$s3)
+    
+    # Write the parameter range with run ID to a separate table
+    read_parquet(paths$output$parameter_range$local) %>%
+      mutate(run_id = model_run_id) %>%
+      write_parquet(paths$output$parameter_range$s3)
   }
   
-  ### 03-evaluate.R
+  
+  ### 04-evaluate.R
   
   # Upload test set performance
   read_parquet(paths$output$performance$test$local) %>%
@@ -208,7 +258,7 @@ if (upload_bool) {
   }
   
   
-  ### 05-timing.R
+  ### Misc.
   
   # Upload run timings 
   aws.s3::put_object(

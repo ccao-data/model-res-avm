@@ -4,7 +4,7 @@
 
 # Start the script timer and clear logs from prior script
 tictoc::tic.clearlog()
-tictoc::tic("Train model")
+tictoc::tic("Train")
 
 # Load R libraries
 options(tidymodels.dark = TRUE)
@@ -271,6 +271,17 @@ if (model_cv_enable) {
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
     arrow::write_parquet(paths$output$parameter_search$local)
+  
+  # Save the possible parameter ranges used for tuning
+  lgbm_params %>%
+    mutate(range = purrr::map(object, dials::range_get)) %>%
+    tidyr::unnest_wider(range) %>%
+    select(
+      parameter_name = name,
+      parameter_type = component_id,
+      lower, upper
+    ) %>%
+    arrow::write_parquet(paths$output$parameter_range$local)
 
   # Choose the best model (whichever model minimizes the chosen objective)
   lgbm_final_params <- lgbm_search %>%
@@ -289,11 +300,11 @@ if (model_cv_enable) {
       arrow::write_parquet(paths$output$parameter_final$local)
   } else {
     lgbm_final_params <- data.frame(
-      stop_iter = 4L, num_leaves = 1500L, add_to_linked_depth = 2L,
-      feature_fraction = 0.9, min_gain_to_split = 5.0, min_data_in_leaf = 30L,
-      max_cat_threshold = 100L, min_data_per_group = 40L,
-      cat_smooth = 70.0, cat_l2 = 28.0, lambda_l1 = 2.1,
-      lambda_l2 = 0.0015, .config = "Default"
+      stop_iter = 18L, num_leaves = 2670L, add_to_linked_depth = 3L,
+      feature_fraction = 0.9, min_gain_to_split = 0.0, min_data_in_leaf = 64L,
+      max_cat_threshold = 72L, min_data_per_group = 66L,
+      cat_smooth = 99.0, cat_l2 = 0.001, lambda_l1 = 0.005,
+      lambda_l2 = 1.837, .config = "Default"
     ) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
   }
@@ -325,7 +336,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # file. These predictions are used to evaluate model performance on the test set 
 test %>%
   mutate(lgbm = predict(lgbm_wflow_final_fit, test)$.pred) %>%
-  write_parquet(paths$output$test$local)
+  write_parquet(paths$output$data$test$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # model_lgbm_save() function, which uses lgb.save() rather than saveRDS(), since

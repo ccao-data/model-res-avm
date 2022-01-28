@@ -67,45 +67,47 @@ before_script:
 # directory. The purpose of each stage is described in run.R. Artifacts are used
 # to pass objects between stages. They expire quickly because they're typically
 # uploaded to S3
+.job_template: &run_stage  # Hidden yaml configuration that defines an anchor named 'job_configuration'
+  artifacts:
+    paths:
+      - output/
+    expire_in: 1 day
+
+# Note that portions of the assess and interpret stages are skipped because
+# they take too long on shared GitLab runners
 stages:
   - setup
   - train
+  - assess
   - evaluate
   - finalize
 
 setup:
+  <<: *run_stage
   stage: setup
   script:
     - Rscript pipeline/01-setup.R
-  artifacts:
-    paths:
-      - output/
-    expire_in: 1 day
-    
+
 train:
+  <<: *run_stage
   stage: train
   script:
     - Rscript pipeline/02-train.R
-  artifacts:
-    paths:
-      - output/
-    expire_in: 1 day
+
+assess:
+  <<: *run_stage
+  stage: assess
+  script:
+    - Rscript pipeline/03-assess.R
 
 evaluate:
+  <<: *run_stage
   stage: evaluate
   script:
-    - Rscript pipeline/03-evaluate.R
-  artifacts:
-    paths:
-      - output/
-    expire_in: 1 day
+    - Rscript pipeline/04-evaluate.R
 
 finalize:
+  <<: *run_stage
   stage: finalize
   script:
-    - Rscript pipeline/05-timing.R
-    - Rscript pipeline/06-upload.R
-  artifacts:
-    paths:
-      - output/
-    expire_in: 1 day
+    - Rscript pipeline/06-finalize.R

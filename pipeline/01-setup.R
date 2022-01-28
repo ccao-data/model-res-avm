@@ -4,7 +4,7 @@
 
 # Start the script timer and clear logs from prior script
 tictoc::tic.clearlog()
-tictoc::tic("Setup model environment")
+tictoc::tic("Setup")
 
 # The purpose of this file is to set up the environment and variables needed for
 # a full model pipeline run and save them to S3. This script is not necessary to

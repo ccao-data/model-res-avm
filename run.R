@@ -1,6 +1,6 @@
 # This script runs the full residential valuation pipeline from start to finish.
 # The steps involved are described under each heading below.
-#
+
 # NOTES:
 #   - Each of the pipeline scripts can be run independently as long as their
 #     requisite files exist from previous runs. If a run dies, simply re-run
@@ -40,7 +40,7 @@ if (model_clear_on_new_run) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 01. Setup Model #####
+##### 01. Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Run the setup script to fetch environmental variables, metadata, etc. Will
@@ -51,7 +51,7 @@ source("pipeline/01-setup.R")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 02. Train Model #####
+##### 02. Train #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Run the training script. This usually takes quite a long time, depending on
@@ -62,35 +62,47 @@ source("pipeline/02-train.R")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 03. Evaluate Results #####
+##### 03. Assess #####
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Use the trained model to estimate sale prices for all properties in the
+# County. Also generate flags, attached land values, and any post-modeling
+# changes
+source("pipeline/03-assess.R")
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+##### 04. Evaluate #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Evaluate the model's performance using two methods:
 #   1. The standard holdout test set, in this case the most recent 10% of sales
 #   2. An assessor-specific ratio study, comparing future assessments to 
 #      current sales
-#
+
 # The script will generate a very large data frame of aggregate performance
 # statistics for different levels of geography
-source("pipeline/03-evaluate.R")
+source("pipeline/04-evaluate.R")
 
 
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 05. Record Timings #####
+##### 05. Interpret #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Save overall pipeline timings to file with one row per run and one column
-# per stage
-source("pipeline/05-timing.R")
+# Generate SHAP values for each PIN in the assessment dataset
+source("pipeline/05-intepret.R")
 
 
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 06. Upload Results #####
+##### 06. Finalize #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Upload pipeline run results to S3 for visualization and storage
-source("pipeline/06-upload.R")
+# Save run timings and upload pipeline run results to S3 for
+# visualization and storage
+source("pipeline/06-finalize.R")

@@ -51,10 +51,19 @@ model_file_dict <- function(model_s3_bucket = NULL,
           model_s3_bucket,  "parameter_raw",  
           paste0("year=",  model_assessment_year),  mpq
         )
-      ), 
+      ),
+      "parameter_range" = list(
+        "local" = here::here(
+          wd, "parameter_range", "model_parameter_range.parquet"
+        ),
+        "s3" = file.path(
+          model_s3_bucket,  "parameter_range",  
+          paste0("year=",  model_assessment_year),  mpq
+        )
+      ),
       "parameter_final" = list(
         "local" = here::here(
-          wd,  "parameter_final",  "model_parameter_final.parquet"
+          wd, "parameter_final",  "model_parameter_final.parquet"
         ), 
         "s3" = file.path(
           model_s3_bucket,  "parameter_final",  
@@ -81,9 +90,14 @@ model_file_dict <- function(model_s3_bucket = NULL,
           )
         )
       ), 
-      "test" = list(
-        "local" = here::here(wd,  "performance",  "test_data.parquet")
-      ), 
+      "data" = list(
+        "test" = list(
+          "local" = here::here(wd,  "data",  "test_data.parquet")
+        ),
+        "assessment" = list(
+          "local" = here::here(wd,  "data",  "assessment_data.parquet")
+        )
+      ),
       "timing" = list(
         "local" = here::here(wd,  "timing",  "model_timing.parquet"), 
         "s3" = file.path(
