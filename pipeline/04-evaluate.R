@@ -68,9 +68,9 @@ col_rename_dict <- c(
   "geography_id" = "loc_school_unified_district_geoid"
 )
 
-rs_num_quantile <- as.integer(Sys.getenv(
-  "MODEL_RATIO_STUDY_NUM_QUANTILE", 5
-))
+rs_num_quantile <- as.integer(strsplit(Sys.getenv(
+  "MODEL_RATIO_STUDY_NUM_QUANTILE", "3,5"
+), ",")[[1]])
 
 
 
@@ -288,6 +288,7 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
   # Clean up the quantile output
   df_quantile %>%
     mutate(
+      num_quantile = num_quantile, 
       by_class = !is.null( {{ class }}),
       geography_type = ifelse(
         !is.null( {{ geography }}),
@@ -302,7 +303,10 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
     filter(!is.na(quantile)) %>%
     rename(any_of(col_dict)) %>%
     relocate(
-      any_of(c("geography_type", "geography_id", "by_class", "class")),
+      any_of(c(
+        "geography_type", "geography_id",
+        "by_class", "class", "num_quantile"
+      )),
       .after = "triad_code"
     ) %>%
     mutate(across(
@@ -322,18 +326,24 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 # class or no class option for each level
 geographies_list <- purrr::cross2(
   rlang::quos(
-    meta_township_code,
-    # meta_nbhd_code,
-    # loc_cook_municipality_name,
-    # loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-    # loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-    # loc_school_unified_district_geoid,
-    NULL
+    meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
+    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+    loc_school_unified_district_geoid, NULL
   ),
+  rlang::quos(meta_class, NULL)
+)
+
+# Same as above, but add quantile breakouts to the grid expansion
+geographies_list_quantile <- purrr::cross3(
   rlang::quos(
-    meta_class,
-    NULL
-  )
+    meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
+    loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+    loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+    loc_school_unified_district_geoid, NULL
+  ),
+  rlang::quos(meta_class, NULL),
+  rs_num_quantile
 )
 
 
@@ -362,7 +372,7 @@ future_map_dfr(
 
 # Same as above, but calculate stats per quantile of sale price
 future_map_dfr(
-  geographies_list,
+  geographies_list_quantile,
   ~ gen_agg_stats_quantile(
     data = test_data,
     truth = meta_sale_price,
@@ -373,7 +383,7 @@ future_map_dfr(
     geography = !!.x[[1]],
     class = !!.x[[2]],
     col_dict = col_rename_dict,
-    num_quantile = rs_num_quantile
+    num_quantile = .x[[3]]
   ),
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
