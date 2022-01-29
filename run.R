@@ -95,7 +95,7 @@ source("pipeline/04-evaluate.R")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate SHAP values for each PIN in the assessment dataset
-source("pipeline/05-interpret.R")
+# source("pipeline/05-interpret.R")
 
 
 
@@ -106,4 +106,4 @@ source("pipeline/05-interpret.R")
 
 # Save run timings and upload pipeline run results to S3 for
 # visualization and storage
-source("pipeline/06-finalize.R")
+# source("pipeline/06-finalize.R")

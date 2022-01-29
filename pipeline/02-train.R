@@ -335,7 +335,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # Get predictions on the test set using the training data model then save to
 # file. These predictions are used to evaluate model performance on the test set 
 test %>%
-  mutate(lgbm = predict(lgbm_wflow_final_fit, test)$.pred) %>%
+  mutate(initial_pred_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
   write_parquet(paths$output$data$test$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the

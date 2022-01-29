@@ -76,7 +76,7 @@ if (interactive()) {
   assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
     as_tibble() %>%
     mutate(
-      lgbm = predict(
+      initial_pred_fmv = predict(
         lgbm_final_full_fit,
         new_data = bake(
           lgbm_final_full_recipe,
@@ -88,7 +88,8 @@ if (interactive()) {
   
   # Join sales data to each PIN, then collapse the improvement-level assessment
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
-  # only columns needed for performance calculations
+  # only columns needed for performance calculations. This data is used for
+  # performance measurement
   assessment_data <- assessment_data_pred %>%
     select(-meta_sale_date) %>%
     left_join(training_data, by = c("meta_year", "meta_pin")) %>%
@@ -99,7 +100,7 @@ if (interactive()) {
     summarize(
       meta_sale_price = first(meta_sale_price),
       char_bldg_sf = sum(char_bldg_sf),
-      lgbm = sum(lgbm),
+      initial_pred_fmv = sum(initial_pred_fmv),
       across(
         c(any_of(c(rsf_column, rsn_column)),
           meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
@@ -113,6 +114,16 @@ if (interactive()) {
     ) %>%
     ungroup() %>%
     write_parquet(paths$output$data$assessment$local)
+  
+  
+  ## Bunch of PIN-level stuff happens here (placeholder)
+  assessment_data_pred %>%
+    select(
+      meta_year, meta_pin, meta_class, meta_card_num, loc_longitude,
+      loc_latitude, initial_pred_fmv
+    ) %>%
+    write_parquet(paths$output$assessment$local)
+  
 }
 
 # End the script timer and write the time elapsed to file

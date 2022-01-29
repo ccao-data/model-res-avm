@@ -353,7 +353,7 @@ future_map_dfr(
   ~ gen_agg_stats(
     data = test_data,
     truth = meta_sale_price,
-    estimate = lgbm,
+    estimate = initial_pred_fmv,
     bldg_sqft = char_bldg_sf,
     rsn_col = rsn_column,
     rsf_col = rsf_column,
@@ -373,7 +373,7 @@ future_map_dfr(
   ~ gen_agg_stats_quantile(
     data = test_data,
     truth = meta_sale_price,
-    estimate = lgbm,
+    estimate = initial_pred_fmv,
     rsn_col = rsn_column,
     rsf_col = rsf_column,
     triad = meta_triad_code,
@@ -400,7 +400,7 @@ if (interactive()) {
     ~ gen_agg_stats(
       data = assessment_data,
       truth = meta_sale_price,
-      estimate = lgbm,
+      estimate = initial_pred_fmv,
       bldg_sqft = char_bldg_sf,
       rsn_col = rsn_column,
       rsf_col = rsf_column,
@@ -420,7 +420,7 @@ if (interactive()) {
     ~ gen_agg_stats_quantile(
       data = assessment_data,
       truth = meta_sale_price,
-      estimate = lgbm,
+      estimate = initial_pred_fmv,
       rsn_col = rsn_column,
       rsf_col = rsf_column,
       triad = meta_triad_code,
