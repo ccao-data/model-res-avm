@@ -16,11 +16,13 @@ To see the 2021 residential assessment model, visit the [2021-assessment-year](h
 library(dplyr)
 library(here)
 library(readr)
+library(stringr)
 
 file_dict <- read_csv(here("R", "file_dict.csv"))
 
 file_dict %>%
   distinct(athena_table, observation_unit, primary_key, notes) %>%
   filter(!is.na(athena_table)) %>%
+  rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
   knitr::kable(format = "markdown")
 ```
