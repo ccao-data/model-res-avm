@@ -91,14 +91,16 @@ output_paths <- unlist(paths)[
   grepl("local", names(unlist(paths)), fixed = TRUE) &
   grepl("output", names(unlist(paths)), fixed = TRUE) &
   !grepl("parameter", names(unlist(paths)), fixed = TRUE) &
-  !grepl("assessment", names(unlist(paths)), fixed = TRUE) 
+  !grepl("assessment", names(unlist(paths)), fixed = TRUE) &
+  !grepl("shap", names(unlist(paths)), fixed = TRUE) 
 ]
 
 # Check whether all conditions are met for upload:
 #   1. All output files must exist, except...
-#   2. The parameter file, which may not exist if CV is disabled, so check that
+#   2. The parameter file, which may not exist if CV is disabled
 #   3. The assessment performance data exists OR this is an automated run
-#   3. S3 upload is enabled
+#   4. The SHAP values exist OR this is an automated run
+#   5. S3 upload is enabled
 upload_all_files <- all(sapply(output_paths, file.exists))
 upload_search <- (
   (!file.exists(paths$output$parameter_search$local) & !model_cv_enable) |
