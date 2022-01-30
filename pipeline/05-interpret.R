@@ -21,8 +21,8 @@ source(here("R", "helpers.R"))
 paths <- model_file_dict()
 
 # Load the final lightgbm model object and recipe from file
-lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow$fit$local)
-lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
+lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
+lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 
 # Load the input data used for assessment. This is the universe of IMPROVEMENTs
 # (not PINs) that need values. Use the the trained model to get SHAP values

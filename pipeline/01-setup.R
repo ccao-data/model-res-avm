@@ -4,7 +4,7 @@
 
 # Start the script timer and clear logs from prior script
 tictoc::tic.clearlog()
-tictoc::tic("Setup")
+tictoc::tic("Setup model environment")
 
 # The purpose of this file is to set up the environment and variables needed for
 # a full model pipeline run and save them to S3. This script is not necessary to
@@ -20,7 +20,7 @@ library(lubridate)
 library(yaml)
 source(here("R", "helpers.R"))
 
-# Initialize a dictionary of file paths and URIs. See R/helpers.R
+# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
 
@@ -70,9 +70,7 @@ model_ratio_study_far_stage <- Sys.getenv(
   "MODEL_RATIO_STUDY_FAR_STAGE",
   as.character(as.numeric(model_assessment_year) - 3)
 )
-model_ratio_study_num_quantile <- as.integer(strsplit(Sys.getenv(
-  "MODEL_RATIO_STUDY_NUM_QUANTILE", "3,5,10"
-), ",")[[1]])
+
 
 
 
@@ -156,7 +154,6 @@ model_metadata <- tibble::tibble(
   model_ratio_study_far_stage,
   model_ratio_study_near_year,
   model_ratio_study_near_stage,
-  model_ratio_study_num_quantile = list(model_ratio_study_num_quantile),
   model_cv_enable = model_cv_enable,
   model_cv_num_folds = as.integer(model_cv_num_folds),
   model_cv_initial_set = as.integer(model_cv_initial_set),

@@ -15,7 +15,10 @@ library(here)
 library(lubridate)
 library(RJDBC)
 library(tictoc)
-library(tidyr)
+source(here("R", "helpers.R"))
+
+# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
+paths <- model_file_dict()
 
 # Setup the Athena JDBC driver
 aws_athena_jdbc_driver <- RJDBC::JDBC(
@@ -162,7 +165,7 @@ training_data_clean <- training_data %>%
     time_sale_during_holidays = month(meta_sale_date) %in% c(11, 12, 1)
   ) %>%
   select(-any_of("time_interval")) %>%
-  write_parquet(here("input", "training_data.parquet"))
+  write_parquet(paths$input$training$local)
 
 
 ### Assessment Data
@@ -187,7 +190,7 @@ assessment_data_clean <- assessment_data %>%
     time_sale_during_holidays = month(meta_sale_date) %in% c(11, 12, 1)
   ) %>%
   select(-any_of("time_interval")) %>%
-  write_parquet(here("input", "assessment_data.parquet"))
+  write_parquet(paths$input$assessment$local)
 
 # Reminder to upload to DVC store
 message(

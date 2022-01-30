@@ -9,3 +9,18 @@ output: github_document
 This is a placeholder document for the work-in-progress 2022 residential assessment model.
 
 To see the 2021 residential assessment model, visit the [2021-assessment-year](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year) git tag.
+
+## Athena Guide
+
+```{r file_dict, message=FALSE, results='asis', echo=FALSE}
+library(dplyr)
+library(here)
+library(readr)
+
+file_dict <- read_csv(here("R", "file_dict.csv"))
+
+file_dict %>%
+  distinct(athena_table, observation_unit, primary_key, notes) %>%
+  filter(!is.na(athena_table)) %>%
+  knitr::kable(format = "markdown")
+```

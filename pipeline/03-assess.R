@@ -56,8 +56,8 @@ rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 if (interactive()) {
   
   # Load the final lightgbm model object and recipe from file
-  lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow$fit$local)
-  lgbm_final_full_recipe <- readRDS(paths$output$workflow$recipe$local)
+  lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
+  lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
   
   # Load the MOST RECENT sale per PIN for the same year as the assessment data.
   # We want our assessed value to be as close to the most recent sale
@@ -113,7 +113,7 @@ if (interactive()) {
       )
     ) %>%
     ungroup() %>%
-    write_parquet(paths$output$data$assessment$local)
+    write_parquet(paths$intermediate$assessment$local)
   
   
   ## Bunch of PIN-level stuff happens here (placeholder)

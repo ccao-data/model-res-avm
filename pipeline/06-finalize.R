@@ -105,12 +105,17 @@ upload_search <- (
   (file.exists(paths$output$parameter_search$local) & model_cv_enable)
 )
 upload_assessment <- (
-  (!file.exists(paths$output$performance$assessment$local) & !interactive()) |
-  (file.exists(paths$output$performance$assessment$local) & interactive())
+  (!file.exists(paths$output$performance_assessment$local) & !interactive()) |
+  (file.exists(paths$output$performance_assessment$local) & interactive())
+)
+upload_interpret <- (
+  (!file.exists(paths$output$shap$local) & !interactive()) |
+  (file.exists(paths$output$shap$local) & interactive())
 )
 upload_bool <- upload_all_files &
   upload_search &
   upload_assessment &
+  upload_interpret &
   model_upload_to_s3
 
 # Retrieve hard-coded model hyperparameters from .Renviron
@@ -151,9 +156,9 @@ if (upload_bool) {
   
   # Initialize a new dictionary of file paths AND S3 URIs. See R/helpers.R
   paths <- model_file_dict(
-    model_s3_bucket = model_s3_bucket,
-    model_run_id = model_run_id,
-    model_assessment_year = model_assessment_year
+    s3_bucket = model_s3_bucket,
+    run_id = model_run_id,
+    year = model_assessment_year
   )
 
 
@@ -171,14 +176,14 @@ if (upload_bool) {
   # Upload objects with no need for alteration first
   # Upload LGBM fit
   aws.s3::put_object(
-    paths$output$workflow$fit$local,
-    paths$output$workflow$fit$s3
+    paths$output$workflow_fit$local,
+    paths$output$workflow_fit$s3
   )
   
   # Upload Tidymodels recipe
   aws.s3::put_object(
-    paths$output$workflow$recipe$local,
-    paths$output$workflow$recipe$s3
+    paths$output$workflow_recipe$local,
+    paths$output$workflow_recipe$s3
   )
   
   # Always write the chosen/final parameters to S3. Get parameters not tuned in
@@ -208,12 +213,12 @@ if (upload_bool) {
   
     # Write the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
-      paths$output$parameter_search$local,
-      paths$output$parameter_search$s3_raw
+      paths$output$parameter_raw$local,
+      paths$output$parameter_raw$s3
     )
   
     # Clean and unnest the raw parameters data, then write directly to S3
-    read_parquet(paths$output$parameter_search$local) %>%
+    read_parquet(paths$output$parameter_raw$local) %>%
       tidyr::unnest(cols = .metrics) %>%
       mutate(run_id = model_run_id) %>%
       left_join(
@@ -246,25 +251,25 @@ if (upload_bool) {
   ### 04-evaluate.R
   
   # Upload test set performance
-  read_parquet(paths$output$performance$test$local) %>%
+  read_parquet(paths$output$performance_test$local) %>%
     mutate(run_id = model_run_id) %>%
     relocate(run_id, .before = everything()) %>%
-    write_parquet(paths$output$performance$test$s3)
-  read_parquet(paths$output$performance_quantile$test$local) %>%
+    write_parquet(paths$output$performance_test$s3)
+  read_parquet(paths$output$performance_quantile_test$local) %>%
     mutate(run_id = model_run_id) %>%
     relocate(run_id, .before = everything()) %>%
-    write_parquet(paths$output$performance_quantile$test$s3)
+    write_parquet(paths$output$performance_quantile_test$s3)
   
   # Upload assessment set performance if running locally
   if (interactive()) {
-    read_parquet(paths$output$performance$assessment$local) %>%
+    read_parquet(paths$output$performance_assessment$local) %>%
       mutate(run_id = model_run_id) %>%
       relocate(run_id, .before = everything()) %>%
-      write_parquet(paths$output$performance$assessment$s3)
-    read_parquet(paths$output$performance_quantile$assessment$local) %>%
+      write_parquet(paths$output$performance_assessment$s3)
+    read_parquet(paths$output$performance_quantile_assessment$local) %>%
       mutate(run_id = model_run_id) %>%
       relocate(run_id, .before = everything()) %>%
-      write_parquet(paths$output$performance_quantile$assessment$s3)
+      write_parquet(paths$output$performance_quantile_assessment$s3)
   }
   
   
@@ -293,7 +298,7 @@ if (upload_bool) {
     # Get overall stats by township for the triad of interest, collapsed into
     # a plaintext table
     pipeline_sns_results <- arrow::read_parquet(
-      paths$output$performance$test$local,
+      paths$output$performance_test$local,
       col_select = c("geography_type", "geography_id", "by_class", "cod")
     ) %>%
       filter(

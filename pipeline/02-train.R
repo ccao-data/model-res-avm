@@ -88,6 +88,7 @@ model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
+  sample_n(10000) %>%
   arrange(meta_sale_date)
 
 # Create list of variables that uniquely identify each structure or sale, these
@@ -270,7 +271,7 @@ if (model_cv_enable) {
   # CV iteration
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
-    arrow::write_parquet(paths$output$parameter_search$local)
+    arrow::write_parquet(paths$output$parameter_raw$local)
   
   # Save the possible parameter ranges used for tuning
   lgbm_params %>%
@@ -294,8 +295,8 @@ if (model_cv_enable) {
 
   # If CV is not enabled, load saved parameters from file if it exists
   # Otherwise use a set of hand-chosen parameters
-  if (file.exists(paths$output$parameter_search$local)) {
-    lgbm_final_params <- read_parquet(paths$output$parameter_search$local) %>%
+  if (file.exists(paths$output$parameter_raw$local)) {
+    lgbm_final_params <- read_parquet(paths$output$parameter_raw$local) %>%
       select_best(metric = model_param_objective) %>%
       arrow::write_parquet(paths$output$parameter_final$local)
   } else {
@@ -336,21 +337,21 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # file. These predictions are used to evaluate model performance on the test set 
 test %>%
   mutate(initial_pred_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
-  write_parquet(paths$output$data$test$local)
+  write_parquet(paths$intermediate$test$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # model_lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
 lgbm_wflow_final_full_fit %>%
   workflows::extract_fit_parsnip() %>%
-  lightsnip::lgbm_save(paths$output$workflow$fit$local)
+  lightsnip::lgbm_save(paths$output$workflow_fit$local)
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data
 lgbm_wflow_final_full_fit %>%
   workflows::extract_recipe() %>%
   lightsnip::axe_recipe() %>%
-  saveRDS(paths$output$workflow$recipe$local)
+  saveRDS(paths$output$workflow_recipe$local)
 
 # End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)

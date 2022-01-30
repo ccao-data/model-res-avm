@@ -81,14 +81,14 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 # Load the test results from the end of 02-train.R. This will be the most recent
 # 10% of sales and already includes predictions. This data will NOT include
 # multicard sales. The unit of observation is improvements (1 imprv per row)
-test_data <- read_parquet(paths$output$data$test$local) %>%
+test_data <- read_parquet(paths$intermediate$test$local) %>%
   as_tibble()
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties. Only
 # runs for local (non-CI) runs
 if (interactive()) {
-  assessment_data <- read_parquet(paths$output$data$assessment$local) %>%
+  assessment_data <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
 }
 
@@ -325,9 +325,10 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 # Use fancy tidyeval to create a list of all the geography levels with a
 # class or no class option for each level
 geographies_quosures <- rlang::quos(
-  meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
-  loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-  loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+  meta_township_code,
+  # meta_nbhd_code, loc_cook_municipality_name,
+  # loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+  # loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
   loc_school_unified_district_geoid,
   NULL
 )
@@ -365,7 +366,7 @@ future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 ) %>%
-  write_parquet(paths$output$performance$test$local)
+  write_parquet(paths$output$performance_test$local)
 
 # Same as above, but calculate stats per quantile of sale price
 future_map_dfr(
@@ -385,7 +386,7 @@ future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 ) %>%
-  write_parquet(paths$output$performance_quantile$test$local)
+  write_parquet(paths$output$performance_quantile_test$local)
 
 
 ### Assessment set
@@ -412,7 +413,7 @@ if (interactive()) {
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
   ) %>%
-    write_parquet(paths$output$performance$assessment$local)
+    write_parquet(paths$output$performance_assessment$local)
   
   # Same as above, but calculate stats per quantile of sale price
   future_map_dfr(
@@ -432,7 +433,7 @@ if (interactive()) {
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
   ) %>%
-    write_parquet(paths$output$performance_quantile$assessment$local)
+    write_parquet(paths$output$performance_quantile_assessment$local)
 }
 
 # End the script timer and write the time elapsed to file

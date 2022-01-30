@@ -13,27 +13,39 @@ get_rs_col_name <- function(data_year,  study_year,  study_stage) {
 }
 
 
-# Function to generate a dictionary of file names,  local paths,  and mirrored
-# S3 location URIs
+# Function to generate a dictionary list of file names, local paths,
+# and mirrored S3 location URIs from file_dict.csv
 model_file_dict <- function(s3_bucket = NULL, run_id = NULL, year = NULL) {
-  wd <- here::here("output")
-
-  readr::
+  env <- environment()
+  wd <- here::here()
+  library(magrittr)
+  
+  # Convert flat dictionary file to nested list
+  dict <- readr::read_csv(
+      here::here("R", "file_dict.csv"),
+      col_types = readr::cols()
+    ) %>%
+    dplyr::mutate(
+      s3 = as.character(purrr::map_if(
+        path_s3, ~ !is.na(.x), glue::glue, .envir = env
+      )),
+      s3 = ifelse(!is.na(s3), file.path(s3_bucket, s3), NA),
+      local = ifelse(!is.na(path_local), file.path(wd, path_local), NA),
+      dvc = ifelse(!is.na(path_dvc), file.path(wd, path_dvc), NA)
+    ) %>%
+    dplyr::select(type, name, s3, local, dvc) %>%
+    split(., .$type) %>%
+    purrr::map(., ~ split(.x, .x$name)) %>%
+    purrr::map(., ~ purrr::map(.x, function(x) {
+      as.list(x)[!is.na(x) & names(x) %in% c("s3", "local", "dvc")]
+    }))
 }
 
 
 # Used to delete erroneous, incomplete, or otherwise broken runs
 # Use with caution!
-model_delete_run <- function(model_s3_bucket, 
-                             model_run_id, 
-                             model_assessment_year) {
-  
-  paths <- model_file_dict(
-    file.path(model_s3_bucket, "model"),
-    model_run_id,
-    model_assessment_year
-  )
-  
+model_delete_run <- function(s3_bucket, run_id, year) {
+  paths <- model_file_dict(s3_bucket, run_id, year)
   s3_objs <- grep("s3://", unlist(paths), value = TRUE)
   purrr::walk(s3_objs, aws.s3::delete_object)
 }

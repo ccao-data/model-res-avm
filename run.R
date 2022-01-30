@@ -106,4 +106,4 @@ source("pipeline/04-evaluate.R")
 
 # Save run timings and upload pipeline run results to S3 for
 # visualization and storage
-# source("pipeline/06-finalize.R")
+source("pipeline/06-finalize.R")
