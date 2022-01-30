@@ -123,7 +123,6 @@ if (interactive()) {
       loc_latitude, initial_pred_fmv
     ) %>%
     write_parquet(paths$output$assessment$local)
-  
 }
 
 # End the script timer and write the time elapsed to file
