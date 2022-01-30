@@ -88,7 +88,6 @@ model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
-  sample_n(10000) %>%
   arrange(meta_sale_date)
 
 # Create list of variables that uniquely identify each structure or sale, these
