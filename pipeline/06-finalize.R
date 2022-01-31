@@ -34,7 +34,7 @@ paths <- model_file_dict()
 
 # Convert input timing logs to data frame, then save to file
 if (file.exists(paths$output$metadata$local) &
-    file.exists(paths$output$timing$local)) {
+    file.exists(paths$intermediate$timing$local)) {
   
   # Load info from the saved metadata file to append run ID and start time
   metadata <- read_parquet(paths$output$metadata$local)
@@ -294,18 +294,18 @@ if (upload_bool) {
       write_partitions_to_s3(paths$output$shap$s3, overwrite = TRUE)
   }
   
+  # Upload finalized timings
+  aws.s3::put_object(
+    paths$output$timing$local,
+    paths$output$timing$s3
+  )
+  
   
   
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ##### Wrap Up ####
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  
-  # Upload finalized timings
-  aws.s3::put_object(
-    paths$output$timing$local,
-    paths$output$timing$s3
-  )
   
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # new partitions

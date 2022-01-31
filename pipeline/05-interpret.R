@@ -77,6 +77,6 @@ shap_values_final <- assessment_data_pred %>%
 
 # End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)
-arrow::read_parquet(paths$output$timing$local) %>%
+arrow::read_parquet(paths$intermediate$timing$local) %>%
   bind_rows(., tictoc::tic.log(format = FALSE)) %>%
   arrow::write_parquet(paths$intermediate$timing$local)

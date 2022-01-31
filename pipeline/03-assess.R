@@ -127,6 +127,6 @@ if (interactive()) {
 
 # End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)
-arrow::read_parquet(paths$output$timing$local) %>%
+arrow::read_parquet(paths$intermediate$timing$local) %>%
   bind_rows(., tictoc::tic.log(format = FALSE)) %>%
   arrow::write_parquet(paths$intermediate$timing$local)
