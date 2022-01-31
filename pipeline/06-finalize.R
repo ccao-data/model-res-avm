@@ -82,10 +82,6 @@ if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
   model_cv_enable <- FALSE
 }
 
-# Location of files uploaded to S3. AWS_S3_WAREHOUSE_BUCKET should be set in
-# your root .Renviron file (if you are a CCAO employee)
-model_s3_bucket <- file.path(Sys.getenv("AWS_S3_WAREHOUSE_BUCKET"), "model")
-
 # Get a list of all pipeline outputs that should exist for upload
 output_paths <- unlist(paths)[
   grepl("local", names(unlist(paths)), fixed = TRUE) &
@@ -156,9 +152,8 @@ if (upload_bool) {
   model_run_id <- metadata$run_id[1]
   model_assessment_year <- metadata$model_assessment_year[1]
   
-  # Initialize a new dictionary of file paths AND S3 URIs. See R/helpers.R
+  # Initialize a dictionary of file paths and URIs. See R/file_dict.csv
   paths <- model_file_dict(
-    s3_bucket = model_s3_bucket,
     run_id = model_run_id,
     year = model_assessment_year
   )

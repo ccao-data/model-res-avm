@@ -21,7 +21,7 @@ library(tictoc)
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths and URIs. See R/helpers.R
+# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
 # Get year/stage to use for previous comparison/ratio studies

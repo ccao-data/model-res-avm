@@ -17,7 +17,7 @@ library(tidyr)
 library(tictoc)
 source(here("R", "helpers.R"))
 
-# Initialize a dictionary of file paths and URIs. See R/helpers.R
+# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
 # Load the final lightgbm model object and recipe from file

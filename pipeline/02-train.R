@@ -26,7 +26,7 @@ library(vctrs)
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths and URIs. See R/helpers.R
+# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
 # Get number of available physical cores to use for lightgbm multi-threading
