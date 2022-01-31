@@ -95,7 +95,7 @@ source("pipeline/04-evaluate.R")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate SHAP values for each PIN in the assessment dataset
-# source("pipeline/05-interpret.R")
+source("pipeline/05-interpret.R")
 
 
 

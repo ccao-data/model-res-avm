@@ -55,22 +55,21 @@ shap_values <- predict(
   predcontrib = TRUE
 )
 
-colnames(shap_values) <- c(
-  colnames(assessment_data_prepped),
-  "initial_pred_baseline"
-)
+# Convert the SHAP vals from a matrix to a tibble and add column names
+shap_values_tbl <- shap_values %>%
+  as_tibble() %>%
+  purrr::set_names(c(
+    colnames(assessment_data_prepped),
+    "initial_pred_baseline"
+  ))
 
-
-
-assessment_data_pred %>%
-  bind_cols(as_tibble(shap_values), shap_total = rowSums(shap_values)) %>%
-  mutate(
-    avg_plus_shap_equals_pred = round(shap_total, 1) == round(initial_pred_value, 1)
-  ) %>%
-  relocate(any_of(
-    c("avg_initial_pred_value", "shap_total", "avg_plus_shap_equals_pred")
-  ), .after = "initial_pred_value")
-
+# Combine the identify information from the original prediction data frame
+# with the SHAP value output, then save to file
+shap_values_final <- assessment_data_pred %>%
+  bind_cols(shap_values_tbl) %>%
+  relocate(initial_pred_baseline, .after = "initial_pred_fmv") %>%
+  select(-any_of(c("loc_longitude", "loc_latitude", "initial_pred_fmv"))) %>%
+  write_parquet(paths$output$shap$local)
 
 # End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)

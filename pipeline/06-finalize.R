@@ -249,6 +249,14 @@ if (upload_bool) {
       write_parquet(paths$output$parameter_range$s3)
   }
   
+  ### 03-assess.R
+  
+  # Upload individual assessments
+  aws.s3::put_object(
+    paths$output$assessment$local,
+    paths$output$assessment$s3
+  )
+  
   
   ### 04-evaluate.R
   
@@ -272,6 +280,17 @@ if (upload_bool) {
       mutate(run_id = model_run_id) %>%
       relocate(run_id, .before = everything()) %>%
       write_parquet(paths$output$performance_quantile_assessment$s3)
+  }
+  
+  
+  ### 05-interpret.R
+  
+  # Upload SHAP values if running locally
+  if (interactive()) {
+    aws.s3::put_object(
+      paths$output$shap$local,
+      paths$output$shap$s3
+    )
   }
   
   
