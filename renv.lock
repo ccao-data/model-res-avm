@@ -701,6 +701,13 @@
       "Repository": "CRAN",
       "Hash": "c446b30cb33ec125ff02588b60660ccb"
     },
+    "paws.analytics": {
+      "Package": "paws.analytics",
+      "Version": "0.1.12",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "cb8bfd9ff536e7c45a68cdaa8a16785d"
+    },
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.1.12",
