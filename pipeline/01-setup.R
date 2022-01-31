@@ -171,4 +171,4 @@ arrow::write_parquet(model_metadata, paths$output$metadata$local)
 # End the script timer and write the time elapsed to file
 tictoc::toc(log = TRUE)
 bind_rows(tictoc::tic.log(format = FALSE)) %>%
-  arrow::write_parquet(paths$output$timing$local)
+  arrow::write_parquet(paths$intermediate$timing$local)

@@ -40,7 +40,7 @@ if (file.exists(paths$output$metadata$local) &
   metadata <- read_parquet(paths$output$metadata$local)
   
   # Load the built timing file and munge it into a more useful format
-  read_parquet(paths$output$timing$local) %>%
+  read_parquet(paths$intermediate$timing$local) %>%
     mutate(
       run_id = metadata$run_id[1],
       run_start_timestamp = metadata$run_start_timestamp[1],
@@ -313,9 +313,9 @@ if (upload_bool) {
   }
   
   
-  ### Misc.
+  ### Miscellaneous
   
-  # Upload run timings 
+  # Upload finalized timings
   aws.s3::put_object(
     paths$output$timing$local,
     paths$output$timing$s3
