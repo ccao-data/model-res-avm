@@ -118,10 +118,7 @@ if (interactive()) {
   
   ## Bunch of PIN-level stuff happens here (placeholder)
   assessment_data_pred %>%
-    ccao::vars_rename(
-      names_from = "model",
-      names_to = "athena"
-    ) %>%
+    mutate(township_code = meta_township_code) %>%
     write_parquet(paths$output$assessment$local)
 }
 

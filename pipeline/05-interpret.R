@@ -38,7 +38,10 @@ assessment_data_prepped <- recipes::bake(
 # Load the improvement-level predictions from the previous (assess) stage
 assessment_data_pred <- as_tibble(read_parquet(
   file = paths$output$assessment$local,
-  col_select = any_of(c("year", "pin", "class", "card", "township_code"))
+  col_select = all_of(c(
+    "meta_year", "meta_pin", "meta_class", "meta_card_num",
+    "township_code", "initial_pred_fmv"
+  ))
 ))
 
 
@@ -69,7 +72,7 @@ shap_values_tbl <- shap_values %>%
 shap_values_final <- assessment_data_pred %>%
   bind_cols(shap_values_tbl) %>%
   relocate(initial_pred_baseline, .after = "initial_pred_fmv") %>%
-  select(-any_of(c("loc_longitude", "loc_latitude", "initial_pred_fmv"))) %>%
+  select(-any_of(c("initial_pred_fmv"))) %>%
   write_parquet(paths$output$shap$local)
 
 # End the script timer and write the time elapsed to file

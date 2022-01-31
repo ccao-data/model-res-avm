@@ -78,7 +78,6 @@ before_script:
 stages:
   - setup
   - train
-  - assess
   - evaluate
   - finalize
 
