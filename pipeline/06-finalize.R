@@ -307,13 +307,11 @@ if (upload_bool) {
     paths$output$timing$s3
   )
   
-  # If assessments and SHAP values were uploaded, trigger a lambda function to
-  # crawl any new Glue partitions
+  # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
+  # new partitions
   if (interactive()) {
-    lambda <- paws.compute::lambda(
-      config = list(region = Sys.getenv("AWS_REGION"))
-    )
-    lambda$invoke("ccao-lambda-update-glue-crawler-model")
+    glue_srv <- paws.analytics::glue()
+    glue_srv$start_crawler("ccao-data-warehouse-model-crawler")
   }
   
   # If SNS ARN is available, notify subscribers via email upon run completion
