@@ -246,11 +246,24 @@ if (upload_bool) {
   
   ### 03-assess.R
   
-  # Upload individual assessments
-  aws.s3::put_object(
-    paths$output$assessment$local,
-    paths$output$assessment$s3
-  )
+  # Upload assessment values if running locally. Assessed values are per
+  # improvement, so the output is very large. Therefore, we use arrow to
+  # partition the data by year, run, and township
+  if (interactive()) {
+    read_parquet(paths$output$assessment$local) %>%
+      mutate(
+        run_id = model_run_id,
+        year = model_assessment_year,
+      ) %>%
+      group_by(year, run_id, township_code) %>%
+      arrow::write_dataset(
+        path = paths$output$assessment$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        existing_data_behavior = "overwrite",
+        compression = "snappy"
+      )
+  }
   
   
   ### 04-evaluate.R
@@ -280,12 +293,23 @@ if (upload_bool) {
   
   ### 05-interpret.R
   
-  # Upload SHAP values if running locally
+  # Upload SHAP values if running locally. SHAP values are per improvement, so
+  # the output is very large. Therefore, we use arrow to partition the data by
+  # year, run, and township
   if (interactive()) {
-    aws.s3::put_object(
-      paths$output$shap$local,
-      paths$output$shap$s3
-    )
+    read_parquet(paths$output$shap$local) %>%
+      mutate(
+        run_id = model_run_id,
+        year = model_assessment_year,
+      ) %>%
+      group_by(year, run_id, township_code) %>%
+      arrow::write_dataset(
+        path = paths$output$shap$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        existing_data_behavior = "overwrite",
+        compression = "snappy"
+      )
   }
   
   

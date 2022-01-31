@@ -26,8 +26,7 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 
 # Load the input data used for assessment. This is the universe of IMPROVEMENTs
 # (not PINs) that need values. Use the the trained model to get SHAP values
-assessment_data <- read_parquet(paths$input$assessment$local) %>%
-  as_tibble()
+assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
 # Run the saved recipe on the assessment data to format it for prediction
 assessment_data_prepped <- recipes::bake(
@@ -37,8 +36,10 @@ assessment_data_prepped <- recipes::bake(
 )
 
 # Load the improvement-level predictions from the previous (assess) stage
-assessment_data_pred <- read_parquet(paths$output$assessment$local) %>%
-  as_tibble()
+assessment_data_pred <- as_tibble(read_parquet(
+  file = paths$output$assessment$local,
+  col_select = any_of(c("year", "pin", "class", "card", "township_code"))
+))
 
 
 

@@ -90,7 +90,7 @@ if (interactive()) {
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
   # only columns needed for performance calculations. This data is used for
   # performance measurement
-  assessment_data <- assessment_data_pred %>%
+  assessment_data_pred %>%
     select(-meta_sale_date) %>%
     left_join(training_data, by = c("meta_year", "meta_pin")) %>%
     group_by(
@@ -118,9 +118,9 @@ if (interactive()) {
   
   ## Bunch of PIN-level stuff happens here (placeholder)
   assessment_data_pred %>%
-    select(
-      meta_year, meta_pin, meta_class, meta_card_num, loc_longitude,
-      loc_latitude, initial_pred_fmv
+    ccao::vars_rename(
+      names_from = "model",
+      names_to = "athena"
     ) %>%
     write_parquet(paths$output$assessment$local)
 }
