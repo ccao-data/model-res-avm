@@ -314,14 +314,20 @@ if (model_cv_enable) {
 ### Step 3 - Fit models
 
 # Fit the final model using the training data and our final hyperparameters
-# This is the model used to measure performance on the test set
+# This is the model used to measure performance on the test set. NOTE: the model
+# specification here is updated to remove early stopping, otherwise a portion of
+# the training data is held out for validation
 lgbm_wflow_final_fit <- lgbm_wflow %>%
+  update_model(lgbm_model %>% set_args(stop_iter = NULL, validation = 0)) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
-# hyperparameters. This is the model used for actually assessing all properties
+# hyperparameters. This is the model used for actually assessing all properties. 
+# NOTE: the model specification here is updated to remove early stopping,
+# otherwise a portion of the training data is held out for validation
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
+  update_model(lgbm_model %>% set_args(stop_iter = NULL, validation = 0)) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
 
