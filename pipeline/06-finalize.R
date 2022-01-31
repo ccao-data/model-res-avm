@@ -251,18 +251,9 @@ if (upload_bool) {
   # partition the data by year, run, and township
   if (interactive()) {
     read_parquet(paths$output$assessment$local) %>%
-      mutate(
-        run_id = model_run_id,
-        year = model_assessment_year,
-      ) %>%
+      mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
-      arrow::write_dataset(
-        path = paths$output$assessment$s3,
-        format = "parquet",
-        hive_style = TRUE,
-        existing_data_behavior = "overwrite",
-        compression = "snappy"
-      )
+      write_partitions_to_s3(paths$output$assessment$s3, overwrite = TRUE)
   }
   
   
@@ -298,18 +289,9 @@ if (upload_bool) {
   # year, run, and township
   if (interactive()) {
     read_parquet(paths$output$shap$local) %>%
-      mutate(
-        run_id = model_run_id,
-        year = model_assessment_year,
-      ) %>%
+      mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
-      arrow::write_dataset(
-        path = paths$output$shap$s3,
-        format = "parquet",
-        hive_style = TRUE,
-        existing_data_behavior = "overwrite",
-        compression = "snappy"
-      )
+      write_partitions_to_s3(paths$output$shap$s3, overwrite = TRUE)
   }
   
   
