@@ -118,7 +118,10 @@ if (interactive()) {
   
   ## Bunch of PIN-level stuff happens here (placeholder)
   assessment_data_pred %>%
-    mutate(township_code = meta_township_code) %>%
+    mutate(
+      township_code = meta_township_code,
+      meta_year = as.character(meta_year)
+    ) %>%
     write_parquet(paths$output$assessment$local)
 }
 

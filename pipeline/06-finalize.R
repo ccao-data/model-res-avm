@@ -295,7 +295,11 @@ if (upload_bool) {
   }
   
   
-  ### Miscellaneous
+  
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Wrap Up ####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # Upload finalized timings
   aws.s3::put_object(
@@ -303,8 +307,14 @@ if (upload_bool) {
     paths$output$timing$s3
   )
   
-  
-  ### SNS Notification
+  # If assessments and SHAP values were uploaded, trigger a lambda function to
+  # crawl any new Glue partitions
+  if (interactive()) {
+    lambda <- paws.compute::lambda(
+      config = list(region = Sys.getenv("AWS_REGION"))
+    )
+    lambda$invoke("ccao-lambda-update-glue-crawler-model")
+  }
   
   # If SNS ARN is available, notify subscribers via email upon run completion
   if (!is.na(Sys.getenv("AWS_SNS_ARN_MODEL_STATUS", unset = NA))) {
