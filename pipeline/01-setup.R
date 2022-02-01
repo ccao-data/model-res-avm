@@ -70,6 +70,9 @@ model_ratio_study_far_stage <- Sys.getenv(
   "MODEL_RATIO_STUDY_FAR_STAGE",
   as.character(as.numeric(model_assessment_year) - 3)
 )
+model_ratio_study_num_quantile <- as.integer(strsplit(Sys.getenv(
+  "MODEL_RATIO_STUDY_NUM_QUANTILE", "3,5"
+), ",")[[1]])
 
 
 
@@ -154,6 +157,7 @@ model_metadata <- tibble::tibble(
   model_ratio_study_far_stage,
   model_ratio_study_near_year,
   model_ratio_study_near_stage,
+  model_ratio_study_num_quantile = list(model_ratio_study_num_quantile),
   model_cv_enable = model_cv_enable,
   model_cv_num_folds = as.integer(model_cv_num_folds),
   model_cv_initial_set = as.integer(model_cv_initial_set),
