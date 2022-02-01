@@ -311,7 +311,7 @@ if (upload_bool) {
   # new partitions
   if (interactive()) {
     glue_srv <- paws.analytics::glue()
-    glue_srv$start_crawler("ccao-data-warehouse-model-crawler")
+    glue_srv$start_crawler("ccao-model-results-crawler")
   }
   
   # If SNS ARN is available, notify subscribers via email upon run completion
