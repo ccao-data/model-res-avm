@@ -82,40 +82,6 @@ if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
   model_cv_enable <- FALSE
 }
 
-# Get a list of all pipeline outputs that should exist for upload
-output_paths <- unlist(paths)[
-  grepl("local", names(unlist(paths)), fixed = TRUE) &
-  grepl("output", names(unlist(paths)), fixed = TRUE) &
-  !grepl("parameter", names(unlist(paths)), fixed = TRUE) &
-  !grepl("assessment", names(unlist(paths)), fixed = TRUE) &
-  !grepl("shap", names(unlist(paths)), fixed = TRUE) 
-]
-
-# Check whether all conditions are met for upload:
-#   1. All output files must exist, except...
-#   2. The parameter file, which may not exist if CV is disabled
-#   3. The assessment performance data exists OR this is an automated run
-#   4. The SHAP values exist OR this is an automated run
-#   5. S3 upload is enabled
-upload_all_files <- all(sapply(output_paths, file.exists))
-upload_search <- (
-  (!file.exists(paths$output$parameter_search$local) & !model_cv_enable) |
-  (file.exists(paths$output$parameter_search$local) & model_cv_enable)
-)
-upload_assessment <- (
-  (!file.exists(paths$output$performance_assessment$local) & !interactive()) |
-  (file.exists(paths$output$performance_assessment$local) & interactive())
-)
-upload_interpret <- (
-  (!file.exists(paths$output$shap$local) & !interactive()) |
-  (file.exists(paths$output$shap$local) & interactive())
-)
-upload_bool <- upload_all_files &
-  upload_search &
-  upload_assessment &
-  upload_interpret &
-  model_upload_to_s3
-
 # Retrieve hard-coded model hyperparameters from .Renviron
 model_param_objective <- as.character(
   Sys.getenv("MODEL_PARAM_OBJECTIVE", "regression")
@@ -136,6 +102,28 @@ model_param_link_max_depth <- as.logical(
   Sys.getenv("MODEL_PARAM_LINK_MAX_DEPTH", TRUE)
 )
 
+# Get a list of all pipeline outputs that should exist for upload
+output_paths <- unlist(paths)[
+  grepl("local", names(unlist(paths))) &
+    grepl("output", names(unlist(paths))) &
+    !grepl(
+      "assessment|shap|parameter_range|parameter_search|parameter_raw",
+      names(unlist(paths))
+    )
+]
+
+# Check whether all conditions are met for upload:
+#   1. All output files must exist, except...
+#   2. Some parameter files, which may not exist if CV is disabled
+#   3. The assessment values (candidate runs only)
+#   4. The SHAP values (candidate runs only)
+#   5. S3 upload is enabled
+
+# See R/file_dict.csv for a breakdown of what files are created under certain
+# run types and circumstances
+upload_all_files <- all(sapply(output_paths, file.exists))
+upload_bool <- upload_all_files & model_upload_to_s3
+
 
 
 
@@ -151,6 +139,7 @@ if (upload_bool) {
   metadata <- read_parquet(paths$output$metadata$local)
   model_run_id <- metadata$run_id[1]
   model_assessment_year <- metadata$model_assessment_year[1]
+  model_run_type <- metadata$run_type[1]
   
   # Initialize a dictionary of file paths and URIs. See R/file_dict.csv
   paths <- model_file_dict(
@@ -246,10 +235,10 @@ if (upload_bool) {
   
   ### 03-assess.R
   
-  # Upload assessment values if running locally. Assessed values are per
-  # improvement, so the output is very large. Therefore, we use arrow to
-  # partition the data by year, run, and township
-  if (interactive()) {
+  # Upload assessment values if running locally and a candidate or final run
+  # Assessed values are per improvement, so the output is very large. Therefore,
+  # we use arrow to partition the data by year, run, and township
+  if (interactive() && model_run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$assessment$local) %>%
       mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
@@ -287,7 +276,7 @@ if (upload_bool) {
   # Upload SHAP values if running locally. SHAP values are per improvement, so
   # the output is very large. Therefore, we use arrow to partition the data by
   # year, run, and township
-  if (interactive()) {
+  if (interactive() && model_run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$shap$local) %>%
       mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
@@ -309,7 +298,7 @@ if (upload_bool) {
   
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # new partitions
-  if (interactive()) {
+  if (interactive() && model_run_type %in% c("candidate", "final")) {
     glue_srv <- paws.analytics::glue()
     glue_srv$start_crawler("ccao-model-results-crawler")
   }

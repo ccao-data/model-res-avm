@@ -28,14 +28,14 @@ git tag.
 
 #### Run Outputs
 
-| Athena Table         | Run On Type Automated | Run On Type Experiment | Run On Type Candidate | Run On Type Final |
-|:---------------------|:----------------------|:-----------------------|:----------------------|:------------------|
-| metadata             | TRUE                  | TRUE                   | TRUE                  | TRUE              |
-| parameter_search     | FALSE                 | TRUE                   | TRUE                  | TRUE              |
-| parameter_final      | TRUE                  | TRUE                   | TRUE                  | TRUE              |
-| parameter_range      | FALSE                 | TRUE                   | TRUE                  | TRUE              |
-| assessment           | FALSE                 | FALSE                  | TRUE                  | TRUE              |
-| performance          | TRUE                  | TRUE                   | TRUE                  | TRUE              |
-| performance_quantile | TRUE                  | TRUE                   | TRUE                  | TRUE              |
-| shap                 | FALSE                 | FALSE                  | TRUE                  | TRUE              |
-| timing               | TRUE                  | TRUE                   | TRUE                  | TRUE              |
+| Athena Table         | Run Type Automated | Run Type Experiment | Run Type Candidate | Run Type Final    |
+|:---------------------|:-------------------|:--------------------|:-------------------|:------------------|
+| metadata             | Yes                | Yes                 | Yes                | Yes               |
+| parameter_search     | No                 | Yes                 | Yes                | Yes               |
+| parameter_final      | Yes                | Yes                 | Yes                | Yes               |
+| parameter_range      | No                 | Yes                 | Yes                | Yes               |
+| assessment           | No                 | No                  | Yes                | Yes               |
+| performance          | Test only          | Test + assessment   | Test + assessment  | Test + assessment |
+| performance_quantile | Test only          | Test + assessment   | Test + assessment  | Test + assessment |
+| shap                 | No                 | No                  | Yes                | Yes               |
+| timing               | Yes                | Yes                 | Yes                | Yes               |

@@ -44,6 +44,14 @@ rsf_stage <- Sys.getenv(
 rsf_column <- get_rs_col_name(model_assessment_data_year, rsf_year, rsf_stage)
 rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
 
+# Load the run type from the metadata file, if it exists
+if (file.exists(paths$output$metadata$local)) {
+  model_run_type <- read_parquet(paths$output$metadata$local, "run_type") %>%
+    dplyr::pull(run_type)
+} else {
+  model_run_type <- "automated"
+}
+
 
 
 
@@ -115,14 +123,18 @@ if (interactive()) {
     ungroup() %>%
     write_parquet(paths$intermediate$assessment$local)
   
-  
-  ## Bunch of PIN-level stuff happens here (placeholder)
-  assessment_data_pred %>%
-    mutate(
-      township_code = meta_township_code,
-      meta_year = as.character(meta_year)
-    ) %>%
-    write_parquet(paths$output$assessment$local)
+  # Generate individual improvement-level values only for candidate and final
+  # runs. This is to save space and avoid long computations for every run
+  if (model_run_type %in% c("candidate", "final")) {
+    
+    ## Bunch of PIN-level stuff happens here (placeholder)
+    assessment_data_pred %>%
+      mutate(
+        township_code = meta_township_code,
+        meta_year = as.character(meta_year)
+      ) %>%
+      write_parquet(paths$output$assessment$local)
+  }
 }
 
 # End the script timer and write the time elapsed to file

@@ -33,7 +33,7 @@ file_dict %>%
 
 ```{r file_dict2, message=FALSE, results='asis', echo=FALSE}
 file_dict %>%
-  select(athena_table, starts_with("run_on_type")) %>%
+  select(athena_table, starts_with("run_type_")) %>%
   distinct(athena_table, .keep_all = TRUE) %>%
   filter(!is.na(athena_table)) %>%
   rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
