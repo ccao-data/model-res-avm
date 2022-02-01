@@ -12,6 +12,8 @@ git tag.
 
 ## Athena Guide
 
+#### Table Universe
+
 | Athena Table         | Observation Unit                   | Primary Key                                                                  | Notes                                                                                                                                                                     |
 |:---------------------|:-----------------------------------|:-----------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | metadata             | model run                          | year, run_id                                                                 | Information about each run                                                                                                                                                |
@@ -23,3 +25,17 @@ git tag.
 | performance_quantile | geography \[by class\] by quantile | year, run_id, stage, geography_type, geography_id, by_class, class, quantile | Performance metrics by quantile within class and geography                                                                                                                |
 | shap                 | improvement                        | year, run_id, township_code, meta_pin, meta_card_num                         | SHAP values for each feature of each improvement in the assessment data. NOTE: Each run adds new partitions to S3 which must be added via a Glue crawler                  |
 | timing               | model run                          | year, run_id                                                                 | Timings for whole run. Each row represents one run, while columns represent the stages                                                                                    |
+
+#### Run Outputs
+
+| Athena Table         | Run On Type Automated | Run On Type Experiment | Run On Type Candidate | Run On Type Final |
+|:---------------------|:----------------------|:-----------------------|:----------------------|:------------------|
+| metadata             | TRUE                  | TRUE                   | TRUE                  | TRUE              |
+| parameter_search     | FALSE                 | TRUE                   | TRUE                  | TRUE              |
+| parameter_final      | TRUE                  | TRUE                   | TRUE                  | TRUE              |
+| parameter_range      | FALSE                 | TRUE                   | TRUE                  | TRUE              |
+| assessment           | FALSE                 | FALSE                  | TRUE                  | TRUE              |
+| performance          | TRUE                  | TRUE                   | TRUE                  | TRUE              |
+| performance_quantile | TRUE                  | TRUE                   | TRUE                  | TRUE              |
+| shap                 | FALSE                 | FALSE                  | TRUE                  | TRUE              |
+| timing               | TRUE                  | TRUE                   | TRUE                  | TRUE              |
