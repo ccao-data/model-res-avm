@@ -35,9 +35,7 @@ if (file.exists(paths$output$metadata$local)) {
 ##### Load Data ####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Generate SHAP values only for candidate and final runs. This is to save space
-# and avoid long computations for every run (SHAP values are extremely
-# computationally intensive)
+# Generate SHAP values only for candidate and final runs
 if (interactive() && model_run_type %in% c("candidate", "final")) {
 
   # Load the final lightgbm model object and recipe from file

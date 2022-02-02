@@ -43,8 +43,8 @@ if (model_clear_on_new_run) {
 ##### 01. Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Run the setup script to fetch environmental variables, metadata, etc. Will
-# output a metadata file which stores run information. All further
+# Run the setup script to fetch environmental variables, model parameters,
+# metadata, etc.
 source("pipeline/01-setup.R")
 
 
@@ -93,6 +93,11 @@ source("pipeline/04-evaluate.R")
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ##### 05. Interpret #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+### WARNING: Calculating SHAP values is very expensive. The time complexity is
+# O(rows * num_iterations * num_leaves * max_depth^2). Calculating SHAP values
+# for 1.1 million records for a complex model can take many hours (or even
+# days). Therefore, this stage is only executed for candidate and final runs
 
 # Generate SHAP values for each PIN in the assessment dataset
 source("pipeline/05-interpret.R")
