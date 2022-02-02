@@ -57,7 +57,7 @@ before_script:
   - apt-get update && apt-get install --no-install-recommends -y ${APT_DEPS}
   
   # pip install DVC to fetch data from S3 using dvc pull
-  - pip install dvc[s3] boto3
+  - pip install aiobotocore[boto3] boto3 dvc[s3] 
   - dvc pull
   
   # Install R dependencies listed in renv.lock using renv
