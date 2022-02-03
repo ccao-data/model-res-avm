@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This script will upload all the locally stored objects created by a pipeline
@@ -29,7 +29,7 @@ paths <- model_file_dict()
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Save Timings ####
+##### Save Timings #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Convert input timing logs to data frame, then save to file
@@ -64,7 +64,7 @@ if (file.exists(paths$output$metadata$local) &
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Upload Prep ####
+##### Upload Prep #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Whether or not to upload model artifacts (objects, results, parameters) to S3
@@ -128,7 +128,7 @@ upload_bool <- upload_all_files & model_upload_to_s3
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Upload ####
+##### Upload #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Only run upload if above conditions are met
@@ -293,7 +293,7 @@ if (upload_bool) {
   
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ##### Wrap Up ####
+  ##### Wrap Up #####
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find

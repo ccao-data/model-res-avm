@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
@@ -56,7 +56,7 @@ if (file.exists(paths$output$metadata$local)) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Generate Predictions #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Only create the assessment performance set if running in a local (non CI)
@@ -66,18 +66,6 @@ if (interactive()) {
   # Load the final lightgbm model object and recipe from file
   lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
   lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
-  
-  # Load the MOST RECENT sale per PIN for the same year as the assessment data.
-  # We want our assessed value to be as close to the most recent sale
-  training_data <- read_parquet(paths$input$training$local) %>%
-    filter(meta_year == model_assessment_data_year) %>%
-    group_by(meta_pin) %>%
-    filter(meta_sale_date == max(meta_sale_date)) %>%
-    distinct(
-      meta_pin, meta_year, meta_sale_price,
-      meta_sale_date, meta_sale_document_num
-    ) %>%
-    ungroup()
   
   # Load the data for assessment. This is the universe of IMPROVEMENTs (not
   # PINs) that needs values. Use the trained lightgbm model to estimate a value
@@ -93,6 +81,20 @@ if (interactive()) {
         )
       )$.pred
     )
+  
+  
+  
+  # Load the MOST RECENT sale per PIN for the same year as the assessment data.
+  # We want our assessed value to be as close to the most recent sale
+  training_data <- read_parquet(paths$input$training$local) %>%
+    filter(meta_year == model_assessment_data_year) %>%
+    group_by(meta_pin) %>%
+    filter(meta_sale_date == max(meta_sale_date)) %>%
+    distinct(
+      meta_pin, meta_year, meta_sale_price,
+      meta_sale_date, meta_sale_document_num
+    ) %>%
+    ungroup()
   
   # Join sales data to each PIN, then collapse the improvement-level assessment
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
@@ -122,6 +124,9 @@ if (interactive()) {
     ) %>%
     ungroup() %>%
     write_parquet(paths$intermediate$assessment$local)
+  
+  
+  
   
   # Generate individual improvement-level values only for candidate and final
   # runs. This is to save space and avoid long computations for every run

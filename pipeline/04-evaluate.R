@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
@@ -76,7 +76,7 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Load Data ####
+##### Load Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the test results from the end of 02-train.R. This will be the most recent
@@ -97,7 +97,7 @@ if (interactive()) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Define Stats Functions ####
+##### Define Stats Functions #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Function to take either test set results or assessment results and generate
@@ -320,7 +320,7 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Generate Stats ####
+##### Generate Stats #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Use fancy tidyeval to create a list of all the geography levels with a
