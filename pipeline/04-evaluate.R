@@ -169,10 +169,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       
       prior_far_total_av = sum(rsf_x10 / 10, na.rm = TRUE),
       prior_near_total_av = sum(rsn_x10 / 10, na.rm = TRUE),
-      estimate_total_av = sum({{ estimate }}, na.rm = TRUE),
+      estimate_total_av = sum({{ estimate }} / 10, na.rm = TRUE),
       
       # Assessment-specific statistics
       across(.fns = rs_fns_list, {{ estimate }}, {{ truth }}, .names = "{.fn}"),
+      median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
 
       # Yardstick (ML-specific) performance stats
       across(.fns = ys_fns_list, {{ truth }}, {{ estimate }}, .names = "{.fn}"),
