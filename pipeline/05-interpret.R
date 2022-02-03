@@ -95,7 +95,6 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
   shap_values_final <- assessment_data_pred %>%
     bind_cols(shap_values_tbl) %>%
     relocate(initial_pred_baseline, .after = "initial_pred_fmv") %>%
-    select(-any_of(c("initial_pred_fmv"))) %>%
     write_parquet(paths$output$shap$local)
 }
 

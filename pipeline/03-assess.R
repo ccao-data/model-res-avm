@@ -56,12 +56,16 @@ if (file.exists(paths$output$metadata$local)) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Generate Predictions #####
+##### Assess Improvements #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Only create the assessment performance set if running in a local (non CI)
-# session
+# Only create the assessment data if running interactively (non-CI). Otherwise,
+# use only the test set data for performance measurement. See README for details
 if (interactive()) {
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Generate Predictions #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # Load the final lightgbm model object and recipe from file
   lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
@@ -82,10 +86,39 @@ if (interactive()) {
       )$.pred
     )
   
+  assessment_data_pred <- assessment_data_pred %>%
+    mutate(
+      final_pred_fmv = initial_pred_fmv
+    )
   
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Save Assessment Improvement-level Data #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Generate individual improvement-level values only for candidate and final
+  # runs. This is to save space and avoid long computations for every run
+  if (model_run_type %in% c("candidate", "final")) {
+    
+    ## Bunch of PIN-level stuff happens here (placeholder)
+    assessment_data_pred %>%
+      mutate(
+        township_code = meta_township_code,
+        meta_year = as.character(meta_year)
+      ) %>%
+      write_parquet(paths$output$assessment$local)
+  }
+  
+  
+  
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Save Assessment Performance Data #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # Load the MOST RECENT sale per PIN for the same year as the assessment data.
-  # We want our assessed value to be as close to the most recent sale
+  # We want our assessed value to be as close as possible to the most
+  # recent sale
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(meta_year == model_assessment_data_year) %>%
     group_by(meta_pin) %>%
@@ -110,7 +143,7 @@ if (interactive()) {
     summarize(
       meta_sale_price = first(meta_sale_price),
       char_bldg_sf = sum(char_bldg_sf),
-      initial_pred_fmv = sum(initial_pred_fmv),
+      final_pred_fmv = sum(final_pred_fmv),
       across(
         c(any_of(c(rsf_column, rsn_column)),
           meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
@@ -124,22 +157,6 @@ if (interactive()) {
     ) %>%
     ungroup() %>%
     write_parquet(paths$intermediate$assessment$local)
-  
-  
-  
-  
-  # Generate individual improvement-level values only for candidate and final
-  # runs. This is to save space and avoid long computations for every run
-  if (model_run_type %in% c("candidate", "final")) {
-    
-    ## Bunch of PIN-level stuff happens here (placeholder)
-    assessment_data_pred %>%
-      mutate(
-        township_code = meta_township_code,
-        meta_year = as.character(meta_year)
-      ) %>%
-      write_parquet(paths$output$assessment$local)
-  }
 }
 
 # End the script timer and write the time elapsed to file
