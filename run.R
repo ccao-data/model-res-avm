@@ -12,8 +12,7 @@
 #     pipeline/00-ingest.R) but is not run automatically. Use DVC (CCAO) or 
 #     git LFS (public users) to retrieve training and assessment data before
 #     running this script
-library(here)
-source(here("R", "helpers.R"))
+source("R/helpers.R")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
