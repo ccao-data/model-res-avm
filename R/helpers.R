@@ -73,6 +73,7 @@ write_partitions_to_s3 <- function(df, s3_output_path, overwrite = FALSE) {
     remote_path <- file.path(
       s3_output_path, partition_path, "part-0.parquet"
     )
+    remote_path <- gsub("//*", "/", remote_path)
     if (!object_exists(remote_path) | overwrite) {
       message("Now uploading: ", partition_path)
       tmp_file <- tempfile(fileext = ".parquet")
