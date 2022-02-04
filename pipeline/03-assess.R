@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
@@ -56,28 +56,20 @@ if (file.exists(paths$output$metadata$local)) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Assess Improvements #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Only create the assessment performance set if running in a local (non CI)
-# session
+# Only create the assessment data if running interactively (non-CI). Otherwise,
+# use only the test set data for performance measurement. See README for details
 if (interactive()) {
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Generate Predictions #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # Load the final lightgbm model object and recipe from file
   lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
   lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
-  
-  # Load the MOST RECENT sale per PIN for the same year as the assessment data.
-  # We want our assessed value to be as close to the most recent sale
-  training_data <- read_parquet(paths$input$training$local) %>%
-    filter(meta_year == model_assessment_data_year) %>%
-    group_by(meta_pin) %>%
-    filter(meta_sale_date == max(meta_sale_date)) %>%
-    distinct(
-      meta_pin, meta_year, meta_sale_price,
-      meta_sale_date, meta_sale_document_num
-    ) %>%
-    ungroup()
   
   # Load the data for assessment. This is the universe of IMPROVEMENTs (not
   # PINs) that needs values. Use the trained lightgbm model to estimate a value
@@ -94,11 +86,77 @@ if (interactive()) {
       )$.pred
     )
   
+  
+  
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Post-Modeling Adjustments #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Load townhome/rowhome complex IDs
+  complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
+    select(meta_pin, meta_complex_id)
+  
+  # Join complex IDs to the predictions, then for each complex, set the
+  # prediction to the average prediction of the complex
+  assessment_data_cid <- assessment_data_pred %>%
+    left_join(complex_id_data, by = "meta_pin") %>%
+    group_by(meta_complex_id) %>%
+    mutate(
+      final_pred_fmv = ifelse(
+        is.na(meta_complex_id),
+        initial_pred_fmv,
+        mean(initial_pred_fmv)
+      )
+    ) %>%
+    ungroup() %>%
+    relocate(meta_complex_id, .after = "meta_tax_code")
+    
+  
+  
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Save Assessment Improvement Level Data #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Generate individual improvement-level values only for candidate and final
+  # runs. This is to save space and avoid long computations for every run
+  if (model_run_type %in% c("candidate", "final")) {
+    
+    ## Bunch of PIN-level stuff happens here (placeholder)
+    assessment_data_cid %>%
+      mutate(
+        township_code = meta_township_code,
+        meta_year = as.character(meta_year)
+      ) %>%
+      write_parquet(paths$output$assessment$local)
+  }
+  
+  
+  
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Save Assessment Performance Data #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Load the MOST RECENT sale per PIN for the same year as the assessment data.
+  # We want our assessed value to be as close as possible to the most
+  # recent sale
+  training_data <- read_parquet(paths$input$training$local) %>%
+    filter(meta_year == model_assessment_data_year) %>%
+    group_by(meta_pin) %>%
+    filter(meta_sale_date == max(meta_sale_date)) %>%
+    distinct(
+      meta_pin, meta_year, meta_sale_price,
+      meta_sale_date, meta_sale_document_num
+    ) %>%
+    ungroup()
+  
   # Join sales data to each PIN, then collapse the improvement-level assessment
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
   # only columns needed for performance calculations. This data is used for
   # performance measurement
-  assessment_data_pred %>%
+  assessment_data_cid %>%
     select(-meta_sale_date) %>%
     left_join(training_data, by = c("meta_year", "meta_pin")) %>%
     group_by(
@@ -108,7 +166,7 @@ if (interactive()) {
     summarize(
       meta_sale_price = first(meta_sale_price),
       char_bldg_sf = sum(char_bldg_sf),
-      initial_pred_fmv = sum(initial_pred_fmv),
+      final_pred_fmv = sum(final_pred_fmv),
       across(
         c(any_of(c(rsf_column, rsn_column)),
           meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
@@ -122,19 +180,6 @@ if (interactive()) {
     ) %>%
     ungroup() %>%
     write_parquet(paths$intermediate$assessment$local)
-  
-  # Generate individual improvement-level values only for candidate and final
-  # runs. This is to save space and avoid long computations for every run
-  if (model_run_type %in% c("candidate", "final")) {
-    
-    ## Bunch of PIN-level stuff happens here (placeholder)
-    assessment_data_pred %>%
-      mutate(
-        township_code = meta_township_code,
-        meta_year = as.character(meta_year)
-      ) %>%
-      write_parquet(paths$output$assessment$local)
-  }
 }
 
 # End the script timer and write the time elapsed to file

@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
@@ -76,7 +76,7 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Load Data ####
+##### Load Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the test results from the end of 02-train.R. This will be the most recent
@@ -89,7 +89,7 @@ test_data <- read_parquet(paths$intermediate$test$local) %>%
 # residential PIN that needs a value. It WILL include multicard properties. Only
 # runs for local (non-CI) runs
 if (interactive()) {
-  assessment_data <- read_parquet(paths$intermediate$assessment$local) %>%
+  assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
 }
 
@@ -97,7 +97,7 @@ if (interactive()) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Define Stats Functions ####
+##### Define Stats Functions #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Function to take either test set results or assessment results and generate
@@ -321,7 +321,7 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Generate Stats ####
+##### Generate Stats #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Use fancy tidyeval to create a list of all the geography levels with a
@@ -401,9 +401,9 @@ if (interactive()) {
   future_map_dfr(
     geographies_list,
     ~ gen_agg_stats(
-      data = assessment_data,
+      data = assessment_data_pin,
       truth = meta_sale_price,
-      estimate = initial_pred_fmv,
+      estimate = final_pred_fmv,
       bldg_sqft = char_bldg_sf,
       rsn_col = rsn_column,
       rsf_col = rsf_column,
@@ -421,9 +421,9 @@ if (interactive()) {
   future_map_dfr(
     geographies_list_quantile,
     ~ gen_agg_stats_quantile(
-      data = assessment_data,
+      data = assessment_data_pin,
       truth = meta_sale_price,
-      estimate = initial_pred_fmv,
+      estimate = final_pred_fmv,
       rsn_col = rsn_column,
       rsf_col = rsf_column,
       triad = meta_triad_code,

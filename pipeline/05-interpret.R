@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup ####
+##### Setup #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
@@ -32,7 +32,7 @@ if (file.exists(paths$output$metadata$local)) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Load Data ####
+##### Load Data #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate SHAP values only for candidate and final runs
@@ -68,7 +68,7 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Calculate SHAP Values ####
+##### Calculate SHAP Values #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Only calculate SHAP values for candidate and final runs
@@ -95,7 +95,6 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
   shap_values_final <- assessment_data_pred %>%
     bind_cols(shap_values_tbl) %>%
     relocate(initial_pred_baseline, .after = "initial_pred_fmv") %>%
-    select(-any_of(c("initial_pred_fmv"))) %>%
     write_parquet(paths$output$shap$local)
 }
 

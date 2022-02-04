@@ -114,6 +114,7 @@ if (interactive()) {
 # version and share the input data
 assessment_md5 <- read_yaml(paths$input$assessment$dvc)$outs[[1]]$md5
 training_md5 <- read_yaml(paths$input$training$dvc)$outs[[1]]$md5
+complex_id_md5 <- read_yaml(paths$input$complex_id$dvc)$outs[[1]]$md5
 
 # Get the predictors used for training the model + a count of predictors
 model_predictors <- ccao::vars_dict %>%
@@ -151,6 +152,7 @@ model_metadata <- tibble::tibble(
   git_email = git_commit$author$email,
   model_training_data_dvc_id = training_md5,
   model_assessment_data_dvc_id = assessment_md5,
+  model_complex_id_data_dvc_id = complex_id_md5,
   model_min_sale_year,
   model_max_sale_year,
   model_ratio_study_far_year,
