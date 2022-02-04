@@ -86,14 +86,37 @@ if (interactive()) {
       )$.pred
     )
   
-  assessment_data_pred <- assessment_data_pred %>%
-    mutate(
-      final_pred_fmv = initial_pred_fmv
-    )
+  
   
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ##### Save Assessment Improvement-level Data #####
+  ##### Post-Modeling Adjustments #####
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  
+  # Load townhome/rowhome complex IDs
+  complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
+    select(meta_pin, meta_complex_id)
+  
+  # Join complex IDs to the predictions, then for each complex, set the
+  # prediction to the average prediction of the complex
+  assessment_data_cid <- assessment_data_pred %>%
+    left_join(complex_id_data, by = "meta_pin") %>%
+    group_by(meta_complex_id) %>%
+    mutate(
+      final_pred_fmv = ifelse(
+        is.na(meta_complex_id),
+        initial_pred_fmv,
+        mean(initial_pred_fmv)
+      )
+    ) %>%
+    ungroup() %>%
+    relocate(meta_complex_id, .after = "meta_tax_code")
+    
+  
+  
+  
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ##### Save Assessment Improvement Level Data #####
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   # Generate individual improvement-level values only for candidate and final
@@ -101,7 +124,7 @@ if (interactive()) {
   if (model_run_type %in% c("candidate", "final")) {
     
     ## Bunch of PIN-level stuff happens here (placeholder)
-    assessment_data_pred %>%
+    assessment_data_cid %>%
       mutate(
         township_code = meta_township_code,
         meta_year = as.character(meta_year)
@@ -133,7 +156,7 @@ if (interactive()) {
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
   # only columns needed for performance calculations. This data is used for
   # performance measurement
-  assessment_data_pred %>%
+  assessment_data_cid %>%
     select(-meta_sale_date) %>%
     left_join(training_data, by = c("meta_year", "meta_pin")) %>%
     group_by(
