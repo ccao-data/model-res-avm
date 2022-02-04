@@ -12,9 +12,11 @@ library(DBI)
 library(dplyr)
 library(glue)
 library(here)
+library(igraph)
 library(lubridate)
 library(RJDBC)
 library(tictoc)
+library(tidyr)
 source(here("R", "helpers.R"))
 
 # Initialize a dictionary of file paths and URIs. See R/file_dict.csv
@@ -54,6 +56,12 @@ model_min_sale_year <- Sys.getenv(
 model_max_sale_year <- Sys.getenv(
   "MODEL_MAX_SALE_YEAR",
   unset = as.numeric(model_assessment_data_year)
+)
+
+# Whether or not to generate a new set of townhome complex identifiers
+model_generate_complex_id <- Sys.getenv(
+  "MODEL_GENERATE_COMPLEX_ID",
+  unset = FALSE
 )
 
 
@@ -170,8 +178,9 @@ training_data_clean <- training_data %>%
 
 ### Assessment Data
 
-# Clean the assessment data. This the target data that the trained model used on
-# The cleaning steps are the same as above, with the exception of the time vars
+# Clean the assessment data. This the target data that the trained model is 
+# used on. The cleaning steps are the same as above, with the exception of the
+# time vars and identifying complexes
 assessment_data_clean <- assessment_data %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
   mutate(across(everything(), ~ recode_column_type(.x, cur_column()))) %>%
@@ -191,6 +200,82 @@ assessment_data_clean <- assessment_data %>%
   ) %>%
   select(-any_of("time_interval")) %>%
   write_parquet(paths$input$assessment$local)
+
+
+### Complex Identifiers
+
+# Townhomes and rowhomes within the same "complex" or building should
+# ultimately receive the same final assessed value. However, a single row of
+# identical townhomes can have multiple PINs and the CCAO does not maintain a
+# unique complex ID. Further, PINs within a complex often have nearly, but not
+# exactly, identical characteristics.
+
+# To solve this issue and assign each complex an ID, we do some clever "fuzzy"
+# joining and then link each PIN into an undirected graph. See this SO post
+# for more details on the methodology: 
+# https://stackoverflow.com/questions/68353869/create-group-based-on-fuzzy-criteria
+if (model_generate_complex_id) {
+  complex_id_temp <- assessment_data_clean %>%
+    filter(meta_class %in% c("210", "295")) %>%
+    
+    # Self-join with attributes that must be exactly matching
+    select(
+      meta_pin, meta_card_num, meta_township_code, meta_class,
+      char_bsmt, char_gar1_size, char_attic_fnsh, char_beds,
+      char_rooms, char_bldg_sf, char_yrblt, loc_longitude, loc_latitude
+    ) %>%
+    full_join(
+      eval(.), by = c(
+        "meta_township_code", "meta_class", "char_bsmt",
+        "char_gar1_size", "char_attic_fnsh", "char_beds"
+      )
+    ) %>%
+    
+    # Filter with attributes that can be "fuzzy" matched
+    filter(
+      char_rooms.x >= char_rooms.y - 1,
+      char_rooms.x <= char_rooms.y + 1,
+      char_bldg_sf.x >= char_bldg_sf.y - 25,
+      char_bldg_sf.x <= char_bldg_sf.y + 25,
+      ((char_yrblt.x >= char_yrblt.y - 4 &
+          char_yrblt.x <= char_yrblt.y + 4) |
+         is.na(char_yrblt.x)
+      ),
+      ((loc_longitude.x >= loc_longitude.y - 0.001 &
+          loc_longitude.x <= loc_longitude.y + 0.001) |
+         is.na(loc_longitude.x)
+      ),
+      ((loc_latitude.x >= loc_latitude.y - 0.001 &
+          loc_latitude.x <= loc_latitude.y + 0.001) |
+         is.na(loc_latitude.x)
+      )
+    ) %>%
+    
+    # Combine PINs into a graph
+    select(meta_pin.x, meta_pin.y) %>%
+    igraph::graph_from_data_frame(directed = FALSE) %>%
+    igraph::components() %>%
+    igraph::membership() %>%
+    
+    # Convert graph to tibble and clean up
+    utils::stack() %>%
+    as_tibble() %>%
+    mutate(ind = as.character(ind)) %>%
+    rename(meta_pin = ind, meta_complex_id = values)
+  
+  # Attach original PIN data and fill any missing with a sequential integer
+  complex_id_data <- assessment_data_clean %>%
+    filter(meta_class %in% c("210", "295")) %>%
+    distinct(meta_pin, meta_township_code, meta_class) %>%
+    left_join(complex_id_temp, by = "meta_pin") %>%
+    arrange(meta_complex_id) %>%
+    mutate(meta_complex_id = ifelse(
+      !is.na(meta_complex_id),
+      meta_complex_id,
+      lag(meta_complex_id) + 1
+    )) %>%
+    write_parquet(paths$input$complex_id$local)
+}
 
 # Reminder to upload to DVC store
 message(
