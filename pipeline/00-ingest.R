@@ -222,7 +222,7 @@ if (model_generate_complex_id) {
     select(
       meta_pin, meta_card_num, meta_township_code, meta_class,
       char_bsmt, char_gar1_size, char_attic_fnsh, char_beds,
-      char_rooms, char_bldg_sf, char_yrblt, loc_longitude, loc_latitude
+      char_rooms, char_bldg_sf, char_yrblt, loc_x_3435, loc_y_3435 
     ) %>%
     full_join(
       eval(.), by = c(
@@ -241,13 +241,15 @@ if (model_generate_complex_id) {
           char_yrblt.x <= char_yrblt.y + 4) |
          is.na(char_yrblt.x)
       ),
-      ((loc_longitude.x >= loc_longitude.y - 0.001 &
-          loc_longitude.x <= loc_longitude.y + 0.001) |
-         is.na(loc_longitude.x)
+      
+      # Units must be within 250 feet of other units
+      ((loc_x_3435.x >= loc_x_3435.y - 250 &
+          loc_x_3435.x <= loc_x_3435.y + 250) |
+         is.na(loc_x_3435.x)
       ),
-      ((loc_latitude.x >= loc_latitude.y - 0.001 &
-          loc_latitude.x <= loc_latitude.y + 0.001) |
-         is.na(loc_latitude.x)
+      ((loc_y_3435.x >= loc_y_3435.y - 250 &
+          loc_y_3435.x <= loc_y_3435.y + 250) |
+         is.na(loc_y_3435.x)
       )
     ) %>%
     
