@@ -59,7 +59,7 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
     file = paths$output$assessment$local,
     col_select = all_of(c(
       "meta_year", "meta_pin", "meta_class", "meta_card_num",
-      "township_code", "initial_pred_fmv"
+      "township_code", "pred_card_initial_fmv"
     ))
   ))
 }
@@ -87,14 +87,14 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
     as_tibble() %>%
     purrr::set_names(c(
       colnames(assessment_data_prepped),
-      "initial_pred_baseline"
+      "pred_card_baseline_fmv"
     ))
   
   # Combine the identify information from the original prediction data frame
   # with the SHAP value output, then save to file
   shap_values_final <- assessment_data_pred %>%
     bind_cols(shap_values_tbl) %>%
-    relocate(initial_pred_baseline, .after = "initial_pred_fmv") %>%
+    relocate(pred_card_baseline_fmv, .after = "pred_card_initial_fmv") %>%
     write_parquet(paths$output$shap$local)
 }
 
