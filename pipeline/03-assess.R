@@ -76,7 +76,7 @@ if (interactive()) {
   assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
     as_tibble() %>%
     mutate(
-      initial_pred_fmv = predict(
+      pred_card_initial_fmv = predict(
         lgbm_final_full_fit,
         new_data = bake(
           lgbm_final_full_recipe,
@@ -100,9 +100,9 @@ if (interactive()) {
   # case, we bump any negative predictions to $10K
   assessment_data_pred <- assessment_data_pred %>%
     mutate(
-      final_pred_fmv = ifelse(
-        initial_pred_fmv >= 10000,
-        initial_pred_fmv, 10000
+      pred_card_intermediate_fmv = ifelse(
+        pred_card_initial_fmv >= 10000,
+        pred_card_initial_fmv, 10000
       )
     )
   
@@ -113,18 +113,19 @@ if (interactive()) {
   # the total taxable value of the PIN is the sum of all cards
   assessment_data_mc <- assessment_data_pred %>%
     select(
-      meta_pin, meta_class, char_bldg_sf, meta_card_num, meta_tieback_key_pin,
-      meta_tieback_proration_rate, meta_1yr_pri_board_tot, final_pred_fmv
+      meta_pin, meta_class, char_bldg_sf, meta_card_num,
+      meta_tieback_key_pin, meta_tieback_proration_rate,
+      meta_1yr_pri_board_tot, pred_card_intermediate_fmv
     ) %>%
     
     # For prorated PINs with multiple cards, take the average of the
     # card (building) across PINs
     group_by(meta_tieback_key_pin, meta_card_num) %>%
     mutate(
-      final_pred_fmv = ifelse(
+      pred_card_intermediate_fmv = ifelse(
         is.na(meta_tieback_key_pin),
-        final_pred_fmv,
-        mean(final_pred_fmv)
+        pred_card_intermediate_fmv,
+        mean(pred_card_intermediate_fmv)
       )
     ) %>%
     
@@ -134,12 +135,12 @@ if (interactive()) {
     # blowing up the PIN-level AV
     group_by(meta_pin) %>%
     mutate(
-      final_pred_pin = ifelse(
-        sum(final_pred_fmv) * meta_tieback_proration_rate <=
+      pred_pin_final_fmv = ifelse(
+        sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
           2 * first(meta_1yr_pri_board_tot * 10) |
           is.na(meta_1yr_pri_board_tot),
-        sum(final_pred_fmv),
-        max(final_pred_fmv)
+        sum(pred_card_intermediate_fmv),
+        max(pred_card_intermediate_fmv)
       )
     )
   
@@ -160,10 +161,10 @@ if (interactive()) {
     left_join(complex_id_data, by = "meta_pin") %>%
     group_by(meta_complex_id, meta_tieback_proration_rate) %>%
     mutate(
-      final_pred_pin = ifelse(
+      pred_pin_final_fmv = ifelse(
         is.na(meta_complex_id),
-        final_pred_pin * meta_tieback_proration_rate,
-        mean(final_pred_pin) * meta_tieback_proration_rate
+        pred_pin_final_fmv * meta_tieback_proration_rate,
+        mean(pred_pin_final_fmv) * meta_tieback_proration_rate
       )
     ) %>%
     ungroup()
@@ -174,8 +175,8 @@ if (interactive()) {
   # Round PIN-level predictions to the nearest $500
   assessment_data_final <- assessment_data_cid %>%
     mutate(
-      final_pred_pin_round = ccao::val_round_fmv(
-        final_pred_pin,
+      pred_pin_final_fmv_round = ccao::val_round_fmv(
+        pred_pin_final_fmv,
         round_to = c(500, 500),
         type = "normal"
       )
@@ -185,7 +186,7 @@ if (interactive()) {
     # the square footage of each improvement
     group_by(meta_pin) %>%
     mutate(
-      final_pred_fmv = final_pred_pin_round *
+      pred_card_final_fmv = pred_pin_final_fmv_round *
         (char_bldg_sf / sum(char_bldg_sf))
     ) %>%
     ungroup()
@@ -196,7 +197,7 @@ if (interactive()) {
       assessment_data_final %>%
         select(
           meta_pin, meta_card_num, meta_complex_id,
-          final_pred_fmv, final_pred_pin, final_pred_pin_round
+          pred_card_final_fmv, pred_pin_final_fmv, pred_pin_final_fmv_round
         ),
       by = c("meta_pin", "meta_card_num")
     ) %>%
@@ -260,7 +261,7 @@ if (interactive()) {
     summarize(
       meta_sale_price = first(meta_sale_price),
       char_bldg_sf = sum(char_bldg_sf),
-      final_pred_pin_round = first(final_pred_pin_round),
+      pred_pin_final_fmv_round = first(pred_pin_final_fmv_round),
       across(
         c(any_of(c(rsf_column, rsn_column)),
           meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
