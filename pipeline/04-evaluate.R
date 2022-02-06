@@ -81,13 +81,13 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 
 # Load the test results from the end of 02-train.R. This will be the most recent
 # 10% of sales and already includes predictions. This data will NOT include
-# multicard sales. The unit of observation is cards (1 card per row)
+# multicard sales. The unit of observation is PINs (1 PIN per row)
 test_data <- read_parquet(paths$intermediate$test$local) %>%
   as_tibble()
 
 # Load the assessment results from the previous stage. This will include every
-# residential card that needs a value. It WILL include multicard properties.
-# Only runs for local (non-CI) runs
+# residential PIN that needs a value. It WILL include multicard properties
+# aggregated to the PIN-level. Only runs for local (non-CI) runs
 if (interactive()) {
   assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
@@ -163,7 +163,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       # Basic summary stats, counts, proportions, etc
       num_pin = n(),
       num_sale = sum(!is.na({{ truth }})),
-      pct_of_total_impr_by_class = num_pin / first(num_pin_no_class),
+      pct_of_total_pin_by_class = num_pin / first(num_pin_no_class),
       pct_of_total_sale_by_class = num_sale / first(num_sale_no_class),
       pct_of_pin_sold =  num_sale / num_pin,
       
