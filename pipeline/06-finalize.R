@@ -236,7 +236,7 @@ if (upload_bool) {
   ### 03-assess.R
   
   # Upload assessment values if running locally and a candidate or final run
-  # Assessed values are per improvement, so the output is very large. Therefore,
+  # Assessed values are per card, so the output is very large. Therefore,
   # we use arrow to partition the data by year, run, and township
   if (interactive() && model_run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$assessment$local) %>%
@@ -273,7 +273,7 @@ if (upload_bool) {
   
   ### 05-interpret.R
   
-  # Upload SHAP values if running locally. SHAP values are per improvement, so
+  # Upload SHAP values if running locally. SHAP values are per card, so
   # the output is very large. Therefore, we use arrow to partition the data by
   # year, run, and township
   if (interactive() && model_run_type %in% c("candidate", "final")) {

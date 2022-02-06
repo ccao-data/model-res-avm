@@ -81,13 +81,13 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 
 # Load the test results from the end of 02-train.R. This will be the most recent
 # 10% of sales and already includes predictions. This data will NOT include
-# multicard sales. The unit of observation is improvements (1 imprv per row)
+# multicard sales. The unit of observation is cards (1 card per row)
 test_data <- read_parquet(paths$intermediate$test$local) %>%
   as_tibble()
 
 # Load the assessment results from the previous stage. This will include every
-# residential PIN that needs a value. It WILL include multicard properties. Only
-# runs for local (non-CI) runs
+# residential card that needs a value. It WILL include multicard properties.
+# Only runs for local (non-CI) runs
 if (interactive()) {
   assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()

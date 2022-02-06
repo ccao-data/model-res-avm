@@ -43,7 +43,7 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
   lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
   
   # Load the input data used for assessment. This is the universe of
-  # IMPROVEMENTs (not PINs) that need values. Use the the trained model
+  # CARDs (not PINs) that need values. Use the the trained model
   # to get SHAP values
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
   
@@ -54,7 +54,7 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
     all_predictors()
   )
   
-  # Load the improvement-level predictions from the previous (assess) stage
+  # Load the card-level predictions from the previous (assess) stage
   assessment_data_pred <- as_tibble(read_parquet(
     file = paths$output$assessment$local,
     col_select = all_of(c(

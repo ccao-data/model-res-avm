@@ -56,7 +56,7 @@ if (file.exists(paths$output$metadata$local)) {
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Assess Improvements #####
+##### Assess Cards/Improvements #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Only create the assessment data if running interactively (non-CI). Otherwise,
@@ -71,7 +71,7 @@ if (interactive()) {
   lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
   lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
   
-  # Load the data for assessment. This is the universe of IMPROVEMENTs (not
+  # Load the data for assessment. This is the universe of CARDs (not
   # PINs) that needs values. Use the trained lightgbm model to estimate a value
   assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
     as_tibble() %>%
@@ -211,10 +211,10 @@ if (interactive()) {
   
   
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ##### Save Assessment Improvement Level Data #####
+  ##### Save Assessment Card Level Data #####
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
-  # Generate individual improvement-level values only for candidate and final
+  # Generate individual card-level values only for candidate and final
   # runs. This is to save space and avoid long computations for every run
   if (model_run_type %in% c("candidate", "final")) {
     
@@ -247,7 +247,7 @@ if (interactive()) {
     ) %>%
     ungroup()
   
-  # Join sales data to each PIN, then collapse the improvement-level assessment
+  # Join sales data to each PIN, then collapse the card-level assessment
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
   # only columns needed for performance calculations. This data is used for
   # performance measurement
