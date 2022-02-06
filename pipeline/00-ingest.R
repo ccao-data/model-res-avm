@@ -81,7 +81,7 @@ training_data <- dbGetQuery(
       sale.sale_date AS meta_sale_date,
       sale.doc_no AS meta_sale_document_num,
       res.*
-  FROM model.vw_res_input res
+  FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.meta_year
@@ -103,7 +103,7 @@ tictoc::tic()
 assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
-  FROM model.vw_res_input
+  FROM model.vw_card_res_input
   WHERE meta_year = '{model_assessment_data_year}'
   ")
 )
