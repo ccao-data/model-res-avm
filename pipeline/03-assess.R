@@ -93,25 +93,119 @@ if (interactive()) {
   ##### Post-Modeling Adjustments #####
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
+  ### Negative predictions
+  
+  # Sometimes the model predicts the value of very low value properties as
+  # negative, particularly if it hasn't had many training iterations. In this
+  # case, we bump any negative predictions to $10K
+  assessment_data_pred <- assessment_data_pred %>%
+    mutate(
+      final_pred_fmv = ifelse(
+        initial_pred_fmv >= 10000,
+        initial_pred_fmv, 10000
+      )
+    )
+  
+  
+  ### Multi-cards
+  
+  # Cards represent buildings/improvements. A PIN can have multiple cards, and
+  # the total taxable value of the PIN is the sum of all cards
+  assessment_data_mc <- assessment_data_pred %>%
+    select(
+      meta_pin, meta_class, char_bldg_sf, meta_card_num, meta_tieback_key_pin,
+      meta_tieback_proration_rate, meta_1yr_pri_board_tot, final_pred_fmv
+    ) %>%
+    
+    # For prorated PINs with multiple cards, take the average of the
+    # card (building) across PINs
+    group_by(meta_tieback_key_pin, meta_card_num) %>%
+    mutate(
+      final_pred_fmv = ifelse(
+        is.na(meta_tieback_key_pin),
+        final_pred_fmv,
+        mean(final_pred_fmv)
+      )
+    ) %>%
+    
+    # Aggregate multi-cards to the PIN-level by summing the predictions
+    # of all cards. We use a heuristic here to limit the PIN-level total
+    # value, this is to prevent super-high-value back-buildings/ADUs from
+    # blowing up the PIN-level AV
+    group_by(meta_pin) %>%
+    mutate(
+      final_pred_pin = ifelse(
+        sum(final_pred_fmv) * meta_tieback_proration_rate <=
+          2 * first(meta_1yr_pri_board_tot * 10) |
+          is.na(meta_1yr_pri_board_tot),
+        sum(final_pred_fmv),
+        max(final_pred_fmv)
+      )
+    )
+  
+
+  ### Townhome complexes
+  
+  # For class 210 and 295s, we want all units in the same complex to
+  # have the same value (assuming they are identical)
+  
   # Load townhome/rowhome complex IDs
   complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
     select(meta_pin, meta_complex_id)
   
   # Join complex IDs to the predictions, then for each complex, set the
-  # prediction to the average prediction of the complex
-  assessment_data_cid <- assessment_data_pred %>%
+  # prediction to the average prediction of the complex. Also, multiply
+  # the PIN-level value by the PIN's proration rate
+  assessment_data_cid <- assessment_data_mc %>%
     left_join(complex_id_data, by = "meta_pin") %>%
-    group_by(meta_complex_id) %>%
+    group_by(meta_complex_id, meta_tieback_proration_rate) %>%
     mutate(
-      final_pred_fmv = ifelse(
+      final_pred_pin = ifelse(
         is.na(meta_complex_id),
-        initial_pred_fmv,
-        mean(initial_pred_fmv)
+        final_pred_pin * meta_tieback_proration_rate,
+        mean(final_pred_pin) * meta_tieback_proration_rate
       )
     ) %>%
-    ungroup() %>%
-    relocate(meta_complex_id, .after = "meta_tax_code")
+    ungroup()
+  
+  
+  ### Finalize
+  
+  # Round PIN-level predictions to the nearest $500
+  assessment_data_final <- assessment_data_cid %>%
+    mutate(
+      final_pred_pin_round = ccao::val_round_fmv(
+        final_pred_pin,
+        round_to = c(500, 500),
+        type = "normal"
+      )
+    ) %>%
     
+    # Apportion the PIN-level value back out to the card-level using
+    # the square footage of each improvement
+    group_by(meta_pin) %>%
+    mutate(
+      final_pred_fmv = final_pred_pin_round *
+        (char_bldg_sf / sum(char_bldg_sf))
+    ) %>%
+    ungroup()
+  
+  # Merge the finalized card-level data back to the main tibble of predictions
+  assessment_data_merged <- assessment_data_pred %>%
+    left_join(
+      assessment_data_final %>%
+        select(
+          meta_pin, meta_card_num, meta_complex_id,
+          final_pred_fmv, final_pred_pin, final_pred_pin_round
+        ),
+      by = c("meta_pin", "meta_card_num")
+    ) %>%
+    relocate(meta_complex_id, .after = "meta_tax_code")
+  
+  # The test PINs below can be used to ensure that the order of operations
+  # for the adjustments above results in a sensible outcome:
+  # 17321110470000 05174150240000 05213220250000 08121220400000 06334030310000
+  
   
   
   
@@ -124,7 +218,7 @@ if (interactive()) {
   if (model_run_type %in% c("candidate", "final")) {
     
     ## Bunch of PIN-level stuff happens here (placeholder)
-    assessment_data_cid %>%
+    assessment_data_merged %>%
       mutate(
         township_code = meta_township_code,
         meta_year = as.character(meta_year)
@@ -156,7 +250,7 @@ if (interactive()) {
   # data to the PIN level, summing the predicted value for multicard PINs. Keep
   # only columns needed for performance calculations. This data is used for
   # performance measurement
-  assessment_data_cid %>%
+  assessment_data_merged %>%
     select(-meta_sale_date) %>%
     left_join(training_data, by = c("meta_year", "meta_pin")) %>%
     group_by(
@@ -166,7 +260,7 @@ if (interactive()) {
     summarize(
       meta_sale_price = first(meta_sale_price),
       char_bldg_sf = sum(char_bldg_sf),
-      final_pred_fmv = sum(final_pred_fmv),
+      final_pred_pin_round = first(final_pred_pin_round),
       across(
         c(any_of(c(rsf_column, rsn_column)),
           meta_township_code, meta_nbhd_code, loc_cook_municipality_name,
