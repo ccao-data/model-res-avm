@@ -1,0 +1,5 @@
+outs:
+- md5: a333d3b3fca4f98a68a7421ddbe57357
+  size: 196603
+  path: land_site_rate_data.parquet
+  isexec: true

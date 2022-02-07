@@ -1,0 +1,5 @@
+outs:
+- md5: 0ad83e58129e9cdc0d3c3fc7288f9b32
+  size: 3613
+  path: land_nbhd_rate_data.parquet
+  isexec: true
