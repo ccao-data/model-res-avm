@@ -225,9 +225,6 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (model_cv_enable) {
-
-  # Begin cross-validation timer. This step typically takes the longest time
-  tictoc::tic("CV model")
   
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
@@ -288,8 +285,6 @@ if (model_cv_enable) {
     select_best(metric = model_param_objective) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
   
-  # End the cross-validation timer
-  tictoc::toc(log = TRUE)
 } else {
 
   # If CV is not enabled, load saved parameters from file if it exists
