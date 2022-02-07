@@ -39,7 +39,13 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
 
 # Set the assessment year of the data (data year to base assessment on)
 model_assessment_data_year <- Sys.getenv(
-  "MODEL_ASSESSMENT_DATA_YEAR", unset = lubridate::year(Sys.Date())
+  "MODEL_ASSESSMENT_DATA_YEAR", unset = lubridate::year(Sys.Date()) - 1
+)
+
+# Get the year of assessment
+model_assessment_year <- Sys.getenv(
+  "MODEL_ASSESSMENT_YEAR",
+  unset = lubridate::year(Sys.Date())
 )
 
 # Set the assessment date, usually Jan 1st
@@ -105,6 +111,26 @@ assessment_data <- dbGetQuery(
   SELECT *
   FROM model.vw_card_res_input
   WHERE meta_year = '{model_assessment_data_year}'
+  ")
+)
+tictoc::toc()
+
+# Pull site-specific (pre-determined) land values and neighborhood-level land
+# rates per sqft, as calculated by Valuations
+tictoc::tic()
+land_site_rate_data <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT *
+  FROM other.land_site_rate
+  WHERE year = '{model_assessment_year}'
+  ")
+)
+
+land_nbhd_rate_data <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT *
+  FROM other.land_nbhd_rate
+  WHERE year = '{model_assessment_year}'
   ")
 )
 tictoc::toc()
@@ -278,6 +304,17 @@ if (model_generate_complex_id) {
     )) %>%
     write_parquet(paths$input$complex_id$local)
 }
+
+
+### Land Data
+
+# Write land data directly to file, since it's already mostly clean
+land_site_rate_data %>%
+  select(meta_pin = pin, meta_class = class, land_rate_per_pin, year) %>%
+  write_parquet(paths$input$land_site_rate$local)
+land_nbhd_rate_data %>%
+  select(meta_nbhd = town_nbhd, land_rate_per_sqft) %>%
+  write_parquet(paths$input$land_nbhd_rate$local)
 
 # Reminder to upload to DVC store
 message(
