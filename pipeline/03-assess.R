@@ -177,8 +177,9 @@ if (interactive()) {
     mutate(
       pred_pin_final_fmv_round = ccao::val_round_fmv(
         pred_pin_final_fmv,
-        round_to = c(500, 500),
-        type = "normal"
+        breaks = 10000,
+        round_to = c(100, 500),
+        type = "ceiling"
       )
     ) %>%
     
