@@ -64,10 +64,13 @@ source("pipeline/02-train.R")
 ##### 03. Assess #####
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Use the trained model to estimate sale prices for all properties in the
+# Use the trained model to estimate sale prices for all cards in the
 # County. Also generate flags, attached land values, and any post-modeling
 # changes
-source("pipeline/03-assess.R")
+
+# Only run this step if running interactively (non-CI). Otherwise,
+# use only the test set data for performance measurement. See README for details
+if (interactive()) source("pipeline/03-assess.R")
 
 
 
@@ -96,10 +99,11 @@ source("pipeline/04-evaluate.R")
 ### WARNING: Calculating SHAP values is very expensive. The time complexity is
 # O(rows * num_iterations * num_leaves * max_depth^2). Calculating SHAP values
 # for 1.1 million records for a complex model can take many hours (or even
-# days). Therefore, this stage is only executed for candidate and final runs
+# days). Therefore, this stage is only executed for interactive 
+# candidate and final runs
 
 # Generate SHAP values for each PIN in the assessment dataset
-source("pipeline/05-interpret.R")
+if (interactive()) source("pipeline/05-interpret.R")
 
 
 
