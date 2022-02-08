@@ -235,14 +235,14 @@ if (upload_bool) {
   
   ### 03-assess.R
   
-  # Upload assessment values if running locally and a candidate or final run
-  # Assessed values are per card, so the output is very large. Therefore,
-  # we use arrow to partition the data by year, run, and township
+  # Upload card-level values if running locally and a candidate or final run
+  # Values include all cards (improvements), so the output is very large.
+  # Therefore, we partition the data by year, run, and township
   if (interactive() && model_run_type %in% c("candidate", "final")) {
-    read_parquet(paths$output$assessment$local) %>%
+    read_parquet(paths$output$assessment_card$local) %>%
       mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
-      write_partitions_to_s3(paths$output$assessment$s3, overwrite = TRUE)
+      write_partitions_to_s3(paths$output$assessment_card$s3, overwrite = TRUE)
   }
   
   

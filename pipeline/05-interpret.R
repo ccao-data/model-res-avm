@@ -36,7 +36,7 @@ if (file.exists(paths$output$metadata$local)) {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate SHAP values only for candidate and final runs
-if (interactive() && model_run_type %in% c("candidate", "final")) {
+if (model_run_type %in% c("candidate", "final")) {
 
   # Load the final lightgbm model object and recipe from file
   lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
@@ -56,7 +56,7 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
   
   # Load the card-level predictions from the previous (assess) stage
   assessment_data_pred <- as_tibble(read_parquet(
-    file = paths$output$assessment$local,
+    file = paths$output$assessment_card$local,
     col_select = all_of(c(
       "meta_year", "meta_pin", "meta_class", "meta_card_num",
       "township_code", "pred_card_initial_fmv"
@@ -72,7 +72,7 @@ if (interactive() && model_run_type %in% c("candidate", "final")) {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Only calculate SHAP values for candidate and final runs
-if (interactive() && model_run_type %in% c("candidate", "final")) {
+if (model_run_type %in% c("candidate", "final")) {
 
   # Calculate a SHAP value for each observation for each feature in the
   # assessment data. Uses LightGBM's built-in methods 
