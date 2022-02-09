@@ -106,7 +106,7 @@ model_predictors <- ccao::vars_dict %>%
   na.omit()
 
 # Get list only of categorical predictors to pass to lightgbm when training
-model_predictors_categorical = ccao::vars_dict %>%
+model_predictors_categorical <- ccao::vars_dict %>%
   dplyr::filter(
     var_is_predictor,
     var_data_type %in% c("categorical", "character"),
@@ -115,7 +115,7 @@ model_predictors_categorical = ccao::vars_dict %>%
   dplyr::pull(var_name_model) %>%
   unique() %>%
   na.omit()
-  
+
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
@@ -152,26 +152,26 @@ train_recipe <- model_main_recipe(
 # Initialize lightgbm model specification. Most hyperparameters are passed to
 # lightgbm as "engine arguments" i.e. things specific to lightgbm
 lgbm_model <- parsnip::boost_tree(
-    trees = model_param_num_iterations,
-    stop_iter = tune()
-  ) %>%
+  trees = model_param_num_iterations,
+  stop_iter = tune()
+) %>%
   set_mode("regression") %>%
   set_engine(
     engine = "lightgbm",
-    
+
     ### 3.1.1. Static Parameters -----------------------------------------------
-    
+
     # These are static lightgbm-specific engine parameters passed to lgb.train()
     # See lightsnip::train_lightgbm for details
     num_threads = num_threads,
     verbose = -1L,
-    
+
     # Set the objective function. This is what lightgbm will try to minimize
     objective = model_param_objective,
-    
+
     # Typically set statically along with the number of iterations (trees)
     learning_rate = model_param_learning_rate,
-    
+
     # Names of integer-encoded categorical columns. This is CRITICAL else
     # lightgbm will treat these columns as numeric
     categorical_feature = model_predictors_categorical,
@@ -181,15 +181,15 @@ lgbm_model <- parsnip::boost_tree(
     # in the provided metric, then it will end training early
     validation = model_param_validation_prop,
     metric = model_param_validation_metric,
-    
+
     # Lightsnip custom parameter. Links the value of max_depth to num_leaves
     # using floor(log2(num_leaves)) + add_to_linked_depth. Useful since
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = model_param_link_max_depth,
-    
-    
+
+
     ### 3.1.2. Varying Parameters ----------------------------------------------
-    
+
     # These are parameters that are tuned using cross-validation. These are the
     # main parameters determining model complexity
     num_leaves = tune(),
@@ -225,7 +225,7 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (model_cv_enable) {
-  
+
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
@@ -268,7 +268,7 @@ if (model_cv_enable) {
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
     arrow::write_parquet(paths$output$parameter_raw$local)
-  
+
   # Save the possible parameter ranges used for tuning
   lgbm_params %>%
     mutate(range = purrr::map(object, dials::range_get)) %>%
@@ -284,7 +284,6 @@ if (model_cv_enable) {
   lgbm_final_params <- lgbm_search %>%
     select_best(metric = model_param_objective) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
-  
 } else {
 
   # If CV is not enabled, load saved parameters from file if it exists
@@ -301,7 +300,7 @@ if (model_cv_enable) {
       cat_smooth = 99.0, cat_l2 = 0.001, lambda_l1 = 0.005,
       lambda_l2 = 1.837, .config = "Default"
     ) %>%
-    arrow::write_parquet(paths$output$parameter_final$local)
+      arrow::write_parquet(paths$output$parameter_final$local)
   }
 }
 
@@ -335,7 +334,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Get predictions on the test set using the training data model then save to
-# file. These predictions are used to evaluate model performance on the test set 
+# file. These predictions are used to evaluate model performance on the test set
 test %>%
   mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
   write_parquet(paths$intermediate$test$local)
@@ -358,4 +357,4 @@ lgbm_wflow_final_full_fit %>%
 tictoc::toc(log = TRUE)
 arrow::read_parquet(paths$intermediate$timing$local) %>%
   bind_rows(., tictoc::tic.log(format = FALSE)) %>%
-    arrow::write_parquet(paths$intermediate$timing$local)
+  arrow::write_parquet(paths$intermediate$timing$local)

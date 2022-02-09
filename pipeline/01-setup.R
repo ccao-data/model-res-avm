@@ -95,15 +95,14 @@ git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 # a type related to this run. Otherwise, use the commit message and "automated"
 if (interactive()) {
   model_run_note <- readline("Run notes/message: ")
-  model_run_type <- switch(
-    readline(paste0(
-      "What type of run is this? ",
-      "\n 1. 'experiment' \n 2. 'candidate' \n 3. 'final' \n"
-    )),
-    "1" = "experiment",
-    "2" = "candidate",
-    "3" = "final",
-    stop("Must be a value between 1 and 3")
+  model_run_type <- switch(readline(paste0(
+    "What type of run is this? ",
+    "\n 1. 'experiment' \n 2. 'candidate' \n 3. 'final' \n"
+  )),
+  "1" = "experiment",
+  "2" = "candidate",
+  "3" = "final",
+  stop("Must be a value between 1 and 3")
   )
 } else {
   model_run_note <- gsub("\n", "", git_commit$message)
@@ -129,7 +128,7 @@ training_data_predictors <- arrow::open_dataset(
 )$schema$names
 model_predictors <- training_data_predictors[
   training_data_predictors %in% model_predictors &
-  training_data_predictors != "meta_sale_price"
+    training_data_predictors != "meta_sale_price"
 ]
 
 # Compile the information above into a single tibble with 1 row

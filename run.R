@@ -9,7 +9,7 @@
 #     employees only). Set MODEL_UPLOAD_TO_S3 to FALSE in the .Renviron file
 #     if you don't want this behavior
 #   - The script to ingest the training and assessment data is included (see
-#     pipeline/00-ingest.R) but is not run automatically. Use DVC (CCAO) or 
+#     pipeline/00-ingest.R) but is not run automatically. Use DVC (CCAO) or
 #     git LFS (public users) to retrieve training and assessment data before
 #     running this script
 source("R/helpers.R")
@@ -30,7 +30,7 @@ if (model_clear_on_new_run) {
   paths <- model_file_dict()
   local_paths <- unlist(paths)[
     grepl("local", names(unlist(paths)), fixed = TRUE) &
-    grepl("output", names(unlist(paths)), fixed = TRUE)
+      grepl("output", names(unlist(paths)), fixed = TRUE)
   ]
   for (path in local_paths) if (file.exists(path)) file.remove(path)
 }
@@ -80,7 +80,7 @@ if (interactive()) source("pipeline/03-assess.R")
 
 # Evaluate the model's performance using two methods:
 #   1. The standard holdout test set, in this case the most recent 10% of sales
-#   2. An assessor-specific ratio study, comparing future assessments to 
+#   2. An assessor-specific ratio study, comparing future assessments to
 #      current sales
 
 # The script will generate a very large data frame of aggregate performance
@@ -98,7 +98,7 @@ source("pipeline/04-evaluate.R")
 ### WARNING: Calculating SHAP values is very expensive. The time complexity is
 # O(rows * num_iterations * num_leaves * max_depth^2). Calculating SHAP values
 # for 1.1 million records for a complex model can take many hours (or even
-# days). Therefore, this stage is only executed for interactive 
+# days). Therefore, this stage is only executed for interactive
 # candidate and final runs
 
 # Generate SHAP values for each PIN in the assessment data

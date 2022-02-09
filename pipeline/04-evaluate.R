@@ -109,10 +109,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   # Each function is listed on the right while the name of the function is on
   # the left
   rs_fns_list <- list(
-    cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x/ .y, na.rm = T), NA),
+    cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x / .y, na.rm = T), NA),
     prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = T), NA),
     prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = T), NA),
-    cod = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_cod(.x/ .y, na.rm = T)), NA),
+    cod = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_cod(.x / .y, na.rm = T)), NA),
     prd = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prd(.x, .y, na.rm = T)), NA),
     prb = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prb(.x, .y, na.rm = T)), NA)
   )
@@ -144,33 +144,30 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     q75         = ~ quantile((.x - .y) / .y, na.rm = T, probs = 0.75),
     max         = ~ max((.x - .y) / .y, na.rm = T)
   )
-  
+
   # Generate aggregate performance stats by group
   df_stat <- data %>%
     mutate(rsf_x10 = .[[rsf_col]] * 10, rsn_x10 = .[[rsn_col]] * 10) %>%
-    
     # Aggregate to get counts by geography without class
     group_by({{ triad }}, {{ geography }}) %>%
     mutate(
       num_pin_no_class = n(),
       num_sale_no_class = sum(!is.na({{ truth }}))
     ) %>%
-  
     # Aggregate including class
     group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
     summarize(
-      
+
       # Basic summary stats, counts, proportions, etc
       num_pin = n(),
       num_sale = sum(!is.na({{ truth }})),
       pct_of_total_pin_by_class = num_pin / first(num_pin_no_class),
       pct_of_total_sale_by_class = num_sale / first(num_sale_no_class),
-      pct_of_pin_sold =  num_sale / num_pin,
-      
+      pct_of_pin_sold = num_sale / num_pin,
       prior_far_total_av = sum(rsf_x10 / 10, na.rm = TRUE),
       prior_near_total_av = sum(rsn_x10 / 10, na.rm = TRUE),
       estimate_total_av = sum({{ estimate }} / 10, na.rm = TRUE),
-      
+
       # Assessment-specific statistics
       across(.fns = rs_fns_list, {{ estimate }}, {{ truth }}, .names = "{.fn}"),
       median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
@@ -221,7 +218,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         .names = "estimate_fmv_per_sqft_{.fn}"
       )
     ) %>%
-
     # COD, PRD, and PRB all output to a list. We can unnest each list to get
     # additional info for each stat (95% CI, sample count, etc)
     tidyr::unnest_wider(cod) %>%
@@ -230,17 +226,16 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     tidyr::unnest_wider(PRD_CI, names_sep = "_") %>%
     tidyr::unnest_wider(prb) %>%
     tidyr::unnest_wider(PRB_CI, names_sep = "_") %>%
-
     # Rename columns resulting from unnesting
     rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x)))) %>%
     ungroup()
-  
+
   # Clean up the stats output (rename cols, relocate cols, etc.)
   df_stat %>%
     mutate(
-      by_class = !is.null( {{ class }}),
+      by_class = !is.null({{ class }}),
       geography_type = ifelse(
-        !is.null( {{ geography }}),
+        !is.null({{ geography }}),
         ccao::vars_rename(
           rlang::as_string(rlang::ensym(geography)),
           names_from = "model",
@@ -276,24 +271,26 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
     group_by({{ triad }}, {{ geography }}, {{ class }}, quantile) %>%
     summarize(
       num_sale = sum(!is.na({{ truth }})),
-      median_ratio = median( ({{ estimate }} / {{ truth }}), na.rm = TRUE),
-      lower_bound = min( {{ truth }}, na.rm = TRUE),
-      upper_bound = max( {{ truth }}, na.rm = TRUE),
+      median_ratio = median(({{ estimate }} / {{ truth }}), na.rm = TRUE),
+      lower_bound = min({{ truth }}, na.rm = TRUE),
+      upper_bound = max({{ truth }}, na.rm = TRUE),
       prior_near_yoy_pct_chg_median = median(
-        ({{ estimate }} - rsn_x10) / rsn_x10, na.rm = TRUE
+        ({{ estimate }} - rsn_x10) / rsn_x10,
+        na.rm = TRUE
       ),
       prior_far_yoy_pct_chg_median = median(
-        ({{ estimate }} - rsf_x10) / rsf_x10, na.rm = TRUE
+        ({{ estimate }} - rsf_x10) / rsf_x10,
+        na.rm = TRUE
       )
     )
-  
+
   # Clean up the quantile output
   df_quantile %>%
     mutate(
-      num_quantile = num_quantile, 
-      by_class = !is.null( {{ class }}),
+      num_quantile = num_quantile,
+      by_class = !is.null({{ class }}),
       geography_type = ifelse(
-        !is.null( {{ geography }}),
+        !is.null({{ geography }}),
         ccao::vars_rename(
           rlang::as_string(rlang::ensym(geography)),
           names_from = "model",
@@ -395,7 +392,7 @@ future_map_dfr(
 
 # Only value the assessment set for non-CI (local) runs
 if (interactive()) {
-  
+
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also has unsold properties
   future_map_dfr(
@@ -416,7 +413,7 @@ if (interactive()) {
     .progress = TRUE
   ) %>%
     write_parquet(paths$output$performance_assessment$local)
-  
+
   # Same as above, but calculate stats per quantile of sale price
   future_map_dfr(
     geographies_list_quantile,
