@@ -1,6 +1,6 @@
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Pre-allocate memory for java JDBC driver
 options(java.parameters = "-Xmx10g")
@@ -73,9 +73,9 @@ model_generate_complex_id <- Sys.getenv(
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Pull Data ####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Pull Data -----------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Pull the training data, which contains actual sales + attached characteristics
 # from the residential input view
@@ -142,9 +142,9 @@ rm(AWS_ATHENA_CONN_JDBC, aws_athena_jdbc_driver)
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Clean Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Clean Data ----------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Create a dictionary of column types, as specified in ccao::vars_dict
 col_type_dict <- ccao::vars_dict %>%
@@ -167,7 +167,7 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 }
 
 
-### Training Data
+## 3.1. Training Data ----------------------------------------------------------
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, filling, etc. is handled via recipes
@@ -202,7 +202,7 @@ training_data_clean <- training_data %>%
   write_parquet(paths$input$training$local)
 
 
-### Assessment Data
+## 3.2. Assessment Data --------------------------------------------------------
 
 # Clean the assessment data. This the target data that the trained model is 
 # used on. The cleaning steps are the same as above, with the exception of the
@@ -228,7 +228,7 @@ assessment_data_clean <- assessment_data %>%
   write_parquet(paths$input$assessment$local)
 
 
-### Complex Identifiers
+## 3.3. Complex IDs ------------------------------------------------------------
 
 # Townhomes and rowhomes within the same "complex" or building should
 # ultimately receive the same final assessed value. However, a single row of
@@ -306,7 +306,7 @@ if (model_generate_complex_id) {
 }
 
 
-### Land Data
+## 3.4. Land Rates -------------------------------------------------------------
 
 # Write land data directly to file, since it's already mostly clean
 land_site_rate_data %>%

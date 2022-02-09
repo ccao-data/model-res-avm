@@ -1,6 +1,6 @@
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
 tictoc::tic.clearlog()
@@ -75,9 +75,9 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Load Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Load Data -----------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the test results from the end of 02-train.R. This will be the most recent
 # 10% of sales and already includes predictions. This data will NOT include
@@ -96,9 +96,9 @@ if (interactive()) {
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Define Stats Functions #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Define Stats Functions ----------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
@@ -320,9 +320,9 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Generate Stats #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Generate Stats ------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Use fancy tidyeval to create a list of all the geography levels with a
 # class or no class option for each level
@@ -347,7 +347,7 @@ geographies_list_quantile <- purrr::cross3(
 )
 
 
-### Test set
+## 4.1. Test Set ---------------------------------------------------------------
 
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
@@ -391,7 +391,7 @@ future_map_dfr(
   write_parquet(paths$output$performance_quantile_test$local)
 
 
-### Assessment set
+## 4.2. Assessment Set ---------------------------------------------------------
 
 # Only value the assessment set for non-CI (local) runs
 if (interactive()) {

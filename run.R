@@ -15,9 +15,9 @@
 source("R/helpers.R")
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Clear Previous Output #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 0. Clear Previous Output -----------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ### WARNING: By default, this script will clear the output of previous runs
 # when it is run. This is to prevent the artifacts of multiple runs from
@@ -38,34 +38,33 @@ if (model_clear_on_new_run) {
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 01. Setup #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Run the setup script to fetch environmental variables, model parameters,
-# metadata, etc.
+# Fetch environmental variables, model parameters, metadata, etc.
 source("pipeline/01-setup.R")
 
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 02. Train #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Train ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Run the training script. This usually takes quite a long time, depending on
-# the cross-validation settings
+# Train the LightGBM model using optional cross-validation. Generate model
+# objects, data recipes, and predictions on the test set
 source("pipeline/02-train.R")
 
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 03. Assess #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Assess --------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Use the trained model to estimate sale prices for all cards in the
-# County. Also generate flags, attached land values, and any post-modeling
+# County. Also generate flags, attach land values, and make any post-modeling
 # changes
 
 # Only run this step if running interactively (non-CI). Otherwise,
@@ -75,9 +74,9 @@ if (interactive()) source("pipeline/03-assess.R")
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 04. Evaluate #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Evaluate ------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Evaluate the model's performance using two methods:
 #   1. The standard holdout test set, in this case the most recent 10% of sales
@@ -92,9 +91,9 @@ source("pipeline/04-evaluate.R")
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 05. Interpret #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 5. Interpret -----------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ### WARNING: Calculating SHAP values is very expensive. The time complexity is
 # O(rows * num_iterations * num_leaves * max_depth^2). Calculating SHAP values
@@ -102,15 +101,15 @@ source("pipeline/04-evaluate.R")
 # days). Therefore, this stage is only executed for interactive 
 # candidate and final runs
 
-# Generate SHAP values for each PIN in the assessment dataset
+# Generate SHAP values for each PIN in the assessment data
 if (interactive()) source("pipeline/05-interpret.R")
 
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### 06. Finalize #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 6. Finalize ------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Save run timings and upload pipeline run results to S3 for
 # visualization and storage

@@ -1,6 +1,6 @@
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This script will upload all the locally stored objects created by a pipeline
 # run. Uploaded objects will be renamed by their run_id and/or have the run_id
@@ -28,9 +28,9 @@ paths <- model_file_dict()
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Save Timings #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Save Timings --------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Convert input timing logs to data frame, then save to file
 if (file.exists(paths$output$metadata$local) &
@@ -63,9 +63,9 @@ if (file.exists(paths$output$metadata$local) &
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Upload Prep #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Prepare to Upload ---------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Whether or not to upload model artifacts (objects, results, parameters) to S3
 # Only available to CCAO employees via interactive sessions (unless overridden)
@@ -127,9 +127,9 @@ upload_bool <- upload_all_files & model_upload_to_s3
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Upload #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Upload --------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Only run upload if above conditions are met
 if (upload_bool) {
@@ -148,7 +148,7 @@ if (upload_bool) {
   )
 
 
-  ### 01-setup.R
+  ## 4.1. Setup ----------------------------------------------------------------
   
   # Upload run metadata
   aws.s3::put_object(
@@ -157,7 +157,7 @@ if (upload_bool) {
   )
   
   
-  ### 02-train.R
+  # 4.2. Train -----------------------------------------------------------------
   
   # Upload objects with no need for alteration first
   # Upload LGBM fit
@@ -233,7 +233,8 @@ if (upload_bool) {
       write_parquet(paths$output$parameter_range$s3)
   }
   
-  ### 03-assess.R
+  
+  # 4.3. Assess ----------------------------------------------------------------
   
   # Upload card-level values if running locally and a candidate or final run
   # Values include all cards (improvements), so the output is very large.
@@ -246,7 +247,7 @@ if (upload_bool) {
   }
   
   
-  ### 04-evaluate.R
+  # 4.4. Evaluate --------------------------------------------------------------
   
   # Upload test set performance
   read_parquet(paths$output$performance_test$local) %>%
@@ -271,7 +272,7 @@ if (upload_bool) {
   }
   
   
-  ### 05-interpret.R
+  # 4.5. Interpret -------------------------------------------------------------
   
   # Upload SHAP values if running locally. SHAP values are per card, so
   # the output is very large. Therefore, we use arrow to partition the data by
@@ -283,18 +284,25 @@ if (upload_bool) {
       write_partitions_to_s3(paths$output$shap$s3, overwrite = TRUE)
   }
   
+  
+  # 4.6. Miscellaneous ---------------------------------------------------------
+  
   # Upload finalized timings
   aws.s3::put_object(
     paths$output$timing$local,
     paths$output$timing$s3
   )
-  
-  
-  
-  
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ##### Wrap Up #####
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+}
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 5. Wrap-Up -------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Only run AWS stuff when uploading
+if (upload_bool) {
   
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # new partitions

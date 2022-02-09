@@ -1,6 +1,6 @@
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
 tictoc::tic.clearlog()
@@ -76,9 +76,9 @@ model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Prepare Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Prepare Data --------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
@@ -137,9 +137,9 @@ train_recipe <- model_main_recipe(
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### LightGBM Model #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. LightGBM Model ------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This is the main model used to value 200-class residential property. It uses
 # lightgbm as a backend, which is a boosted tree model similar to xgboost or
@@ -147,7 +147,7 @@ train_recipe <- model_main_recipe(
 # See https://lightgbm.readthedocs.io/ for more information
 
 
-### Step 1 - Model initialization
+## 3.1. Model Initialization ---------------------------------------------------
 
 # Initialize lightgbm model specification. Most hyperparameters are passed to
 # lightgbm as "engine arguments" i.e. things specific to lightgbm
@@ -159,7 +159,7 @@ lgbm_model <- parsnip::boost_tree(
   set_engine(
     engine = "lightgbm",
     
-    ##### Static Parameters #####
+    ### 3.1.1. Static Parameters -----------------------------------------------
     
     # These are static lightgbm-specific engine parameters passed to lgb.train()
     # See lightsnip::train_lightgbm for details
@@ -188,7 +188,7 @@ lgbm_model <- parsnip::boost_tree(
     link_max_depth = model_param_link_max_depth,
     
     
-    ##### Varying Parameters #####
+    ### 3.1.2. Varying Parameters ----------------------------------------------
     
     # These are parameters that are tuned using cross-validation. These are the
     # main parameters determining model complexity
@@ -219,7 +219,7 @@ lgbm_wflow <- workflow() %>%
   )
 
 
-### Step 2 - Cross-validation
+## 3.2. Cross-Validation -------------------------------------------------------
 
 # Begin CV tuning if enabled. We use Bayesian tuning as due to the high number
 # of hyperparameters, grid search or random search take a very long time to
@@ -306,7 +306,7 @@ if (model_cv_enable) {
 }
 
 
-### Step 3 - Fit models
+## 3.3. Fit Models -------------------------------------------------------------
 
 # NOTE: The model specifications here use early stopping by measuring the change
 # in the objective function on the training set (rather than the 10% sample
@@ -330,9 +330,9 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Finalize Models #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Finalize Models -----------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Get predictions on the test set using the training data model then save to
 # file. These predictions are used to evaluate model performance on the test set 

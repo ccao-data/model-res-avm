@@ -1,6 +1,6 @@
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Setup #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Start the script timer and clear logs from prior script
 tictoc::tic.clearlog()
@@ -82,9 +82,9 @@ sales_data <- read_parquet(paths$input$training$local)
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Generate Predictions #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Predict Values ------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Load the final lightgbm model object and recipe from file
 lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
@@ -108,11 +108,11 @@ assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Post-Modeling Adjustments #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Post-Modeling Adjustments -------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-### Multi-cards
+## 3.1. Multi-cards ------------------------------------------------------------
 
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is the sum of all cards
@@ -150,7 +150,7 @@ assessment_data_mc <- assessment_data_pred %>%
   )
 
 
-### Townhome complexes
+## 3.2. Townhomes --------------------------------------------------------------
 
 # For class 210 and 295s, we want all units in the same complex to
 # have the same value (assuming they are identical)
@@ -175,7 +175,7 @@ assessment_data_cid <- assessment_data_mc %>%
   ungroup()
 
 
-### Finalize
+## 3.3. Prorate/Round ----------------------------------------------------------
 
 # Round PIN-level predictions to the nearest $500
 assessment_data_final <- assessment_data_cid %>%
@@ -234,9 +234,9 @@ assessment_data_merged <- assessment_data_pred %>%
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Save Assessment Card-Level Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Card-Level Data -----------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate individual card-level values only for candidate and final
 # runs. These are used to examine the model output
@@ -262,15 +262,16 @@ if (model_run_type %in% c("candidate", "final")) {
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Save Assessment PIN-Level Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 5. PIN-Level Data ------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate PIN-level stats for each candidate and final run. These are used for
 # desktop review, looking at YoY changes, comparing to sales, etc.
 if (model_run_type %in% c("candidate", "final")) {
   
-  ### Load data to attach
+  
+  ## 5.1. Load Sales/Land ------------------------------------------------------
   
   # Keep the two most recent sales for each PIN. These are just for review, not
   # for ratio studies
@@ -301,7 +302,7 @@ if (model_run_type %in% c("candidate", "final")) {
   )
   
   
-  ### Collapse to PIN level
+  # 5.2. Collapse to PIN Level -------------------------------------------------
   
   # Collapse card-level data to the PIN level, keeping the largest building on
   # each PIN but summing the total square footage of all buildings
@@ -355,7 +356,7 @@ if (model_run_type %in% c("candidate", "final")) {
     )
     
   
-  ### Attach data, value land
+  # 5.3. Value Land ------------------------------------------------------------
   
   # Attach land and sales data to the PIN-level data, then calculate land and
   # building values for each PIN
@@ -404,7 +405,7 @@ if (model_run_type %in% c("candidate", "final")) {
     )
     
 
-  ### Add flags, clean up and reorder
+  # 5.4. Add Flags -------------------------------------------------------------
   
   # Flags are used for identifying PINs for potential desktop review
   assessment_data_pin_final <- assessment_data_pin_2 %>%
@@ -447,9 +448,13 @@ if (model_run_type %in% c("candidate", "final")) {
       flag_hie_num_expired = 0,
       meta_pin_num_landlines = tidyr::replace_na(meta_pin_num_landlines, 1),
       flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
-    ) %>%
-    
-    # Recode characteristics from numeric encodings to human-readable strings
+    )
+  
+  
+  # 5.5. Clean/Reorder/Save ----------------------------------------------------
+  
+  # Recode characteristics from numeric encodings to human-readable strings
+  assessment_data_pin_final %>%
     ccao::vars_recode(
       cols = starts_with("char_"),
       type = "short",
@@ -472,9 +477,9 @@ if (model_run_type %in% c("candidate", "final")) {
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##### Save Assessment Performance Data #####
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 6. Performance Data ----------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Data saved temporarily for use in performance evaluation. The most recent sale
 # in the assessment year is used for the ratio study/performance eval
