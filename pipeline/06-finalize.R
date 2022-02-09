@@ -244,6 +244,10 @@ if (upload_bool) {
       mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
       write_partitions_to_s3(paths$output$assessment_card$s3, overwrite = TRUE)
+    read_parquet(paths$output$assessment_pin$local) %>%
+      mutate(run_id = model_run_id, year = model_assessment_year) %>%
+      group_by(year, run_id, township_code) %>%
+      write_partitions_to_s3(paths$output$assessment_pin$s3, overwrite = TRUE)
   }
   
   
