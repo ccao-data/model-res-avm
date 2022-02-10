@@ -1,27 +1,37 @@
 # This script runs the full residential valuation pipeline from start to finish.
-# The steps involved are described under each heading below.
+# The specific steps involved are described under each heading below
 
-# NOTES:
-#   - Each of the pipeline scripts can be run independently as long as their
-#     requisite files exist from previous runs. If a run dies, simply re-run
+# Notes:
+#   - Most of the settings for this pipeline are configured via the included
+#     .Renviron file. Check this file before each run. If you change a setting,
+#     you MUST restart R in order for the change to take effect
+#   - Each pipeline run requires a "type", and many steps only run conditional
+#     on certain types. For example, PIN-level output will only be created for
+#     "candidate" or "final" runs. Run type is selected when running 01-setup.R
+#   - Each pipeline script can be run independently as long as their
+#     requisite files exist from a previous run. If a run dies, simply re-run
 #     whichever script failed to continue the run
 #   - By default, this script will upload model artifacts to S3 (for CCAO
 #     employees only). Set MODEL_UPLOAD_TO_S3 to FALSE in the .Renviron file
 #     if you don't want this behavior
-#   - The script to ingest the training and assessment data is included (see
-#     pipeline/00-ingest.R) but is not run automatically. Use DVC (CCAO) or
-#     git LFS (public users) to retrieve training and assessment data before
-#     running this script
+#   - The script which generates the input data is included (see
+#     pipeline/00-ingest.R), but only as a reference. Users of this pipeline do
+#     not need to generate their own input data; it is provided by the CCAO via
+#     DVC (if a CCAO employee) or git LFS (if a member of the public). See the
+#     README for details
 source("R/helpers.R")
+
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 0. Clear Previous Output -----------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-### WARNING: By default, this script will clear the output of previous runs
-# when it is run. This is to prevent the artifacts of multiple runs from
-# becoming jumbled. Disable this behavior in the included .Renviron file
+# WARNING: By default, this script will clear the output of previous runs.
+# This is to prevent the artifacts of multiple runs from becoming jumbled.
+# Disable this behavior in the included .Renviron file by setting
+# MODEL_CLEAR_ON_NEW_RUN to FALSE
 model_clear_on_new_run <- as.logical(
   Sys.getenv("MODEL_CLEAR_ON_NEW_RUN", FALSE)
 )
@@ -42,7 +52,17 @@ if (model_clear_on_new_run) {
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Fetch environmental variables, model parameters, metadata, etc.
+# Fetch environmental variables, model parameters, metadata, etc. This will
+# basically record the settings for each run and put them in a data frame
+
+# Inputs:
+#   - input/*.dvc (input data version hashes, added to metadata)
+#   - input/training_data.parquet (fetch list of independent variables)
+
+# Outputs:
+#   - output/metadata/model_metadata.parquet (data frame of run settings)
+#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
+#     to this file for each stage)
 source("pipeline/01-setup.R")
 
 
@@ -52,8 +72,28 @@ source("pipeline/01-setup.R")
 # 2. Train ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Train the LightGBM model using optional cross-validation. Generate model
-# objects, data recipes, and predictions on the test set
+# Train a LightGBM model using optional cross-validation. Generate model
+# objects, data recipes, and predictions on the test set (most recent 10% 
+# of sales)
+
+# Inputs:
+#   - input/training_data.parquet (sales data used to train the model)
+#   - output/intermediate/model_timing.parquet (stage times elapsed)
+
+# Outputs:
+#   - output/parameter_search/model_parameter_search.parquet (raw output from
+#     Tidymodels cross-validation, can be used to select best model)
+#   - output/parameter_range/model_parameter_range.parquet (range of
+#     hyperparameters searched by cross-validation, as defined by dials::tune())
+#   - output/parameter_final/model_parameter_final.parquet (final
+#     hyperparameters chosen for this run using tune::select_best())
+#   - output/intermediate/model_test.parquet (predictions on/data from the test
+#     set, which is a holdout sample of the most recent 10% of sales)
+#   - output/workflow/fit/model_workflow_fit.zip (LightGBM model object and
+#     Tidymodels parsnip specification. Use lightsnip::lgbm_save/lgbm_load)
+#   - output/workflow/recipe/model_workflow_recipe.rds (Tidymodels recipe for
+#     preparing the input data. Can be used to prepare new, unseen input data)
+#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
 source("pipeline/02-train.R")
 
 
@@ -63,12 +103,40 @@ source("pipeline/02-train.R")
 # 3. Assess --------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Use the trained model to estimate sale prices for all cards in the
-# County. Also generate flags, attach land values, and make any post-modeling
-# changes
+# Use the trained model to estimate sale prices for all cards in Cook County.
+# Also generate flags, attach land values, and make any post-modeling changes.
 
-# Only run this step if running interactively (non-CI). Otherwise,
-# use only the test set data for performance measurement. See README for details
+# Conditional on:
+#   - Will only run for run types "candidate" or "final" due to the high compute
+#     and storage costs for this stage
+
+# Inputs:
+#   - output/metadata/model_metadata.parquet (list of predictors to use)
+#   - input/training_data.parquet (sales data gets attached to assessed values
+#     to help with desk review and ratio studies, not used for training here)
+#   - output/workflow/fit/model_workflow_fit.zip (trained model which is used
+#     on the assessment data to estimate sale prices)
+#   - output/workflow/recipe/model_workflow_recipe.rds (trained recipe object
+#     which is used to prepare the assessment data for input to the model)
+#   - input/assessment_data.parquet (the universe of all properties that need
+#     estimated values, same features as training data)
+#   - input/complex_id_data.parquet (set of townhome 210/295 complex IDs, used
+#     to assign complexes the same average value)
+#   - input/land_site_rate_data.parquet (pre-determined land values assigned to
+#     individual PINs)
+#   - input/land_nbhd_rate_data.parquet (neighborhood land rates used if a PIN-
+#     level rate doesn't exist)
+#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
+#     to this file)
+
+# Outputs:
+#   - output/assessment_card/model_assessment_card.parquet (card-level predicted
+#     values for all residential properties with characteristics)
+#   - output/assessment_pin/model_assessment_pin.parquet (PIN-level predicted
+#     values. These are aggregated from the card-level. See script for details)
+#   - output/intermediate/model_assessment.parquet (predictions on the PIN-
+#     level saved temporarily to calculate performance stats in the next stage)
+#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
 if (interactive()) source("pipeline/03-assess.R")
 
 
@@ -80,12 +148,37 @@ if (interactive()) source("pipeline/03-assess.R")
 
 # Evaluate the model's performance using two methods:
 #   1. The standard holdout test set, in this case the most recent 10% of sales
-#   2. An assessor-specific ratio study, comparing future assessments to
-#      current sales
+#   2. ("candidate" and "final" runs only) An assessor-specific ratio study
+#      comparing estimated assessments to the previous year's sales
 
-# The script will generate a very large data frame of aggregate performance
-# statistics for different levels of geography, as well as a secondary data
-# frame for each quantile
+# Generate aggregate performance statistics for different levels of geography,
+# as well as a secondary data set of statistics for each quantile specified in
+# the .Renviron file
+
+# Conditional on:
+#   - Will evaluate performance on the assessment set if the run type is
+#     "candidate" or "final", otherwise will only evaluate the test set
+
+# Inputs:
+#   - output/metadata/model_metadata.parquet (loaded to determine run type)
+#   - output/intermediate/model_test.parquet (predictions from the model used to
+#     evaluate hold-out performance)
+#   - output/intermediate/model_assessment.parquet (predictions from the model
+#     on the universe of properties needing assessments, used to perform sales
+#     ratio studies)
+#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
+#     to this file)
+
+# Outputs:
+#   - output/performance/model_performance_test.parquet (performance stats on
+#     the test set by geography and class)
+#   - output/performance_quantile/model_performance_test_quantile.parquet
+#     (performance stats on the test set by geography and quantile)
+#   - output/performance/model_performance_assessment.parquet (performance stats
+#     on the assessment set by geography and class)
+#   - output/performance_quantile/model_performance_assessment_quantile.parquet
+#     (performance stats on the assessment set by geography and quantile)
+#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
 source("pipeline/04-evaluate.R")
 
 
@@ -95,13 +188,30 @@ source("pipeline/04-evaluate.R")
 # 5. Interpret -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-### WARNING: Calculating SHAP values is very expensive. The time complexity is
+# Generate SHAP values for each card and feature in the assessment data
+
+# WARNING: Calculating SHAP values is very expensive. The time complexity is
 # O(rows * num_iterations * num_leaves * max_depth^2). Calculating SHAP values
 # for 1.1 million records for a complex model can take many hours (or even
-# days). Therefore, this stage is only executed for interactive
-# candidate and final runs
+# days)
 
-# Generate SHAP values for each PIN in the assessment data
+# Conditional on:
+#   - Will only run for run types "candidate" or "final" due to the high compute
+#     and storage costs for this stage
+
+# Inputs:
+#   - output/metadata/model_metadata.parquet (loaded to determine run type)
+#   - output/workflow/fit/model_workflow_fit.zip (trained model which is used
+#     get SHAP values)
+#   - output/workflow/recipe/model_workflow_recipe.rds (trained recipe object
+#     used to prepare the assessment data for prediction)
+#   - input/assessment_data.parquet (the universe of all cards and features
+#     that need SHAP values)
+
+# Outputs:
+#   - output/shap/model/model_shap.parquet (all SHAP values for all feature and
+#     cards in the assessment data)
+#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
 if (interactive()) source("pipeline/05-interpret.R")
 
 
@@ -111,6 +221,18 @@ if (interactive()) source("pipeline/05-interpret.R")
 # 6. Finalize ------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Save run timings and upload pipeline run results to S3 for
-# visualization and storage
+# Save run timings, upload pipeline run results to S3, and send notification.
+# Will also finalize/clean some of the generated outputs prior to upload
+
+# Conditional on:
+#   - Most sections of this stage will only run if MODEL_UPLOAD_TO_S3 is TRUE
+
+# Inputs:
+#   - All output data sets
+
+# Outputs:
+#   - All data sets, cleaned and uploaded to their respective buckets in S3. See
+#     R/file_dict.csv for details on where output objects end up on S3
+#   - output/timing/model_timing.parquet (clean, wide version of the stage
+#     timing log)
 source("pipeline/06-finalize.R")
