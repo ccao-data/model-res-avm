@@ -39,7 +39,8 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
 
 # Set the assessment year of the data (data year to base assessment on)
 model_assessment_data_year <- Sys.getenv(
-  "MODEL_ASSESSMENT_DATA_YEAR", unset = lubridate::year(Sys.Date()) - 1
+  "MODEL_ASSESSMENT_DATA_YEAR",
+  unset = lubridate::year(Sys.Date()) - 1
 )
 
 # Get the year of assessment
