@@ -39,3 +39,37 @@ file_dict %>%
   rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
   knitr::kable(format = "markdown")
 ```
+
+## Feature Guide
+
+```{r feature_guide, message=FALSE, results='asis', echo=FALSE}
+library(dplyr)
+library(tidyr)
+ccao::vars_dict %>%
+  filter(var_is_predictor & var_name_model != "meta_sale_price") %>%
+  group_by(var_name_pretty) %>%
+  mutate(row = paste0("X", row_number())) %>%
+  distinct(
+    `Feature Name` = var_name_pretty,
+    Category = var_type,
+    Type = var_data_type,
+    Notes = var_notes,
+    var_value, row
+  ) %>%
+  mutate(Category = recode(
+    Category,
+    char = "Characteristic", acs5 = "ACS5", loc = "Location",
+    prox = "Proximity", ind = "Indicator", time = "Time",
+    meta = "Meta", other = "Other"
+  )) %>%
+  pivot_wider(
+    `Feature Name`:`Notes`,
+    names_from = row,
+    values_from = var_value
+  ) %>%
+  unite("Possible Values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
+  mutate(Notes = replace_na(Notes, "")) %>%
+  arrange(Category) %>%
+  relocate(Notes, .after = everything()) %>%
+  knitr::kable(format = "markdown")
+```
