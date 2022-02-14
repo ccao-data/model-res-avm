@@ -6,10 +6,6 @@
 tictoc::tic.clearlog()
 tictoc::tic("Setup model environment")
 
-# The purpose of this file is to set up the environment and variables needed for
-# a full model pipeline run and save them to S3. This script is not necessary to
-# run if you want to run model stages individually
-
 # Load the necessary libraries
 library(arrow)
 library(dplyr)
@@ -23,10 +19,8 @@ source(here("R", "helpers.R"))
 # Initialize a dictionary of file paths and URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
-
-### Read initial configuration parameters from the included .Renviron file
-
-# Get information about the assessment year, date, and the sales sample
+# Read initial configuration parameters from the included .Renviron file
+# including the assessment year, date, and the sales sample
 model_assessment_year <- Sys.getenv("MODEL_ASSESSMENT_YEAR", "2022")
 model_assessment_date <- Sys.getenv("MODEL_ASSESSMENT_DATE", "2022-01-01")
 model_assessment_data_year <- Sys.getenv("MODEL_ASSESSMENT_DATA_YEAR", "2021")
@@ -39,14 +33,8 @@ model_type <- Sys.getenv("MODEL_TYPE", "lightgbm")
 model_triad <- Sys.getenv("MODEL_TRIAD", "North")
 model_seed <- as.integer(Sys.getenv("MODEL_SEED"), 27)
 
-# Disable CV for non-interactive sessions (GitLab CI) unless overridden
-if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
-  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", TRUE))
-} else {
-  model_cv_enable <- FALSE
-}
-
 # Get info on cross-validation setup and split proportion
+model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", FALSE))
 model_cv_num_folds <- as.numeric(Sys.getenv("MODEL_CV_NUM_FOLDS", 6))
 model_cv_initial_set <- as.numeric(Sys.getenv("MODEL_CV_INITIAL_SET", 10))
 model_cv_max_iterations <- as.numeric(Sys.getenv("MODEL_CV_MAX_ITERATIONS", 25))
@@ -55,8 +43,8 @@ model_cv_split_prop <- as.numeric(Sys.getenv("MODEL_CV_SPLIT_PROP", 0.90))
 model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 
 # Info on type and year of values used for assessment reporting. Typically the
-# "near" year is 1 year prior and the "far" year is values after the last
-# triennial assessment
+# "near" year is 1 year prior and the "far" year is BoR values after the last
+# triennial reassessment
 model_ratio_study_near_year <- Sys.getenv(
   "MODEL_RATIO_STUDY_NEAR_YEAR", model_assessment_data_year
 )
@@ -114,6 +102,8 @@ if (interactive()) {
 assessment_md5 <- read_yaml(paths$input$assessment$dvc)$outs[[1]]$md5
 training_md5 <- read_yaml(paths$input$training$dvc)$outs[[1]]$md5
 complex_id_md5 <- read_yaml(paths$input$complex_id$dvc)$outs[[1]]$md5
+land_site_rate_md5 <- read_yaml(paths$input$land_site_rate$dvc)$outs[[1]]$md5
+land_nbhd_rate_md5 <- read_yaml(paths$input$land_nbhd_rate$dvc)$outs[[1]]$md5
 
 # Get the predictors used for training the model + a count of predictors
 model_predictors <- ccao::vars_dict %>%
@@ -152,6 +142,8 @@ model_metadata <- tibble::tibble(
   model_training_data_dvc_id = training_md5,
   model_assessment_data_dvc_id = assessment_md5,
   model_complex_id_data_dvc_id = complex_id_md5,
+  model_land_site_rate_data_dvc_id = land_site_rate_md5,
+  model_land_nbhd_rate_data_dvc_id = land_nbhd_rate_md5,
   model_min_sale_year,
   model_max_sale_year,
   model_ratio_study_far_year,
