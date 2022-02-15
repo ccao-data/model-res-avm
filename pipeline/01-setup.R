@@ -4,7 +4,7 @@
 
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
-tictoc::tic("Setup model environment")
+tictoc::tic("Setup")
 
 # Load libraries and scripts
 library(arrow)
@@ -17,7 +17,7 @@ library(tibble)
 library(yaml)
 source(here("R", "helpers.R"))
 
-# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
+# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
 
@@ -123,7 +123,7 @@ model_ratio_study_num_quantile <- as.integer(strsplit(Sys.getenv(
 
 ## 2.4. CV Parameters ----------------------------------------------------------
 
-# Enable CV only for experimental and final runs
+# Enable CV only for candidate and final runs
 if (model_run_type %in% c("candidate", "final")) {
   model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", TRUE))
 } else {
@@ -141,7 +141,7 @@ model_cv_best_metric <- as.character(Sys.getenv("MODEL_CV_BEST_METRIC", "rmse"))
 
 ## 2.5. Post-Valuation Parameters ----------------------------------------------
 
-# Get post-modeling parameters like level of rounding, land caps, etc.
+# Get post-modeling parameters like level of rounding, land % cap, etc.
 model_pv_multicard_yoy_cap <- as.numeric(
   Sys.getenv("MODEL_PV_MULTICARD_YOY_CAP", 2)
 )
@@ -276,12 +276,14 @@ model_metadata <- tibble::tibble(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Gather Hyperparameters ----------------------------------------------------
+# 4. Gather Model Parameters ---------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Gather all the hyperparameters set via .Renviron
+# Gather all the model-level parameters that are actually passed to lightgbm.
+# Manual parameters are things that don't change with CV, whereas tuned
+# parameters can be changed by CV
 
-## 4.1. Manual Hyperparameters -------------------------------------------------
+## 4.1. Manual Parameters ------------------------------------------------------
 model_param_objective_func <- as.character(
   Sys.getenv("MODEL_PARAM_OBJECTIVE_FUNC", "regression")
 )
@@ -301,7 +303,7 @@ model_param_link_max_depth <- as.logical(
   Sys.getenv("MODEL_PARAM_LINK_MAX_DEPTH", TRUE)
 )
 
-## 4.2. Tuned Hyperparameters --------------------------------------------------
+## 4.2. Tuned Parameters -------------------------------------------------------
 model_hparam_stop_iter <- as.integer(
   Sys.getenv("MODEL_HPARAM_STOP_ITER", 18)
 )
@@ -363,7 +365,7 @@ model_parameter_final <- tibble::tibble(
   validation_metric = model_param_validation_metric,
   link_max_depth = model_param_link_max_depth,
   
-  # 4.2 Tuned Hyperparameters
+  # 4.2. Tuned Hyperparameters
   stop_iter = model_hparam_stop_iter,
   num_leaves = model_hparam_num_leaves,
   add_to_linked_depth = model_hparam_add_to_linked_depth,
@@ -385,9 +387,9 @@ model_parameter_final <- tibble::tibble(
   lambda_l2 = model_hparam_lambda_l2,
   .config = "Default"
 ) %>%
-  arrow::write_parquet(paths$output$parameter_final$local)
+  arrow::write_parquet(paths$intermediate$parameter_default$local)
 
-# End the script timer and write the time elapsed to file
+# End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
 bind_rows(tictoc::tic.log(format = FALSE)) %>%
   arrow::write_parquet(paths$intermediate$timing$local)
