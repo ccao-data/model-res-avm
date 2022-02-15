@@ -2,11 +2,11 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Start the script timer and clear logs from prior script
+# Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Evaluate")
 
-# Load R libraries
+# Load libraries and scripts
 library(arrow)
 library(assessr)
 library(ccao)
@@ -22,34 +22,17 @@ library(tictoc)
 library(tidyr)
 library(yardstick)
 
-# Enable parallel backend for generating stats more quickly
-plan(multisession, workers = parallel::detectCores(logical = FALSE))
-
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths and URIs. See R/file_dict.csv
+# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
-# Get year/stage to use for previous comparison/ratio studies
-model_assessment_data_year <- Sys.getenv("MODEL_ASSESSMENT_DATA_YEAR")
-rsn_year <- Sys.getenv(
-  "MODEL_RATIO_STUDY_NEAR_YEAR", model_assessment_data_year
-)
-rsn_stage <- Sys.getenv(
-  "MODEL_RATIO_STUDY_NEAR_STAGE", "mailed"
-)
-rsf_year <- Sys.getenv(
-  "MODEL_RATIO_STUDY_FAR_YEAR", "2019"
-)
-rsf_stage <- Sys.getenv(
-  "MODEL_RATIO_STUDY_FAR_STAGE",
-  as.character(as.numeric(model_assessment_data_year) - 3)
-)
+# Load the metadata file containing the run settings
+metadata <- read_parquet(paths$output$metadata$local)
 
-# Column names to use for previous ratio study comparison
-rsf_column <- get_rs_col_name(model_assessment_data_year, rsf_year, rsf_stage)
-rsn_column <- get_rs_col_name(model_assessment_data_year, rsn_year, rsn_stage)
+# Enable parallel backend for generating stats more quickly
+plan(multisession, workers = metadata$model_num_threads)
 
 # Renaming dictionary for input columns. We want actual value of the column
 # to become geography_id and the NAME of the column to become geography_name
@@ -68,10 +51,6 @@ col_rename_dict <- c(
   "geography_id" = "loc_school_unified_district_geoid"
 )
 
-rs_num_quantile <- as.integer(strsplit(Sys.getenv(
-  "MODEL_RATIO_STUDY_NUM_QUANTILE", "3,5"
-), ",")[[1]])
-
 
 
 
@@ -79,16 +58,17 @@ rs_num_quantile <- as.integer(strsplit(Sys.getenv(
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Load the test results from the end of 02-train.R. This will be the most recent
-# 10% of sales and already includes predictions. This data will NOT include
-# multicard sales. The unit of observation is PINs (1 PIN per row)
+# Load the test results from the end of the train stage. This will be the most
+# recent 10% of sales and already includes predictions. This data will NOT
+# include multicard sales, so the unit of observation is PINs (1 PIN per row)
 test_data <- read_parquet(paths$intermediate$test$local) %>%
   as_tibble()
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
-# aggregated to the PIN-level. Only runs for local (non-CI) runs
-if (interactive()) {
+# aggregated to the PIN-level. Only runs for candidate and final runs due to
+# computational overhead
+if (metadata$run_type %in% c("candidate", "final")) {
   assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
 }
@@ -145,7 +125,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     max         = ~ max((.x - .y) / .y, na.rm = T)
   )
 
-  # Generate aggregate performance stats by group
+  # Generate aggregate performance stats by geography
   df_stat <- data %>%
     mutate(rsf_x10 = .[[rsf_col]] * 10, rsn_x10 = .[[rsn_col]] * 10) %>%
     # Aggregate to get counts by geography without class
@@ -183,7 +163,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       ),
 
       # Summary stats of prior values and value per sqft. Need to multiply
-      # by 10 first since pin history is in AV, not FMV
+      # by 10 first since PIN history is in AV, not FMV
       prior_far_source_col = rsf_col,
       prior_far_num_missing = sum(is.na(rsf_x10)),
       across(.fns = sum_fns_list, rsf_x10, .names = "prior_far_fmv_{.fn}"),
@@ -340,7 +320,7 @@ geographies_list <- purrr::cross2(
 geographies_list_quantile <- purrr::cross3(
   geographies_quosures,
   rlang::quos(meta_class, NULL),
-  rs_num_quantile
+  metadata$model_ratio_study_num_quantile[[1]]
 )
 
 
@@ -355,8 +335,8 @@ future_map_dfr(
     truth = meta_sale_price,
     estimate = pred_card_initial_fmv,
     bldg_sqft = char_bldg_sf,
-    rsn_col = rsn_column,
-    rsf_col = rsf_column,
+    rsn_col = metadata$model_ratio_study_near_column,
+    rsf_col = metadata$model_ratio_study_far_column,
     triad = meta_triad_code,
     geography = !!.x[[1]],
     class = !!.x[[2]],
@@ -365,6 +345,8 @@ future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 ) %>%
+  mutate(run_id = metadata$run_id) %>%
+  relocate(run_id, .before = everything()) %>%
   write_parquet(paths$output$performance_test$local)
 
 # Same as above, but calculate stats per quantile of sale price
@@ -374,8 +356,8 @@ future_map_dfr(
     data = test_data,
     truth = meta_sale_price,
     estimate = pred_card_initial_fmv,
-    rsn_col = rsn_column,
-    rsf_col = rsf_column,
+    rsn_col = metadata$model_ratio_study_near_column,
+    rsf_col = metadata$model_ratio_study_far_column,
     triad = meta_triad_code,
     geography = !!.x[[1]],
     class = !!.x[[2]],
@@ -385,16 +367,18 @@ future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 ) %>%
+  mutate(run_id = metadata$run_id) %>%
+  relocate(run_id, .before = everything()) %>%
   write_parquet(paths$output$performance_quantile_test$local)
 
 
 ## 4.2. Assessment Set ---------------------------------------------------------
 
-# Only value the assessment set for non-CI (local) runs
-if (interactive()) {
+# Only value the assessment set for candidate and final runs
+if (metadata$run_type %in% c("candidate", "final")) {
 
   # Do the same thing for the assessment set. This will have accurate property
-  # counts and proportions, since it also has unsold properties
+  # counts and proportions, since it also includes unsold properties
   future_map_dfr(
     geographies_list,
     ~ gen_agg_stats(
@@ -402,8 +386,8 @@ if (interactive()) {
       truth = meta_sale_price,
       estimate = pred_pin_final_fmv_round,
       bldg_sqft = char_bldg_sf,
-      rsn_col = rsn_column,
-      rsf_col = rsf_column,
+      rsn_col = metadata$model_ratio_study_near_column,
+      rsf_col = metadata$model_ratio_study_far_column,
       triad = meta_triad_code,
       geography = !!.x[[1]],
       class = !!.x[[2]],
@@ -412,6 +396,8 @@ if (interactive()) {
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
   ) %>%
+    mutate(run_id = metadata$run_id) %>%
+    relocate(run_id, .before = everything()) %>%
     write_parquet(paths$output$performance_assessment$local)
 
   # Same as above, but calculate stats per quantile of sale price
@@ -421,8 +407,8 @@ if (interactive()) {
       data = assessment_data_pin,
       truth = meta_sale_price,
       estimate = pred_pin_final_fmv_round,
-      rsn_col = rsn_column,
-      rsf_col = rsf_column,
+      rsn_col = metadata$model_ratio_study_near_column,
+      rsf_col = metadata$model_ratio_study_far_column,
       triad = meta_triad_code,
       geography = !!.x[[1]],
       class = !!.x[[2]],
@@ -432,10 +418,12 @@ if (interactive()) {
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
   ) %>%
+    mutate(run_id = metadata$run_id) %>%
+    relocate(run_id, .before = everything()) %>%
     write_parquet(paths$output$performance_quantile_assessment$local)
 }
 
-# End the script timer and write the time elapsed to file
+# End the stage timer and append the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
 arrow::read_parquet(paths$intermediate$timing$local) %>%
   bind_rows(., tictoc::tic.log(format = FALSE)) %>%

@@ -2,14 +2,10 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# This script will upload all the locally stored objects created by a pipeline
-# run. Uploaded objects will be renamed by their run_id and/or have the run_id
-# inserted into their data in the left-most position.
-
 # NOTE: This script requires CCAO employee access. See wiki for S3 credentials
-# setup
+# setup and multi-factor auth help
 
-# Load the necessary libraries
+# Load libraries and scripts
 library(arrow)
 library(aws.s3)
 library(ccao)
@@ -22,8 +18,11 @@ library(tidyr)
 library(tune)
 source(here("R", "helpers.R"))
 
-# Initialize a dictionary of file paths and URIs. See R/helpers.R
+# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
 paths <- model_file_dict()
+
+# Load the metadata file containing the run settings
+metadata <- read_parquet(paths$output$metadata$local)
 
 
 
@@ -32,18 +31,15 @@ paths <- model_file_dict()
 # 2. Save Timings --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Convert input timing logs to data frame, then save to file
+# Convert the intermediate timing logs to a wide data frame, then save to file
 if (file.exists(paths$output$metadata$local) &
   file.exists(paths$intermediate$timing$local)) {
 
-  # Load info from the saved metadata file to append run ID and start time
-  metadata <- read_parquet(paths$output$metadata$local)
-
-  # Load the built timing file and munge it into a more useful format
+  # Load the timing file and reshape it from long to wide
   read_parquet(paths$intermediate$timing$local) %>%
     mutate(
-      run_id = metadata$run_id[1],
-      run_start_timestamp = metadata$run_start_timestamp[1],
+      run_id = metadata$run_id,
+      run_start_timestamp = metadata$run_start_timestamp,
       elapsed = round(toc - tic, 2),
       stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed")
     ) %>%
@@ -68,41 +64,9 @@ if (file.exists(paths$output$metadata$local) &
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Whether or not to upload model artifacts (objects, results, parameters) to S3
-# Only available to CCAO employees via interactive sessions (unless overridden)
-if (interactive() | as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3_OVERRIDE", FALSE))) {
-  model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", TRUE))
-} else {
-  model_upload_to_s3 <- FALSE
-}
+model_upload_to_s3 <- as.logical(Sys.getenv("MODEL_UPLOAD_TO_S3", FALSE))
 
-# Disable CV for non-interactive sessions (GitLab CI) unless overridden
-if (interactive() | as.logical(Sys.getenv("MODEL_CV_ENABLE_OVERRIDE", FALSE))) {
-  model_cv_enable <- as.logical(Sys.getenv("MODEL_CV_ENABLE", TRUE))
-} else {
-  model_cv_enable <- FALSE
-}
-
-# Retrieve hard-coded model hyperparameters from .Renviron
-model_param_objective <- as.character(
-  Sys.getenv("MODEL_PARAM_OBJECTIVE", "regression")
-)
-model_param_num_iterations <- as.integer(
-  Sys.getenv("MODEL_PARAM_NUM_ITERATIONS", 500)
-)
-model_param_learning_rate <- as.numeric(
-  Sys.getenv("MODEL_PARAM_LEARNING_RATE", 0.1)
-)
-model_param_validation_prop <- as.numeric(
-  Sys.getenv("MODEL_PARAM_VALIDATION_PROP", 0.1)
-)
-model_param_validation_metric <- as.character(
-  Sys.getenv("MODEL_PARAM_VALIDATION_METRIC", "rmse")
-)
-model_param_link_max_depth <- as.logical(
-  Sys.getenv("MODEL_PARAM_LINK_MAX_DEPTH", TRUE)
-)
-
-# Get a list of all pipeline outputs that should exist for upload
+# Get a list of all pipeline outputs that should exist for any run
 output_paths <- unlist(paths)[
   grepl("local", names(unlist(paths))) &
     grepl("output", names(unlist(paths))) &
@@ -115,8 +79,8 @@ output_paths <- unlist(paths)[
 # Check whether all conditions are met for upload:
 #   1. All output files must exist, except...
 #   2. Some parameter files, which may not exist if CV is disabled
-#   3. The assessment values (candidate runs only)
-#   4. The SHAP values (candidate runs only)
+#   3. The assessment values (candidate and final runs only)
+#   4. The SHAP values (candidate and final runs only)
 #   5. S3 upload is enabled
 
 # See R/file_dict.csv for a breakdown of what files are created under certain
@@ -134,17 +98,11 @@ upload_bool <- upload_all_files & model_upload_to_s3
 # Only run upload if above conditions are met
 if (upload_bool) {
 
-  # Load run info from the saved metadata file. This will let us rename the
-  # uploaded files by run ID and determine what to upload
-  metadata <- read_parquet(paths$output$metadata$local)
-  model_run_id <- metadata$run_id[1]
-  model_assessment_year <- metadata$model_assessment_year[1]
-  model_run_type <- metadata$run_type[1]
-
-  # Initialize a dictionary of file paths and URIs. See R/file_dict.csv
+  # Initialize a dictionary of file paths and S3 URIs, this time with paths
+  # specific to the run ID and year
   paths <- model_file_dict(
-    run_id = model_run_id,
-    year = model_assessment_year
+    run_id = metadata$run_id,
+    year = metadata$model_assessment_year
   )
 
 
@@ -159,7 +117,6 @@ if (upload_bool) {
 
   # 4.2. Train -----------------------------------------------------------------
 
-  # Upload objects with no need for alteration first
   # Upload LGBM fit
   aws.s3::put_object(
     paths$output$workflow_fit$local,
@@ -172,41 +129,32 @@ if (upload_bool) {
     paths$output$workflow_recipe$s3
   )
 
-  # Always write the chosen/final parameters to S3. Get parameters not tuned in
-  # CV from the environment
-  arrow::read_parquet(paths$output$parameter_final$local) %>%
-    rename(any_of(c("configuration" = ".config"))) %>%
-    mutate(
-      run_id = model_run_id,
-      objective_func = model_param_objective,
-      num_iterations = model_param_num_iterations,
-      learning_rate = model_param_learning_rate,
-      validation_prop = model_param_validation_prop,
-      validation_metric = model_param_validation_metric,
-      link_max_depth = model_param_link_max_depth,
-      max_depth = ifelse(
-        link_max_depth,
-        as.integer(floor(log2(num_leaves)) + add_to_linked_depth),
-        max_depth
-      )
-    ) %>%
-    relocate(any_of(c("run_id", "configuration")), .before = everything()) %>%
-    arrow::write_parquet(paths$output$parameter_final$s3)
+  # Upload the final run hyperparameters
+  aws.s3::put_object(
+    paths$output$parameter_final$local,
+    paths$output$parameter_final$s3
+  )
 
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame
-  if (model_cv_enable) {
+  if (metadata$model_cv_enable) {
 
-    # Write the raw parameters object to S3 in case we need to use it later
+    # Upload the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
       paths$output$parameter_raw$local,
       paths$output$parameter_raw$s3
     )
-
-    # Clean and unnest the raw parameters data, then write directly to S3
+    
+    # Upload the parameter ranges used for CV
+    aws.s3::put_object(
+      paths$output$parameter_range$local,
+      paths$output$parameter_range$s3
+    )
+    
+    # Clean and unnest the raw parameters data, then write the results to S3
     read_parquet(paths$output$parameter_raw$local) %>%
       tidyr::unnest(cols = .metrics) %>%
-      mutate(run_id = model_run_id) %>%
+      mutate(run_id = metadata$run_id) %>%
       left_join(
         rename(., notes = .notes) %>%
           tidyr::unnest(cols = notes) %>%
@@ -226,27 +174,19 @@ if (upload_bool) {
       relocate(notes, .after = everything()) %>%
       dplyr::select(-any_of(c("estimator"))) %>%
       write_parquet(paths$output$parameter_search$s3)
-
-    # Write the parameter range with run ID to a separate table
-    read_parquet(paths$output$parameter_range$local) %>%
-      mutate(run_id = model_run_id) %>%
-      relocate(run_id, .before = everything()) %>%
-      write_parquet(paths$output$parameter_range$s3)
   }
 
 
   # 4.3. Assess ----------------------------------------------------------------
 
-  # Upload card-level values if running locally and a candidate or final run
-  # Values include all cards (improvements), so the output is very large.
-  # Therefore, we partition the data by year, run, and township
-  if (interactive() && model_run_type %in% c("candidate", "final")) {
+  # Upload PIN and card-level values for candidate or final runs. These outputs
+  # are very large, so to help reduce file size and improve query performance we
+  # partition them by year, run ID, and township
+  if (model_run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$assessment_card$local) %>%
-      mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
       write_partitions_to_s3(paths$output$assessment_card$s3, overwrite = TRUE)
     read_parquet(paths$output$assessment_pin$local) %>%
-      mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
       write_partitions_to_s3(paths$output$assessment_pin$s3, overwrite = TRUE)
   }
@@ -255,36 +195,35 @@ if (upload_bool) {
   # 4.4. Evaluate --------------------------------------------------------------
 
   # Upload test set performance
-  read_parquet(paths$output$performance_test$local) %>%
-    mutate(run_id = model_run_id) %>%
-    relocate(run_id, .before = everything()) %>%
-    write_parquet(paths$output$performance_test$s3)
-  read_parquet(paths$output$performance_quantile_test$local) %>%
-    mutate(run_id = model_run_id) %>%
-    relocate(run_id, .before = everything()) %>%
-    write_parquet(paths$output$performance_quantile_test$s3)
+  aws.s3::put_object(
+    paths$output$performance_test$local,
+    paths$output$performance_test$s3
+  )
+  aws.s3::put_object(
+    paths$output$performance_quantile_test$local,
+    paths$output$performance_quantile_test$s3
+  )
 
-  # Upload assessment set performance if running locally
-  if (interactive()) {
-    read_parquet(paths$output$performance_assessment$local) %>%
-      mutate(run_id = model_run_id) %>%
-      relocate(run_id, .before = everything()) %>%
-      write_parquet(paths$output$performance_assessment$s3)
-    read_parquet(paths$output$performance_quantile_assessment$local) %>%
-      mutate(run_id = model_run_id) %>%
-      relocate(run_id, .before = everything()) %>%
-      write_parquet(paths$output$performance_quantile_assessment$s3)
+  # Upload assessment set performance if a candidate or final run
+  if (model_run_type %in% c("candidate", "final")) {
+    aws.s3::put_object(
+      paths$output$performance_assessment$local,
+      paths$output$performance_assessment$s3
+    )
+    aws.s3::put_object(
+      paths$output$performance_quantile_assessment$local,
+      paths$output$performance_quantile_assessment$s3
+    )
   }
 
 
   # 4.5. Interpret -------------------------------------------------------------
 
-  # Upload SHAP values if running locally. SHAP values are per card, so
-  # the output is very large. Therefore, we use arrow to partition the data by
-  # year, run, and township
-  if (interactive() && model_run_type %in% c("candidate", "final")) {
+  # Upload SHAP values if a candidate or final run. SHAP values are 1 row per
+  # card per feature, so the output is very large (100M+ rows). Therefore, we
+  # partition the data by year, run, and township
+  if (model_run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$shap$local) %>%
-      mutate(run_id = model_run_id, year = model_assessment_year) %>%
       group_by(year, run_id, township_code) %>%
       write_partitions_to_s3(paths$output$shap$s3, overwrite = TRUE)
   }
@@ -306,12 +245,13 @@ if (upload_bool) {
 # 5. Wrap-Up -------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Only run AWS stuff when uploading
+# Only run AWS stuff when actually uploading. This will run a Glue crawler to
+# update schemas and send an email to any SNS subscribers
 if (upload_bool) {
 
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
-  # new partitions
-  if (interactive() && model_run_type %in% c("candidate", "final")) {
+  # any new partitions
+  if (metadata$run_type %in% c("candidate", "final")) {
     glue_srv <- paws.analytics::glue()
     glue_srv$start_crawler("ccao-model-results-crawler")
   }
@@ -323,7 +263,7 @@ if (upload_bool) {
     )
 
     # Get pipeline total run time from file
-    pipeline_sns_total_time <- arrow::read_parquet(paths$output$timing$local) %>%
+    pipeline_sns_total_time <- read_parquet(paths$output$timing$local) %>%
       mutate(dur = lubridate::seconds_to_period(round(overall_sec_elapsed))) %>%
       dplyr::pull(dur)
 
@@ -348,9 +288,9 @@ if (upload_bool) {
 
     # Publish to SNS
     pipeline_sns$publish(
-      Subject = paste("Model Run Complete:", model_run_id),
+      Subject = paste("Model Run Complete:", metadata$run_id),
       Message = paste0(
-        "Model run: ", model_run_id, " complete\n",
+        "Model run: ", metadata$run_id, " complete\n",
         "Finished in: ", pipeline_sns_total_time, "\n\n",
         pipeline_sns_results
       ),

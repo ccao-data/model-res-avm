@@ -3,7 +3,7 @@
 
 # Notes:
 #   - Most of the settings for this pipeline are configured via the included
-#     .Renviron file. Check this file before each run. If you change a setting,
+#     .Renviron file. Check that file before each run. If you change a setting,
 #     you MUST restart R in order for the change to take effect
 #   - Each pipeline run requires a "type", and many steps only run conditional
 #     on certain types. For example, PIN-level output will only be created for
@@ -19,14 +19,18 @@
 #     not need to generate their own input data; it is provided by the CCAO via
 #     DVC (if a CCAO employee) or git LFS (if a member of the public). See the
 #     README for details
+#   - This script runs each pipeline stage in a copy of the global environment.
+#     After each stage is finished the copied environment is cleared. This
+#     preserves the isolation between stages and frees memory after each stage
+library(arrow)
+library(dplyr)
 source("R/helpers.R")
 
+# Create a new environment based on the global environment
+script_env <- new.env()
 
-
-
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 0. Clear Previous Output -----------------------------------------------------
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
+paths <- model_file_dict()
 
 # WARNING: By default, this script will clear the output of previous runs.
 # This is to prevent the artifacts of multiple runs from becoming jumbled.
@@ -37,7 +41,6 @@ model_clear_on_new_run <- as.logical(
 )
 
 if (model_clear_on_new_run) {
-  paths <- model_file_dict()
   local_paths <- unlist(paths)[
     grepl("local", names(unlist(paths)), fixed = TRUE) &
       grepl("output", names(unlist(paths)), fixed = TRUE)
@@ -49,11 +52,36 @@ if (model_clear_on_new_run) {
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 0. File IO -------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Each stage produces a set of files in the output/ directory. These files are
+# used to save state and transfer information between stages. Each stages lists
+# its corresponding input and output files
+
+# Certain inputs and outputs are used by every stage. These are listed
+# here rather than being repeated in the description of each stage
+
+# Inputs (all stages):
+#   - output/metadata/model_metadata.parquet (control parameters, info about
+#     predictors, model info, etc.)
+#   - output/intermediate/model_timing.parquet (loaded from previous stage
+#     then appended to)
+
+# Outputs (all stages):
+#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
+#     to this file for each stage)
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Fetch environmental variables, model parameters, metadata, etc. This will
-# basically record the settings for each run and put them in a data frame
+# basically record the settings for each run and put them in a data frame. These
+# settings are then used to control all the later stages
 
 # Inputs:
 #   - input/*.dvc (input data version hashes, added to metadata)
@@ -61,9 +89,15 @@ if (model_clear_on_new_run) {
 
 # Outputs:
 #   - output/metadata/model_metadata.parquet (data frame of run settings)
-#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
-#     to this file for each stage)
-source("pipeline/01-setup.R")
+#   - output/intermediate/model_parameter_default.parquet (single-row data
+#     frame of default model hyperparameters used if CV is disabled)
+source("pipeline/01-setup.R", local = script_env)
+rm(list = ls(envir = script_env), envir = script_env)
+gc()
+
+# Load the run type from the just-created metadata file. This is used to decide
+# which later stages to run
+model_run_type <- read_parquet(paths$output$metadata$local)$run_type
 
 
 
@@ -78,7 +112,8 @@ source("pipeline/01-setup.R")
 
 # Inputs:
 #   - input/training_data.parquet (sales data used to train the model)
-#   - output/intermediate/model_timing.parquet (stage times elapsed)
+#   - output/intermediate/model_parameter_default.parquet (default parameters if
+#     CV is disabled)
 
 # Outputs:
 #   - output/parameter_search/model_parameter_search.parquet (raw output from
@@ -93,8 +128,9 @@ source("pipeline/01-setup.R")
 #     Tidymodels parsnip specification. Use lightsnip::lgbm_save/lgbm_load)
 #   - output/workflow/recipe/model_workflow_recipe.rds (Tidymodels recipe for
 #     preparing the input data. Can be used to prepare new, unseen input data)
-#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
-source("pipeline/02-train.R")
+source("pipeline/02-train.R", local = script_env)
+rm(list = ls(envir = script_env), envir = script_env)
+gc()
 
 
 
@@ -103,15 +139,15 @@ source("pipeline/02-train.R")
 # 3. Assess --------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Use the trained model to estimate sale prices for all cards in Cook County.
-# Also generate flags, attach land values, and make any post-modeling changes.
+# Use the trained model to estimate sale prices for all PINS/cards in Cook
+# County. Also generate flags, calculate land values, and make any post-modeling
+# changes
 
 # Conditional on:
 #   - Will only run for run types "candidate" or "final" due to the high compute
 #     and storage costs for this stage
 
 # Inputs:
-#   - output/metadata/model_metadata.parquet (list of predictors to use)
 #   - input/training_data.parquet (sales data gets attached to assessed values
 #     to help with desk review and ratio studies, not used for training here)
 #   - output/workflow/fit/model_workflow_fit.zip (trained model which is used
@@ -126,8 +162,6 @@ source("pipeline/02-train.R")
 #     individual PINs)
 #   - input/land_nbhd_rate_data.parquet (neighborhood land rates used if a PIN-
 #     level rate doesn't exist)
-#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
-#     to this file)
 
 # Outputs:
 #   - output/assessment_card/model_assessment_card.parquet (card-level predicted
@@ -136,8 +170,11 @@ source("pipeline/02-train.R")
 #     values. These are aggregated from the card-level. See script for details)
 #   - output/intermediate/model_assessment.parquet (predictions on the PIN-
 #     level saved temporarily to calculate performance stats in the next stage)
-#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
-if (interactive()) source("pipeline/03-assess.R")
+if (model_run_type %in% c("candidate", "final")) {
+  source("pipeline/03-assess.R", local = script_env)
+}
+rm(list = ls(envir = script_env), envir = script_env)
+gc()
 
 
 
@@ -160,14 +197,11 @@ if (interactive()) source("pipeline/03-assess.R")
 #     "candidate" or "final", otherwise will only evaluate the test set
 
 # Inputs:
-#   - output/metadata/model_metadata.parquet (loaded to determine run type)
 #   - output/intermediate/model_test.parquet (predictions from the model used to
 #     evaluate hold-out performance)
 #   - output/intermediate/model_assessment.parquet (predictions from the model
 #     on the universe of properties needing assessments, used to perform sales
 #     ratio studies)
-#   - output/intermediate/model_timing.parquet (stage time elapsed is appended
-#     to this file)
 
 # Outputs:
 #   - output/performance/model_performance_test.parquet (performance stats on
@@ -178,8 +212,9 @@ if (interactive()) source("pipeline/03-assess.R")
 #     on the assessment set by geography and class)
 #   - output/performance_quantile/model_performance_assessment_quantile.parquet
 #     (performance stats on the assessment set by geography and quantile)
-#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
-source("pipeline/04-evaluate.R")
+source("pipeline/04-evaluate.R", local = script_env)
+rm(list = ls(envir = script_env), envir = script_env)
+gc()
 
 
 
@@ -200,7 +235,6 @@ source("pipeline/04-evaluate.R")
 #     and storage costs for this stage
 
 # Inputs:
-#   - output/metadata/model_metadata.parquet (loaded to determine run type)
 #   - output/workflow/fit/model_workflow_fit.zip (trained model which is used
 #     get SHAP values)
 #   - output/workflow/recipe/model_workflow_recipe.rds (trained recipe object
@@ -211,8 +245,11 @@ source("pipeline/04-evaluate.R")
 # Outputs:
 #   - output/shap/model/model_shap.parquet (all SHAP values for all feature and
 #     cards in the assessment data)
-#   - output/intermediate/model_timing.parquet (stage time elapsed, appended)
-if (interactive()) source("pipeline/05-interpret.R")
+if (model_run_type %in% c("candidate", "final")) {
+  source("pipeline/05-interpret.R", local = script_env)
+}
+rm(list = ls(envir = script_env), envir = script_env)
+gc()
 
 
 
@@ -221,7 +258,7 @@ if (interactive()) source("pipeline/05-interpret.R")
 # 6. Finalize ------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Save run timings, upload pipeline run results to S3, and send notification.
+# Save run timings, upload pipeline run results to S3, and send a notification.
 # Will also finalize/clean some of the generated outputs prior to upload
 
 # Conditional on:
@@ -235,4 +272,6 @@ if (interactive()) source("pipeline/05-interpret.R")
 #     R/file_dict.csv for details on where output objects end up on S3
 #   - output/timing/model_timing.parquet (clean, wide version of the stage
 #     timing log)
-source("pipeline/06-finalize.R")
+source("pipeline/06-finalize.R", local = script_env)
+rm(list = ls(envir = script_env), envir = script_env)
+gc()
