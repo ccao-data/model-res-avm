@@ -187,10 +187,11 @@ assessment_data_merged <- assessment_data_pred %>%
 # (run_id, pin, card), location (lat/lon), and predictions
 assessment_data_merged %>%
   select(
-    meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
+    meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
     meta_complex_id, loc_longitude, loc_latitude,
     pred_card_initial_fmv, pred_card_final_fmv, township_code
   ) %>%
+  mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
   write_parquet(paths$output$assessment_card$local)
 
 
@@ -414,6 +415,7 @@ assessment_data_pin_final %>%
     pred_pin_bldg_rate_effective, pred_pin_land_rate_effective,
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
+  mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
   write_parquet(paths$output$assessment_pin$local)
 
 
@@ -449,7 +451,7 @@ assessment_data_merged %>%
     pred_pin_final_fmv_round = first(pred_pin_final_fmv_round),
     across(
       c(
-        meta_triad_code, meta_township_code, meta_nbhd_code,
+        meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
         starts_with(c(rsf_columns, rsn_columns)),
         starts_with(c("loc_cook_", "loc_chicago_", "loc_census", "loc_school_"))
       ),

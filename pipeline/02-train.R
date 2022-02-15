@@ -225,6 +225,8 @@ if (metadata$model_cv_enable) {
       parameter_name = name, parameter_type = component_id,
       lower, upper
     ) %>%
+    mutate(run_id = metadata$run_id) %>%
+    relocate(run_id, .before = everything()) %>%
     arrow::write_parquet(paths$output$parameter_range$local)
 
   # Choose the best model (whichever model minimizes the chosen objective,
