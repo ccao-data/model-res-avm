@@ -4,7 +4,7 @@
 
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
-tictoc::tic("Setup")
+tictoc::tic("Train")
 
 # Load libraries and scripts
 options(tidymodels.dark = TRUE)
