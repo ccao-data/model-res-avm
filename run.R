@@ -19,15 +19,7 @@
 #     not need to generate their own input data; it is provided by the CCAO via
 #     DVC (if a CCAO employee) or git LFS (if a member of the public). See the
 #     README for details
-#   - This script runs each pipeline stage in a copy of the global environment.
-#     After each stage is finished the copied environment is cleared. This
-#     preserves the isolation between stages and frees memory after each stage
-library(arrow)
-library(dplyr)
 source("R/helpers.R")
-
-# Create a new environment based on the global environment
-stage_env <- new.env()
 
 # Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
 paths <- model_file_dict()
@@ -92,9 +84,7 @@ if (model_clear_on_new_run) {
 #   - output/metadata/model_metadata.parquet (data frame of run settings)
 #   - output/intermediate/model_parameter_default.parquet (single-row data
 #     frame of default model hyperparameters used if CV is disabled)
-source("pipeline/01-setup.R", local = stage_env)
-rm(list = ls(envir = stage_env), envir = stage_env)
-gc()
+source("pipeline/01-setup.R")
 
 # Load the run type from the just-created metadata file. This is used to decide
 # which later stages to run
@@ -129,9 +119,7 @@ model_run_type <- read_parquet(paths$output$metadata$local)$run_type
 #     Tidymodels parsnip specification. Use lightsnip::lgbm_save/lgbm_load)
 #   - output/workflow/recipe/model_workflow_recipe.rds (Tidymodels recipe for
 #     preparing the input data. Can be used to prepare new, unseen input data)
-source("pipeline/02-train.R", local = stage_env)
-rm(list = ls(envir = stage_env), envir = stage_env)
-gc()
+source("pipeline/02-train.R")
 
 
 
@@ -171,11 +159,7 @@ gc()
 #     values. These are aggregated from the card-level. See script for details)
 #   - output/intermediate/model_assessment.parquet (predictions on the PIN-
 #     level saved temporarily to calculate performance stats in the next stage)
-if (model_run_type %in% c("candidate", "final")) {
-  source("pipeline/03-assess.R", local = stage_env)
-  rm(list = ls(envir = stage_env), envir = stage_env)
-  gc()
-}
+if (model_run_type %in% c("candidate", "final")) source("pipeline/03-assess.R")
 
 
 
@@ -213,9 +197,7 @@ if (model_run_type %in% c("candidate", "final")) {
 #     on the assessment set by geography and class)
 #   - output/performance_quantile/model_performance_assessment_quantile.parquet
 #     (performance stats on the assessment set by geography and quantile)
-source("pipeline/04-evaluate.R", local = stage_env)
-rm(list = ls(envir = stage_env), envir = stage_env)
-gc()
+source("pipeline/04-evaluate.R")
 
 
 
@@ -246,11 +228,7 @@ gc()
 # Outputs:
 #   - output/shap/model/model_shap.parquet (all SHAP values for all feature and
 #     cards in the assessment data)
-if (model_run_type %in% c("candidate", "final")) {
-  source("pipeline/05-interpret.R", local = stage_env)
-  rm(list = ls(envir = stage_env), envir = stage_env)
-  gc()
-}
+if (model_run_type %in% c("candidate", "final")) source("pipeline/05-interpret.R")
 
 
 
@@ -273,6 +251,4 @@ if (model_run_type %in% c("candidate", "final")) {
 #     R/file_dict.csv for details on where output objects end up on S3
 #   - output/timing/model_timing.parquet (clean, wide version of the stage
 #     timing log)
-source("pipeline/06-finalize.R", local = stage_env)
-rm(list = ls(envir = stage_env), envir = stage_env)
-gc()
+source("pipeline/06-finalize.R")
