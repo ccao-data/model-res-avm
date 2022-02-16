@@ -7,6 +7,7 @@ tictoc::tic.clearlog()
 tictoc::tic("Assess")
 
 # Load libraries and scripts
+options(dplyr.summarise.inform = FALSE)
 library(arrow)
 library(assessr)
 library(ccao)

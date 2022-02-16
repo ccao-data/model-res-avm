@@ -7,6 +7,7 @@ tictoc::tic.clearlog()
 tictoc::tic("Evaluate")
 
 # Load libraries and scripts
+options(dplyr.summarise.inform = FALSE)
 library(arrow)
 library(assessr)
 library(ccao)
@@ -196,8 +197,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       across(
         .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
         .names = "estimate_fmv_per_sqft_{.fn}"
-      )
+      ),
+      .groups = "drop"
     ) %>%
+    ungroup() %>%
     # COD, PRD, and PRB all output to a list. We can unnest each list to get
     # additional info for each stat (95% CI, sample count, etc)
     tidyr::unnest_wider(cod) %>%
@@ -207,8 +210,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     tidyr::unnest_wider(prb) %>%
     tidyr::unnest_wider(PRB_CI, names_sep = "_") %>%
     # Rename columns resulting from unnesting
-    rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x)))) %>%
-    ungroup()
+    rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
 
   # Clean up the stats output (rename cols, relocate cols, etc.)
   df_stat %>%
@@ -262,7 +264,8 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
         ({{ estimate }} - rsf_x10) / rsf_x10,
         na.rm = TRUE
       )
-    )
+    ) %>%
+    ungroup()
 
   # Clean up the quantile output
   df_quantile %>%

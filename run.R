@@ -172,9 +172,9 @@ gc()
 #     level saved temporarily to calculate performance stats in the next stage)
 if (model_run_type %in% c("candidate", "final")) {
   source("pipeline/03-assess.R", local = script_env)
+  rm(list = ls(envir = script_env), envir = script_env)
+  gc()
 }
-rm(list = ls(envir = script_env), envir = script_env)
-gc()
 
 
 
@@ -247,9 +247,9 @@ gc()
 #     cards in the assessment data)
 if (model_run_type %in% c("candidate", "final")) {
   source("pipeline/05-interpret.R", local = script_env)
+  rm(list = ls(envir = script_env), envir = script_env)
+  gc()
 }
-rm(list = ls(envir = script_env), envir = script_env)
-gc()
 
 
 
