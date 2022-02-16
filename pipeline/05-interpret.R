@@ -68,50 +68,20 @@ shap_values_tbl <- shap_values %>%
     "pred_card_shap_baseline_fmv"
   ))
 
-# Combine the SHAP value for each feature with the actual feature value and name
-# Then convert the data from wide (column per feature) to long (row per feature)
-# so we can visualize it more easily
+# Keep only the SHAP value columns from predictors + any ID and partition
+# columns, then add run ID and write to file
 shap_values_final <- assessment_data %>%
-  select(meta_pin, meta_card_num, township_code = meta_township_code) %>%
-  bind_cols(
-    shap_values_tbl %>%
-      select(-pred_card_shap_baseline_fmv)
+  select(
+    meta_year, meta_pin, meta_card_num, township_code = meta_township_code
   ) %>%
-  tidyr::pivot_longer(
-    cols = all_of(metadata$model_predictor_all_name[[1]]),
-    names_to = "model_predictor_name",
-    values_to = "model_shap_value"
-  ) %>%
-  bind_cols(
-    assessment_data %>%
-      select(all_of(metadata$model_predictor_all_name[[1]])) %>%
-      ccao::vars_recode(
-        starts_with("char_"),
-        type = "long",
-        as_factor = FALSE
-      ) %>%
-      mutate(across(
-        all_of(metadata$model_predictor_all_name[[1]]),
-        as.character
-      )) %>%
-      tidyr::pivot_longer(
-        cols = all_of(metadata$model_predictor_all_name[[1]]),
-        names_to = "model_predictor_name",
-        values_to = "model_predictor_value"
-      ) %>%
-      select(-model_predictor_name)
-  ) %>%
-  relocate(model_predictor_value, .after = "model_predictor_name") %>%
+  bind_cols(shap_values_tbl) %>%
   mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
-  write_parquet(paths$output$shap$local)
-
-# Extract the SHAP baseline (average of predictions on the training data) and
-# append it to the card-level assessment output
-read_parquet(paths$output$assessment_card$local) %>%
-  mutate(
-    pred_card_shap_baseline_fmv = shap_values_tbl$pred_card_shap_baseline_fmv[1]
+  select(
+    meta_year, meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
+    all_of(metadata$model_predictor_all_name[[1]]),
+    year, run_id, township_code
   ) %>%
-  write_parquet(paths$output$assessment_card$local)
+  write_parquet(paths$output$shap$local)
 
 # End the stage timer and append the time elapsed to a temporary file
 tictoc::toc(log = TRUE)

@@ -263,7 +263,8 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
       prior_far_yoy_pct_chg_median = median(
         ({{ estimate }} - rsf_x10) / rsf_x10,
         na.rm = TRUE
-      )
+      ),
+      .groups = "drop"
     ) %>%
     ungroup()
 

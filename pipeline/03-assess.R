@@ -184,13 +184,18 @@ assessment_data_merged <- assessment_data_pred %>%
 # 4. Card-Level Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Keep only card-level variables of interest, including: ID vars
-# (run_id, pin, card), location (lat/lon), and predictions
+# Keep only card-level variables of interest, including: ID variables (run_id,
+# pin, card), characteristics, and predictions
 assessment_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
-    meta_complex_id, loc_longitude, loc_latitude,
-    pred_card_initial_fmv, pred_card_final_fmv, township_code
+    meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
+    all_of(metadata$model_predictor_all_name[[1]]), township_code
+  ) %>%
+  ccao::vars_recode(
+    starts_with("char_"),
+    type = "long",
+    as_factor = FALSE
   ) %>%
   mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
   write_parquet(paths$output$assessment_card$local)
@@ -265,6 +270,7 @@ assessment_data_pin <- assessment_data_merged %>%
         char_yrblt, char_land_sf, char_ext_wall, char_type_resd,
 
         # Keep locations, prior year values, and indicators
+        loc_longitude, loc_latitude,
         starts_with(c(
           "loc_property_", "loc_cook_", "loc_chicago_",
           "loc_census", "loc_school_", "prior_", "ind_"
