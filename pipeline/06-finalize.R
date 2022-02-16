@@ -182,7 +182,7 @@ if (upload_bool) {
   # Upload PIN and card-level values for candidate or final runs. These outputs
   # are very large, so to help reduce file size and improve query performance we
   # partition them by year, run ID, and township
-  if (model_run_type %in% c("candidate", "final")) {
+  if (metadata$run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$assessment_card$local) %>%
       group_by(year, run_id, township_code) %>%
       write_partitions_to_s3(paths$output$assessment_card$s3, overwrite = TRUE)
@@ -205,7 +205,7 @@ if (upload_bool) {
   )
 
   # Upload assessment set performance if a candidate or final run
-  if (model_run_type %in% c("candidate", "final")) {
+  if (metadata$run_type %in% c("candidate", "final")) {
     aws.s3::put_object(
       paths$output$performance_assessment$local,
       paths$output$performance_assessment$s3
@@ -222,7 +222,7 @@ if (upload_bool) {
   # Upload SHAP values if a candidate or final run. SHAP values are 1 row per
   # card per feature, so the output is very large (100M+ rows). Therefore, we
   # partition the data by year, run, and township
-  if (model_run_type %in% c("candidate", "final")) {
+  if (metadata$run_type %in% c("candidate", "final")) {
     read_parquet(paths$output$shap$local) %>%
       group_by(year, run_id, township_code) %>%
       write_partitions_to_s3(paths$output$shap$s3, overwrite = TRUE)
