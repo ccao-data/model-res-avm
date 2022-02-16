@@ -21,6 +21,7 @@ library(stringr)
 library(tictoc)
 library(tidymodels)
 library(vctrs)
+library(yaml)
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -28,8 +29,8 @@ walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
 paths <- model_file_dict()
 
-# Load the metadata file containing the run settings
-metadata <- read_parquet(paths$output$metadata$local)
+# Load the parameters file containing the run settings
+params <- read_yaml("params.yaml")
 
 # Set the overall run/stage seed
 set.seed(metadata$model_seed)
@@ -56,20 +57,20 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
 # assessed on the basis of past sales
 time_split <- initial_time_split(
   data = training_data_full,
-  prop = metadata$model_cv_split_prop
+  prop = params$cv$split_prop
 )
 test <- testing(time_split)
 train <- training(time_split)
 
 # Create v-fold CV splits of the main training set
-train_folds <- vfold_cv(data = train, v = metadata$model_cv_num_folds)
+train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
 
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data
 train_recipe <- model_main_recipe(
   data = train,
-  keep_vars = metadata$model_predictor_all_name[[1]],
-  id_vars = metadata$model_identifier_name[[1]]
+  keep_vars = params$model$features_all,
+  id_vars = params$model$features_id
 )
 
 
