@@ -32,8 +32,13 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
+# Get number of available physical cores to use for lightgbm multi-threading
+# Lightgbm docs recommend using only real cores, not logical
+# https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
+num_threads <- parallel::detectCores(logical = FALSE)
+
 # Set the overall run/stage seed
-set.seed(metadata$model_seed)
+set.seed(params$model$seed)
 
 
 
@@ -69,8 +74,8 @@ train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
 # preps categorical data
 train_recipe <- model_main_recipe(
   data = train,
-  keep_vars = params$model$features_all,
-  id_vars = params$model$features_id
+  keep_vars = params$model$predictor$all,
+  id_vars = params$model$predictor$id
 )
 
 
@@ -86,58 +91,51 @@ train_recipe <- model_main_recipe(
 # See https://lightgbm.readthedocs.io/ for more information
 
 
-## 3.1. Default Parameters -----------------------------------------------------
-
-# Load the default set of parameters created in the setup stage. These are
-# pulled from the included .Renviron file
-lgbm_default_params <- read_parquet(paths$intermediate$parameter_default$local)
-
-
-## 3.2. Model Initialization ---------------------------------------------------
+## 3.1. Model Initialization ---------------------------------------------------
 
 # Initialize a lightgbm model specification. Most hyperparameters are passed to
 # lightgbm as "engine arguments" i.e. things specific to lightgbm, as opposed to
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
-  trees = lgbm_default_params$num_iterations,
+  trees = params$model$parameter$num_iterations,
   stop_iter = tune()
 ) %>%
   set_mode("regression") %>%
   set_engine(
-    engine = "lightgbm",
-    seed = metadata$model_seed,
+    engine = params$model$engine,
+    seed = params$model$seed,
 
-    ### 3.2.1. Manual Parameters -----------------------------------------------
+    ### 3.1.1. Manual Parameters -----------------------------------------------
 
     # These are static lightgbm-specific engine parameters passed to lgb.train()
     # See lightsnip::train_lightgbm for details
-    num_threads = metadata$model_num_threads,
-    verbose = -1L,
+    num_threads = num_threads,
+    verbose = params$model$verbose,
 
     # Set the objective function. This is what lightgbm will try to minimize
-    objective = lgbm_default_params$objective_func,
+    objective = params$model$objective,
 
     # Typically set manually along with the number of iterations (trees)
-    learning_rate = lgbm_default_params$learning_rate,
+    learning_rate = params$model$parameter$learning_rate,
 
     # Names of integer-encoded categorical columns. This is CRITICAL else
     # lightgbm will treat these columns as numeric
-    categorical_feature = metadata$model_predictor_categorical_name[[1]],
+    categorical_feature = params$model$predictor$categorical,
 
     # Enable early stopping using a proportion of each training sample as a
     # validation set. If lgb.train goes stop_iter() rounds without improvement
     # in the provided metric, then it will end training early. This saves an
     # immense amount of time during CV
-    validation = lgbm_default_params$validation_prop,
-    metric = lgbm_default_params$validation_metric,
+    validation = params$model$parameter$validation_prop,
+    metric = params$model$parameter$validation_metric,
 
     # Lightsnip custom parameter. Links the value of max_depth to num_leaves
     # using floor(log2(num_leaves)) + add_to_linked_depth. Useful since
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
-    link_max_depth = lgbm_default_params$link_max_depth,
+    link_max_depth = params$model$parameter$link_max_depth,
 
 
-    ### 3.2.2. Tuned Parameters ------------------------------------------------
+    ### 3.1.2. Tuned Parameters ------------------------------------------------
 
     # These are parameters that are tuned using cross-validation. These are the
     # main parameters determining model complexity
@@ -168,31 +166,32 @@ lgbm_wflow <- workflow() %>%
   )
 
 
-## 3.3. Cross-Validation -------------------------------------------------------
+## 3.2. Cross-Validation -------------------------------------------------------
 
 # Begin CV tuning if enabled. We use Bayesian tuning, as due to the high number
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
-if (metadata$model_cv_enable) {
+if (params$toggle$cv_enable) {
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
+  lgbm_range <- params$model$hyperparameter$range
   lgbm_params <- lgbm_model %>%
     parameters() %>%
     update(
-      stop_iter           = dials::stop_iter(c(5L, 30L)),
-      num_leaves          = lightsnip::num_leaves(c(500L, 5000L)),
-      add_to_linked_depth = lightsnip::add_to_linked_depth(c(1, 3)),
-      feature_fraction    = lightsnip::feature_fraction(),
-      min_gain_to_split   = lightsnip::min_gain_to_split(c(-4, 1.5)),
-      min_data_in_leaf    = lightsnip::min_data_in_leaf(c(2L, 200L)),
-      max_cat_threshold   = lightsnip::max_cat_threshold(),
-      min_data_per_group  = lightsnip::min_data_per_group(),
-      cat_smooth          = lightsnip::cat_smooth(),
-      cat_l2              = lightsnip::cat_l2(),
-      lambda_l1           = lightsnip::lambda_l1(),
-      lambda_l2           = lightsnip::lambda_l2()
+      stop_iter           = dials::stop_iter(lgbm_range$stop_iter),
+      num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
+      add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
+      feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
+      min_gain_to_split   = lightsnip::min_gain_to_split(lgbm_range$min_gain_to_split),
+      min_data_in_leaf    = lightsnip::min_data_in_leaf(lgbm_range$min_data_in_leaf),
+      max_cat_threshold   = lightsnip::max_cat_threshold(lgbm_range$max_cat_threshold),
+      min_data_per_group  = lightsnip::min_data_per_group(lgbm_range$min_data_per_group),
+      cat_smooth          = lightsnip::cat_smooth(lgbm_range$cat_smooth),
+      cat_l2              = lightsnip::cat_l2(lgbm_range$cat_l2),
+      lambda_l1           = lightsnip::lambda_l1(lgbm_range$lambda_l1),
+      lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2)
     )
 
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
@@ -200,15 +199,15 @@ if (metadata$model_cv_enable) {
   lgbm_search <- tune_bayes(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = metadata$model_cv_initial_set,
-    iter = metadata$model_cv_max_iterations,
+    initial = params$cv$initial_set,
+    iter = params$cv$max_iterations,
     param_info = lgbm_params,
     metrics = metric_set(rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
-      uncertain = metadata$model_cv_no_improve - 2,
-      no_improve = metadata$model_cv_no_improve,
-      seed = metadata$model_seed
+      uncertain = params$cv$no_improve - 2,
+      no_improve = params$cv$no_improve,
+      seed = params$model$seed
     )
   )
 
@@ -218,7 +217,7 @@ if (metadata$model_cv_enable) {
     lightsnip::axe_tune_data() %>%
     arrow::write_parquet(paths$output$parameter_raw$local)
 
-  # Save the possible parameter ranges searched for tuning
+  # Save the parameter ranges searched while tuning
   lgbm_params %>%
     mutate(range = purrr::map(object, dials::range_get)) %>%
     tidyr::unnest_wider(range) %>%
@@ -226,49 +225,42 @@ if (metadata$model_cv_enable) {
       parameter_name = name, parameter_type = component_id,
       lower, upper
     ) %>%
-    mutate(run_id = metadata$run_id) %>%
-    relocate(run_id, .before = everything()) %>%
     arrow::write_parquet(paths$output$parameter_range$local)
 
   # Choose the best model (whichever model minimizes the chosen objective,
-  # averaged across CV folds), then overwrite any default parameters with
-  # the ones found by CV
-  lgbm_final_params <- lgbm_search %>%
-    select_best(metric = metadata$model_cv_best_metric) %>%
-    bind_cols(select(lgbm_default_params, run_id:link_max_depth), .) %>%
-    # Max_depth is set by lightsnip if link_max_depth is true, so we need to
-    # back out its value. Otherwise, use whichever value is chosen by CV
-    mutate(max_depth = {
-      if (link_max_depth) {
-        as.integer(floor(log2(num_leaves)) + add_to_linked_depth)
-      } else if (!is.null(.$max_depth)) {
-        .$max_depth
-      } else {
-        NULL
-      }
-    }) %>%
-    # Keep only the parameters included in the model specification, all others
-    # should be dropped since they didn't impact the model
-    select(
-      run_id, configuration = .config, objective_func:link_max_depth,
-      any_of(c("max_depth", names(lgbm_model$args), names(lgbm_model$eng_args)))
+  # averaged across CV folds)
+  lgbm_final_params <- tibble(
+      engine = params$model$engine,
+      seed = params$model$seed,
+      objective = params$model$objective
     ) %>%
+    bind_cols(as_tibble(params$model$parameter)) %>%
+    bind_cols(select_best(lgbm_search, metric = params$cv$best_metric)) %>%
+    select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
   
 } else {
 
-  # If CV is not enabled, just use the default set of parameters gathered in the
-  # setup stage, keeping only the ones named in the model specification
-  lgbm_final_params <- lgbm_default_params %>%
-    select(
-      run_id, configuration = .config, objective_func:link_max_depth,
-      any_of(c("max_depth", names(lgbm_model$args), names(lgbm_model$eng_args)))
+  # If CV is not enabled, just use the default set of parameters specified in
+  # params.yaml, keeping only the ones used in the model specification
+  lgbm_missing_params <- names(params$model$hyperparameter$default)
+  lgbm_missing_params <- lgbm_missing_params[
+    !lgbm_missing_params %in% parameters(lgbm_wflow)$name
+  ]
+  lgbm_final_params <- tibble(
+      configuration = "Default",
+      engine = params$model$engine,
+      seed = params$model$seed,
+      objective = params$model$objective
     ) %>%
+    bind_cols(as_tibble(params$model$parameter)) %>%
+    bind_cols(as_tibble(params$model$hyperparameter$default)) %>%
+    select(-all_of(lgbm_missing_params)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
 }
 
 
-## 3.4. Fit Models -------------------------------------------------------------
+## 3.3. Fit Models -------------------------------------------------------------
 
 # NOTE: The model specifications here use early stopping by measuring the change
 # in the objective function on the training set (rather than the 10% sample
@@ -317,8 +309,7 @@ lgbm_wflow_final_full_fit %>%
   lightsnip::axe_recipe() %>%
   saveRDS(paths$output$workflow_recipe$local)
 
-# End the stage timer and append the time elapsed to a temporary file
+# End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-arrow::read_parquet(paths$intermediate$timing$local) %>%
-  bind_rows(., tictoc::tic.log(format = FALSE)) %>%
+bind_rows(tictoc::tic.log(format = FALSE)) %>%
   arrow::write_parquet(paths$intermediate$timing$local)
