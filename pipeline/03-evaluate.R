@@ -81,8 +81,7 @@ test_data <- read_parquet(paths$intermediate$test$local) %>%
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
-# aggregated to the PIN-level. Only runs for candidate and final runs due to
-# computational overhead
+# aggregated to the PIN-level. Only runs for full runs due to compute cost
 if (params$run_type == "full") {
   assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
@@ -388,7 +387,7 @@ future_map_dfr(
 
 ## 4.2. Assessment Set ---------------------------------------------------------
 
-# Only value the assessment set for candidate and final runs
+# Only value the assessment set for full runs
 if (params$run_type == "full") {
 
   # Do the same thing for the assessment set. This will have accurate property

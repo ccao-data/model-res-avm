@@ -128,7 +128,7 @@ stages:
     params:
     - model.predictor.all
     outs:
-    - output/shap/model/model_shap.parquet:
+    - output/shap/model_shap.parquet:
         cache: false
         desc: "SHAP values for all feature and cards in the assessment data"
     - output/intermediate/timing/model_timing_interpret.parquet:
@@ -153,11 +153,20 @@ stages:
     - output/performance_quantile/model_performance_quantile_test.parquet
     - output/performance/model_performance_assessment.parquet
     - output/performance_quantile/model_performance_quantile_assessment.parquet
-    - output/shap/model/model_shap.parquet
+    - output/shap/model_shap.parquet
     - output/intermediate/timing/model_timing_train.parquet
     - output/intermediate/timing/model_timing_assess.parquet
     - output/intermediate/timing/model_timing_evaluate.parquet
     - output/intermediate/timing/model_timing_interpret.parquet
+    params:
+    - run_note
+    - run_type
+    - toggle
+    - input
+    - cv
+    - model
+    - pv
+    - ratio_study
     outs:
     - output/timing/model_timing.parquet:
         cache: false

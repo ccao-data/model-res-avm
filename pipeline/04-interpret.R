@@ -15,6 +15,7 @@ library(recipes)
 library(stringr)
 library(tidyr)
 library(tictoc)
+library(yaml)
 source(here("R", "helpers.R"))
 
 # Initialize a dictionary of file paths. See R/file_dict.csv for details
@@ -77,8 +78,7 @@ shap_values_final <- assessment_data %>%
   bind_cols(shap_values_tbl) %>%
   select(
     meta_year, meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
-    all_of(params$model$predictor$all),
-    year, run_id, township_code
+    all_of(params$model$predictor$all), township_code
   ) %>%
   write_parquet(paths$output$shap$local)
 
