@@ -433,8 +433,8 @@ stages:
       md5: bbf44d0f9404fe6e3ab44752b3a9bd05
       size: 24222436
     - path: output/intermediate/model_test.parquet
-      md5: e8a9ad4729bafcb40c42470562d6a0d1
-      size: 11051799
+      md5: dc78503ed5109c496870663e8a04ca07
+      size: 11050960
     params:
       params.yaml:
         assessment.data_year: '2021'
@@ -450,20 +450,20 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: ece46d80ac9e672bb10946136e81ca00
+      md5: c7fee9ee59ef7e4da5ea40717c9ce68a
       size: 2352
     - path: output/performance/model_performance_assessment.parquet
-      md5: 8934579a300628dddb9c0e98d6eed225
+      md5: 363c14f4e2eb1bf5d96422b693b05e5c
       size: 12387296
     - path: output/performance/model_performance_test.parquet
-      md5: d2ac287d0941dea9d2a74588cf747fca
-      size: 7802413
+      md5: 212fcf142827806461cae1376cc30ef6
+      size: 7802663
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
       md5: deb76cd4f6009641755e4184966451e4
       size: 4994823
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 7d05469c4404166df0871bbd071900fb
-      size: 4353548
+      md5: b7ef2f80bf74147987c5a02e6925d78c
+      size: 4354876
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
@@ -596,7 +596,7 @@ stages:
       md5: ee47b61189d9362dbd8dea81b0c31aaf
       size: 2338
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: ece46d80ac9e672bb10946136e81ca00
+      md5: c7fee9ee59ef7e4da5ea40717c9ce68a
       size: 2352
     - path: output/intermediate/timing/model_timing_interpret.parquet
       md5: bc87347d2a8ba68ebc48bcb5a9f7f960
@@ -614,17 +614,17 @@ stages:
       md5: 0cf613f1b862ae0e68e4780c8732c54f
       size: 196962
     - path: output/performance/model_performance_assessment.parquet
-      md5: 8934579a300628dddb9c0e98d6eed225
+      md5: 363c14f4e2eb1bf5d96422b693b05e5c
       size: 12387296
     - path: output/performance/model_performance_test.parquet
-      md5: d2ac287d0941dea9d2a74588cf747fca
-      size: 7802413
+      md5: 212fcf142827806461cae1376cc30ef6
+      size: 7802663
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
       md5: deb76cd4f6009641755e4184966451e4
       size: 4994823
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 7d05469c4404166df0871bbd071900fb
-      size: 4353548
+      md5: b7ef2f80bf74147987c5a02e6925d78c
+      size: 4354876
     - path: output/shap/model_shap.parquet
       md5: 1aeb31fa12f6040cbec78d6b794ee7a6
       size: 755188732
@@ -883,8 +883,8 @@ stages:
           upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
-      md5: 3d31035a78aa3840f303b861952afbe2
-      size: 23588
+      md5: c04ca84e337f36d28c0d71fa11597e5d
+      size: 23624
     - path: output/timing/model_timing.parquet
-      md5: 93bf582a01e31ca7f04bcd84e580847a
-      size: 5242
+      md5: 9bbc7f71b61b3773671ee240ae1e8b70
+      size: 5235

@@ -1,4 +1,4 @@
-run_note: "Test run"
+run_note: "Try actual model parameters"
 run_type: "full"
 
 toggle:
@@ -33,10 +33,10 @@ input:
   
 # Train
 cv:
-  num_folds: 3
-  initial_set: 3
-  max_iterations: 6
-  no_improve: 3
+  num_folds: 10
+  initial_set: 12
+  max_iterations: 25
+  no_improve: 10
   split_prop: 0.9
   best_metric: "rmse"
 
@@ -183,7 +183,7 @@ model:
     ]
   
   parameter:
-    num_iterations: 10
+    num_iterations: 100
     learning_rate: 0.1
     validation_prop: 0.1
     validation_metric: "rmse"
