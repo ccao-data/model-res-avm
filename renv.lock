@@ -180,9 +180,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "b6c74f78d5358c6869638fb681c9f0c446822ecd",
+      "RemoteSha": "d0c05134266d165264d67d75723eba8e938eaffd",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "8db7f47f1308693801f49bbe447f162e"
+      "Hash": "6d759432507442655cd32542f7858f4f"
     },
     "class": {
       "Package": "class",
