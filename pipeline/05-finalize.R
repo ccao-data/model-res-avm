@@ -26,6 +26,14 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
+# Override CV toggle and run_type, used for CI or limited runs
+cv_enable <- as.logical(
+  Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
+)
+run_type <- as.character(
+  Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
+)
+
 
 
 
@@ -47,7 +55,7 @@ git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
 # For full runs, use the run note included in params.yaml, otherwise use the
 # commit message
-if (params$run_type == "full") {
+if (run_type == "full") {
   run_note <- params$run_note
 } else {
   run_note <- gsub("\n", "", git_commit$message)
@@ -83,7 +91,7 @@ ratio_study_near_column <- get_rs_col_name(
 metadata <- tibble::tibble(
   run_id = run_id,
   run_end_timestamp = run_end_timestamp,
-  run_type = params$run_type,
+  run_type = run_type,
   run_note = params$run_note,
   git_sha_short = substr(git_commit$sha, 1, 8),
   git_sha_long = git_commit$sha,
@@ -111,7 +119,7 @@ metadata <- tibble::tibble(
   ratio_study_near_stage = params$ratio_study$near_stage,
   ratio_study_near_column = ratio_study_near_column,
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
-  cv_enable = params$toggle$cv_enable,
+  cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_initial_set = params$cv$initial_set,
   cv_max_iterations = params$cv$max_iterations,
@@ -217,7 +225,7 @@ if (params$toggle$upload_to_s3) {
   
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame
-  if (params$toggle$cv_enable) {
+  if (cv_enable) {
 
     # Upload the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
@@ -262,7 +270,7 @@ if (params$toggle$upload_to_s3) {
   # Upload PIN and card-level values for full runs. These outputs are very
   # large, so to help reduce file size and improve query performance we
   # partition them by year, run ID, and township
-  if (params$run_type == "full") {
+  if (run_type == "full") {
     read_parquet(paths$output$assessment_card$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
@@ -287,7 +295,7 @@ if (params$toggle$upload_to_s3) {
     write_parquet(paths$output$performance_quantile_test$s3)
 
   # Upload assessment set performance if a full run
-  if (params$run_type == "full") {
+  if (run_type == "full") {
     read_parquet(paths$output$performance_assessment$local) %>%
       mutate(run_id = run_id) %>%
       relocate(run_id, .before = everything()) %>%
@@ -304,7 +312,7 @@ if (params$toggle$upload_to_s3) {
   # Upload SHAP values if a full run. SHAP values are one row per card and one
   # column per feature, so the output is very large. Therefore, we partition
   # the data by year, run, and township
-  if (params$run_type == "full") {
+  if (run_type == "full") {
     read_parquet(paths$output$shap$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
@@ -340,7 +348,7 @@ if (params$toggle$upload_to_s3) {
 
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # any new partitions
-  if (params$run_type == "full") {
+  if (run_type == "full") {
     glue_srv <- paws.analytics::glue()
     glue_srv$start_crawler("ccao-model-results-crawler")
   }

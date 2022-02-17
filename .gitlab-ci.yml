@@ -82,23 +82,17 @@ stages:
 train:
   <<: *run_stage
   stage: train
-  only:
-    - limited
   script:
     - Rscript pipeline/01-train.R
 
 evaluate:
   <<: *run_stage
   stage: evaluate
-  only:
-    - limited
   script:
     - Rscript pipeline/03-evaluate.R
 
 finalize:
   <<: *run_stage
   stage: finalize
-  only:
-    - limited
   script:
     - Rscript pipeline/05-finalize.R

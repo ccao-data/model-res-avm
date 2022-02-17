@@ -33,6 +33,12 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
+# Override the default run_type from params.yaml. This is useful for manually
+# running "limited" runs without assessment data (also used for GitLab CI)
+run_type <- as.character(
+  Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
+)
+
 # Enable parallel backend for generating stats more quickly
 num_threads <- parallel::detectCores(logical = FALSE)
 plan(multisession, workers = num_threads)
@@ -82,7 +88,7 @@ test_data <- read_parquet(paths$intermediate$test$local) %>%
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
 # aggregated to the PIN-level. Only runs for full runs due to compute cost
-if (params$run_type == "full") {
+if (run_type == "full") {
   assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
 }
@@ -388,7 +394,7 @@ future_map_dfr(
 ## 4.2. Assessment Set ---------------------------------------------------------
 
 # Only value the assessment set for full runs
-if (params$run_type == "full") {
+if (run_type == "full") {
 
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also includes unsold properties

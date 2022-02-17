@@ -32,6 +32,12 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
+# Override the default CV toggle from params.yaml. This is useful for manually
+# running "limited" runs without CV or assessment data (also used for GitLab CI)
+cv_enable <- as.logical(
+  Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
+)
+
 # Get the number of available physical cores to use for lightgbm multi-threading
 # Lightgbm docs recommend using only real cores, not logical
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
@@ -171,7 +177,7 @@ lgbm_wflow <- workflow() %>%
 # Begin CV tuning if enabled. We use Bayesian tuning, as due to the high number
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
-if (params$toggle$cv_enable) {
+if (cv_enable) {
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
