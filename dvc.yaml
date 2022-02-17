@@ -61,3 +61,5 @@ stages:
         cache: false
     - output/intermediate/model_assessment.parquet:
         cache: false
+    - output/intermediate/timing/model_timing_assess.parquet:
+        cache: false
