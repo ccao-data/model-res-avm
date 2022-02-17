@@ -149,8 +149,23 @@ metadata <- tibble::tibble(
 # 3. Save Timings --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+
+
+# Filter ensure we only get timing files for stages that actually ran 
+if (run_type == "full") {
+  timings <- list.files(
+    paste0(paths$intermediate$timing, "/"),
+    full.names = TRUE
+  )
+} else {
+  timings <- list.files(
+    paste0(paths$intermediate$timing, "/"),
+    pattern = "train|evaluate",
+    full.names = TRUE
+  )
+}
+
 # Convert the intermediate timing logs to a wide data frame, then save to file
-timings <- list.files(paste0(paths$intermediate$timing, "/"), full.names = TRUE)
 timings_df <- purrr::map_dfr(timings, read_parquet) %>%
   mutate(
     run_id = run_id,
