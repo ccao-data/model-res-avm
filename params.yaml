@@ -2,8 +2,8 @@ run_note: "Test run"
 run_type: "full"
 
 toggle:
-  cv_enable: TRUE
-  upload_to_s3: TRUE
+  cv_enable: true
+  upload_to_s3: true
 
 # Ingest
 assessment:
@@ -187,7 +187,7 @@ model:
     learning_rate: 0.1
     validation_prop: 0.1
     validation_metric: "rmse"
-    link_max_depth: TRUE
+    link_max_depth: true
   
   hyperparameter:
     default:
