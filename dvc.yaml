@@ -2,33 +2,62 @@ stages:
   ingest:
     cmd: Rscript pipeline/00-ingest.R
     params:
-      - assessment
-      - input
+    - assessment
+    - input
     outs:
-      - input/training_data.parquet
-      - input/assessment_data.parquet
-      - input/complex_id_data.parquet
-      - input/land_site_rate_data.parquet
-      - input/land_nbhd_rate_data.parquet
-    
+    - input/training_data.parquet
+    - input/assessment_data.parquet
+    - input/complex_id_data.parquet
+    - input/land_site_rate_data.parquet
+    - input/land_nbhd_rate_data.parquet
+
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
-      - input/training_data.parquet
+    - input/training_data.parquet
     params:
-      - toggle.cv_enable
-      - cv
-      - model.engine
-      - model.objective
-      - model.seed
-      - model.verbose
-      - model.predictor
-      - model.parameter
-      - model.hyperparameter.range
+    - toggle.cv_enable
+    - cv
+    - model.engine
+    - model.objective
+    - model.seed
+    - model.verbose
+    - model.predictor
+    - model.parameter
+    - model.hyperparameter.range
     outs:
-      - output/intermediate/model_test.parquet
-      - output/parameter_final/model_parameter_final.parquet
-      - output/parameter_range/model_parameter_range.parquet
-      - output/parameter_search/model_parameter_search.parquet
-      - output/workflow/fit/model_workflow_fit.zip
-      - output/workflow/recipe/model_workflow_recipe.rds
+    - output/parameter_final/model_parameter_final.parquet:
+        cache: false
+    - output/parameter_range/model_parameter_range.parquet:
+        cache: false
+    - output/parameter_search/model_parameter_search.parquet:
+        cache: false
+    - output/workflow/fit/model_workflow_fit.zip:
+        cache: false
+    - output/workflow/recipe/model_workflow_recipe.rds:
+        cache: false
+    - output/intermediate/timing/model_timing_train.parquet:
+        cache: false
+        
+  assess:
+    cmd: Rscript pipeline/02-assess.R
+    deps:
+    - input/training_data.parquet
+    - input/assessment_data.parquet
+    - input/complex_id_data.parquet
+    - input/land_site_rate_data.parquet
+    - input/land_nbhd_rate_data.parquet
+    - output/workflow/fit/model_workflow_fit.zip
+    - output/workflow/recipe/model_workflow_recipe.rds
+    params:
+    - assessment
+    - pv
+    - ratio_study
+    - model.predictor
+    outs:
+    - output/assessment_card/model_assessment_card.parquet:
+        cache: false
+    - output/assessment_pin/model_assessment_pin.parquet:
+        cache: false
+    - output/intermediate/model_assessment.parquet:
+        cache: false

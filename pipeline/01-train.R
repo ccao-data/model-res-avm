@@ -312,5 +312,7 @@ lgbm_wflow_final_full_fit %>%
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
 bind_rows(tictoc::tic.log(format = FALSE)) %>%
-  mutate(ts = Sys.time()) %>%
-  arrow::write_parquet(paths$intermediate$timing$local)
+  arrow::write_parquet(paste0(
+    paths$intermediate$timing$local,
+    "model_timing_train.parquet"
+  ))
