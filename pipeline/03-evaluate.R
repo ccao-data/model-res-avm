@@ -21,19 +21,33 @@ library(recipes)
 library(stringr)
 library(tictoc)
 library(tidyr)
+library(yaml)
 library(yardstick)
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
+# Initialize a dictionary of file paths. See R/file_dict.csv for details
 paths <- model_file_dict()
 
-# Load the metadata file containing the run settings
-metadata <- read_parquet(paths$output$metadata$local)
+# Load the parameters file containing the run settings
+params <- read_yaml("params.yaml")
 
 # Enable parallel backend for generating stats more quickly
-plan(multisession, workers = metadata$model_num_threads)
+num_threads <- parallel::detectCores(logical = FALSE)
+plan(multisession, workers = num_threads)
+
+# Columns to use for ratio study/prior year comparison
+rsf_column <- get_rs_col_name(
+  params$assessment$data_year,
+  params$ratio_study$far_year,
+  params$ratio_study$far_stage
+)
+rsn_column <- get_rs_col_name(
+  params$assessment$data_year,
+  params$ratio_study$near_year,
+  params$ratio_study$near_stage
+)
 
 # Renaming dictionary for input columns. We want actual value of the column
 # to become geography_id and the NAME of the column to become geography_name
@@ -69,7 +83,7 @@ test_data <- read_parquet(paths$intermediate$test$local) %>%
 # residential PIN that needs a value. It WILL include multicard properties
 # aggregated to the PIN-level. Only runs for candidate and final runs due to
 # computational overhead
-if (metadata$run_type %in% c("candidate", "final")) {
+if (params$run_type == "full") {
   assessment_data_pin <- read_parquet(paths$intermediate$assessment$local) %>%
     as_tibble()
 }
@@ -324,7 +338,7 @@ geographies_list <- purrr::cross2(
 geographies_list_quantile <- purrr::cross3(
   geographies_quosures,
   rlang::quos(meta_class, NULL),
-  metadata$model_ratio_study_num_quantile[[1]]
+  params$ratio_study$num_quantile
 )
 
 
@@ -339,8 +353,8 @@ future_map_dfr(
     truth = meta_sale_price,
     estimate = pred_card_initial_fmv,
     bldg_sqft = char_bldg_sf,
-    rsn_col = metadata$model_ratio_study_near_column,
-    rsf_col = metadata$model_ratio_study_far_column,
+    rsn_col = rsn_column,
+    rsf_col = rsf_column,
     triad = meta_triad_code,
     geography = !!.x[[1]],
     class = !!.x[[2]],
@@ -349,8 +363,6 @@ future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 ) %>%
-  mutate(run_id = metadata$run_id) %>%
-  relocate(run_id, .before = everything()) %>%
   write_parquet(paths$output$performance_test$local)
 
 # Same as above, but calculate stats per quantile of sale price
@@ -360,8 +372,8 @@ future_map_dfr(
     data = test_data,
     truth = meta_sale_price,
     estimate = pred_card_initial_fmv,
-    rsn_col = metadata$model_ratio_study_near_column,
-    rsf_col = metadata$model_ratio_study_far_column,
+    rsn_col = rsn_column,
+    rsf_col = rsf_column,
     triad = meta_triad_code,
     geography = !!.x[[1]],
     class = !!.x[[2]],
@@ -371,15 +383,13 @@ future_map_dfr(
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = TRUE
 ) %>%
-  mutate(run_id = metadata$run_id) %>%
-  relocate(run_id, .before = everything()) %>%
   write_parquet(paths$output$performance_quantile_test$local)
 
 
 ## 4.2. Assessment Set ---------------------------------------------------------
 
 # Only value the assessment set for candidate and final runs
-if (metadata$run_type %in% c("candidate", "final")) {
+if (params$run_type == "full") {
 
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also includes unsold properties
@@ -390,8 +400,8 @@ if (metadata$run_type %in% c("candidate", "final")) {
       truth = meta_sale_price,
       estimate = pred_pin_final_fmv_round,
       bldg_sqft = char_bldg_sf,
-      rsn_col = metadata$model_ratio_study_near_column,
-      rsf_col = metadata$model_ratio_study_far_column,
+      rsn_col = rsn_column,
+      rsf_col = rsf_column,
       triad = meta_triad_code,
       geography = !!.x[[1]],
       class = !!.x[[2]],
@@ -400,8 +410,6 @@ if (metadata$run_type %in% c("candidate", "final")) {
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
   ) %>%
-    mutate(run_id = metadata$run_id) %>%
-    relocate(run_id, .before = everything()) %>%
     write_parquet(paths$output$performance_assessment$local)
 
   # Same as above, but calculate stats per quantile of sale price
@@ -411,8 +419,8 @@ if (metadata$run_type %in% c("candidate", "final")) {
       data = assessment_data_pin,
       truth = meta_sale_price,
       estimate = pred_pin_final_fmv_round,
-      rsn_col = metadata$model_ratio_study_near_column,
-      rsf_col = metadata$model_ratio_study_far_column,
+      rsn_col = rsn_column,
+      rsf_col = rsf_column,
       triad = meta_triad_code,
       geography = !!.x[[1]],
       class = !!.x[[2]],
@@ -422,13 +430,13 @@ if (metadata$run_type %in% c("candidate", "final")) {
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = TRUE
   ) %>%
-    mutate(run_id = metadata$run_id) %>%
-    relocate(run_id, .before = everything()) %>%
     write_parquet(paths$output$performance_quantile_assessment$local)
 }
 
-# End the stage timer and append the time elapsed to a temporary file
+# End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-arrow::read_parquet(paths$intermediate$timing$local) %>%
-  bind_rows(., tictoc::tic.log(format = FALSE)) %>%
-  arrow::write_parquet(paths$intermediate$timing$local)
+bind_rows(tictoc::tic.log(format = FALSE)) %>%
+  arrow::write_parquet(paste0(
+    paths$intermediate$timing$local,
+    "model_timing_evaluate.parquet"
+  ))
