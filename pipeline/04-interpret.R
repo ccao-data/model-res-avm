@@ -85,7 +85,7 @@ shap_values_final <- assessment_data %>%
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
 bind_rows(tictoc::tic.log(format = FALSE)) %>%
-  arrow::write_parquet(paste0(
+  arrow::write_parquet(gsub("//*", "/", file.path(
     paths$intermediate$timing$local,
     "model_timing_interpret.parquet"
-  ))
+  )))
