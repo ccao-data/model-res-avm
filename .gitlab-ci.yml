@@ -58,7 +58,6 @@ before_script:
   
   # pip install DVC to fetch data from S3 using dvc pull
   - pip install aiobotocore[boto3] boto3 dvc[s3] 
-  - dvc pull
   
   # Install R dependencies listed in renv.lock using renv
   - Rscript -e 'renv::restore()'
@@ -67,7 +66,7 @@ before_script:
 # directory. The purpose of each stage is described in run.R. Artifacts are used
 # to pass objects between stages. They expire quickly because they're typically
 # uploaded to S3
-.job_template: &run_stage  # Hidden yaml configuration that defines an anchor named 'job_configuration'
+.job_template: &run_stage
   artifacts:
     paths:
       - output/
@@ -76,31 +75,30 @@ before_script:
 # Note that portions of the assess and interpret stages are skipped because
 # they take too long on shared GitLab runners
 stages:
-  - setup
   - train
   - evaluate
   - finalize
 
-setup:
-  <<: *run_stage
-  stage: setup
-  script:
-    - Rscript pipeline/01-setup.R
-
 train:
   <<: *run_stage
   stage: train
+  only:
+    - limited
   script:
-    - Rscript pipeline/02-train.R
+    - Rscript pipeline/01-train.R
 
 evaluate:
   <<: *run_stage
   stage: evaluate
+  only:
+    - limited
   script:
-    - Rscript pipeline/04-evaluate.R
+    - Rscript pipeline/03-evaluate.R
 
 finalize:
   <<: *run_stage
   stage: finalize
+  only:
+    - limited
   script:
-    - Rscript pipeline/06-finalize.R
+    - Rscript pipeline/05-finalize.R

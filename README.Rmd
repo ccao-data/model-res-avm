@@ -36,7 +36,8 @@ file_dict %>%
   select(athena_table, starts_with("run_type_")) %>%
   distinct(athena_table, .keep_all = TRUE) %>%
   filter(!is.na(athena_table)) %>%
-  rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
+  arrange(athena_table) %>%
+  setNames(c("Athena Table", "Limited Run", "Full Run")) %>%
   knitr::kable(format = "markdown")
 ```
 
@@ -45,8 +46,14 @@ file_dict %>%
 ```{r feature_guide, message=FALSE, results='asis', echo=FALSE}
 library(dplyr)
 library(tidyr)
+library(yaml)
+params <- read_yaml("params.yaml")
 ccao::vars_dict %>%
   filter(var_is_predictor & var_name_model != "meta_sale_price") %>%
+  inner_join(
+    as_tibble(params$model$predictor$all),
+    by = c("var_name_model" = "value")
+  ) %>%
   group_by(var_name_pretty) %>%
   mutate(row = paste0("X", row_number())) %>%
   distinct(

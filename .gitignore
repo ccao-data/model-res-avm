@@ -2,24 +2,8 @@
 .Rhistory
 .Rapp.history
 
-# Session Data files
-.RData
-*.Rdata
-*.rda
-*.rds
-
 # R project files
 .Rproj.user/
-
-# Output files from R CMD build
-/*.tar.gz
-
-# Output files from R CMD check
-/*.Rcheck/
-
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
 
 # knitr and R markdown default cache directories
 /*_cache/
@@ -29,18 +13,7 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 
-# Result files
-*.dta
-*.ppt
-*.pptx
-*.html
-
-# Folders
-scratch/
-secrets/
-misc/
-
-# Data
+# Ignore all data files
 *.parquet
 *.rds
 *.zip

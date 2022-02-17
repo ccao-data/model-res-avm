@@ -19,19 +19,30 @@ library(recipes)
 library(stringr)
 library(tictoc)
 library(tidyr)
+library(yaml)
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
+# Initialize a dictionary of file paths. See R/file_dict.csv for details
 paths <- model_file_dict()
 
-# Load the metadata file containing the run settings
-metadata <- read_parquet(paths$output$metadata$local)
+# Load the parameters file containing the run settings
+params <- read_yaml("params.yaml")
 
-# Column prefixes to use for ratio study comparison
-rsf_columns <- gsub("_tot", "", metadata$model_ratio_study_far_column)
-rsn_columns <- gsub("_tot", "",metadata$model_ratio_study_near_column)
+# Columns and prefixes to use for ratio study comparison
+rsf_column <- get_rs_col_name(
+  params$assessment$data_year,
+  params$ratio_study$far_year,
+  params$ratio_study$far_stage
+)
+rsn_column <- get_rs_col_name(
+  params$assessment$data_year,
+  params$ratio_study$near_year,
+  params$ratio_study$near_stage
+)
+rsf_prefix <- gsub("_tot", "", rsf_column)
+rsn_prefix <- gsub("_tot", "", rsn_column)
 
 # Load the training data to use as a source of sales. These will be attached to
 # PIN-level output (for comparison) and used as the basis for a sales ratio
@@ -100,7 +111,7 @@ assessment_data_mc <- assessment_data_pred %>%
   mutate(
     pred_pin_final_fmv = ifelse(
       sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
-        metadata$model_pv_multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
+        params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
         is.na(meta_1yr_pri_board_tot),
       sum(pred_card_intermediate_fmv),
       max(pred_card_intermediate_fmv)
@@ -135,14 +146,14 @@ assessment_data_cid <- assessment_data_mc %>%
 
 ## 3.3. Prorate/Round ----------------------------------------------------------
 
-# Round PIN-level predictions using the breaks and amounts specified in setup
+# Round PIN-level predictions using the breaks and amounts specified in params
 assessment_data_final <- assessment_data_cid %>%
   mutate(
     pred_pin_final_fmv_round = ccao::val_round_fmv(
       pred_pin_final_fmv,
-      breaks = metadata$model_pv_round_break[[1]],
-      round_to = metadata$model_pv_round_to_nearest[[1]],
-      type = metadata$model_pv_round_type
+      breaks = params$pv$round_break,
+      round_to = params$pv$round_to_nearest,
+      type = params$pv$round_type
     )
   ) %>%
   # Apportion the final PIN-level value back out to the card-level using
@@ -190,14 +201,13 @@ assessment_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
     meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
-    all_of(metadata$model_predictor_all_name[[1]]), township_code
+    all_of(params$model$predictor$all), township_code
   ) %>%
   ccao::vars_recode(
     starts_with("char_"),
     type = "long",
     as_factor = FALSE
   ) %>%
-  mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
   write_parquet(paths$output$assessment_card$local)
 
 
@@ -251,12 +261,12 @@ assessment_data_pin <- assessment_data_merged %>%
   # Rename prior year comparison columns to near/far to maintain consistent
   # column names in Athena
   rename_with(
-    .fn = ~ gsub(paste0(rsn_columns, "_"), "prior_near_", .x),
-    .cols = starts_with(rsn_columns)
+    .fn = ~ gsub(paste0(rsn_prefix, "_"), "prior_near_", .x),
+    .cols = starts_with(rsn_prefix)
   ) %>%
   rename_with(
-    .fn = ~ gsub(paste0(rsf_columns, "_"), "prior_far_", .x),
-    .cols = starts_with(rsf_columns)
+    .fn = ~ gsub(paste0(rsf_prefix, "_"), "prior_far_", .x),
+    .cols = starts_with(rsf_prefix)
   ) %>%
   summarize(
     across(
@@ -321,14 +331,14 @@ assessment_data_pin_2 <- assessment_data_pin %>%
     pred_pin_final_fmv_land = case_when(
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round *
-           metadata$model_pv_land_pct_of_total_cap) ~
-      pred_pin_final_fmv_round * metadata$model_pv_land_pct_of_total_cap,
+           params$pv$land_pct_of_total_cap) ~
+      pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
       
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
       
       char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round *
-        metadata$model_pv_land_pct_of_total_cap ~
-      pred_pin_final_fmv_round * metadata$model_pv_land_pct_of_total_cap,
+        params$pv$land_pct_of_total_cap ~
+      pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
       
       TRUE ~ char_land_sf * land_rate_per_sqft
     ),
@@ -374,7 +384,7 @@ assessment_data_pin_final <- assessment_data_pin_2 %>%
   # Flag for capped land value
   mutate(
     flag_land_value_capped = pred_pin_final_fmv_round *
-      metadata$model_pv_land_pct_of_total_cap == pred_pin_final_fmv_land
+      params$pv$land_pct_of_total_cap == pred_pin_final_fmv_land
   ) %>%
   # Flags for changes in values
   mutate(
@@ -383,9 +393,9 @@ assessment_data_pin_final <- assessment_data_pin_2 %>%
         prior_near_tot <= pred_pin_final_fmv_round + 100,
     flag_pred_initial_to_final_changed = ccao::val_round_fmv(
       pred_pin_initial_fmv,
-      breaks = metadata$model_pv_round_break[[1]],
-      round_to = metadata$model_pv_round_to_nearest[[1]],
-      type = metadata$model_pv_round_type
+      breaks = params$pv$round_break,
+      round_to = params$pv$round_to_nearest,
+      type = params$pv$round_type
     ) != pred_pin_final_fmv_round,
     flag_prior_near_yoy_inc_gt_50_pct = prior_near_yoy_change_pct > 0.5,
     flag_prior_near_yoy_dec_gt_5_pct = prior_near_yoy_change_pct < -0.05,
@@ -422,7 +432,6 @@ assessment_data_pin_final %>%
     pred_pin_bldg_rate_effective, pred_pin_land_rate_effective,
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
-  mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
   write_parquet(paths$output$assessment_pin$local)
 
 
@@ -438,7 +447,7 @@ assessment_data_pin_final %>%
 # Load the MOST RECENT sale per PIN for the same year as the assessment data.
 # We want our assessed value to be as close as possible to the most recent sale
 sales_data_most_recent <- sales_data %>%
-  filter(meta_year == metadata$model_assessment_data_year) %>%
+  filter(meta_year == params$assessment$data_year) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
   distinct(
@@ -459,7 +468,7 @@ assessment_data_merged %>%
     across(
       c(
         meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
-        starts_with(c(rsf_columns, rsn_columns)),
+        starts_with(c(rsf_prefix, rsn_prefix)),
         starts_with(c("loc_cook_", "loc_chicago_", "loc_census", "loc_school_"))
       ),
       first
@@ -469,8 +478,10 @@ assessment_data_merged %>%
   left_join(sales_data_most_recent, by = c("meta_year", "meta_pin")) %>%
   write_parquet(paths$intermediate$assessment$local)
 
-# End the stage timer and append the time elapsed to a temporary file
+# End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-arrow::read_parquet(paths$intermediate$timing$local) %>%
-  bind_rows(., tictoc::tic.log(format = FALSE)) %>%
-  arrow::write_parquet(paths$intermediate$timing$local)
+bind_rows(tictoc::tic.log(format = FALSE)) %>%
+  arrow::write_parquet(paste0(
+    paths$intermediate$timing$local,
+    "model_timing_assess.parquet"
+  ))

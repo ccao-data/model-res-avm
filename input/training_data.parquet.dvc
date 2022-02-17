@@ -1,5 +1,0 @@
-outs:
-- md5: ba810934ab150452cdfe1d59fcd0064a
-  size: 100547006
-  path: training_data.parquet
-  isexec: true

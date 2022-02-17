@@ -15,13 +15,14 @@ library(recipes)
 library(stringr)
 library(tidyr)
 library(tictoc)
+library(yaml)
 source(here("R", "helpers.R"))
 
-# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
+# Initialize a dictionary of file paths. See R/file_dict.csv for details
 paths <- model_file_dict()
 
-# Load the metadata file containing the run settings
-metadata <- read_parquet(paths$output$metadata$local)
+# Load the parameters file containing the run settings
+params <- read_yaml("params.yaml")
 
 
 
@@ -75,16 +76,16 @@ shap_values_final <- assessment_data %>%
     meta_year, meta_pin, meta_card_num, township_code = meta_township_code
   ) %>%
   bind_cols(shap_values_tbl) %>%
-  mutate(run_id = metadata$run_id, year = metadata$model_assessment_year) %>%
   select(
     meta_year, meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
-    all_of(metadata$model_predictor_all_name[[1]]),
-    year, run_id, township_code
+    all_of(params$model$predictor$all), township_code
   ) %>%
   write_parquet(paths$output$shap$local)
 
-# End the stage timer and append the time elapsed to a temporary file
+# End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-arrow::read_parquet(paths$intermediate$timing$local) %>%
-  bind_rows(., tictoc::tic.log(format = FALSE)) %>%
-  arrow::write_parquet(paths$intermediate$timing$local)
+bind_rows(tictoc::tic.log(format = FALSE)) %>%
+  arrow::write_parquet(paste0(
+    paths$intermediate$timing$local,
+    "model_timing_interpret.parquet"
+  ))

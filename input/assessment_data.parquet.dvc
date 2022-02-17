@@ -1,5 +1,0 @@
-outs:
-- md5: 5175aa87e5deab5668d91b3653ca3aa0
-  size: 283292383
-  path: assessment_data.parquet
-  isexec: true
