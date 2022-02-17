@@ -240,3 +240,5 @@ stages:
       md5: 4314591954a362321604af6191588679
       size: 1929004
       isexec: true
+  ingest:
+    cmd: "\r"

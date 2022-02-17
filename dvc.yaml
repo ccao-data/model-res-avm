@@ -1,16 +1,34 @@
 stages:
+  ingest:
+    cmd: Rscript pipeline/00-ingest.R
+    params:
+      - assessment
+      - input
+    outs:
+      - input/training_data.parquet
+      - input/assessment_data.parquet
+      - input/complex_id_data.parquet
+      - input/land_site_rate_data.parquet
+      - input/land_nbhd_rate_data.parquet
+    
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
-    - input/training_data.parquet
+      - input/training_data.parquet
     params:
-    - cv
-    - model
-    - toggle.cv_enable
+      - toggle.cv_enable
+      - cv
+      - model.engine
+      - model.objective
+      - model.seed
+      - model.verbose
+      - model.predictor
+      - model.parameter
+      - model.hyperparameter.range
     outs:
-    - output/intermediate/model_test.parquet
-    - output/parameter_final/model_parameter_final.parquet
-    - output/parameter_range/model_parameter_range.parquet
-    - output/parameter_search/model_parameter_search.parquet
-    - output/workflow/fit/model_workflow_fit.zip
-    - output/workflow/recipe/model_workflow_recipe.rds
+      - output/intermediate/model_test.parquet
+      - output/parameter_final/model_parameter_final.parquet
+      - output/parameter_range/model_parameter_range.parquet
+      - output/parameter_search/model_parameter_search.parquet
+      - output/workflow/fit/model_workflow_fit.zip
+      - output/workflow/recipe/model_workflow_recipe.rds

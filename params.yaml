@@ -5,24 +5,33 @@ toggle:
   cv_enable: TRUE
   upload_to_s3: TRUE
 
-sale:
-  min_year: "2015"
-  max_year: "2021"
-
+# Ingest
 assessment:
-  triad: "north"
-  group: "residential"
   year: "2022"
   date: "2022-01-01"
+  triad: "north"
+  group: "residential"
   data_year: "2021"
+
+input:
+  min_sale_year: "2015"
+  max_sale_year: "2021"
+  complex:
+    match_exact: [
+      "meta_township_code",
+      "meta_class",
+      "char_bsmt",
+      "char_gar1_size",
+      "char_attic_fnsh",
+      "char_beds"
+    ]
+    match_fuzzy:
+      rooms: 1
+      bldg_sf: 25
+      yrblt: 4
+      dist_ft: 250
   
-ratio_study:
-  far_year: "2019"
-  far_stage: "board"
-  near_year: "2021"
-  near_stage: "mailed"
-  num_quantile: [3, 5, 10]
-  
+# Train
 cv:
   num_folds: 3
   initial_set: 3
@@ -211,9 +220,18 @@ model:
       lambda_l1: [-3, 2]
       lambda_l2: [-3, 2]
 
+# Assess
 pv:
   multicard_yoy_cap: 2.0
   land_pct_of_total_cap: 0.5
   round_break: [10000]
   round_to_nearest: [100, 500]
   round_type: "ceiling"
+
+# Evaluate
+ratio_study:
+  far_year: "2019"
+  far_stage: "board"
+  near_year: "2021"
+  near_stage: "mailed"
+  num_quantile: [3, 5, 10]
