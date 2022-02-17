@@ -592,9 +592,6 @@ stages:
     - path: output/assessment_pin/model_assessment_pin.parquet
       md5: 9ea8a7eddad69e73557be1285e783f45
       size: 98476143
-    - path: output/intermediate/model_assessment.parquet
-      md5: bbf44d0f9404fe6e3ab44752b3a9bd05
-      size: 24222436
     - path: output/intermediate/timing/model_timing_assess.parquet
       md5: ee47b61189d9362dbd8dea81b0c31aaf
       size: 2338
@@ -885,6 +882,9 @@ stages:
           cv_enable: true
           upload_to_s3: true
     outs:
+    - path: output/metadata/model_metadata.parquet
+      md5: 3d31035a78aa3840f303b861952afbe2
+      size: 23588
     - path: output/timing/model_timing.parquet
-      md5: c67eb4db45480cb88a2b2891adb39fbf
-      size: 5256
+      md5: 93bf582a01e31ca7f04bcd84e580847a
+      size: 5242

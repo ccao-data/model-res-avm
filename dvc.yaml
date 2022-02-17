@@ -148,7 +148,6 @@ stages:
     - output/workflow/recipe/model_workflow_recipe.rds
     - output/assessment_card/model_assessment_card.parquet
     - output/assessment_pin/model_assessment_pin.parquet
-    - output/intermediate/model_assessment.parquet
     - output/performance/model_performance_test.parquet
     - output/performance_quantile/model_performance_quantile_test.parquet
     - output/performance/model_performance_assessment.parquet
@@ -171,3 +170,6 @@ stages:
     - output/timing/model_timing.parquet:
         cache: false
         desc: "Individual timing files aggregated into a single-row data frame"
+    - output/metadata/model_metadata.parquet:
+        cache: false
+        desc: "Run information and parameters not related to modeling"
