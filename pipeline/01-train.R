@@ -2,7 +2,7 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Start the stage timer and clear logs from prior stage
+# Start the stage timer
 tictoc::tic.clearlog()
 tictoc::tic("Train")
 
@@ -26,18 +26,18 @@ library(yaml)
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths and S3 URIs. See R/file_dict.csv
+# Initialize a dictionary of file paths. See R/file_dict.csv for details
 paths <- model_file_dict()
 
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
-# Get number of available physical cores to use for lightgbm multi-threading
+# Get the number of available physical cores to use for lightgbm multi-threading
 # Lightgbm docs recommend using only real cores, not logical
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
 
-# Set the overall run/stage seed
+# Set the overall stage seed
 set.seed(params$model$seed)
 
 
@@ -71,7 +71,7 @@ train <- training(time_split)
 train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
 
 # Create a recipe for the training data which removes non-predictor columns and
-# preps categorical data
+# preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
   data = train,
   keep_vars = params$model$predictor$all,
@@ -124,7 +124,7 @@ lgbm_model <- parsnip::boost_tree(
 
     # Enable early stopping using a proportion of each training sample as a
     # validation set. If lgb.train goes stop_iter() rounds without improvement
-    # in the provided metric, then it will end training early. This saves an
+    # in the chosen metric, then it will end training early. This saves an
     # immense amount of time during CV
     validation = params$model$parameter$validation_prop,
     metric = params$model$parameter$validation_metric,
@@ -263,7 +263,7 @@ if (params$toggle$cv_enable) {
 ## 3.3. Fit Models -------------------------------------------------------------
 
 # NOTE: The model specifications here use early stopping by measuring the change
-# in the objective function on the training set (rather than the 10% sample
+# in the objective function on the TRAINING set (rather than the 10% sample
 # validation set used during CV). This is so we can use the full data for
 # training but still benefit from early stopping
 
@@ -288,8 +288,8 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 # 4. Finalize Models -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Get predictions on the test set using the training data model then save to
-# file. These predictions are used to evaluate model performance on the test set
+# Get predictions on the test set using the training data model. These
+# predictions are used to evaluate model performance on the unseen test set
 test %>%
   mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
   write_parquet(paths$intermediate$test$local)
@@ -312,4 +312,5 @@ lgbm_wflow_final_full_fit %>%
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
 bind_rows(tictoc::tic.log(format = FALSE)) %>%
+  mutate(ts = Sys.time()) %>%
   arrow::write_parquet(paths$intermediate$timing$local)
