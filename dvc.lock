@@ -56,10 +56,10 @@ stages:
     params:
       params.yaml:
         cv:
-          num_folds: 3
-          initial_set: 3
-          max_iterations: 6
-          no_improve: 3
+          num_folds: 10
+          initial_set: 12
+          max_iterations: 25
+          no_improve: 10
           split_prop: 0.9
           best_metric: rmse
         model.engine: lightgbm
@@ -105,7 +105,7 @@ stages:
           - 2
         model.objective: rmse
         model.parameter:
-          num_iterations: 10
+          num_iterations: 100
           learning_rate: 0.1
           validation_prop: 0.1
           validation_metric: rmse
@@ -248,20 +248,20 @@ stages:
         toggle.cv_enable: true
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: dec20ce79b798b16b61ce061daf35522
+      md5: 42f42d09a5c784553259090d29a7804a
       size: 2331
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: caa3f3ed4fb36bca85d6b1c4cb5e2aee
+      md5: d86b6e026fa6e20653932913d4c54400
       size: 7823
     - path: output/parameter_range/model_parameter_range.parquet
       md5: 0023a7925b14bbf7ef2887c3b49774e4
       size: 1964
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: 0cf613f1b862ae0e68e4780c8732c54f
-      size: 196962
+      md5: 9abb9aa0ac9a0c29f686cf9e2a83854b
+      size: 205698
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: dcb27c372e1334c2ae6878fcb48f05d2
-      size: 572412
+      md5: ee42024f3b5f65acc7a00ad4d7fab979
+      size: 3073238
     - path: output/workflow/recipe/model_workflow_recipe.rds
       md5: 0aa52b7eef79c787c1b3cccf4b6c5a5f
       size: 1929011
@@ -284,8 +284,8 @@ stages:
       md5: 1aa59a250063ab447ed9e4c166445364
       size: 100463102
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: dcb27c372e1334c2ae6878fcb48f05d2
-      size: 572412
+      md5: ee42024f3b5f65acc7a00ad4d7fab979
+      size: 3073238
     - path: output/workflow/recipe/model_workflow_recipe.rds
       md5: 0aa52b7eef79c787c1b3cccf4b6c5a5f
       size: 1929011
@@ -415,26 +415,26 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: b6d3efdda4755ab9976417e2d67d7ae0
-      size: 199683938
+      md5: 7f7259eb1f19c196d9d7c46cec2c1c58
+      size: 199830574
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 9ea8a7eddad69e73557be1285e783f45
-      size: 98476143
+      md5: 98806b0c31b3fb7acadb270e5015a05e
+      size: 102120759
     - path: output/intermediate/model_assessment.parquet
-      md5: bbf44d0f9404fe6e3ab44752b3a9bd05
-      size: 24222436
+      md5: d3a1b95976aad9920ed4a0132b559968
+      size: 24234125
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: ee47b61189d9362dbd8dea81b0c31aaf
+      md5: b31b5c26bb22c8b5ec1b05e56b623904
       size: 2338
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/intermediate/model_assessment.parquet
-      md5: bbf44d0f9404fe6e3ab44752b3a9bd05
-      size: 24222436
+      md5: d3a1b95976aad9920ed4a0132b559968
+      size: 24234125
     - path: output/intermediate/model_test.parquet
-      md5: dc78503ed5109c496870663e8a04ca07
-      size: 11050960
+      md5: 77fc518f097b29cf94e3c8a6a0561a8c
+      size: 11067095
     params:
       params.yaml:
         assessment.data_year: '2021'
@@ -450,20 +450,20 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: c7fee9ee59ef7e4da5ea40717c9ce68a
+      md5: 51e453daebac105ec3effb2b9468fb34
       size: 2352
     - path: output/performance/model_performance_assessment.parquet
-      md5: 363c14f4e2eb1bf5d96422b693b05e5c
-      size: 12387296
+      md5: 700de132a32b245ff40951623e19d8a4
+      size: 12431013
     - path: output/performance/model_performance_test.parquet
-      md5: 212fcf142827806461cae1376cc30ef6
-      size: 7802663
+      md5: 67f73420838a2baefd9db12dcae0c48f
+      size: 7812896
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: deb76cd4f6009641755e4184966451e4
-      size: 4994823
+      md5: c20d32541014ef889063b89de902093b
+      size: 4967854
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: b7ef2f80bf74147987c5a02e6925d78c
-      size: 4354876
+      md5: 6806a7497b231c9b23ce403d1470f260
+      size: 4363260
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:

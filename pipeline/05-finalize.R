@@ -228,7 +228,7 @@ if (params$toggle$upload_to_s3) {
     # Max_depth is set by lightsnip if link_max_depth is true, so we need to
     # back out its value. Otherwise, use whichever value is chosen by CV
     mutate(max_depth = {
-      if (!link_max_depth) {
+      if (link_max_depth) {
         as.integer(floor(log2(num_leaves)) + add_to_linked_depth)
       } else if (!is.null(.[["max_depth"]])) {
         .$max_depth
