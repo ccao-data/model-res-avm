@@ -45,12 +45,37 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
 }
 
 
-# Used to delete erroneous, incomplete, or otherwise broken runs
-# Use with caution!
+# Used to delete erroneous, incomplete, or otherwise unwanted runs
+# Use with caution! Deleted models are retained for a period of time before
+# being permanently deleted
 model_delete_run <- function(run_id, year) {
+  
+  # Get paths of all run objects based on the file dictionary
   paths <- model_file_dict(run_id, year)
   s3_objs <- grep("s3://", unlist(paths), value = TRUE)
-  purrr::walk(s3_objs, aws.s3::delete_object)
+  bucket <- strsplit(s3_objs[1], "/")[[1]][3]
+  
+  # First get anything partitioned only by year
+  s3_objs_limited <- grep(".parquet$|.zip$|.rds$", s3_objs, value = TRUE)
+  
+  # Next get the prefix of anything partitioned by year and run_id
+  s3_objs_dir_path <- file.path(
+    grep(
+      ".parquet$|.zip$|.rds$",
+      s3_objs, value = TRUE, invert = TRUE
+    ),
+    glue::glue("year={year}"),
+    glue::glue("run_id={run_id}")
+  )
+  s3_objs_dir_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_dir_path)
+  s3_objs_w_run_id <- unlist(purrr::map(
+    s3_objs_dir_path,
+    ~ aws.s3::get_bucket_df(bucket, .x)$Key
+  ))
+  
+  # Delete current version of objects
+  purrr::walk(s3_objs_limited, aws.s3::delete_object)
+  purrr::walk(s3_objs_w_run_id, aws.s3::delete_object, bucket = bucket)
 }
 
 
