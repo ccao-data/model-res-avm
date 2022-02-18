@@ -92,7 +92,7 @@ metadata <- tibble::tibble(
   run_id = run_id,
   run_end_timestamp = run_end_timestamp,
   run_type = run_type,
-  run_note = params$run_note,
+  run_note = run_note,
   git_sha_short = substr(git_commit$sha, 1, 8),
   git_sha_long = git_commit$sha,
   git_message = gsub("\n", "", git_commit$message),
@@ -185,6 +185,7 @@ timings_df <- purrr::map_dfr(timings, read_parquet) %>%
     values_from = elapsed
   ) %>%
   mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) %>%
+  mutate(across(ends_with("_sec_elapsed"), round, 2)) %>%
   write_parquet(paths$output$timing$local)
 
 # Clear any remaining logs from tictoc
