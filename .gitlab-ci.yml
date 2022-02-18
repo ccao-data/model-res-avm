@@ -82,6 +82,8 @@ stages:
 train:
   <<: *run_stage
   stage: train
+  only:
+    - master
   script:
     - dvc pull
     - Rscript pipeline/01-train.R
@@ -89,11 +91,15 @@ train:
 evaluate:
   <<: *run_stage
   stage: evaluate
+  only:
+    - master
   script:
     - Rscript pipeline/03-evaluate.R
 
 finalize:
   <<: *run_stage
   stage: finalize
+  only:
+    - master
   script:
     - Rscript pipeline/05-finalize.R
