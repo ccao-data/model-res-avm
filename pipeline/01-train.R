@@ -73,9 +73,6 @@ time_split <- initial_time_split(
 test <- testing(time_split)
 train <- training(time_split)
 
-# Create v-fold CV splits of the main training set
-train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
-
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
@@ -110,6 +107,7 @@ lgbm_model <- parsnip::boost_tree(
   set_engine(
     engine = params$model$engine,
     seed = params$model$seed,
+    
 
     ### 3.1.1. Manual Parameters -----------------------------------------------
 
@@ -178,6 +176,9 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (cv_enable) {
+  
+  # Create v-fold CV splits of the main training set
+  train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
@@ -247,7 +248,7 @@ if (cv_enable) {
   
 } else {
 
-  # If CV is not enabled, just use the default set of parameters specified in
+  # If CV is disabled, just use the default set of parameters specified in
   # params.yaml, keeping only the ones used in the model specification
   lgbm_missing_params <- names(params$model$hyperparameter$default)
   lgbm_missing_params <- lgbm_missing_params[
@@ -263,6 +264,11 @@ if (cv_enable) {
     bind_cols(as_tibble(params$model$hyperparameter$default)) %>%
     select(-all_of(lgbm_missing_params)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
+  
+  # If CV is disabled, we still need to write empty stub files for any outputs
+  # created by CV. This is so DVC has something to hash/look for
+  arrow::write_parquet(data.frame(), paths$output$parameter_raw$local)
+  arrow::write_parquet(data.frame(), paths$output$parameter_range$local)
 }
 
 
