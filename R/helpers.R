@@ -77,34 +77,3 @@ model_delete_run <- function(run_id, year) {
   purrr::walk(s3_objs_limited, aws.s3::delete_object)
   purrr::walk(s3_objs_w_run_id, aws.s3::delete_object, bucket = bucket)
 }
-
-
-# Slightly rewrite of arrow::write_dataset with more verbose output and
-# faster runtime
-write_partitions_to_s3 <- function(df, s3_output_path, overwrite = FALSE) {
-  if (!dplyr::is.grouped_df(df)) {
-    warning("Input data must contain grouping vars for partitioning")
-  }
-  
-  dplyr::group_walk(df, ~ {
-    partitions_df <- purrr::map_dfr(
-      .y, replace_na, "__HIVE_DEFAULT_PARTITION__"
-    )
-    partition_path <- paste0(purrr::map2_chr(
-      names(partitions_df),
-      partitions_df[1, ],
-      function(x, y) paste0(x, "=", y)
-    ), collapse = "/")
-    remote_path <- file.path(
-      s3_output_path, partition_path, "part-0.parquet"
-    )
-    remote_path <- gsub("//*", "/", remote_path)
-    remote_path <- gsub("s3:/*", "s3://", remote_path)
-    if (!object_exists(remote_path) | overwrite) {
-      message("Now uploading: ", partition_path)
-      tmp_file <- tempfile(fileext = ".parquet")
-      arrow::write_parquet(.x, tmp_file, compression = "snappy")
-      aws.s3::put_object(tmp_file, remote_path)
-    }
-  })
-}

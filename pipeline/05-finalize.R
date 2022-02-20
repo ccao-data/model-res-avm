@@ -225,7 +225,7 @@ if (params$toggle$upload_to_s3) {
   # Upload finalized run parameters
   read_parquet(paths$output$parameter_final$local) %>%
     mutate(run_id = run_id) %>%
-    relocate(run_id, .before = everything()) %>%
+    relocate(run_id) %>%
     # Max_depth is set by lightsnip if link_max_depth is true, so we need to
     # back out its value. Otherwise, use whichever value is chosen by CV
     mutate(max_depth = {
@@ -238,7 +238,7 @@ if (params$toggle$upload_to_s3) {
       }
     }) %>%
     write_parquet(paths$output$parameter_final$s3)
-  
+
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame
   if (cv_enable) {
@@ -248,13 +248,13 @@ if (params$toggle$upload_to_s3) {
       paths$output$parameter_raw$local,
       paths$output$parameter_raw$s3
     )
-    
+
     # Upload the parameter ranges used for CV
     read_parquet(paths$output$parameter_range$local) %>%
       mutate(run_id = run_id) %>%
-      relocate(run_id, .before = everything()) %>%
+      relocate(run_id) %>%
       write_parquet(paths$output$parameter_range$s3)
-    
+
     # Clean and unnest the raw parameters data, then write the results to S3
     read_parquet(paths$output$parameter_raw$local) %>%
       tidyr::unnest(cols = .metrics) %>%
@@ -272,8 +272,7 @@ if (params$toggle$upload_to_s3) {
           "run_id",
           "iteration" = "iter",
           "configuration" = "config", "fold_id" = "id"
-        )),
-        .before = everything()
+        ))
       ) %>%
       relocate(notes, .after = everything()) %>%
       dplyr::select(-any_of(c("estimator"))) %>%
@@ -290,11 +289,21 @@ if (params$toggle$upload_to_s3) {
     read_parquet(paths$output$assessment_card$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
-      write_partitions_to_s3(paths$output$assessment_card$s3, overwrite = TRUE)
+      arrow::write_dataset(
+        path = paths$output$assessment_card$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        compression = "snappy"
+      )
     read_parquet(paths$output$assessment_pin$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
-      write_partitions_to_s3(paths$output$assessment_pin$s3, overwrite = TRUE)
+      arrow::write_dataset(
+        path = paths$output$assessment_pin$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        compression = "snappy"
+      )
   }
 
 
@@ -303,22 +312,22 @@ if (params$toggle$upload_to_s3) {
   # Upload test set performance
   read_parquet(paths$output$performance_test$local) %>%
     mutate(run_id = run_id) %>%
-    relocate(run_id, .before = everything()) %>%
+    relocate(run_id) %>%
     write_parquet(paths$output$performance_test$s3)
   read_parquet(paths$output$performance_quantile_test$local) %>%
     mutate(run_id = run_id) %>%
-    relocate(run_id, .before = everything()) %>%
+    relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test$s3)
 
   # Upload assessment set performance if a full run
   if (run_type == "full") {
     read_parquet(paths$output$performance_assessment$local) %>%
       mutate(run_id = run_id) %>%
-      relocate(run_id, .before = everything()) %>%
+      relocate(run_id) %>%
       write_parquet(paths$output$performance_assessment$s3)
     read_parquet(paths$output$performance_quantile_assessment$local) %>%
       mutate(run_id = run_id) %>%
-      relocate(run_id, .before = everything()) %>%
+      relocate(run_id) %>%
       write_parquet(paths$output$performance_quantile_assessment$s3)
   }
 
@@ -332,12 +341,17 @@ if (params$toggle$upload_to_s3) {
     read_parquet(paths$output$shap$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
-      write_partitions_to_s3(paths$output$shap$s3, overwrite = TRUE)
+      arrow::write_dataset(
+        path = paths$output$shap$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        compression = "snappy"
+      )
   }
-
+  
 
   # 4.5. Finalize --------------------------------------------------------------
-  
+
   # Upload metadata
   aws.s3::put_object(
     paths$output$metadata$local,
@@ -358,8 +372,8 @@ if (params$toggle$upload_to_s3) {
 # 5. Wrap-Up -------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Only run AWS stuff when actually uploading. This will run a Glue crawler to
-# update schemas and send an email to any SNS subscribers
+# This will run a Glue crawler to update schemas and send an email to any SNS
+# subscribers. Only run when actually uploading
 if (params$toggle$upload_to_s3) {
 
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
