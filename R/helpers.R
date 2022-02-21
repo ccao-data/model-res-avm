@@ -31,14 +31,13 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
         .envir = env, .na = NULL, .null = NA_character_
       )),
       s3 = ifelse(!is.na(s3), file.path(paste0("s3://", s3_bucket), s3), NA),
-      local = ifelse(!is.na(path_local), file.path(wd, path_local), NA),
-      dvc = ifelse(!is.na(path_dvc), file.path(wd, path_dvc), NA)
+      local = ifelse(!is.na(path_local), file.path(wd, path_local), NA)
     ) %>%
-    dplyr::select(type, name, s3, local, dvc) %>%
+    dplyr::select(type, name, s3, local) %>%
     split(., .$type) %>%
     purrr::map(., ~ split(.x, .x$name, drop = TRUE)) %>%
     purrr::map(., ~ purrr::map(.x, function(x) {
-      as.list(x)[!is.na(x) & names(x) %in% c("s3", "local", "dvc")]
+      as.list(x)[!is.na(x) & names(x) %in% c("s3", "local")]
     }))
   
   return(dict)
