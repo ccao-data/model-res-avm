@@ -1,22 +1,60 @@
-run_note: "Try actual model parameters"
+# This file contains all the control parameters, hyperparameters, toggles, etc.
+# needed to run the CCAO's automated valuation model
+
+# Parameters in this file are associated with certain stages in the modeling
+# pipeline. Changing a parameter means any pipeline stage associated with that
+# parameter must be re-run. See dvc.yaml for parameter <-> stage associations
+# and https://dvc.org/doc/command-reference/params for more information
+
+
+# Run Control ------------------------------------------------------------------
+
+# Note included with each run. Use this to summarize what changed about the run
+# or add context
+run_note: "Full run with no CV"
+
+# Determines what stages and outputs are produced. See R/file_dict.csv for
+# details. Note, DVC does not support "conditional" stages, so changing this to
+# anything other than "full" will require you to run each stage manually. See
+# README for details
 run_type: "full"
 
 toggle:
+  # Should the train stage run full cross-validation? Otherwise, the model
+  # will be trained with the default hyperparameters specified below
   cv_enable: true
+  
+  # Upload all modeling artifacts and results to S3 in the finalize stage. Set
+  # to FALSE if you are not a CCAO employee
   upload_to_s3: true
 
-# Ingest
+
+# Data/Ingest ------------------------------------------------------------------
+
+# Assessment context and dates
 assessment:
+  # Year of assessment. Used to partition results and pull data
   year: "2022"
+  
+  # The statutorily "sale date" for the purpose of prediction
   date: "2022-01-01"
+  
+  # Added context for model artifacts stored in s3. Does not change behavior
   triad: "north"
   group: "residential"
+  
+  # Year from which property characteristics are pulled. Usually lags the
+  # assessment year by 1
   data_year: "2021"
 
+# Parameters used to define the input/training data
 input:
+  # The min and max years of sales to use for the training data sample
   min_sale_year: "2015"
   max_sale_year: "2021"
   complex:
+    # Townhomes (class 210/295) should match exactly on these variables to be
+    # considered in the same complex
     match_exact: [
       "meta_township_code",
       "meta_class",
@@ -25,27 +63,59 @@ input:
       "char_attic_fnsh",
       "char_beds"
     ]
+    
+    # Townhomes should match fuzzily on these variables to be in the same
+    # complex e.g. a PIN with 2000 and a PIN with 2020 square feet will match
     match_fuzzy:
       rooms: 1
       bldg_sf: 25
       yrblt: 4
       dist_ft: 250
-  
-# Train
+
+
+# Cross-validation -------------------------------------------------------------
+
+# Cross-validation parameters used in the train stage. Most are passed
+# directly to tune_bayes()
 cv:
-  num_folds: 10
-  initial_set: 12
-  max_iterations: 25
-  no_improve: 10
+  # Proportion of the training data to use for training vs test i.e. 0.9 means
+  # the most recent 10% of sales are used as a test set
   split_prop: 0.9
+  
+  # Number of folds to use for v-fold CV. Recommend this number be above 6
+  num_folds: 10
+  
+  # Number of initial iterations to create before tuning. Recommend this number
+  # be greater than the number of hyperparameters being tuned
+  initial_set: 12
+  
+  # Maximum number of search iterations
+  max_iterations: 25
+  
+  # Max number of search iterations without improvement before stopping search
+  no_improve: 10
+  
+  # Metric used to select the "best" set of parameters from CV iterations. Must
+  # be manually included the metric_set() passed to tune_bayes()
   best_metric: "rmse"
 
+
+# Model (Hyper)parameters ------------------------------------------------------
+
+# Static and tuneable parameters that define the structure and behavior of the
+# model itself
 model:
   engine: "lightgbm"
+  
+  # Objective/loss function minimized by LightGBM. See website for possible
+  # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
   objective: "rmse"
   seed: 20220117
   verbose: -1
   predictor:
+  
+    # Vector of predictors from the training data included in the model. Edit
+    # this list to add or remove variables from the model
     all: [
       "meta_township_code",
       "meta_nbhd_code",
@@ -145,6 +215,10 @@ model:
       "ind_land_bldg_ratio_gte_10",
       "ind_pin_is_multicard"
     ]
+    
+    # List of predictors included in predictor.all which are categoricals. It is
+    # CRITICAL that any categorical variables are included in this list, else
+    # LightGBM will treat them as numeric
     categorical: [
       "meta_township_code",
       "meta_nbhd_code",
@@ -174,6 +248,8 @@ model:
       "loc_misc_subdivision_id",
       "time_sale_quarter_of_year"
     ]
+    
+    # List of identifiers for each observation, can be ignored
     id: [
       "meta_year",
       "meta_pin",
@@ -181,15 +257,27 @@ model:
       "meta_card_num",
       "meta_sale_document_num"
     ]
-  
+
   parameter:
+    # Total number of iterations. Usually changed in tandem with learning_rate
+    # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
     num_iterations: 100
     learning_rate: 0.1
+    
+    # For CV only, proportion of the training data to hold out for use in 
+    # early stopping + the metric to evaluate. See R docs for details:
+    # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     validation_prop: 0.1
     validation_metric: "rmse"
+    
+    # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
+    # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
+    # This is to prevent tune_bayes from exploring useless parameter space
     link_max_depth: true
-  
+
   hyperparameter:
+    # Default set of hyperparameters to use if CV is not enabled. See docs for
+    # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     default:
       stop_iter: 18
       num_leaves: 2670
@@ -205,6 +293,7 @@ model:
       lambda_l2: 1.825
       max_depth: 12
     
+    # Range of possible hyperparameter values for tune_bayes to explore
     range:
       stop_iter: [5, 30]
       num_leaves: [500, 5000]
@@ -220,18 +309,42 @@ model:
       lambda_l1: [-3, 2]
       lambda_l2: [-3, 2]
 
-# Assess
+
+# Post-Valuation ---------------------------------------------------------------
+
+# Parameters used in the assess stage to finalize the intial model predictions
 pv:
+  # For multi-card PINs (rare), implement a heuristic that caps the potential
+  # change in value. See assess stage code for details
   multicard_yoy_cap: 2.0
+  
+  # Cap the proportion of the PIN's total value dedicated to land. This is
+  # necessary since sometimes the model provides low predictions relative to the
+  # land rates created by Valuations
   land_pct_of_total_cap: 0.5
+  
+  # Rounding settings to apply to initial predictions. Rounding is done to
+  # indicate to property owners that model values are estimates, not exact
   round_break: [10000]
   round_to_nearest: [100, 500]
   round_type: "ceiling"
 
-# Evaluate
+
+# Ratio Study ------------------------------------------------------------------
+
+# Years and assessment stages used to calculate YoY changes in the evaluate
+# stage. Typically we want to compare new model values with the finalized values
+# (post-appeal) from the last reassessment and the most recent values from the
+# prior year
+
+# Note: these parameters are translated to column names in the input data by the
+# get_rs_col_name() helper function
 ratio_study:
   far_year: "2019"
   far_stage: "board"
   near_year: "2021"
   near_stage: "mailed"
+  
+  # Quantile breakouts to use in the evaluate stage. For example, 3 will split
+  # each geography in evaluate into terciles
   num_quantile: [3, 5, 10]
