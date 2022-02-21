@@ -9,15 +9,15 @@ stages:
     - input
     outs:
     - input/training_data.parquet:
-        desc: Sales data used to train the model
+        cache: true
     - input/assessment_data.parquet:
-        desc: All residential properties in Cook County
+        cache: true
     - input/complex_id_data.parquet:
-        desc: Townhome complex identifiers constructed with fuzzy grouping
+        cache: true
     - input/land_site_rate_data.parquet:
-        desc: PIN-level land values provided by Valuations
+        cache: true
     - input/land_nbhd_rate_data.parquet:
-        desc: Neighborhood-level land rates provided by Valuations
+        cache: true
     frozen: true
 
   train:
@@ -40,19 +40,14 @@ stages:
     outs:
     - output/parameter_final/model_parameter_final.parquet:
         cache: false
-        desc: Final hyperparameters chosen using tune::select_best()
     - output/parameter_range/model_parameter_range.parquet:
         cache: false
-        desc: Parameter space searched by cross-validation
     - output/parameter_search/model_parameter_search.parquet:
         cache: false
-        desc: Raw output from Tidymodels cross-validation
     - output/workflow/fit/model_workflow_fit.zip:
         cache: false
-        desc: LightGBM model object + Tidymodels parsnip specification
     - output/workflow/recipe/model_workflow_recipe.rds:
         cache: false
-        desc: Tidymodels recipe for to prepare new input data
     - output/intermediate/timing/model_timing_train.parquet:
         cache: false
         
@@ -78,13 +73,10 @@ stages:
     outs:
     - output/assessment_card/model_assessment_card.parquet:
         cache: false
-        desc: Card-level predicted values for all residential properties
     - output/assessment_pin/model_assessment_pin.parquet:
         cache: false
-        desc: PIN-level predicted values (land, YoY delta, prior years, etc.)
     - output/intermediate/model_assessment.parquet:
         cache: false
-        desc: PIN-level predicted values saved temporarily for evaluate stage
     - output/intermediate/timing/model_timing_assess.parquet:
         cache: false
         
@@ -105,16 +97,12 @@ stages:
     outs:
     - output/performance/model_performance_test.parquet:
         cache: false
-        desc: Performance stats on the test set by geography and class
     - output/performance_quantile/model_performance_quantile_test.parquet:
         cache: false
-        desc: Performance stats on the test set by geography and quantile
     - output/performance/model_performance_assessment.parquet:
         cache: false
-        desc: Performance stats on the assessment set by geography and class
     - output/performance_quantile/model_performance_quantile_assessment.parquet:
         cache: false
-        desc: Performance stats on the assessment set by geography and quantile
     - output/intermediate/timing/model_timing_evaluate.parquet:
         cache: false
         
@@ -131,7 +119,6 @@ stages:
     outs:
     - output/shap/model_shap.parquet:
         cache: false
-        desc: SHAP values for all feature and cards in the assessment data
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
         
@@ -170,7 +157,5 @@ stages:
     outs:
     - output/timing/model_timing.parquet:
         cache: false
-        desc: Individual timing files aggregated into a single-row data frame
     - output/metadata/model_metadata.parquet:
         cache: false
-        desc: Run information and parameters not related to modeling
