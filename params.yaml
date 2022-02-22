@@ -24,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee

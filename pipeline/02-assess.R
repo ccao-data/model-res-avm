@@ -337,15 +337,12 @@ assessment_data_pin_2 <- assessment_data_pin %>%
     pred_pin_final_fmv_land = case_when(
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round *
-           params$pv$land_pct_of_total_cap) ~
+          params$pv$land_pct_of_total_cap) ~
       pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
-      
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
-      
       char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round *
         params$pv$land_pct_of_total_cap ~
       pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
-      
       TRUE ~ char_land_sf * land_rate_per_sqft
     ),
     pred_pin_uncapped_fmv_land = case_when(

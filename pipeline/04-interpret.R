@@ -73,7 +73,8 @@ shap_values_tbl <- shap_values %>%
 # columns, then add run ID and write to file
 shap_values_final <- assessment_data %>%
   select(
-    meta_year, meta_pin, meta_card_num, township_code = meta_township_code
+    meta_year, meta_pin, meta_card_num,
+    township_code = meta_township_code
   ) %>%
   bind_cols(shap_values_tbl) %>%
   select(

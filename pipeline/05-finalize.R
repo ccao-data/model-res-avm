@@ -137,9 +137,7 @@ metadata <- tibble::tibble(
 # 3. Save Timings --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
-
-# Filter ensure we only get timing files for stages that actually ran 
+# Filter ensure we only get timing files for stages that actually ran
 if (run_type == "full") {
   timings <- list.files(
     paste0(paths$intermediate$timing, "/"),
@@ -161,8 +159,9 @@ timings_df <- purrr::map_dfr(timings, read_parquet) %>%
     elapsed = round(toc - tic, 2),
     stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed"),
     order = recode(
-      msg, "Train" = "01", "Assess" = "02",
-      "Evaluate" = "03",  "Interpret" = "04"
+      msg,
+      "Train" = "01", "Assess" = "02",
+      "Evaluate" = "03", "Interpret" = "04"
     )
   ) %>%
   arrange(order) %>%
@@ -226,7 +225,7 @@ if (params$toggle$upload_to_s3) {
       }
     }) %>%
     write_parquet(paths$output$parameter_final$s3)
-  
+
   # Upload the test set predictions
   read_parquet(paths$output$test_card$local) %>%
     mutate(run_id = run_id) %>%
@@ -342,7 +341,7 @@ if (params$toggle$upload_to_s3) {
         compression = "snappy"
       )
   }
-  
+
 
   # 4.5. Finalize --------------------------------------------------------------
 

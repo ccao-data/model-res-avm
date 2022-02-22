@@ -107,7 +107,7 @@ lgbm_model <- parsnip::boost_tree(
   set_engine(
     engine = params$model$engine,
     seed = params$model$seed,
-    
+
 
     ### 3.1.1. Manual Parameters -----------------------------------------------
 
@@ -158,7 +158,7 @@ lgbm_model <- parsnip::boost_tree(
     # Regularization parameters
     lambda_l1 = tune(),
     lambda_l2 = tune(),
-    
+
     # Max number of bins that feature values will be bucketed in
     max_bin = tune()
   )
@@ -179,7 +179,7 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (cv_enable) {
-  
+
   # Create v-fold CV splits of the main training set
   train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
 
@@ -241,15 +241,14 @@ if (cv_enable) {
   # Choose the best model (whichever model minimizes the chosen objective,
   # averaged across CV folds)
   lgbm_final_params <- tibble(
-      engine = params$model$engine,
-      seed = params$model$seed,
-      objective = params$model$objective
-    ) %>%
+    engine = params$model$engine,
+    seed = params$model$seed,
+    objective = params$model$objective
+  ) %>%
     bind_cols(as_tibble(params$model$parameter)) %>%
     bind_cols(select_best(lgbm_search, metric = params$cv$best_metric)) %>%
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
-  
 } else {
 
   # If CV is disabled, just use the default set of parameters specified in
@@ -259,16 +258,16 @@ if (cv_enable) {
     !lgbm_missing_params %in% parameters(lgbm_wflow)$name
   ]
   lgbm_final_params <- tibble(
-      configuration = "Default",
-      engine = params$model$engine,
-      seed = params$model$seed,
-      objective = params$model$objective
-    ) %>%
+    configuration = "Default",
+    engine = params$model$engine,
+    seed = params$model$seed,
+    objective = params$model$objective
+  ) %>%
     bind_cols(as_tibble(params$model$parameter)) %>%
     bind_cols(as_tibble(params$model$hyperparameter$default)) %>%
     select(-all_of(lgbm_missing_params)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
-  
+
   # If CV is disabled, we still need to write empty stub files for any outputs
   # created by CV. This is so DVC has something to hash/look for
   arrow::write_parquet(data.frame(), paths$output$parameter_raw$local)
