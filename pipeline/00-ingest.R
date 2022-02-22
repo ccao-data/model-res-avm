@@ -155,15 +155,11 @@ training_data_clean <- training_data %>%
     # Calculate interval periods and times since Jan 01, 1997
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
     time_sale_year = year(meta_sale_date),
-    time_sale_week = time_interval %/% weeks(1),
+    time_sale_day = time_interval %/% days(1),
 
-    # Get components of dates for fixed effects to correct seasonality
+    # Get components of dates for to correct seasonality
     time_sale_quarter_of_year = quarter(meta_sale_date),
-    time_sale_week_of_year = week(meta_sale_date),
-
-    # Create indicators for dates that fall in particular months
-    time_sale_during_school_year = month(meta_sale_date) %in% c(1:5, 9:12),
-    time_sale_during_holidays = month(meta_sale_date) %in% c(11, 12, 1)
+    time_sale_day_of_year = day(meta_sale_date)
   ) %>%
   select(-any_of("time_interval")) %>%
   write_parquet(paths$input$training$local)
@@ -184,11 +180,9 @@ assessment_data_clean <- assessment_data %>%
     meta_sale_date = as_date(params$assessment$date),
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
     time_sale_year = year(meta_sale_date),
-    time_sale_week = time_interval %/% weeks(1),
+    time_sale_day = time_interval %/% days(1),
     time_sale_quarter_of_year = quarter(meta_sale_date),
-    time_sale_week_of_year = week(meta_sale_date),
-    time_sale_during_school_year = month(meta_sale_date) %in% c(1:5, 9:12),
-    time_sale_during_holidays = month(meta_sale_date) %in% c(11, 12, 1)
+    time_sale_day_of_year = day(meta_sale_date)
   ) %>%
   select(-any_of("time_interval")) %>%
   write_parquet(paths$input$assessment$local)
