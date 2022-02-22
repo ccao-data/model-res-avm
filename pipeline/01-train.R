@@ -157,7 +157,10 @@ lgbm_model <- parsnip::boost_tree(
 
     # Regularization parameters
     lambda_l1 = tune(),
-    lambda_l2 = tune()
+    lambda_l2 = tune(),
+    
+    # Max number of bins that feature values will be bucketed in
+    max_bin = tune()
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -198,7 +201,8 @@ if (cv_enable) {
       cat_smooth          = lightsnip::cat_smooth(lgbm_range$cat_smooth),
       cat_l2              = lightsnip::cat_l2(lgbm_range$cat_l2),
       lambda_l1           = lightsnip::lambda_l1(lgbm_range$lambda_l1),
-      lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2)
+      lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2),
+      max_bin             = lightsnip::max_bin(lgbm_range$max_bin)
     )
 
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
