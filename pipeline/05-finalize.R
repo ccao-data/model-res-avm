@@ -74,18 +74,6 @@ dvc_md5_df <- bind_rows(read_yaml("dvc.lock")$stages$ingest$outs) %>%
 
 ## 2.3. Parameters -------------------------------------------------------------
 
-# Columns used for ratio study/prior year comparison
-ratio_study_far_column <- get_rs_col_name(
-  params$assessment$data_year,
-  params$ratio_study$far_year,
-  params$ratio_study$far_stage
-)
-ratio_study_near_column <- get_rs_col_name(
-  params$assessment$data_year,
-  params$ratio_study$near_year,
-  params$ratio_study$near_stage
-)
-
 # Save most parameters from params.yaml to a metadata file, along with
 # run info, git stuff, etc.
 metadata <- tibble::tibble(
@@ -114,10 +102,10 @@ metadata <- tibble::tibble(
   ),
   ratio_study_far_year = params$ratio_study$far_year,
   ratio_study_far_stage = params$ratio_study$far_stage,
-  ratio_study_far_column = ratio_study_far_column,
+  ratio_study_far_column = params$ratio_study$far_column,
   ratio_study_near_year = params$ratio_study$near_year,
   ratio_study_near_stage = params$ratio_study$near_stage,
-  ratio_study_near_column = ratio_study_near_column,
+  ratio_study_near_column = params$ratio_study$near_column,
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
@@ -238,6 +226,12 @@ if (params$toggle$upload_to_s3) {
       }
     }) %>%
     write_parquet(paths$output$parameter_final$s3)
+  
+  # Upload the test set predictions
+  read_parquet(paths$output$test_card$local) %>%
+    mutate(run_id = run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$test_card$s3)
 
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame

@@ -37,12 +37,15 @@ stages:
     - model.predictor
     - model.parameter
     - model.hyperparameter.range
+    - ratio_study
     outs:
     - output/parameter_final/model_parameter_final.parquet:
         cache: false
     - output/parameter_range/model_parameter_range.parquet:
         cache: false
     - output/parameter_search/model_parameter_search.parquet:
+        cache: false
+    - output/test_card/model_test_card.parquet:
         cache: false
     - output/workflow/fit/model_workflow_fit.zip:
         cache: false
@@ -86,7 +89,7 @@ stages:
         2. An assessor-specific ratio study comparing estimated assessments to
            the previous year's sales
     deps:
-    - output/intermediate/model_test.parquet
+    - output/test_card/model_test_card.parquet
     - output/assessment_pin/model_assessment_pin.parquet
     params:
     - run_type
@@ -132,6 +135,7 @@ stages:
     - output/parameter_search/model_parameter_search.parquet
     - output/workflow/fit/model_workflow_fit.zip
     - output/workflow/recipe/model_workflow_recipe.rds
+    - output/test_card/model_test_card.parquet
     - output/assessment_card/model_assessment_card.parquet
     - output/assessment_pin/model_assessment_pin.parquet
     - output/performance/model_performance_test.parquet

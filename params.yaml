@@ -24,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -265,7 +265,7 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    num_iterations: 1000
+    num_iterations: 100
     learning_rate: 0.1
     
     # For CV only, proportion of the training data to hold out for use in 
@@ -342,9 +342,6 @@ pv:
 # stage. Typically we want to compare new model values with the finalized values
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
-
-# Note: these parameters are translated to column names in the input data by the
-# get_rs_col_name() helper function
 ratio_study:
   far_year: "2019"
   far_stage: "board"

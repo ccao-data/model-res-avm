@@ -305,10 +305,31 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Get predictions on the test set using the training data model. These
-# predictions are used to evaluate model performance on the unseen test set
+# predictions are used to evaluate model performance on the unseen test set.
+# Keep only the variables necessary for evaluation
 test %>%
   mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
-  write_parquet(paths$intermediate$test$local)
+  select(
+    meta_year, meta_pin, meta_class, meta_card_num,
+    meta_triad_code, meta_township_code, meta_nbhd_code,
+    loc_cook_municipality_name, loc_chicago_ward_num, loc_census_puma_geoid,
+    loc_census_tract_geoid, loc_school_elementary_district_geoid,
+    loc_school_secondary_district_geoid, loc_school_unified_district_geoid,
+    char_bldg_sf,
+    all_of(c(
+      "prior_far_tot" = params$ratio_study$far_column,
+      "prior_near_tot" = params$ratio_study$near_column
+    )),
+    pred_card_initial_fmv,
+    meta_sale_price, meta_sale_date, meta_sale_document_num
+  ) %>%
+  # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential
+  mutate(
+    prior_far_tot = prior_far_tot * 10,
+    prior_near_tot = prior_near_tot * 10
+  ) %>%
+  as_tibble() %>%
+  write_parquet(paths$output$test_card$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since

@@ -70,8 +70,7 @@ col_rename_dict <- c(
 # Load the test results from the end of the train stage. This will be the most
 # recent 10% of sales and already includes predictions. This data will NOT
 # include multicard sales, so the unit of observation is PINs (1 PIN per row)
-test_data <- read_parquet(paths$intermediate$test$local) %>%
-  as_tibble()
+test_data_card <- read_parquet(paths$intermediate$test$local)
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
@@ -80,11 +79,11 @@ if (run_type == "full") {
   assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
     select(
       meta_pin, meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
-      char_total_bldg_sf, prior_far_tot, prior_near_tot,
-      sale_ratio_study_price, pred_pin_final_fmv_round,
       loc_cook_municipality_name, loc_chicago_ward_num, loc_census_puma_geoid,
       loc_census_tract_geoid, loc_school_elementary_district_geoid,
-      loc_school_secondary_district_geoid, loc_school_unified_district_geoid
+      loc_school_secondary_district_geoid, loc_school_unified_district_geoid,
+      char_total_bldg_sf, prior_far_tot, prior_near_tot,
+      pred_pin_final_fmv_round, sale_ratio_study_price
     )
 }
 
@@ -319,10 +318,10 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 # class or no class option for each level
 geographies_quosures <- rlang::quos(
   meta_township_code,
-  # meta_nbhd_code, loc_cook_municipality_name,
-  # loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-  # loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-  # loc_school_unified_district_geoid,
+  meta_nbhd_code, loc_cook_municipality_name,
+  loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+  loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
+  loc_school_unified_district_geoid,
   NULL
 )
 geographies_list <- purrr::cross2(
@@ -345,7 +344,7 @@ geographies_list_quantile <- purrr::cross3(
 future_map_dfr(
   geographies_list,
   ~ gen_agg_stats(
-    data = test_data,
+    data = test_data_card,
     truth = meta_sale_price,
     estimate = pred_card_initial_fmv,
     bldg_sqft = char_bldg_sf,
@@ -365,7 +364,7 @@ future_map_dfr(
 future_map_dfr(
   geographies_list_quantile,
   ~ gen_agg_stats_quantile(
-    data = test_data,
+    data = test_data_card,
     truth = meta_sale_price,
     estimate = pred_card_initial_fmv,
     rsn_col = prior_near_tot,
