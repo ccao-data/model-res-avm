@@ -30,19 +30,9 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
-# Columns and prefixes to use for ratio study comparison
-rsf_column <- get_rs_col_name(
-  params$assessment$data_year,
-  params$ratio_study$far_year,
-  params$ratio_study$far_stage
-)
-rsn_column <- get_rs_col_name(
-  params$assessment$data_year,
-  params$ratio_study$near_year,
-  params$ratio_study$near_stage
-)
-rsf_prefix <- gsub("_tot", "", rsf_column)
-rsn_prefix <- gsub("_tot", "", rsn_column)
+# Columns to use for ratio study comparison (by prefix)
+rsf_prefix <- gsub("_tot", "", params$ratio_study$far_column)
+rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
 
 # Load the training data to use as a source of sales. These will be attached to
 # PIN-level output (for comparison) and used as the basis for a sales ratio
@@ -222,8 +212,23 @@ assessment_data_merged %>%
 
 ## 5.1. Load Sales/Land --------------------------------------------------------
 
-# Keep the two most recent sales for each PIN. These are just for review, not
-# for ratio studies
+# Load the MOST RECENT sale per PIN from the year prior to the assessment year.
+# These are the sales that will be used for ratio studies in the evaluate stage.
+# We want our assessed value to be as close as possible to this sale
+sales_data_ratio_study <- sales_data %>%
+  filter(meta_year == params$assessment$data_year) %>%
+  group_by(meta_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date)) %>%
+  distinct(
+    meta_pin, meta_year,
+    sale_ratio_study_price = meta_sale_price,
+    sale_ratio_study_date = meta_sale_date,
+    sale_ratio_study_document_num = meta_sale_document_num
+  ) %>%
+  ungroup()
+
+# Keep the two most recent sales for each PIN from any year. These are just for
+# review, not for ratio studies
 sales_data_two_most_recent <- sales_data %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
@@ -324,6 +329,7 @@ assessment_data_pin_2 <- assessment_data_pin %>%
   left_join(land_site_rate, by = "meta_pin") %>%
   left_join(land_nbhd_rate, by = c("meta_nbhd_code" = "meta_nbhd")) %>%
   left_join(sales_data_two_most_recent, by = "meta_pin") %>%
+  left_join(sales_data_ratio_study, by = c("meta_year", "meta_pin")) %>%
   # Land values are provided by Valuations and are capped at a percentage of the
   # total FMV for the PIN. For 210 and 295s (townhomes), there's a pre-
   # calculated land total value, for all other classes, there's a $/sqft rate
@@ -432,51 +438,8 @@ assessment_data_pin_final %>%
     pred_pin_bldg_rate_effective, pred_pin_land_rate_effective,
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
+  as_tibble() %>%
   write_parquet(paths$output$assessment_pin$local)
-
-
-
-
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 6. Performance Data ----------------------------------------------------------
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# Data saved temporarily for use in performance evaluation. The most recent sale
-# in the assessment year is used for the ratio study/performance eval
-
-# Load the MOST RECENT sale per PIN for the same year as the assessment data.
-# We want our assessed value to be as close as possible to the most recent sale
-sales_data_most_recent <- sales_data %>%
-  filter(meta_year == params$assessment$data_year) %>%
-  group_by(meta_pin) %>%
-  filter(meta_sale_date == max(meta_sale_date)) %>%
-  distinct(
-    meta_pin, meta_year, meta_sale_price,
-    meta_sale_date, meta_sale_document_num
-  ) %>%
-  ungroup()
-
-# Join sales data to each PIN, then collapse the card-level assessment
-# data to the PIN level, summing the predicted value for multicard PINs. Keep
-# only columns needed for performance calculations. This data is used for
-# performance measurement only
-assessment_data_merged %>%
-  group_by(meta_year, meta_pin) %>%
-  summarize(
-    char_bldg_sf = sum(char_bldg_sf),
-    pred_pin_final_fmv_round = first(pred_pin_final_fmv_round),
-    across(
-      c(
-        meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
-        starts_with(c(rsf_prefix, rsn_prefix)),
-        starts_with(c("loc_cook_", "loc_chicago_", "loc_census", "loc_school_"))
-      ),
-      first
-    )
-  ) %>%
-  ungroup() %>%
-  left_join(sales_data_most_recent, by = c("meta_year", "meta_pin")) %>%
-  write_parquet(paths$intermediate$assessment$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)

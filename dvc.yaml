@@ -75,8 +75,6 @@ stages:
         cache: false
     - output/assessment_pin/model_assessment_pin.parquet:
         cache: false
-    - output/intermediate/model_assessment.parquet:
-        cache: false
     - output/intermediate/timing/model_timing_assess.parquet:
         cache: false
         
@@ -89,7 +87,7 @@ stages:
            the previous year's sales
     deps:
     - output/intermediate/model_test.parquet
-    - output/intermediate/model_assessment.parquet
+    - output/assessment_pin/model_assessment_pin.parquet
     params:
     - run_type
     - assessment.data_year

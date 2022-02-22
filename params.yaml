@@ -348,8 +348,10 @@ pv:
 ratio_study:
   far_year: "2019"
   far_stage: "board"
+  far_column: "meta_2yr_pri_board_tot"
   near_year: "2021"
   near_stage: "mailed"
+  near_column: "meta_mailed_tot"
   
   # Quantile breakouts to use in the evaluate stage. For example, 3 will split
   # each geography in evaluate into terciles
