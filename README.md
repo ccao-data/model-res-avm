@@ -25,6 +25,7 @@ git tag.
 | performance          | geography \[by class\]             | year, run_id, stage, geography_type, geography_id, by_class, class           | Peformance metrics (optionally) broken out by class for different levels of geography |
 | performance_quantile | geography \[by class\] by quantile | year, run_id, stage, geography_type, geography_id, by_class, class, quantile | Performance metrics by quantile within class and geography                            |
 | shap                 | card                               | year, run_id, township_code, meta_pin, meta_card_num                         | SHAP values for each feature for each card in the assessment data                     |
+| test_card            | card                               | year, meta_pin, meta_card_num                                                | Test set predictions at the card level                                                |
 | timing               | model run                          | year, run_id                                                                 | Finalized time elapsed for each stage of the run                                      |
 
 #### Run Outputs
@@ -40,6 +41,7 @@ git tag.
 | performance          | Test only   | Test + assessment |
 | performance_quantile | Test only   | Test + assessment |
 | shap                 | No          | Yes               |
+| test_card            | Yes         | Yes               |
 | timing               | Yes         | Yes               |
 
 ## Feature Guide

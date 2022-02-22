@@ -8,16 +8,11 @@ stages:
     - assessment
     - input
     outs:
-    - input/training_data.parquet:
-        cache: true
-    - input/assessment_data.parquet:
-        cache: true
-    - input/complex_id_data.parquet:
-        cache: true
-    - input/land_site_rate_data.parquet:
-        cache: true
-    - input/land_nbhd_rate_data.parquet:
-        cache: true
+    - input/assessment_data.parquet
+    - input/complex_id_data.parquet
+    - input/land_nbhd_rate_data.parquet
+    - input/land_site_rate_data.parquet
+    - input/training_data.parquet
     frozen: true
 
   train:
@@ -53,7 +48,7 @@ stages:
         cache: false
     - output/intermediate/timing/model_timing_train.parquet:
         cache: false
-        
+
   assess:
     cmd: Rscript pipeline/02-assess.R
     desc: >
@@ -80,7 +75,7 @@ stages:
         cache: false
     - output/intermediate/timing/model_timing_assess.parquet:
         cache: false
-        
+
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     desc: >
@@ -106,7 +101,7 @@ stages:
         cache: false
     - output/intermediate/timing/model_timing_evaluate.parquet:
         cache: false
-        
+
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     desc: >
@@ -122,13 +117,13 @@ stages:
         cache: false
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
-        
+
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     desc: >
-       Save run timings, upload pipeline run results to S3, and send an SNS
-       notification. Will also clean some of the generated outputs prior to
-       upload and attach a unique run ID
+      Save run timings, upload pipeline run results to S3, and send an SNS
+      notification. Will also clean some of the generated outputs prior to
+      upload and attach a unique run ID
     deps:
     - output/parameter_final/model_parameter_final.parquet
     - output/parameter_range/model_parameter_range.parquet

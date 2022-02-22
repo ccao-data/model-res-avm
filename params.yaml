@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Add lat/lon as predictors. Add max_bin as tuning params. Full CV.
-  Same params as objective-antonia-2022-02-22
+  Add test_card table and use sale_ratio_study_ columns for performance
+  measurement
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -24,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee

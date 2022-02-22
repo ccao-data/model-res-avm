@@ -70,7 +70,7 @@ col_rename_dict <- c(
 # Load the test results from the end of the train stage. This will be the most
 # recent 10% of sales and already includes predictions. This data will NOT
 # include multicard sales, so the unit of observation is PINs (1 PIN per row)
-test_data_card <- read_parquet(paths$intermediate$test$local)
+test_data_card <- read_parquet(paths$output$test_card$local)
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
