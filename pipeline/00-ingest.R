@@ -38,7 +38,8 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
   aws_athena_jdbc_driver,
   url = Sys.getenv("AWS_ATHENA_JDBC_URL"),
   aws_credentials_provider_class = Sys.getenv("AWS_CREDENTIALS_PROVIDER_CLASS"),
-  Schema = "Default"
+  Schema = "Default",
+  WorkGroup = "read-only-with-scan-limit"
 )
 
 
