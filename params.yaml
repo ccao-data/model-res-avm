@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Baseline 100 iters run. Added time_day variables, lat/lon, max_bin tuning
-  parameter set at 800. Otherwise, same as bold-matt-2022-02-23
+  Try stratified sampling + resampled CV instead of time-based split. Baseline
+  vigorous-sean-2022-02-23
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -24,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -82,7 +82,7 @@ input:
 cv:
   # Proportion of the training data to use for training vs test i.e. 0.9 means
   # the most recent 10% of sales are used as a test set
-  split_prop: 0.9
+  split_prop: 0.8
   
   # Number of folds to use for v-fold CV. Recommend this number be above 6
   num_folds: 10

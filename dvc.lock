@@ -296,11 +296,11 @@ stages:
       md5: 7d8b4e0c4e62311d302efe94ce81fbd1
       size: 100602440
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 1e8a08eecc8783feac918ac990a777bb
-      size: 6759043
+      md5: 3b2d57cc24cb7d52249ca5dc188c1b74
+      size: 1517204
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 23291d4d0746337fc4f6299e442aaee0
-      size: 1928887
+      md5: 54fe223afaf739552d5b864270cac16f
+      size: 1929022
     params:
       params.yaml:
         assessment:
@@ -429,23 +429,23 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 2bbd1b6a081cfbe114c09696f5d2056f
-      size: 218037226
+      md5: 9f08b231d18a3039c0759afdd52a2e3b
+      size: 217991637
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 8cfa313a50777857d04f44ab601e0f0d
-      size: 104187150
+      md5: 111b07638dba47ac1422565e71af7e17
+      size: 102855324
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 9b6eb4564a0ec02d7a71f34ee0d657b1
+      md5: 5fc95e1a6498d973221d7f1ca1de0c5c
       size: 2338
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 8cfa313a50777857d04f44ab601e0f0d
-      size: 104187150
+      md5: 111b07638dba47ac1422565e71af7e17
+      size: 102855324
     - path: output/test_card/model_test_card.parquet
-      md5: 591511d3bdfb91d3dab2925684222d45
-      size: 1622856
+      md5: aaec73a2436eb09041c3615dfb335481
+      size: 1612823
     params:
       params.yaml:
         assessment.data_year: '2021'
@@ -463,20 +463,20 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 494c3917eceba47d54cce26f2d7b3ffd
+      md5: 2c6252bac8f0e00cc1fc1baae5ceb811
       size: 2352
     - path: output/performance/model_performance_assessment.parquet
-      md5: 98301dbd541a691b032061dec5d78a44
-      size: 12667299
+      md5: a1fa0d19f32ed958cbc148ee5dd7f61f
+      size: 12427114
     - path: output/performance/model_performance_test.parquet
-      md5: 362730bce9735b007b33bb18bce8cb30
-      size: 7935803
+      md5: c890e6fe7b4b31afeafa1ec9d58e2fb5
+      size: 7811241
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 8e66b7a4346ae20720d34c6ec43d068d
-      size: 5062231
+      md5: ab189323574fce5e29f1a276ea0b0395
+      size: 4972234
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 31d998dbe0d92a42cde883ad92e22bbd
-      size: 4432902
+      md5: 1aebb97b018d3bd18ede53b5d1c4f89d
+      size: 4359751
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
@@ -484,11 +484,11 @@ stages:
       md5: 27af7eb106b52fe3f71983158321f0a1
       size: 284493350
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 1e8a08eecc8783feac918ac990a777bb
-      size: 6759043
+      md5: 3b2d57cc24cb7d52249ca5dc188c1b74
+      size: 1517204
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 23291d4d0746337fc4f6299e442aaee0
-      size: 1928887
+      md5: 54fe223afaf739552d5b864270cac16f
+      size: 1929022
     params:
       params.yaml:
         model.predictor.all:
@@ -591,11 +591,11 @@ stages:
         - ind_pin_is_multicard
     outs:
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 26ff4b644d27c3d151ec9c98ecbc07ae
+      md5: 5411fead4a396e17367f2d4552b585a4
       size: 2359
     - path: output/shap/model_shap.parquet
-      md5: 0fc4e268f45e5fc51e599e6ca2928828
-      size: 875276153
+      md5: 38ef3363eefc0a109f479ee8efb1690a
+      size: 869563362
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:

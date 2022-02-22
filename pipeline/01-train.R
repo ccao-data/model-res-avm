@@ -66,12 +66,14 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
-time_split <- initial_time_split(
+split_data <- initial_split(
   data = training_data_full,
-  prop = params$cv$split_prop
+  prop = params$cv$split_prop,
+  strata = "meta_sale_price",
+  breaks = 5
 )
-test <- testing(time_split)
-train <- training(time_split)
+test <- testing(split_data)
+train <- training(split_data)
 
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
@@ -181,7 +183,12 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
 
   # Create v-fold CV splits of the main training set
-  train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
+  train_folds <- vfold_cv(
+    data = train,
+    v = params$cv$num_folds,
+    strata = "meta_sale_price",
+    breaks = 5
+  )
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
