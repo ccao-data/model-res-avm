@@ -30,7 +30,7 @@ stages:
     - model.verbose
     - model.predictor
     - model.parameter
-    - model.hyperparameter.range
+    - model.hyperparameter
     - ratio_study
     outs:
     - output/parameter_final/model_parameter_final.parquet:
