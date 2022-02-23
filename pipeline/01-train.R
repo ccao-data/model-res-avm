@@ -148,18 +148,13 @@ lgbm_model <- parsnip::boost_tree(
     num_leaves = tune(),
     add_to_linked_depth = tune(),
     feature_fraction = tune(),
-    min_gain_to_split = tune(),
-    min_data_in_leaf = tune(),
 
     # Categorical-specific parameters
     max_cat_threshold = tune(),
     min_data_per_group = tune(),
-    cat_smooth = tune(),
-    cat_l2 = tune(),
 
     # Regularization parameters
     lambda_l1 = tune(),
-    lambda_l2 = tune(),
 
     # Max number of bins that feature values will be bucketed in
     max_bin = tune()
@@ -201,14 +196,9 @@ if (cv_enable) {
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
       add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
       feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
-      min_gain_to_split   = lightsnip::min_gain_to_split(lgbm_range$min_gain_to_split),
-      min_data_in_leaf    = lightsnip::min_data_in_leaf(lgbm_range$min_data_in_leaf),
       max_cat_threshold   = lightsnip::max_cat_threshold(lgbm_range$max_cat_threshold),
       min_data_per_group  = lightsnip::min_data_per_group(lgbm_range$min_data_per_group),
-      cat_smooth          = lightsnip::cat_smooth(lgbm_range$cat_smooth),
-      cat_l2              = lightsnip::cat_l2(lgbm_range$cat_l2),
       lambda_l1           = lightsnip::lambda_l1(lgbm_range$lambda_l1),
-      lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2),
       max_bin             = lightsnip::max_bin(lgbm_range$max_bin)
     )
 

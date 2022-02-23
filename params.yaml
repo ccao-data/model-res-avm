@@ -12,8 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Try stratified sampling + resampled CV instead of time-based split. Baseline
-  vigorous-sean-2022-02-23
+  Drop L2 and other redundant hyper parameters. Baseline boring-tristan-2022-02-23
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -204,7 +203,6 @@ model:
       "acs5_percent_household_total_occupied_w_sel_cond",
       "acs5_percent_mobility_moved_in_county",
       "other_ihs_avg_year_index",
-      "other_tax_bill_amount_total",
       "other_tax_bill_rate",
       "other_school_district_elementary_avg_rating",
       "other_school_district_secondary_avg_rating",
@@ -212,9 +210,6 @@ model:
       "time_sale_day",
       "time_sale_quarter_of_year",
       "time_sale_day_of_year",
-      "ind_land_gte_95_percentile",
-      "ind_bldg_gte_95_percentile",
-      "ind_land_bldg_ratio_gte_10",
       "ind_pin_is_multicard"
     ]
     
@@ -281,20 +276,15 @@ model:
     # Default set of hyperparameters to use if CV is not enabled. See docs for
     # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     default:
-      stop_iter: 25
-      num_leaves: 869
-      add_to_linked_depth: 3
-      feature_fraction: 0.6012369527682242
-      min_gain_to_split: 12.724242127925901
-      min_data_in_leaf: 65
-      max_cat_threshold: 120
-      min_data_per_group: 41
-      cat_smooth: 84.06821843832033
-      cat_l2: 14.925790758405467
-      lambda_l1: 0.26319681660450805
-      lambda_l2: 9.692511452320764
-      max_depth: 12
-      max_bin: 800
+      stop_iter: 14
+      num_leaves: 4270
+      add_to_linked_depth: 2
+      feature_fraction: 0.4120287037454545
+      max_cat_threshold: 206
+      min_data_per_group: 96
+      lambda_l1: 0.48360347165103584
+      max_depth: 14
+      max_bin: 981
     
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
@@ -302,14 +292,9 @@ model:
       num_leaves: [500, 5000]
       add_to_linked_depth: [1, 3]
       feature_fraction: [0.3, 1.0]
-      min_gain_to_split: [-4.0, 1.5]
-      min_data_in_leaf: [2, 200]
       max_cat_threshold: [20, 250]
       min_data_per_group: [20, 250]
-      cat_smooth: [10.0, 100.0]
-      cat_l2: [-3, 2]
       lambda_l1: [-3, 2]
-      lambda_l2: [-3, 2]
       max_depth: [4, 16]
       max_bin: [50, 1000]
 
