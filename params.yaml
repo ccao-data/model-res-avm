@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Add test_card table and use sale_ratio_study_ columns for performance
-  measurement
+  Baseline 100 iters run. Added time_day variables, lat/lon, max_bin tuning
+  parameter set at 800. Otherwise, same as bold-matt-2022-02-23
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -294,7 +294,7 @@ model:
       lambda_l1: 0.26319681660450805
       lambda_l2: 9.692511452320764
       max_depth: 12
-      max_bin: 255
+      max_bin: 800
     
     # Range of possible hyperparameter values for tune_bayes to explore
     range:

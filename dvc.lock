@@ -28,39 +28,34 @@ stages:
               dist_ft: 250
     outs:
     - path: input/assessment_data.parquet
-      md5: 5ccfb2bb069c63b329df3d979e55678e
-      size: 283557153
-      isexec: true
+      md5: 27af7eb106b52fe3f71983158321f0a1
+      size: 284493350
     - path: input/complex_id_data.parquet
-      md5: 716a49453bcbbb66c39d162f751bc6d4
-      size: 719229
-      isexec: true
+      md5: 765e3dd2ff57b06e225240195b2641f7
+      size: 718735
     - path: input/land_nbhd_rate_data.parquet
-      md5: d4d45190b5b8b1491717429da75dc904
-      size: 3612
-      isexec: true
+      md5: ec62f0ca2657094de5cfc4237da63deb
+      size: 3610
     - path: input/land_site_rate_data.parquet
-      md5: e7b3de0ce18a01834c51089072159379
-      size: 197036
-      isexec: true
+      md5: f13077e733fc54a8adfa8c85775468ac
+      size: 197096
     - path: input/training_data.parquet
-      md5: 1aa59a250063ab447ed9e4c166445364
-      size: 100463102
-      isexec: true
+      md5: 7d8b4e0c4e62311d302efe94ce81fbd1
+      size: 100602440
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
     - path: input/training_data.parquet
-      md5: 1aa59a250063ab447ed9e4c166445364
-      size: 100463102
+      md5: 7d8b4e0c4e62311d302efe94ce81fbd1
+      size: 100602440
     params:
       params.yaml:
         cv:
-          num_folds: 10
-          initial_set: 12
-          max_iterations: 25
-          no_improve: 10
           split_prop: 0.9
+          num_folds: 10
+          initial_set: 16
+          max_iterations: 50
+          no_improve: 12
           best_metric: rmse
         model.engine: lightgbm
         model.hyperparameter.range:
@@ -73,9 +68,6 @@ stages:
           add_to_linked_depth:
           - 1
           - 3
-          max_depth:
-          - 4
-          - 16
           feature_fraction:
           - 0.3
           - 1.0
@@ -103,9 +95,15 @@ stages:
           lambda_l2:
           - -3
           - 2
+          max_depth:
+          - 4
+          - 16
+          max_bin:
+          - 50
+          - 1000
         model.objective: rmse
         model.parameter:
-          num_iterations: 100
+          num_iterations: 1000
           learning_rate: 0.1
           validation_prop: 0.1
           validation_metric: rmse
@@ -142,6 +140,8 @@ stages:
           - char_tp_plan
           - char_type_resd
           - char_use
+          - loc_longitude
+          - loc_latitude
           - loc_cook_municipality_name
           - loc_env_flood_fema_sfha
           - loc_env_flood_fs_factor
@@ -200,11 +200,9 @@ stages:
           - other_school_district_elementary_avg_rating
           - other_school_district_secondary_avg_rating
           - time_sale_year
-          - time_sale_week
+          - time_sale_day
           - time_sale_quarter_of_year
-          - time_sale_week_of_year
-          - time_sale_during_school_year
-          - time_sale_during_holidays
+          - time_sale_day_of_year
           - ind_land_gte_95_percentile
           - ind_bldg_gte_95_percentile
           - ind_land_bldg_ratio_gte_10
@@ -245,50 +243,64 @@ stages:
           - meta_sale_document_num
         model.seed: 20220117
         model.verbose: -1
-        toggle.cv_enable: true
+        ratio_study:
+          far_year: '2019'
+          far_stage: board
+          far_column: meta_2yr_pri_board_tot
+          near_year: '2021'
+          near_stage: mailed
+          near_column: meta_mailed_tot
+          num_quantile:
+          - 3
+          - 5
+          - 10
+        toggle.cv_enable: false
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 42f42d09a5c784553259090d29a7804a
+      md5: 5591672cc2112cbb5d1769def54c7e0a
       size: 2331
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: d86b6e026fa6e20653932913d4c54400
-      size: 7823
+      md5: ea5ab70a7127db0097821454c42756ba
+      size: 8172
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: 0023a7925b14bbf7ef2887c3b49774e4
-      size: 1964
+      md5: 0eeb18f08f18ef1f40bb867dce65842e
+      size: 695
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: 9abb9aa0ac9a0c29f686cf9e2a83854b
-      size: 205698
+      md5: 0eeb18f08f18ef1f40bb867dce65842e
+      size: 695
+    - path: output/test_card/model_test_card.parquet
+      md5: 591511d3bdfb91d3dab2925684222d45
+      size: 1622856
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: ee42024f3b5f65acc7a00ad4d7fab979
-      size: 3073238
+      md5: 1e8a08eecc8783feac918ac990a777bb
+      size: 6759043
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 0aa52b7eef79c787c1b3cccf4b6c5a5f
-      size: 1929011
+      md5: 23291d4d0746337fc4f6299e442aaee0
+      size: 1928887
   assess:
     cmd: Rscript pipeline/02-assess.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 5ccfb2bb069c63b329df3d979e55678e
-      size: 283557153
+      md5: 27af7eb106b52fe3f71983158321f0a1
+      size: 284493350
     - path: input/complex_id_data.parquet
-      md5: 716a49453bcbbb66c39d162f751bc6d4
-      size: 719229
+      md5: 765e3dd2ff57b06e225240195b2641f7
+      size: 718735
     - path: input/land_nbhd_rate_data.parquet
-      md5: d4d45190b5b8b1491717429da75dc904
-      size: 3612
+      md5: ec62f0ca2657094de5cfc4237da63deb
+      size: 3610
     - path: input/land_site_rate_data.parquet
-      md5: e7b3de0ce18a01834c51089072159379
-      size: 197036
+      md5: f13077e733fc54a8adfa8c85775468ac
+      size: 197096
     - path: input/training_data.parquet
-      md5: 1aa59a250063ab447ed9e4c166445364
-      size: 100463102
+      md5: 7d8b4e0c4e62311d302efe94ce81fbd1
+      size: 100602440
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: ee42024f3b5f65acc7a00ad4d7fab979
-      size: 3073238
+      md5: 1e8a08eecc8783feac918ac990a777bb
+      size: 6759043
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 0aa52b7eef79c787c1b3cccf4b6c5a5f
-      size: 1929011
+      md5: 23291d4d0746337fc4f6299e442aaee0
+      size: 1928887
     params:
       params.yaml:
         assessment:
@@ -328,6 +340,8 @@ stages:
         - char_tp_plan
         - char_type_resd
         - char_use
+        - loc_longitude
+        - loc_latitude
         - loc_cook_municipality_name
         - loc_env_flood_fema_sfha
         - loc_env_flood_fs_factor
@@ -386,11 +400,9 @@ stages:
         - other_school_district_elementary_avg_rating
         - other_school_district_secondary_avg_rating
         - time_sale_year
-        - time_sale_week
+        - time_sale_day
         - time_sale_quarter_of_year
-        - time_sale_week_of_year
-        - time_sale_during_school_year
-        - time_sale_during_holidays
+        - time_sale_day_of_year
         - ind_land_gte_95_percentile
         - ind_bldg_gte_95_percentile
         - ind_land_bldg_ratio_gte_10
@@ -407,42 +419,43 @@ stages:
         ratio_study:
           far_year: '2019'
           far_stage: board
+          far_column: meta_2yr_pri_board_tot
           near_year: '2021'
           near_stage: mailed
+          near_column: meta_mailed_tot
           num_quantile:
           - 3
           - 5
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 7f7259eb1f19c196d9d7c46cec2c1c58
-      size: 199830574
+      md5: 2bbd1b6a081cfbe114c09696f5d2056f
+      size: 218037226
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 98806b0c31b3fb7acadb270e5015a05e
-      size: 102120759
-    - path: output/intermediate/model_assessment.parquet
-      md5: d3a1b95976aad9920ed4a0132b559968
-      size: 24234125
+      md5: 8cfa313a50777857d04f44ab601e0f0d
+      size: 104187150
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: b31b5c26bb22c8b5ec1b05e56b623904
+      md5: 9b6eb4564a0ec02d7a71f34ee0d657b1
       size: 2338
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
-    - path: output/intermediate/model_assessment.parquet
-      md5: d3a1b95976aad9920ed4a0132b559968
-      size: 24234125
-    - path: output/intermediate/model_test.parquet
-      md5: 77fc518f097b29cf94e3c8a6a0561a8c
-      size: 11067095
+    - path: output/assessment_pin/model_assessment_pin.parquet
+      md5: 8cfa313a50777857d04f44ab601e0f0d
+      size: 104187150
+    - path: output/test_card/model_test_card.parquet
+      md5: 591511d3bdfb91d3dab2925684222d45
+      size: 1622856
     params:
       params.yaml:
         assessment.data_year: '2021'
         ratio_study:
           far_year: '2019'
           far_stage: board
+          far_column: meta_2yr_pri_board_tot
           near_year: '2021'
           near_stage: mailed
+          near_column: meta_mailed_tot
           num_quantile:
           - 3
           - 5
@@ -450,32 +463,32 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 51e453daebac105ec3effb2b9468fb34
+      md5: 494c3917eceba47d54cce26f2d7b3ffd
       size: 2352
     - path: output/performance/model_performance_assessment.parquet
-      md5: 700de132a32b245ff40951623e19d8a4
-      size: 12431013
+      md5: 98301dbd541a691b032061dec5d78a44
+      size: 12667299
     - path: output/performance/model_performance_test.parquet
-      md5: 67f73420838a2baefd9db12dcae0c48f
-      size: 7812896
+      md5: 362730bce9735b007b33bb18bce8cb30
+      size: 7935803
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: c20d32541014ef889063b89de902093b
-      size: 4967854
+      md5: 8e66b7a4346ae20720d34c6ec43d068d
+      size: 5062231
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 6806a7497b231c9b23ce403d1470f260
-      size: 4363260
+      md5: 31d998dbe0d92a42cde883ad92e22bbd
+      size: 4432902
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 5ccfb2bb069c63b329df3d979e55678e
-      size: 283557153
+      md5: 27af7eb106b52fe3f71983158321f0a1
+      size: 284493350
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: dcb27c372e1334c2ae6878fcb48f05d2
-      size: 572412
+      md5: 1e8a08eecc8783feac918ac990a777bb
+      size: 6759043
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 0aa52b7eef79c787c1b3cccf4b6c5a5f
-      size: 1929011
+      md5: 23291d4d0746337fc4f6299e442aaee0
+      size: 1928887
     params:
       params.yaml:
         model.predictor.all:
@@ -509,6 +522,8 @@ stages:
         - char_tp_plan
         - char_type_resd
         - char_use
+        - loc_longitude
+        - loc_latitude
         - loc_cook_municipality_name
         - loc_env_flood_fema_sfha
         - loc_env_flood_fs_factor
@@ -567,81 +582,82 @@ stages:
         - other_school_district_elementary_avg_rating
         - other_school_district_secondary_avg_rating
         - time_sale_year
-        - time_sale_week
+        - time_sale_day
         - time_sale_quarter_of_year
-        - time_sale_week_of_year
-        - time_sale_during_school_year
-        - time_sale_during_holidays
+        - time_sale_day_of_year
         - ind_land_gte_95_percentile
         - ind_bldg_gte_95_percentile
         - ind_land_bldg_ratio_gte_10
         - ind_pin_is_multicard
     outs:
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: bc87347d2a8ba68ebc48bcb5a9f7f960
+      md5: 26ff4b644d27c3d151ec9c98ecbc07ae
       size: 2359
     - path: output/shap/model_shap.parquet
-      md5: 1aeb31fa12f6040cbec78d6b794ee7a6
-      size: 755188732
+      md5: 0fc4e268f45e5fc51e599e6ca2928828
+      size: 875276153
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: b6d3efdda4755ab9976417e2d67d7ae0
-      size: 199683938
+      md5: 2bbd1b6a081cfbe114c09696f5d2056f
+      size: 218037226
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 9ea8a7eddad69e73557be1285e783f45
-      size: 98476143
+      md5: 8cfa313a50777857d04f44ab601e0f0d
+      size: 104187150
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: ee47b61189d9362dbd8dea81b0c31aaf
+      md5: 9b6eb4564a0ec02d7a71f34ee0d657b1
       size: 2338
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: c7fee9ee59ef7e4da5ea40717c9ce68a
+      md5: 494c3917eceba47d54cce26f2d7b3ffd
       size: 2352
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: bc87347d2a8ba68ebc48bcb5a9f7f960
+      md5: 26ff4b644d27c3d151ec9c98ecbc07ae
       size: 2359
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: dec20ce79b798b16b61ce061daf35522
+      md5: 5591672cc2112cbb5d1769def54c7e0a
       size: 2331
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: caa3f3ed4fb36bca85d6b1c4cb5e2aee
-      size: 7823
+      md5: ea5ab70a7127db0097821454c42756ba
+      size: 8172
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: 0023a7925b14bbf7ef2887c3b49774e4
-      size: 1964
+      md5: 0eeb18f08f18ef1f40bb867dce65842e
+      size: 695
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: 0cf613f1b862ae0e68e4780c8732c54f
-      size: 196962
+      md5: 0eeb18f08f18ef1f40bb867dce65842e
+      size: 695
     - path: output/performance/model_performance_assessment.parquet
-      md5: 363c14f4e2eb1bf5d96422b693b05e5c
-      size: 12387296
+      md5: 98301dbd541a691b032061dec5d78a44
+      size: 12667299
     - path: output/performance/model_performance_test.parquet
-      md5: 212fcf142827806461cae1376cc30ef6
-      size: 7802663
+      md5: 362730bce9735b007b33bb18bce8cb30
+      size: 7935803
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: deb76cd4f6009641755e4184966451e4
-      size: 4994823
+      md5: 8e66b7a4346ae20720d34c6ec43d068d
+      size: 5062231
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: b7ef2f80bf74147987c5a02e6925d78c
-      size: 4354876
+      md5: 31d998dbe0d92a42cde883ad92e22bbd
+      size: 4432902
     - path: output/shap/model_shap.parquet
-      md5: 1aeb31fa12f6040cbec78d6b794ee7a6
-      size: 755188732
+      md5: 0fc4e268f45e5fc51e599e6ca2928828
+      size: 875276153
+    - path: output/test_card/model_test_card.parquet
+      md5: 591511d3bdfb91d3dab2925684222d45
+      size: 1622856
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: dcb27c372e1334c2ae6878fcb48f05d2
-      size: 572412
+      md5: 1e8a08eecc8783feac918ac990a777bb
+      size: 6759043
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 0aa52b7eef79c787c1b3cccf4b6c5a5f
-      size: 1929011
+      md5: 23291d4d0746337fc4f6299e442aaee0
+      size: 1928887
     params:
       params.yaml:
         cv:
-          num_folds: 3
-          initial_set: 3
-          max_iterations: 6
-          no_improve: 3
           split_prop: 0.9
+          num_folds: 10
+          initial_set: 16
+          max_iterations: 50
+          no_improve: 12
           best_metric: rmse
         input:
           min_sale_year: '2015'
@@ -696,6 +712,8 @@ stages:
             - char_tp_plan
             - char_type_resd
             - char_use
+            - loc_longitude
+            - loc_latitude
             - loc_cook_municipality_name
             - loc_env_flood_fema_sfha
             - loc_env_flood_fs_factor
@@ -754,11 +772,9 @@ stages:
             - other_school_district_elementary_avg_rating
             - other_school_district_secondary_avg_rating
             - time_sale_year
-            - time_sale_week
+            - time_sale_day
             - time_sale_quarter_of_year
-            - time_sale_week_of_year
-            - time_sale_during_school_year
-            - time_sale_during_holidays
+            - time_sale_day_of_year
             - ind_land_gte_95_percentile
             - ind_bldg_gte_95_percentile
             - ind_land_bldg_ratio_gte_10
@@ -798,26 +814,27 @@ stages:
             - meta_card_num
             - meta_sale_document_num
           parameter:
-            num_iterations: 10
+            num_iterations: 1000
             learning_rate: 0.1
             validation_prop: 0.1
             validation_metric: rmse
             link_max_depth: true
           hyperparameter:
             default:
-              stop_iter: 18
-              num_leaves: 2670
+              stop_iter: 25
+              num_leaves: 869
               add_to_linked_depth: 3
-              feature_fraction: 0.9
-              min_gain_to_split: 0.0
-              min_data_in_leaf: 64
-              max_cat_threshold: 72
-              min_data_per_group: 66
-              cat_smooth: 99.0
-              cat_l2: 0.001
-              lambda_l1: 0.005
-              lambda_l2: 1.825
+              feature_fraction: 0.6012369527682242
+              min_gain_to_split: 12.724242127925901
+              min_data_in_leaf: 65
+              max_cat_threshold: 120
+              min_data_per_group: 41
+              cat_smooth: 84.06821843832033
+              cat_l2: 14.925790758405467
+              lambda_l1: 0.26319681660450805
+              lambda_l2: 9.692511452320764
               max_depth: 12
+              max_bin: 255
             range:
               stop_iter:
               - 5
@@ -828,9 +845,6 @@ stages:
               add_to_linked_depth:
               - 1
               - 3
-              max_depth:
-              - 4
-              - 16
               feature_fraction:
               - 0.3
               - 1.0
@@ -858,6 +872,12 @@ stages:
               lambda_l2:
               - -3
               - 2
+              max_depth:
+              - 4
+              - 16
+              max_bin:
+              - 50
+              - 1000
         pv:
           multicard_yoy_cap: 2.0
           land_pct_of_total_cap: 0.5
@@ -870,21 +890,24 @@ stages:
         ratio_study:
           far_year: '2019'
           far_stage: board
+          far_column: meta_2yr_pri_board_tot
           near_year: '2021'
           near_stage: mailed
+          near_column: meta_mailed_tot
           num_quantile:
           - 3
           - 5
           - 10
-        run_note: Test run
+        run_note: "Replace time_ variables with more granular day-based versions.\
+          \ Same params and variables as recursing-nathan-2022-02-22\n"
         run_type: full
         toggle:
-          cv_enable: true
+          cv_enable: false
           upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
-      md5: c04ca84e337f36d28c0d71fa11597e5d
-      size: 23624
+      md5: 75148dbd193fd2b79e14dc41e3999b88
+      size: 24383
     - path: output/timing/model_timing.parquet
-      md5: 9bbc7f71b61b3773671ee240ae1e8b70
-      size: 5235
+      md5: 1c4a5f64f3828ee42f71708e0ea1a908
+      size: 5207
