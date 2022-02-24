@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Test quantile objective function + metric, along with MAPE for CV. Baseline
-  boring-tristan-2022-02-23
+  Switch objective function to MAE + include prior year values as predictors.
+  Baseline boring-tristan-2022-02-23
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -111,7 +111,7 @@ model:
   
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "quantile"
+  objective: "mae"
   seed: 20220117
   verbose: -1
   predictor:
@@ -211,7 +211,10 @@ model:
       "time_sale_day",
       "time_sale_quarter_of_year",
       "time_sale_day_of_year",
-      "ind_pin_is_multicard"
+      "ind_pin_is_multicard",
+      "meta_mailed_tot",
+      "meta_1yr_pri_board_tot",
+      "meta_2yr_pri_board_tot"
     ]
     
     # List of predictors included in predictor.all which are categoricals. It is
@@ -266,7 +269,7 @@ model:
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     validation_prop: 0.1
-    validation_metric: "quantile"
+    validation_metric: "mae"
     
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
     # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
