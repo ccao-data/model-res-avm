@@ -140,6 +140,8 @@ lgbm_model <- parsnip::boost_tree(
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
 
+    # Set alpha for quantile regression
+    alpha = 0.9,
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
 
@@ -210,7 +212,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mape, mae),
+    metrics = metric_set(mae, rmse, mape),
     control = control_bayes(
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
