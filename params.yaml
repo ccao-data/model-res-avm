@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Switch objective function to MAE + include prior year values as predictors.
-  Baseline boring-tristan-2022-02-23
+  Back to test/train time-based split. RMSE obj function. Stratified CV with
+  10 breaks and 5 repeats.
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -99,7 +99,7 @@ cv:
   
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
-  best_metric: "mae"
+  best_metric: "rmse"
 
 
 # Model (Hyper)parameters ------------------------------------------------------
@@ -111,7 +111,7 @@ model:
   
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "mae"
+  objective: "rmse"
   seed: 20220117
   verbose: -1
   predictor:
@@ -211,10 +211,7 @@ model:
       "time_sale_day",
       "time_sale_quarter_of_year",
       "time_sale_day_of_year",
-      "ind_pin_is_multicard",
-      "meta_mailed_tot",
-      "meta_1yr_pri_board_tot",
-      "meta_2yr_pri_board_tot"
+      "ind_pin_is_multicard"
     ]
     
     # List of predictors included in predictor.all which are categoricals. It is
@@ -262,14 +259,14 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    num_iterations: 100
+    num_iterations: 1000
     learning_rate: 0.1
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     validation_prop: 0.1
-    validation_metric: "mae"
+    validation_metric: "rmse"
     
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
     # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
@@ -293,14 +290,14 @@ model:
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
       stop_iter: [5, 30]
-      num_leaves: [500, 5000]
+      num_leaves: [500, 6000]
       add_to_linked_depth: [1, 3]
       feature_fraction: [0.3, 1.0]
       max_cat_threshold: [20, 250]
       min_data_per_group: [20, 250]
       lambda_l1: [-3, 2]
       max_depth: [4, 16]
-      max_bin: [50, 1000]
+      max_bin: [50, 1200]
 
 
 # Post-Valuation ---------------------------------------------------------------

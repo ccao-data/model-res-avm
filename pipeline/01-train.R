@@ -66,11 +66,9 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
-split_data <- initial_split(
+split_data <- initial_time_split(
   data = training_data_full,
-  prop = params$cv$split_prop,
-  strata = "meta_sale_price",
-  breaks = 5
+  prop = params$cv$split_prop
 )
 test <- testing(split_data)
 train <- training(split_data)
@@ -182,7 +180,8 @@ if (cv_enable) {
     data = train,
     v = params$cv$num_folds,
     strata = "meta_sale_price",
-    breaks = 5
+    breaks = 10,
+    repeats = 5
   )
 
   # Create the parameter search space for hyperparameter optimization
@@ -210,7 +209,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(mae, rmse, mape),
+    metrics = metric_set(rmse, mae, mape),
     control = control_bayes(
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
