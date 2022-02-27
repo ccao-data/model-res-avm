@@ -16,6 +16,7 @@ library(dplyr)
 library(here)
 library(lightgbm)
 library(lightsnip)
+library(lubridate)
 library(purrr)
 library(stringr)
 library(tictoc)
@@ -179,15 +180,28 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (cv_enable) {
-
-  # Create v-fold CV splits of the main training set
-  train_folds <- vfold_cv(
-    data = train,
-    v = params$cv$num_folds,
-    strata = "meta_sale_price",
-    breaks = 10,
-    repeats = 5
-  )
+  
+  # Using rolling forecast origin resampling to create a cumulative, sliding
+  # window-based training set, where the validation set is always just after the
+  # training set in time. See https://www.tmwr.org/resampling.html#rolling
+  train_folds <- rolling_origin(
+    data = train %>%
+      mutate(
+        time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
+        time_split = time_interval %/% months(6),
+      ) %>%
+      nest(data = -time_split),
+    initial = 1, assess = 1, skip = 0, cumulative = TRUE
+  ) %>%
+    mutate(splits = map(splits, ~ make_splits(
+      bind_rows(analysis(.x)$data),
+      bind_rows(assessment(.x)$data)
+    ))) %>%
+    rsample::new_rset(
+      splits = .$splits,
+      ids = .$id,
+      subclass = c("rolling_origin", "rset")
+    )
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned

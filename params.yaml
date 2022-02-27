@@ -85,7 +85,7 @@ cv:
   split_prop: 0.9
   
   # Number of folds to use for v-fold CV. Recommend this number be above 6
-  num_folds: 10
+  num_folds:
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
@@ -259,8 +259,8 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    num_iterations: 2000
-    learning_rate: 0.075
+    num_iterations: 100
+    learning_rate: 0.1
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
