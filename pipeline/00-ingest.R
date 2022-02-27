@@ -159,7 +159,7 @@ training_data_clean <- training_data %>%
     time_sale_day = time_interval %/% days(1),
 
     # Get components of dates for to correct seasonality
-    time_sale_quarter_of_year = quarter(meta_sale_date),
+    time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
     time_sale_day_of_year = day(meta_sale_date)
   ) %>%
   select(-any_of("time_interval")) %>%
@@ -182,7 +182,7 @@ assessment_data_clean <- assessment_data %>%
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
     time_sale_year = year(meta_sale_date),
     time_sale_day = time_interval %/% days(1),
-    time_sale_quarter_of_year = quarter(meta_sale_date),
+    time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
     time_sale_day_of_year = day(meta_sale_date)
   ) %>%
   select(-any_of("time_interval")) %>%
