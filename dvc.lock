@@ -11,7 +11,7 @@ stages:
           group: residential
           data_year: '2021'
         input:
-          min_sale_year: '2015'
+          min_sale_year: '2013'
           max_sale_year: '2021'
           complex:
             match_exact:
@@ -28,20 +28,20 @@ stages:
               dist_ft: 250
     outs:
     - path: input/assessment_data.parquet
-      md5: 27af7eb106b52fe3f71983158321f0a1
-      size: 284493350
+      md5: 7e43b0328ec2122bd0316b3f4843046b
+      size: 284494550
     - path: input/complex_id_data.parquet
-      md5: 765e3dd2ff57b06e225240195b2641f7
-      size: 718735
+      md5: 89a3e86d5e04f6e59c759625c8f180c9
+      size: 717552
     - path: input/land_nbhd_rate_data.parquet
       md5: ec62f0ca2657094de5cfc4237da63deb
       size: 3610
     - path: input/land_site_rate_data.parquet
-      md5: f13077e733fc54a8adfa8c85775468ac
-      size: 197096
+      md5: e19cb77d990b3278d65a313006854a1d
+      size: 197098
     - path: input/training_data.parquet
-      md5: 7d8b4e0c4e62311d302efe94ce81fbd1
-      size: 100602440
+      md5: 041e8fb9e641b9dac2932013193d8c42
+      size: 127007281
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
