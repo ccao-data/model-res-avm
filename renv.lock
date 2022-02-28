@@ -870,8 +870,8 @@
       "RemoteRepo": "packages/lightsnip",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "f00180f13f99a0374d9b32fb0b7d4f416d95a12d",
-      "Hash": "ce2dc92a4e446e042d3783e546a41bfb",
+      "RemoteSha": "cd8a7c59d6bd48916249ceafe8ff97a2383596d6",
+      "Hash": "ac377df9fc4169dc1edbad58285f6dc5",
       "Requirements": [
         "butcher",
         "dials",

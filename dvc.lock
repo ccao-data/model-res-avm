@@ -46,29 +46,33 @@ stages:
     cmd: Rscript pipeline/01-train.R
     deps:
     - path: input/training_data.parquet
-      md5: 7d8b4e0c4e62311d302efe94ce81fbd1
-      size: 100602440
+      md5: 041e8fb9e641b9dac2932013193d8c42
+      size: 127007281
     params:
       params.yaml:
         cv:
-          split_prop: 0.8
-          num_folds: 10
-          initial_set: 16
-          max_iterations: 50
-          no_improve: 12
+          split_prop: 0.9
+          num_folds:
+          initial_set: 20
+          max_iterations: 60
+          no_improve: 15
           best_metric: rmse
         model.engine: lightgbm
         model.hyperparameter:
           default:
-            stop_iter: 14
-            num_leaves: 4270
-            add_to_linked_depth: 2
-            feature_fraction: 0.4120287037454545
-            max_cat_threshold: 206
-            min_data_per_group: 96
-            lambda_l1: 0.48360347165103584
-            max_depth: 14
-            max_bin: 981
+            stop_iter: 30
+            num_leaves: 900
+            add_to_linked_depth: 3
+            feature_fraction: 0.6
+            min_data_in_leaf: 65
+            max_cat_threshold: 120
+            min_data_per_group: 41
+            cat_smooth: 84.06
+            cat_l2: 14.92
+            lambda_l1: 0.26
+            lambda_l2: 9.69
+            max_depth: 12
+            max_bin: 350
           range:
             stop_iter:
             - 5
@@ -82,13 +86,25 @@ stages:
             feature_fraction:
             - 0.3
             - 1.0
+            min_data_in_leaf:
+            - 2
+            - 200
             max_cat_threshold:
             - 20
             - 250
             min_data_per_group:
             - 20
             - 250
+            cat_smooth:
+            - 10.0
+            - 100.0
+            cat_l2:
+            - -3
+            - 2
             lambda_l1:
+            - -3
+            - 2
+            lambda_l2:
             - -3
             - 2
             max_depth:
@@ -99,7 +115,7 @@ stages:
             - 1200
         model.objective: rmse
         model.parameter:
-          num_iterations: 1000
+          num_iterations: 100
           learning_rate: 0.1
           validation_prop: 0.1
           validation_metric: rmse
@@ -246,29 +262,29 @@ stages:
           - 3
           - 5
           - 10
-        toggle.cv_enable: true
+        toggle.cv_enable: false
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: bab2c44ab7c8900bae3437748115e7c7
+      md5: 556094299a7be2b29c230d2889398200
       size: 2331
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 3ca21136fe9c595f2ad28039a5f146f2
-      size: 6210
+      md5: a14c341fe81cdbdd2f10d60656e862fe
+      size: 7743
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: 397888e306e5560478f716c8e5589209
-      size: 1877
+      md5: f260b463da95a764f9ea9dacabe0e0bc
+      size: 695
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: 097cb3c0a60f1aa916454460ef3ec3c6
-      size: 136046
+      md5: f260b463da95a764f9ea9dacabe0e0bc
+      size: 695
     - path: output/test_card/model_test_card.parquet
-      md5: 7c5f70015290fef68be1db8649d02b88
-      size: 3184015
+      md5: a605f665c21a87334dec1970fad88f73
+      size: 2061337
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 6fd88e8375a9ca3458810f77e7196d65
-      size: 16384760
+      md5: 64109287737ea32c7aa7ee76c5682d1d
+      size: 1681287
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 486afb213eb26b6cda7572a6888859a1
-      size: 1928862
+      md5: 3e598f7a7aeea5136cfbbdcd00fa8362
+      size: 2315221
   assess:
     cmd: Rscript pipeline/02-assess.R
     deps:
