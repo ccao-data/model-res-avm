@@ -148,7 +148,6 @@ lgbm_model <- parsnip::boost_tree(
     num_leaves = tune(),
     add_to_linked_depth = tune(),
     feature_fraction = tune(),
-    min_data_in_leaf = tune(),
 
     # Categorical-specific parameters
     max_cat_threshold = tune(),
@@ -214,7 +213,6 @@ if (cv_enable) {
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
       add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
       feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
-      min_data_in_leaf    = lightsnip::min_data_in_leaf(lgbm_range$min_data_in_leaf),
       max_cat_threshold   = lightsnip::max_cat_threshold(lgbm_range$max_cat_threshold),
       min_data_per_group  = lightsnip::min_data_per_group(lgbm_range$min_data_per_group),
       cat_smooth          = lightsnip::cat_smooth(lgbm_range$cat_smooth),
