@@ -14,7 +14,19 @@ stages:
           min_sale_year: '2013'
           max_sale_year: '2021'
           time_split: 9
-          spatial_lag_knn: 20
+          spatial_lag:
+            k: 20
+            predictor:
+            - meta_sale_price
+            - char_bldg_sf
+            - char_land_sf
+            - char_rooms
+            - char_beds
+            - char_fbath
+            - char_hbath
+            - char_frpl
+            - char_yrblt
+            - other_tax_bill_amount_total
           complex:
             match_exact:
             - meta_township_code
@@ -28,38 +40,22 @@ stages:
               bldg_sf: 25
               yrblt: 4
               dist_ft: 250
-        model.predictor.lag:
-        - meta_sale_price
-        - char_bldg_sf
-        - char_land_sf
-        - char_rooms
-        - char_beds
-        - char_fbath
-        - char_hbath
-        - char_frpl
-        - char_yrblt
-        - other_tax_bill_amount_total
     outs:
     - path: input/assessment_data.parquet
-      md5: 7e43b0328ec2122bd0316b3f4843046b
-      size: 284494550
-      isexec: true
+      md5: c938993bdf73fa9f49566bb1c24effe3
+      size: 311701982
     - path: input/complex_id_data.parquet
-      md5: 89a3e86d5e04f6e59c759625c8f180c9
-      size: 717552
-      isexec: true
+      md5: 2eb662132912c4454e62255fcb4b4ac7
+      size: 718473
     - path: input/land_nbhd_rate_data.parquet
       md5: ec62f0ca2657094de5cfc4237da63deb
       size: 3610
-      isexec: true
     - path: input/land_site_rate_data.parquet
-      md5: e19cb77d990b3278d65a313006854a1d
-      size: 197098
-      isexec: true
+      md5: 86417f31371b1136e9c5afbf2b70209c
+      size: 197230
     - path: input/training_data.parquet
-      md5: 922a7b9f7a13741b2556e6424670fe5d
-      size: 20923633
-      isexec: true
+      md5: 34c701274f41e5d1e13daa723cdd75ff
+      size: 138101209
   train:
     cmd: Rscript pipeline/01-train.R
     deps:

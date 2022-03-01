@@ -269,7 +269,7 @@ sales_data <- training_data_clean %>%
   ) %>%
   select(
     meta_pin, meta_year, meta_sale_price, 
-    all_of(params$model$predictor$lag)
+    all_of(params$input$spatial_lag$predictor),
   )
 
 # Join the sales data to the assessment data. Create lagged spatial predictors
