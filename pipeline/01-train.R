@@ -76,7 +76,7 @@ train <- training(split_data)
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
-  data = training_data_full,
+  data = training_data_full %>% select(-time_split),
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id

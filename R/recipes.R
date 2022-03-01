@@ -17,13 +17,15 @@
 #' @return A recipe object that can be used to clean model input data.
 #'
 model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
-  recipe(meta_sale_price ~ ., data = data) %>%
+  recipe(data) %>%
 
-    # Set some vars to role to "ID" so they're not included in the actual fit
+    # Set the role of each variable in the input data
+    update_role(meta_sale_price, new_role = "outcome") %>%
+    update_role(all_of(pred_vars), new_role = "predictor") %>%
     update_role(all_of(id_vars), new_role = "ID") %>%
 
     # Remove any variables not an outcome var or in the pred_vars vector
-    step_rm(-all_of(pred_vars), -all_outcomes(), -has_role("ID")) %>%
+    step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
     
     # Replace novel levels with "new"
     step_novel(all_of(cat_vars), -has_role("ID")) %>%
