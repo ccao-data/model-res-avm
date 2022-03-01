@@ -17,7 +17,6 @@ library(here)
 library(lightgbm)
 library(lightsnip)
 library(lubridate)
-library(purrr)
 library(stringr)
 library(tictoc)
 library(tidymodels)
@@ -61,7 +60,7 @@ set.seed(params$model$seed)
 # there is multiple buildings on a PIN. Sales for multicard PINs are
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!is.na(loc_longitude), !is.na(loc_latitude), !ind_pin_is_multicard) %>%
+  filter(!ind_pin_is_multicard) %>%
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
@@ -77,8 +76,8 @@ train <- training(split_data)
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
-  data = train,
-  keep_vars = params$model$predictor$all,
+  data = training_data_full,
+  pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
 )
@@ -184,12 +183,7 @@ if (cv_enable) {
   # window-based training set, where the validation set is always just after the
   # training set in time. See https://www.tmwr.org/resampling.html#rolling
   train_folds <- rolling_origin(
-    data = train %>%
-      mutate(
-        time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
-        time_split = time_interval %/% months(6),
-      ) %>%
-      nest(data = -time_split),
+    data = nest(train, data = -time_split),
     initial = 1, assess = 1, skip = 0, cumulative = TRUE
   ) %>%
     mutate(splits = map(splits, ~ make_splits(

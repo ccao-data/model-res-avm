@@ -9,12 +9,16 @@ options(java.parameters = "-Xmx10g")
 library(arrow)
 library(ccao)
 library(DBI)
+library(data.table)
 library(dplyr)
 library(glue)
 library(here)
 library(igraph)
 library(lubridate)
+library(purrr)
 library(RJDBC)
+library(s2)
+library(sf)
 library(tictoc)
 library(tidyr)
 library(yaml)
@@ -115,8 +119,10 @@ rm(AWS_ATHENA_CONN_JDBC, aws_athena_jdbc_driver)
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Clean Data ----------------------------------------------------------------
+# 3. Define Functions ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Ingest-specific helper functions for data cleaning, spatial lags, etc.
 
 # Create a dictionary of column types, as specified in ccao::vars_dict
 col_type_dict <- ccao::vars_dict %>%
@@ -138,7 +144,29 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 }
 
 
-## 3.1. Training Data ----------------------------------------------------------
+# Find the K-nearest neighbors within a group to calculate a spatial lag
+st_knn <- function(x, y = NULL, k = 1) {
+  s2x <- sf::st_as_s2(x)
+  if (is.null(y)) {
+    z <- s2::s2_closest_edges(s2x, s2x, k = (k + 1))
+    # Drop the starting observation/point
+    z <- lapply(z, sort)
+    z <- lapply(seq_along(z), function(i) setdiff(z[[i]], i))
+    return(z)
+  } else {
+    s2y <- sf::st_as_s2(y)
+    z <- s2::s2_closest_edges(s2x, s2y, k = k)
+  }
+}
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Add Features and Clean ----------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+## 4.1. Training Data ----------------------------------------------------------
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, filling, etc. is handled via Tidymodels recipes
@@ -158,15 +186,50 @@ training_data_clean <- training_data %>%
     time_sale_year = year(meta_sale_date),
     time_sale_day = time_interval %/% days(1),
 
-    # Get components of dates for to correct seasonality
+    # Get components of dates for to correct for seasonality
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
-    time_sale_day_of_year = day(meta_sale_date)
+    time_sale_day_of_year = day(meta_sale_date),
+    
+    # Time window to use for cross-validation and calculating spatial lags
+    time_split = time_interval %/% months(params$input$time_split)
+  )
+
+# Calculate KNN spatial lags for each N month period used in CV. The N month
+# partitioning ensures that no training data leaks into the validation set
+# during CV
+training_data_lagged <- training_data_clean %>%
+  # Convert coords to geometry used to calculate weights
+  filter(!is.na(loc_longitude), !is.na(loc_latitude)) %>%
+  st_as_sf(
+    coords = c("loc_longitude", "loc_latitude"),
+    crs = 4326,
+    remove = FALSE
   ) %>%
-  select(-any_of("time_interval")) %>%
+  # Divide training data into N-month periods and calculate spatial lags
+  # for each period
+  group_by(time_split) %>%
+  mutate(
+    nb = st_knn(geometry, k = params$input$spatial_lag$k),
+    across(
+      all_of(params$input$spatial_lag$predictor),
+      function(x) purrr::map_dbl(nb, function(idx, var = x) mean(var[idx])),
+      .names = "lag_{.col}"
+    )
+  ) %>%
+  # Clean up output, bind rows that were missing lat/lon, and write to file
+  ungroup() %>%
+  st_drop_geometry() %>%
+  bind_rows(
+    training_data_clean %>%
+      filter(is.na(loc_x_3435) | is.na(loc_y_3435))
+  ) %>%
+  select(-c(nb, time_interval)) %>%
   write_parquet(paths$input$training$local)
 
 
-## 3.2. Assessment Data --------------------------------------------------------
+
+
+## 4.2. Assessment Data --------------------------------------------------------
 
 # Clean the assessment data. This the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
@@ -183,13 +246,65 @@ assessment_data_clean <- assessment_data %>%
     time_sale_year = year(meta_sale_date),
     time_sale_day = time_interval %/% days(1),
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
-    time_sale_day_of_year = day(meta_sale_date)
+    time_sale_day_of_year = day(meta_sale_date),
+    time_split = time_interval %/% months(params$input$time_split)
+  )
+
+# Grab the most recent sale within the last 3 split periods for each PIN. This
+# will be the search space for the spatial lag for assessment data
+sales_data <- training_data_clean %>%
+  filter(
+    meta_sale_date >= as_date(params$assessment$date) -
+      months(params$input$time_split * 3),
+    !ind_pin_is_multicard,
+    !is.na(loc_longitude)
   ) %>%
-  select(-any_of("time_interval")) %>%
+  group_by(meta_pin) %>%
+  filter(max(meta_sale_date) == meta_sale_date) %>%
+  ungroup() %>%
+  st_as_sf(
+    coords = c("loc_longitude", "loc_latitude"),
+    crs = 4326,
+    remove = TRUE
+  ) %>%
+  select(
+    meta_pin, meta_year, meta_sale_price, 
+    all_of(params$model$predictor$lag)
+  )
+
+# Join the sales data to the assessment data. Create lagged spatial predictors
+# using the K-nearest neighboring sales. This replicates a spatial Durbin model
+# with a time component
+assessment_data_lagged <- assessment_data_clean %>%
+  filter(!is.na(loc_longitude), !is.na(loc_latitude)) %>%
+  st_as_sf(
+    coords = c("loc_longitude", "loc_latitude"),
+    crs = 4326,
+    remove = FALSE
+  ) %>%
+  mutate(
+    nb = st_knn(geometry, sales_data$geometry, k = params$input$spatial_lag$k),
+    meta_sale_price = NA_real_,
+    across(
+      all_of(params$input$spatial_lag$predictor),
+      function(x) purrr::map_dbl(nb, function(idx, var = dplyr::cur_column()) {
+        mean(sales_data[[var]][idx])
+      }),
+      .names = "lag_{.col}"
+    )
+  ) %>%
+  # Clean up output and write to file
+  ungroup() %>%
+  st_drop_geometry() %>%
+  bind_rows(
+    assessment_data_clean %>%
+      filter(is.na(loc_x_3435) | is.na(loc_y_3435))
+  ) %>%
+  select(-c(nb, meta_sale_price, time_interval)) %>%
   write_parquet(paths$input$assessment$local)
 
 
-## 3.3. Complex IDs ------------------------------------------------------------
+## 4.3. Complex IDs ------------------------------------------------------------
 
 # Townhomes and rowhomes within the same "complex" or building should
 # ultimately receive the same final assessed value. However, a single row of
@@ -256,7 +371,7 @@ complex_id_data <- assessment_data_clean %>%
   write_parquet(paths$input$complex_id$local)
 
 
-## 3.4. Land Rates -------------------------------------------------------------
+## 4.4. Land Rates -------------------------------------------------------------
 
 # Write land data directly to file, since it's already mostly clean
 land_site_rate_data %>%
