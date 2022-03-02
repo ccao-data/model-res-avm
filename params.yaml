@@ -12,8 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Add spatially lagged Y and X (Durbin model) + rolling origin CV. Test run with
-  k = 20
+  Re-run agitated-maya-2022-02-25 with identical parameters but 10% test set
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -24,7 +23,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -235,17 +234,7 @@ model:
       "time_sale_day",
       "time_sale_quarter_of_year",
       "time_sale_day_of_year",
-      "ind_pin_is_multicard",
-      "lag_meta_sale_price",
-      "lag_char_bldg_sf",
-      "lag_char_land_sf",
-      "lag_char_rooms",
-      "lag_char_beds",
-      "lag_char_fbath",
-      "lag_char_hbath",
-      "lag_char_frpl",
-      "lag_char_yrblt",
-      "lag_other_tax_bill_amount_total"
+      "ind_pin_is_multicard"
     ]
     
     # List of predictors included in predictor.all which are categoricals. It is
@@ -293,7 +282,7 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    num_iterations: 100
+    num_iterations: 1000
     learning_rate: 0.1
     
     # For CV only, proportion of the training data to hold out for use in 
@@ -311,18 +300,15 @@ model:
     # Default set of hyperparameters to use if CV is not enabled. See docs for
     # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     default:
-      stop_iter: 30
-      num_leaves: 900
+      stop_iter: 8
+      num_leaves: 5744
       add_to_linked_depth: 3
-      feature_fraction: 0.60
-      max_cat_threshold: 120
-      min_data_per_group: 41
-      cat_smooth: 84.06
-      cat_l2: 14.92
-      lambda_l1: 0.26
-      lambda_l2: 9.69
-      max_depth: 12
-      max_bin: 350
+      feature_fraction: 0.7016094443796901
+      max_cat_threshold: 234
+      min_data_per_group: 140
+      lambda_l1: 3.1504847070076107
+      max_depth: 15
+      max_bin: 254
     
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
