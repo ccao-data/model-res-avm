@@ -133,7 +133,7 @@
       "RemoteRef": "master",
       "RemoteSha": "bef79bfe7c29351e705ead03b909003341e5329e",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
-      "Hash": "8ffbec0a79386153ab93b1c82967ef9b",
+      "Hash": "072a472a8608ef6d27e1861264d59b89",
       "Requirements": [
         "clustMixType",
         "dbscan"
@@ -247,7 +247,7 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "1.1.0",
+      "Version": "1.1.1",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -255,9 +255,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "450339802794f1df7663154120470c6260b13b98",
+      "RemoteSha": "cdfa2dfe7abc927c0cd73c679f20e22bb2aa76ce",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "8c4db0f580ad5a180fe04d9720979008",
+      "Hash": "595d52debe9a589ec216e26f250d0041",
       "Requirements": [
         "assessr",
         "dplyr",
