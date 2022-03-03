@@ -115,10 +115,10 @@ cv:
   initial_set: 20
   
   # Maximum number of search iterations
-  max_iterations: 60
+  max_iterations: 100
   
   # Max number of search iterations without improvement before stopping search
-  no_improve: 15
+  no_improve: 25
   
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
