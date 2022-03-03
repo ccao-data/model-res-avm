@@ -178,7 +178,7 @@ model:
       "loc_env_flood_fema_sfha",
       "loc_env_flood_fs_factor",
       "loc_env_flood_fs_risk_direction",
-      "loc_env_ohare_noise_contour_no_buffer_bool",
+      "loc_env_airport_noise_dnl",
       "loc_school_elementary_district_geoid",
       "loc_school_secondary_district_geoid",
       "loc_school_unified_district_geoid",
