@@ -49,7 +49,11 @@ library(tidyr)
 library(yaml)
 params <- read_yaml("params.yaml")
 ccao::vars_dict %>%
-  filter(var_is_predictor & var_name_model != "meta_sale_price") %>%
+  filter(
+    var_is_predictor,
+    var_name_model != "meta_sale_price",
+    var_model_type %in% c("all", "res")
+  ) %>%
   inner_join(
     as_tibble(params$model$predictor$all),
     by = c("var_name_model" = "value")
