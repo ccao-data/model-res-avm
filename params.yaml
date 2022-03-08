@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-
+  Full CV, 1500 iters and slightly lower learn rate. New rounding splits/amounts
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -118,7 +118,7 @@ cv:
   max_iterations: 100
   
   # Max number of search iterations without improvement before stopping search
-  no_improve: 25
+  no_improve: 30
   
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
@@ -179,6 +179,7 @@ model:
       "loc_env_flood_fs_factor",
       "loc_env_flood_fs_risk_direction",
       "loc_env_airport_noise_dnl",
+      "loc_env_ohare_noise_contour_no_buffer_bool",
       "loc_school_elementary_district_geoid",
       "loc_school_secondary_district_geoid",
       "loc_school_unified_district_geoid",
@@ -292,8 +293,8 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    num_iterations: 1000
-    learning_rate: 0.1
+    num_iterations: 1500
+    learning_rate: 0.075
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
@@ -358,9 +359,9 @@ pv:
   
   # Rounding settings to apply to initial predictions. Rounding is done to
   # indicate to property owners that model values are estimates, not exact
-  round_break: [10000]
-  round_to_nearest: [100, 500]
-  round_type: "ceiling"
+  round_break: [1000, 10000, 100000]
+  round_to_nearest: [1, 500, 5000, 10000]
+  round_type: "floor"
 
 
 # Ratio Study ------------------------------------------------------------------
