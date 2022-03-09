@@ -333,7 +333,7 @@ training_data_lagged <- training_data_clean %>%
 # Clean the assessment data. This the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
 # time vars and identifying complexes
-assessment_data_clean <- assessment_data %>%
+assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
   mutate(across(everything(), ~ recode_column_type(.x, cur_column()))) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
