@@ -12,7 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Full CV, 1500 iters and slightly lower learn rate. New rounding splits/amounts
+  Replicate crazy-liz parameters exactly + lat/lon, lag features, prior year
+  values, and airport features
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -23,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -245,7 +246,8 @@ model:
       "lag_char_hbath",
       "lag_char_frpl",
       "lag_char_yrblt",
-      "lag_other_tax_bill_amount_total"
+      "lag_other_tax_bill_amount_total",
+
     ]
     
     # List of predictors included in predictor.all which are categoricals. It is
@@ -278,7 +280,9 @@ model:
       "loc_school_unified_district_geoid",
       "loc_tax_special_service_area_num",
       "loc_misc_subdivision_id",
-      "time_sale_quarter_of_year"
+      "time_sale_quarter_of_year",
+      "meta_mailed_tot",
+      "meta_2yr_pri_board_tot"
     ]
     
     # List of identifiers for each observation, can be ignored
@@ -293,8 +297,8 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    num_iterations: 1500
-    learning_rate: 0.075
+    num_iterations: 1000
+    learning_rate: 0.1
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
@@ -314,7 +318,7 @@ model:
       stop_iter: 24
       num_leaves: 1613
       add_to_linked_depth: 2
-      feature_fraction: 0.47
+      feature_fraction: 0.468
       min_gain_to_split: 0.0175
       min_data_in_leaf: 58
       max_cat_threshold: 153

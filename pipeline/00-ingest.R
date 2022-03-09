@@ -79,6 +79,19 @@ training_data <- dbGetQuery(
 )
 tictoc::toc()
 
+# Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
+# stored in the legacy (AS/400) data system. They need to be combined with the
+# training data such that the training data uses the characteristics at the time
+# of sale, rather than the un-updated characteristics used for assessment
+tictoc::tic()
+hie_data <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT *
+  FROM ccao.hie
+  ")
+)
+tictoc::toc()
+
 # Pull all residential PIN input data for the assessment year. This will be the
 # data we actually run the model on
 tictoc::tic()
@@ -160,6 +173,41 @@ st_knn <- function(x, y = NULL, k = 1) {
 }
 
 
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Home Improvement Exemptions -----------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Attach updated characteristics to training/sales data. See GitLab wiki for
+# more information: https://gitlab.com/groups/ccao-data-science---modeling/-/
+# wikis/Residential/Home%20Improvement%20Exemptions
+hie_data_sparse <- hie_data %>%
+  ccao::chars_sparsify(
+    pin_col = pin,
+    year_col = year,
+    town_col = qu_town,
+    upload_date_col = qu_upload_date,
+    additive_source = any_of(chars_cols$add$source),
+    replacement_source = any_of(chars_cols$replace$source)
+  ) %>%
+  mutate(
+    ind_pin_is_multicard = "0",
+    year = as.character(year)
+  )
+
+training_data_w_hie <- training_data %>%
+  mutate(char_ncu = as.numeric(char_ncu)) %>%
+  left_join(
+    hie_data_sparse,
+    by = c("meta_pin" = "pin", "meta_year" = "year", "ind_pin_is_multicard")
+  ) %>%
+  ccao::chars_update(
+    additive_target = any_of(chars_cols$add$target),
+    replacement_target = any_of(chars_cols$replace$target)
+  ) %>%
+  select(-starts_with("qu_")) %>%
+  mutate(hie_num_active = replace_na(hie_num_active, 0))
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
