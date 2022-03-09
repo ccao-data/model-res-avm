@@ -247,7 +247,8 @@ model:
       "lag_char_frpl",
       "lag_char_yrblt",
       "lag_other_tax_bill_amount_total",
-
+      "meta_mailed_tot",
+      "meta_2yr_pri_board_tot"
     ]
     
     # List of predictors included in predictor.all which are categoricals. It is
@@ -280,9 +281,7 @@ model:
       "loc_school_unified_district_geoid",
       "loc_tax_special_service_area_num",
       "loc_misc_subdivision_id",
-      "time_sale_quarter_of_year",
-      "meta_mailed_tot",
-      "meta_2yr_pri_board_tot"
+      "time_sale_quarter_of_year"
     ]
     
     # List of identifiers for each observation, can be ignored

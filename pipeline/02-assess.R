@@ -290,6 +290,9 @@ assessment_data_pin <- assessment_data_merged %>%
           "loc_property_", "loc_cook_", "loc_chicago_",
           "loc_census", "loc_school_", "prior_", "ind_"
         )),
+        
+        # Keep HIE flag
+        hie_num_expired,
 
         # Keep PIN-level predicted values
         pred_pin_final_fmv, pred_pin_final_fmv_round, township_code
@@ -408,9 +411,9 @@ assessment_data_pin_final <- assessment_data_pin_2 %>%
   mutate(flag_prior_near_fmv_top_decile = ntile(prior_near_tot, 10) == 10) %>%
   ungroup() %>%
   # Flags for HIEs / 288s (placeholder until 288 data is integrated)
+  rename(flag_hie_num_expired = hie_num_expired) %>%
   mutate(
-    flag_hie_num_active = 0,
-    flag_hie_num_expired = 0,
+    flag_hie_num_expired = tidyr::replace_na(flag_hie_num_expired, 0),
     meta_pin_num_landlines = tidyr::replace_na(meta_pin_num_landlines, 1),
     flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
   )
