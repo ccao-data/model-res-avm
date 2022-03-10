@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Same parameters as quirky-jacob. Remove spatial lag features and prior year
+  Full CV with higher max_bin range. Remove spatial lag features and prior year
   values, keeping only lat/lon. Add HIE data to training and include rounding
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
@@ -24,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -332,7 +332,7 @@ model:
       lambda_l1: [-3, 2]
       lambda_l2: [-3, 2]
       max_depth: [4, 16]
-      max_bin: [200, 1200]
+      max_bin: [200, 1500]
 
 
 # Post-Valuation ---------------------------------------------------------------
