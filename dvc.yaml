@@ -14,6 +14,7 @@ stages:
     - input/land_site_rate_data.parquet
     - input/training_data.parquet
 
+    frozen: true
   train:
     cmd: Rscript pipeline/01-train.R
     desc: >
