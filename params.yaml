@@ -12,8 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Full CV with higher max_bin range. Remove spatial lag features and prior year
-  values, keeping only lat/lon. Add HIE data to training and include rounding
+  Final 2022 run. distracted-tristan with updated land rates.
 
 # Determines what stages and outputs are produced. See R/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -24,7 +23,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
