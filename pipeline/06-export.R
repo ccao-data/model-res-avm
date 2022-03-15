@@ -144,6 +144,8 @@ assessment_card_prepped <- assessment_card %>%
   arrange(meta_pin, meta_card_num)
 
 
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Export Spreadsheets -------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -221,11 +223,15 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
-    startCol = 1, startRow = 1, colNames = FALSE
+    startCol = 2, startRow = 1, colNames = FALSE
   )
   writeData(
     wb, pin_sheet_name, tibble(params$export$run_id_res),
-    startCol = 2, startRow = 3, colNames = FALSE
+    startCol = 3, startRow = 3, colNames = FALSE
+  )
+  writeData(
+    wb, pin_sheet_name, tibble(params$export$run_id_condo),
+    startCol = 3, startRow = 4, colNames = FALSE
   )
   writeData(
     wb, pin_sheet_name, tibble(comp_header),
