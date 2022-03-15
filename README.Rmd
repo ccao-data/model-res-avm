@@ -20,7 +20,7 @@ library(here)
 library(readr)
 library(stringr)
 
-file_dict <- read_csv(here("R", "file_dict.csv"))
+file_dict <- read_csv(here("misc", "file_dict.csv"))
 file_dict %>%
   distinct(athena_table, observation_unit, primary_key, description) %>%
   filter(!is.na(athena_table)) %>%

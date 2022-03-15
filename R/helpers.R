@@ -7,7 +7,7 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   
   # Convert flat dictionary file to nested list
   dict <- readr::read_csv(
-      here::here("R", "file_dict.csv"),
+      here::here("misc", "file_dict.csv"),
       col_types = readr::cols()
     ) %>%
     dplyr::mutate(
