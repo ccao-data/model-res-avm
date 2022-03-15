@@ -54,6 +54,24 @@ assessment_pin <- dbGetQuery(
   ")
 )
 
+# Pull card-level data only for PINs with multiple cards
+assessment_card <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT c.*
+  FROM model.assessment_card c
+  INNER JOIN (
+    SELECT *
+    FROM model.assessment_pin
+    WHERE run_id = '{params$export$run_id_res}'
+    AND meta_triad_code = '{params$export$triad_code}'
+    AND flag_pin_is_multicard
+  ) p
+  ON c.year = p.year
+    AND c.run_id = p.run_id
+    AND c.meta_pin = p.meta_pin
+  ")
+)
+
 
 
 
@@ -76,7 +94,7 @@ assessment_pin_prepped <- assessment_pin %>%
   ) %>%
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
-    property_full_address, loc_cook_municipality_name,
+    property_full_address, loc_cook_municipality_name, meta_complex_id,
     meta_pin_num_cards, meta_tieback_key_pin, meta_tieback_proration_rate,
     prior_near_land, prior_near_bldg, prior_near_tot,
     prior_near_land_rate, prior_near_bldg_rate, prior_near_land_pct_total,
@@ -110,7 +128,20 @@ assessment_pin_prepped <- assessment_pin %>%
     )
   )
 
-
+assessment_card_prepped <- assessment_card %>%
+  select(
+    township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
+    meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
+    char_yrblt, char_beds, char_ext_wall, char_heat, char_bldg_sf,
+    char_type_resd, char_land_sf
+  ) %>%
+  mutate(
+    meta_pin = glue(
+      '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
+      "{meta_pin}")'
+    )
+  ) %>%
+  arrange(meta_pin, meta_card_num)
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -120,6 +151,9 @@ assessment_pin_prepped <- assessment_pin %>%
 # Write raw data to sheets for parcel details
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
+  
+  
+  ## 4.1. PIN-Level ------------------------------------------------------------
   
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
@@ -138,13 +172,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     .sep = " "
   ))
   
-  sheet_name <- "Parcel Detail"
-  class(assessment_pin_prepped$meta_pin) <- c(
-    class(assessment_pin_prepped$meta_pin), "formula"
+  pin_sheet_name <- "PIN Detail"
+  class(assessment_pin_filtered$meta_pin) <- c(
+    class(assessment_pin_filtered$meta_pin), "formula"
   )
   
-  # Get range of rows in the data + number of header rows
-  row_range <- 8:(nrow(assessment_pin_filtered) + 9)
+  # Get range of rows in the PIN data + number of header rows
+  pin_row_range <- 8:(nrow(assessment_pin_filtered) + 9)
   
   # Load the excel workbook template from file 
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
@@ -155,48 +189,98 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_pct <- createStyle(numFmt = "PERCENTAGE")
   style_comma <- createStyle(numFmt = "COMMA")
   
-  # Add styles to workbook
+  # Add styles to PIN sheet
   addStyle(
-    wb, sheet_name, style = style_price,
-    rows = row_range, cols = c(9:11, 15:18, 23, 26, 29), gridExpand = TRUE
+    wb, pin_sheet_name, style = style_price,
+    rows = pin_row_range, cols = c(10:12, 16:19, 24, 27, 30), gridExpand = TRUE
   )
   addStyle(
-    wb, sheet_name, style = style_2digit,
-    rows = row_range, cols = c(12:13, 19:21), gridExpand = TRUE
+    wb, pin_sheet_name, style = style_2digit,
+    rows = pin_row_range, cols = c(13:14, 20:22), gridExpand = TRUE
   )
   addStyle(
-    wb, sheet_name, style = style_pct,
-    rows = row_range, cols = c(8, 14, 22, 24), gridExpand = TRUE
+    wb, pin_sheet_name, style = style_pct,
+    rows = pin_row_range, cols = c(9, 15, 23, 25), gridExpand = TRUE
   )
   addStyle(
-    wb, sheet_name, style = style_comma,
-    rows = row_range, cols = c(32, 34), gridExpand = TRUE
+    wb, pin_sheet_name, style = style_comma,
+    rows = pin_row_range, cols = c(33, 35), gridExpand = TRUE
   )
-  addFilter(wb, sheet_name, 7, 1:49)
+  addFilter(wb, pin_sheet_name, 7, 1:50)
   
   # Write PIN-level data to workbook
   writeData(
-    wb, sheet_name, assessment_pin_filtered,
+    wb, pin_sheet_name, assessment_pin_filtered,
     startCol = 1, startRow = 8, colNames = FALSE
   )
   
   # Write formulas and headers to workbook
-  writeFormula(wb, sheet_name, assessment_pin_filtered$meta_pin, startRow = 8)
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_filtered$meta_pin, startRow = 8
+  )
   writeData(
-    wb, sheet_name, tibble(sheet_header),
+    wb, pin_sheet_name, tibble(sheet_header),
     startCol = 1, startRow = 1, colNames = FALSE
   )
   writeData(
-    wb, sheet_name, tibble(params$export$run_id_res),
+    wb, pin_sheet_name, tibble(params$export$run_id_res),
     startCol = 2, startRow = 3, colNames = FALSE
   )
   writeData(
-    wb, sheet_name, tibble(comp_header),
-    startCol = 9, startRow = 6, colNames = FALSE
+    wb, pin_sheet_name, tibble(comp_header),
+    startCol = 10, startRow = 6, colNames = FALSE
   )
   writeData(
-    wb, sheet_name, tibble(model_header),
-    startCol = 15, startRow = 6, colNames = FALSE
+    wb, pin_sheet_name, tibble(model_header),
+    startCol = 16, startRow = 6, colNames = FALSE
+  )
+  
+  
+  # 4.2. Card-Level ------------------------------------------------------------
+  
+  # Filter overall data to specific township
+  assessment_card_filtered <- assessment_card_prepped %>%
+    filter(township_code == town) %>%
+    select(-township_code)
+  
+  card_sheet_name <- "Card Detail"
+  class(assessment_card_filtered$meta_pin) <- c(
+    class(assessment_card_filtered$meta_pin), "formula"
+  )
+  
+  # Get range of rows in the card data + number of header rows
+  card_row_range <- 5:(nrow(assessment_card_filtered) + 6)
+  
+  # Add styles to card sheet
+  addStyle(
+    wb, card_sheet_name, style = style_price,
+    rows = card_row_range, cols = c(6:7), gridExpand = TRUE
+  )
+  addStyle(
+    wb, card_sheet_name, style = style_pct,
+    rows = card_row_range, cols = c(5), gridExpand = TRUE
+  )
+  addStyle(
+    wb, card_sheet_name, style = style_comma,
+    rows = card_row_range, cols = c(12, 14), gridExpand = TRUE
+  )
+  addFilter(wb, card_sheet_name, 4, 1:14)
+  
+  # Write card-level data to workbook
+  writeData(
+    wb, card_sheet_name, assessment_card_filtered,
+    startCol = 1, startRow = 5, colNames = FALSE
+  )
+  
+  # Write formulas and headers to workbook
+  writeFormula(
+    wb, card_sheet_name,
+    assessment_card_filtered$meta_pin, startRow = 5
+  )
+  writeData(
+    wb, card_sheet_name, tibble(model_header),
+    startCol = 5, startRow = 3, colNames = FALSE
   )
   
   # Save workbook to file based on town name
