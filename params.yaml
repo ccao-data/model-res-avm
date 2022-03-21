@@ -14,7 +14,7 @@
 run_note: >
   Final 2022 run. distracted-tristan with updated land rates.
 
-# Determines what stages and outputs are produced. See R/file_dict.csv for
+# Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
 # anything other than "full" will require you to run each stage manually. See
 # README for details

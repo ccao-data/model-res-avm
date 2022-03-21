@@ -26,7 +26,7 @@ library(yaml)
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths. See R/file_dict.csv for details
+# Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
 
 # Load the parameters file containing the run settings

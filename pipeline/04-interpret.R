@@ -18,7 +18,7 @@ library(tictoc)
 library(yaml)
 source(here("R", "helpers.R"))
 
-# Initialize a dictionary of file paths. See R/file_dict.csv for details
+# Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
 
 # Load the parameters file containing the run settings
