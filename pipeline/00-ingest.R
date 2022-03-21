@@ -289,7 +289,7 @@ training_data_clean <- training_data_w_hie %>%
 
     # Get components of dates for to correct for seasonality
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
-    time_sale_day_of_year = day(meta_sale_date),
+    time_sale_day_of_year = yday(meta_sale_date),
     
     # Time window to use for cross-validation and calculating spatial lags
     time_split = time_interval %/% months(params$input$time_split)
@@ -345,7 +345,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
     time_sale_year = year(meta_sale_date),
     time_sale_day = time_interval %/% days(1),
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
-    time_sale_day_of_year = day(meta_sale_date),
+    time_sale_day_of_year = yday(meta_sale_date),
     time_split = time_interval %/% months(params$input$time_split)
   )
 
