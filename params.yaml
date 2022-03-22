@@ -12,7 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Final 2022 run. distracted-tristan with updated land rates.
+  Fix time_sale_day_of_year feature (was incorrectly day of month). High iters
+  with CV
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -23,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -234,7 +235,10 @@ model:
       "time_sale_year",
       "time_sale_day",
       "time_sale_quarter_of_year",
+      "time_sale_month_of_year",
       "time_sale_day_of_year",
+      "time_sale_day_of_month",
+      "time_sale_post_covid",
       "ind_pin_is_multicard"
     ]
     
