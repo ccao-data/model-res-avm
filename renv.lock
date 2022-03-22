@@ -72,10 +72,10 @@
     },
     "Rcpp": {
       "Package": "Rcpp",
-      "Version": "1.0.8",
+      "Version": "1.0.8.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "22b546dd7e337f6c0c58a39983a496bc",
+      "Hash": "32e79b908fda56ee57fe518a8d37b864",
       "Requirements": []
     },
     "SQUAREM": {
@@ -255,9 +255,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "d16db220e8954be7605ac6e757a268333acc4d76",
+      "RemoteSha": "bb025da73d3d08495ee89a7953336daf34f65430",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "84750177104f9d5c2854856a21f0586d",
+      "Hash": "284d8fd3ca2d152c12cb896de2924569",
       "Requirements": [
         "assessr",
         "dplyr",
@@ -390,13 +390,13 @@
     },
     "desc": {
       "Package": "desc",
-      "Version": "1.4.0",
+      "Version": "1.4.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "28763d08fadd0b733e3cee9dab4e12fe",
+      "Hash": "eebd27ee58fcc58714eedb7aa07d8ad1",
       "Requirements": [
         "R6",
-        "crayon",
+        "cli",
         "rprojroot"
       ]
     },
@@ -606,10 +606,10 @@
     },
     "git2r": {
       "Package": "git2r",
-      "Version": "0.29.0",
+      "Version": "0.30.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "b114135c4749076bd5ef74a5827b6f62",
+      "Hash": "e0c6a04a3e7b90e64213d09128f74f1b",
       "Requirements": []
     },
     "gitcreds": {
@@ -828,10 +828,10 @@
     },
     "lhs": {
       "Package": "lhs",
-      "Version": "1.1.4",
+      "Version": "1.1.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "452453e7fc05361e7c8cf98e3972d22c",
+      "Hash": "dcd40e09bb097115d584d525850ea124",
       "Requirements": [
         "Rcpp"
       ]
@@ -1028,13 +1028,15 @@
     },
     "parsnip": {
       "Package": "parsnip",
-      "Version": "0.1.7",
+      "Version": "0.2.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "fd9d54428ede9ce9fd10b8f3d6d8585d",
+      "Hash": "25948a06fd7bbed94c42a3cf621d376a",
       "Requirements": [
+        "cli",
         "dplyr",
         "generics",
+        "ggplot2",
         "globals",
         "glue",
         "hardhat",
@@ -1045,7 +1047,8 @@
         "rlang",
         "tibble",
         "tidyr",
-        "vctrs"
+        "vctrs",
+        "withr"
       ]
     },
     "patchwork": {
@@ -1250,10 +1253,10 @@
     },
     "rlang": {
       "Package": "rlang",
-      "Version": "1.0.1",
+      "Version": "1.0.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "3bf0219f19d9f5b3c682acbb3546a151",
+      "Hash": "04884d9a75d778aca22c7154b8333ec9",
       "Requirements": []
     },
     "rpart": {
@@ -1396,10 +1399,10 @@
     },
     "tidymodels": {
       "Package": "tidymodels",
-      "Version": "0.1.4",
+      "Version": "0.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "74cfd3e1de860e43453b7b36675f6480",
+      "Hash": "9030698035f1139dadb10719b595218a",
       "Requirements": [
         "broom",
         "cli",
@@ -1468,10 +1471,10 @@
     },
     "tune": {
       "Package": "tune",
-      "Version": "0.1.6",
+      "Version": "0.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "3cabba58cec834867411b81e03acfa7b",
+      "Hash": "35300172efecb6121dface79f27e4956",
       "Requirements": [
         "GPfit",
         "cli",
@@ -1611,13 +1614,12 @@
     },
     "workflows": {
       "Package": "workflows",
-      "Version": "0.2.4",
+      "Version": "0.2.6",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "a087bd9bcc22f572730a8949a2ab4a47",
+      "Hash": "f61fe2b04745f032bfd08a29211fc584",
       "Requirements": [
         "cli",
-        "ellipsis",
         "generics",
         "glue",
         "hardhat",
@@ -1630,10 +1632,10 @@
     },
     "workflowsets": {
       "Package": "workflowsets",
-      "Version": "0.1.0",
+      "Version": "0.2.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "34d9ca8086d92ee78df6747831ce3ec5",
+      "Hash": "59699276b8d9e10e2bcedf1965a9be23",
       "Requirements": [
         "cli",
         "dplyr",

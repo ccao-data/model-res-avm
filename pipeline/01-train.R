@@ -203,7 +203,7 @@ if (cv_enable) {
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
   lgbm_range <- params$model$hyperparameter$range
   lgbm_params <- lgbm_model %>%
-    parameters() %>%
+    hardhat::extract_parameter_set_dials() %>%
     update(
       stop_iter           = dials::stop_iter(lgbm_range$stop_iter),
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
@@ -270,7 +270,7 @@ if (cv_enable) {
   # params.yaml, keeping only the ones used in the model specification
   lgbm_missing_params <- names(params$model$hyperparameter$default)
   lgbm_missing_params <- lgbm_missing_params[
-    !lgbm_missing_params %in% parameters(lgbm_wflow)$name
+    !lgbm_missing_params %in% hardhat::extract_parameter_set_dials(lgbm_wflow)$name
   ]
   lgbm_final_params <- tibble(
     configuration = "Default",
