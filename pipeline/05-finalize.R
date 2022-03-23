@@ -255,7 +255,7 @@ if (params$toggle$upload_to_s3) {
       left_join(
         rename(., notes = .notes) %>%
           tidyr::unnest(cols = notes) %>%
-          rename(notes = .notes)
+          rename(notes = note)
       ) %>%
       select(-.notes) %>%
       rename_with(~ gsub("^\\.", "", .x)) %>%

@@ -102,7 +102,7 @@ train_recipe <- model_main_recipe(
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
   trees = params$model$parameter$num_iterations,
-  stop_iter = tune()
+  stop_iter = params$model$parameter$stop_iter
 ) %>%
   set_mode("regression") %>%
   set_engine(
@@ -139,6 +139,9 @@ lgbm_model <- parsnip::boost_tree(
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
 
+    # Max number of bins that feature values will be bucketed in
+    max_bin = params$model$parameter$max_bin,
+
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
 
@@ -149,19 +152,16 @@ lgbm_model <- parsnip::boost_tree(
     feature_fraction = tune(),
     min_gain_to_split = tune(),
     min_data_in_leaf = tune(),
-
+    
     # Categorical-specific parameters
     max_cat_threshold = tune(),
     min_data_per_group = tune(),
     cat_smooth = tune(),
     cat_l2 = tune(),
-
+    
     # Regularization parameters
     lambda_l1 = tune(),
-    lambda_l2 = tune(),
-
-    # Max number of bins that feature values will be bucketed in
-    max_bin = tune()
+    lambda_l2 = tune()
   )
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
@@ -180,6 +180,18 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters, grid search or random search take a very long time to
 # produce similarly accurate results
 if (cv_enable) {
+  
+  # Collapse the first and last CV window into there respective neighbors. This
+  # is done because the first and last period tend to be very small (and
+  # therefore potentially unrepresentative of the larger data set)
+  train <- train %>%
+    mutate(
+      time_split = case_when(
+        time_split == max(time_split) ~ max(time_split) - 1,
+        time_split == min(time_split) ~ min(time_split) + 1,
+        TRUE ~ time_split
+      )
+    )
   
   # Using rolling forecast origin resampling to create a cumulative, sliding
   # window-based training set, where the validation set is always just after the
@@ -205,7 +217,6 @@ if (cv_enable) {
   lgbm_params <- lgbm_model %>%
     hardhat::extract_parameter_set_dials() %>%
     update(
-      stop_iter           = dials::stop_iter(lgbm_range$stop_iter),
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
       add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
       feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
@@ -216,8 +227,7 @@ if (cv_enable) {
       cat_smooth          = lightsnip::cat_smooth(lgbm_range$cat_smooth),
       cat_l2              = lightsnip::cat_l2(lgbm_range$cat_l2),
       lambda_l1           = lightsnip::lambda_l1(lgbm_range$lambda_l1),
-      lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2),
-      max_bin             = lightsnip::max_bin(lgbm_range$max_bin)
+      lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2)
     )
 
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
@@ -294,8 +304,8 @@ if (cv_enable) {
 
 # NOTE: The model specifications here use early stopping by measuring the change
 # in the objective function on the TRAINING set (rather than the 10% sample
-# validation set used during CV). This is so we can use the full data for
-# training but still benefit from early stopping
+# validation set used during CV). In practice, this means early stopping is
+# disabled, since you can almost always improve on the training set
 
 # Fit the final model using the training data and our final hyperparameters
 # This model is used to measure performance on the test set
