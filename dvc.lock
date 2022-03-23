@@ -42,20 +42,20 @@ stages:
               dist_ft: 250
     outs:
     - path: input/assessment_data.parquet
-      md5: c28d9a574b1f0d1fcd3d73d61fbdf595
-      size: 315406970
+      md5: 57d9648ef411c169ddb00b1921acf390
+      size: 315382162
     - path: input/complex_id_data.parquet
-      md5: 1b9f9f286992d1f695eacc647a257cb9
-      size: 718366
+      md5: 2b27b72345dbb958c01d8a84fce3cabe
+      size: 718433
     - path: input/land_nbhd_rate_data.parquet
       md5: 6a6859e05af8727296c223a6d2bd7c5a
       size: 3610
     - path: input/land_site_rate_data.parquet
-      md5: 417eec7440f16fe5e77d50df4aaab186
-      size: 196996
+      md5: 4c1f7f014e98cde18d63011b0722818a
+      size: 197034
     - path: input/training_data.parquet
-      md5: 88b2a0cb141561ba16b9d7316ae9c78f
-      size: 140707299
+      md5: 05d87ef8fae8cc9314ab43843ef42c70
+      size: 140751996
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
@@ -930,3 +930,23 @@ stages:
     - path: output/timing/model_timing.parquet
       md5: c74e1c99db4f8a7bd8d7773a0f7d26b9
       size: 5235
+  export:
+    cmd: Rscript pipeline/06-export.R
+    params:
+      params.yaml:
+        assessment.year: '2022'
+        export:
+          triad_code: '2'
+          run_id_res: nostalgic-gabe-2022-03-13
+          run_id_condo:
+        ratio_study:
+          far_year: '2019'
+          far_stage: board
+          far_column: meta_2yr_pri_board_tot
+          near_year: '2021'
+          near_stage: mailed
+          near_column: meta_mailed_tot
+          num_quantile:
+          - 3
+          - 5
+          - 10

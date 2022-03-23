@@ -214,7 +214,7 @@ if (cv_enable) {
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
   lgbm_range <- params$model$hyperparameter$range
-  lgbm_params <- lgbm_model %>%
+  lgbm_params <- lgbm_wflow %>%
     hardhat::extract_parameter_set_dials() %>%
     update(
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
