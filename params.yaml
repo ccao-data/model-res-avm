@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Fix time_sale_day_of_year feature (was incorrectly day of month). High iters
-  with CV
+  Fix time_sale_day_of_year feature (was incorrectly day of month). Revert to
+  nostalgic-gabe-2022-03-13 hyperparameters but remove max_bin and stop_iter
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -24,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -116,10 +116,10 @@ cv:
   initial_set: 20
   
   # Maximum number of search iterations
-  max_iterations: 100
+  max_iterations: 70
   
   # Max number of search iterations without improvement before stopping search
-  no_improve: 30
+  no_improve: 25
   
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
@@ -238,6 +238,7 @@ model:
       "time_sale_month_of_year",
       "time_sale_day_of_year",
       "time_sale_day_of_month",
+      "time_sale_day_of_week",
       "time_sale_post_covid",
       "ind_pin_is_multicard"
     ]
@@ -287,8 +288,11 @@ model:
   parameter:
     # Total number of iterations. Usually changed in tandem with learning_rate
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
+    
+    # When early stopping is enabled, num_iterations is effectively the MAX
+    # number of iterations
     num_iterations: 1500
-    learning_rate: 0.075
+    learning_rate: 0.05
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
@@ -300,12 +304,19 @@ model:
     # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
     # This is to prevent tune_bayes from exploring useless parameter space
     link_max_depth: true
+    
+    # Maximum number of bins for discretizing continuous features. Lower uses
+    # less memory and speeds up training
+    max_bin: 2000
+    
+    # During CV, the number of iterations to go without improvement before
+    # stopping training
+    stop_iter: 40
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled. See docs for
     # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     default:
-      stop_iter: 39
       num_leaves: 1363
       add_to_linked_depth: 1
       feature_fraction: 0.475
@@ -317,25 +328,20 @@ model:
       cat_l2: 0.83
       lambda_l1: 0.105
       lambda_l2: 0.024
-      max_depth: 11
-      max_bin: 911
-    
+ 
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
-      stop_iter: [10, 40]
-      num_leaves: [500, 2000]
-      add_to_linked_depth: [1, 3]
-      feature_fraction: [0.3, 0.9]
+      num_leaves: [500, 2500]
+      add_to_linked_depth: [1, 7]
+      feature_fraction: [0.3, 0.8]
       min_gain_to_split: [-4.0, 1.5]
-      min_data_in_leaf: [2, 200]
+      min_data_in_leaf: [2, 150]
       max_cat_threshold: [20, 250]
-      min_data_per_group: [20, 250]
+      min_data_per_group: [20, 200]
       cat_smooth: [10.0, 100.0]
-      cat_l2: [-3, 2]
-      lambda_l1: [-3, 2]
-      lambda_l2: [-3, 2]
-      max_depth: [4, 16]
-      max_bin: [200, 1500]
+      cat_l2: [-3, 1]
+      lambda_l1: [-3, 1]
+      lambda_l2: [-3, 1]
 
 
 # Post-Valuation ---------------------------------------------------------------
