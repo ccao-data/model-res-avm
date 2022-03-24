@@ -52,6 +52,7 @@ model_delete_run <- function(run_id, year) {
     glue::glue("run_id={run_id}")
   )
   s3_objs_dir_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_dir_path)
+  s3_objs_dir_path <- gsub("//", "/", s3_objs_dir_path)
   s3_objs_w_run_id <- unlist(purrr::map(
     s3_objs_dir_path,
     ~ aws.s3::get_bucket_df(bucket, .x)$Key
