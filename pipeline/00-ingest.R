@@ -284,15 +284,15 @@ training_data_clean <- training_data_w_hie %>%
   dplyr::mutate(
     # Calculate interval periods and times since Jan 01, 1997
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
-    time_sale_year = year(meta_sale_date),
-    time_sale_day = time_interval %/% days(1),
+    time_sale_year = as.numeric(year(meta_sale_date)),
+    time_sale_day = as.numeric(time_interval %/% days(1)),
 
     # Get components of dates for to correct for seasonality and other factors
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
-    time_sale_month_of_year = month(meta_sale_date),
-    time_sale_day_of_year = yday(meta_sale_date),
-    time_sale_day_of_month = day(meta_sale_date),
-    time_sale_day_of_week = wday(meta_sale_date),
+    time_sale_month_of_year = as.integer(month(meta_sale_date)),
+    time_sale_day_of_year = as.integer(yday(meta_sale_date)),
+    time_sale_day_of_month = as.integer(day(meta_sale_date)),
+    time_sale_day_of_week = as.interger(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
     
     # Time window to use for cross-validation and calculating spatial lags
@@ -346,13 +346,13 @@ assessment_data_clean <- assessment_data_w_hie %>%
   dplyr::mutate(
     meta_sale_date = as_date(params$assessment$date),
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
-    time_sale_year = year(meta_sale_date),
-    time_sale_day = time_interval %/% days(1),
+    time_sale_year = as.numeric(year(meta_sale_date)),
+    time_sale_day = as.numeric(time_interval %/% days(1)),
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
-    time_sale_month_of_year = month(meta_sale_date),
-    time_sale_day_of_year = yday(meta_sale_date),
-    time_sale_day_of_month = day(meta_sale_date),
-    time_sale_day_of_week = wday(meta_sale_date),
+    time_sale_month_of_year = as.integer(month(meta_sale_date)),
+    time_sale_day_of_year = as.integer(yday(meta_sale_date)),
+    time_sale_day_of_month = as.integer(day(meta_sale_date)),
+    time_sale_day_of_week = as.interger(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
     time_split = time_interval %/% months(params$input$time_split)
   )
