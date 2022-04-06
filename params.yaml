@@ -13,7 +13,8 @@
 # or add context
 run_note: >
   Fix time_sale_day_of_year feature (was incorrectly day of month). Revert to
-  nostalgic-gabe-2022-03-13 hyperparameters but remove max_bin and stop_iter
+  nostalgic-gabe-2022-03-13 hyperparameters but remove max_bin and stop_iter.
+  Disable early stopping for CV
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -297,7 +298,7 @@ model:
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
-    validation_prop: 0.1
+    validation_prop: 0.0
     validation_metric: "rmse"
     
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting

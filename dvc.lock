@@ -42,20 +42,20 @@ stages:
               dist_ft: 250
     outs:
     - path: input/assessment_data.parquet
-      md5: 57d9648ef411c169ddb00b1921acf390
-      size: 315382162
+      md5: a4f772e57316dd9b95d7845767e2b70f
+      size: 316361407
     - path: input/complex_id_data.parquet
-      md5: 2b27b72345dbb958c01d8a84fce3cabe
-      size: 718433
+      md5: 1cfbcf8588fce84ddbe8e2e947342b3b
+      size: 719538
     - path: input/land_nbhd_rate_data.parquet
       md5: 6a6859e05af8727296c223a6d2bd7c5a
       size: 3610
     - path: input/land_site_rate_data.parquet
-      md5: 4c1f7f014e98cde18d63011b0722818a
-      size: 197034
+      md5: ddfca855028c18997691127c9dcddcf8
+      size: 197121
     - path: input/training_data.parquet
-      md5: 05d87ef8fae8cc9314ab43843ef42c70
-      size: 140751996
+      md5: c0d4e5cc8dfd383f5d9b6dc7a77e5c84
+      size: 140717902
   train:
     cmd: Rscript pipeline/01-train.R
     deps:

@@ -1,6 +1,7 @@
 Table of Contents
 ================
 
+-   [Prior Models](#prior-models)
 -   [Model Overview](#model-overview)
     -   [How It Works](#how-it-works)
     -   [Choices Made](#choices-made)
@@ -30,6 +31,22 @@ Table of Contents
 -   [Contributing](#contributing)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# Prior Models
+
+This repository contains code, data, and documentation for the Cook
+County Assessor’s 2022 residential reassessment model. Information about
+prior year models can be found at the following links:
+
+-   [2021 City of Chicago
+    Assessment](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year)
+-   [2020 South Triad
+    Assessment](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
+-   [2019 North Triad
+    Assessment](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
+-   Models for prior to 2019 are not currently available. They are
+    primarily custom SPSS code that is difficult to run outside of the
+    CCAO environment
 
 # Model Overview
 
@@ -313,7 +330,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2022-03-23.
+model as of 2022-04-06.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                                                                                                                                                                                                                                                     |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
