@@ -49,7 +49,7 @@ assessment_pin <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
   FROM model.assessment_pin
-  WHERE run_id = '{params$export$run_id_res}'
+  WHERE run_id = '{params$export$run_id}'
   AND meta_triad_code = '{params$export$triad_code}'
   ")
 )
@@ -62,7 +62,7 @@ assessment_card <- dbGetQuery(
   INNER JOIN (
     SELECT *
     FROM model.assessment_pin
-    WHERE run_id = '{params$export$run_id_res}'
+    WHERE run_id = '{params$export$run_id}'
     AND meta_triad_code = '{params$export$triad_code}'
     AND flag_pin_is_multicard
   ) p
@@ -85,7 +85,7 @@ assessment_pin_prepped <- assessment_pin %>%
   mutate(
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
-    prior_near_land_pct_total = round(prior_near_land / prior_near_tot, 2),
+    prior_near_land_pct_total = round(prior_near_land / prior_near_tot, 4),
     property_full_address = paste0(
       loc_property_address, 
       ", ", loc_property_city, " ", loc_property_state, 
@@ -180,7 +180,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   
   # Get range of rows in the PIN data + number of header rows
-  pin_row_range <- 8:(nrow(assessment_pin_filtered) + 9)
+  pin_row_range <- 7:(nrow(assessment_pin_filtered) + 9)
   
   # Load the excel workbook template from file 
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
@@ -208,38 +208,34 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name, style = style_comma,
     rows = pin_row_range, cols = c(33, 35), gridExpand = TRUE
   )
-  addFilter(wb, pin_sheet_name, 7, 1:50)
+  addFilter(wb, pin_sheet_name, 6, 1:48)
   
   # Write PIN-level data to workbook
   writeData(
     wb, pin_sheet_name, assessment_pin_filtered,
-    startCol = 1, startRow = 8, colNames = FALSE
+    startCol = 1, startRow = 7, colNames = FALSE
   )
   
   # Write formulas and headers to workbook
   writeFormula(
     wb, pin_sheet_name,
-    assessment_pin_filtered$meta_pin, startRow = 8
+    assessment_pin_filtered$meta_pin, startRow = 7
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
     startCol = 2, startRow = 1, colNames = FALSE
   )
   writeData(
-    wb, pin_sheet_name, tibble(params$export$run_id_res),
+    wb, pin_sheet_name, tibble(params$export$run_id),
     startCol = 3, startRow = 3, colNames = FALSE
   )
   writeData(
-    wb, pin_sheet_name, tibble(params$export$run_id_condo),
-    startCol = 3, startRow = 4, colNames = FALSE
-  )
-  writeData(
     wb, pin_sheet_name, tibble(comp_header),
-    startCol = 10, startRow = 6, colNames = FALSE
+    startCol = 10, startRow = 5, colNames = FALSE
   )
   writeData(
     wb, pin_sheet_name, tibble(model_header),
-    startCol = 16, startRow = 6, colNames = FALSE
+    startCol = 16, startRow = 5, colNames = FALSE
   )
   
   
