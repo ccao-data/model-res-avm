@@ -14,6 +14,7 @@ stages:
     - input/land_site_rate_data.parquet
     - input/training_data.parquet
 
+    frozen: true
   train:
     cmd: Rscript pipeline/01-train.R
     desc: >
@@ -165,6 +166,8 @@ stages:
       run once a model is selected
     params:
     - assessment.year
+    - input.min_sale_year
+    - input.max_sale_year
     - ratio_study
     - export
     frozen: true
