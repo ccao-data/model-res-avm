@@ -305,6 +305,10 @@ assessment_data_pin <- assessment_data_merged %>%
     char_total_bldg_sf = sum(char_bldg_sf)
   ) %>%
   ungroup() %>%
+  
+  # Overwrite missing land values (only a few PINs)
+  mutate(char_land_sf = replace_na(char_land_sf, 0)) %>%
+  
   # Make a flag for any vital missing characteristics
   bind_cols(
     assessment_data_merged %>%
@@ -337,7 +341,7 @@ assessment_data_pin_2 <- assessment_data_pin %>%
   # total FMV for the PIN. For 210 and 295s (townhomes), there's a pre-
   # calculated land total value, for all other classes, there's a $/sqft rate
   mutate(
-    pred_pin_final_fmv_land = case_when(
+    pred_pin_final_fmv_land = ceiling(case_when(
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round *
           params$pv$land_pct_of_total_cap) ~
@@ -347,7 +351,7 @@ assessment_data_pin_2 <- assessment_data_pin %>%
         params$pv$land_pct_of_total_cap ~
       pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
-    ),
+    )),
     pred_pin_uncapped_fmv_land = case_when(
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
       TRUE ~ char_land_sf * land_rate_per_sqft
