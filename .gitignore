@@ -17,4 +17,5 @@
 *.parquet
 *.rds
 *.zip
+*.csv
 *.xlsx
