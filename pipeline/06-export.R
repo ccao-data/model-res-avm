@@ -12,9 +12,11 @@ library(DBI)
 library(dplyr)
 library(glue)
 library(here)
+library(lubridate)
 library(openxlsx)
 library(RJDBC)
 library(stringr)
+library(tidyr)
 library(yaml)
 
 # Setup the Athena JDBC driver
@@ -40,7 +42,196 @@ params <- read_yaml("params.yaml")
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 2. Pull Data -----------------------------------------------------------------
+# 3. Pull Vacant Land ----------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Need to pull all vacant land PINs so that they can be valued separately from
+# the regression model using a flat rate per neighborhood
+
+# Each land PIN can have multiple "lines" that potentially receive different
+# rates, here we grab the lines and square footage for each PIN
+land <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT
+      taxyr AS meta_year,
+      parid AS meta_pin,
+      lline AS meta_line_num,
+      sf AS meta_line_sf
+  FROM iasworld.land
+  WHERE taxyr = '{params$assessment$data_year}'
+  ")
+)
+
+# For land lines with no square footage, set to default of 0 if a secondary line
+# If a main line, then set to 10
+land <- land %>%
+  group_by(meta_pin) %>%
+  mutate(count = n()) %>%
+  ungroup() %>%
+  mutate(
+    meta_line_sf = case_when(
+      count == 1 & is.na(meta_line_sf) ~ 10,
+      count > 1 & is.na(meta_line_sf) ~ 0,
+      TRUE ~ meta_line_sf
+    )
+  ) %>%
+  select(-count)
+
+# To include land with the desk review spreadsheets we need to pull the same
+# columns for land PINs as the model output (assessment_pin)
+vacant_land <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT
+      uni.township_code,
+      uni.pin AS meta_pin,
+      uni.class AS meta_class,
+      uni.nbhd_code AS meta_nbhd_code,
+      uni.prop_address_full AS property_full_address,
+      uni.cook_municipality_name AS loc_cook_municipality_name,
+      uni.tieback_key_pin AS meta_tieback_key_pin,
+      uni.tieback_proration_rate AS meta_tieback_proration_rate,
+      hist.mailed_bldg AS meta_mailed_bldg,
+      hist.mailed_land AS meta_mailed_land,
+      hist.mailed_tot AS meta_mailed_tot,
+      hist.certified_bldg AS meta_certified_bldg,
+      hist.certified_land AS meta_certified_land,
+      hist.certified_tot AS meta_certified_tot,
+      hist.board_bldg AS meta_board_bldg,
+      hist.board_land AS meta_board_land,
+      hist.board_tot AS meta_board_tot,
+      hist.oneyr_pri_board_bldg AS meta_1yr_pri_board_bldg,
+      hist.oneyr_pri_board_land AS meta_1yr_pri_board_land,
+      hist.oneyr_pri_board_tot AS meta_1yr_pri_board_tot,
+      hist.twoyr_pri_board_bldg AS meta_2yr_pri_board_bldg,
+      hist.twoyr_pri_board_land AS meta_2yr_pri_board_land,
+      hist.twoyr_pri_board_tot AS meta_2yr_pri_board_tot
+  FROM default.vw_pin_universe uni
+  LEFT JOIN default.vw_pin_history hist
+      ON uni.pin = hist.pin
+      AND uni.year = hist.year
+  WHERE uni.year = '{params$assessment$data_year}'
+  AND uni.class IN ('200', '201', '241')
+  AND triad_code = '{params$export$triad_code}'
+  ")
+)
+
+# Clean up the vacant land records to match the pipeline output
+rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
+vacant_land_trans <- vacant_land %>%
+  rename_with(
+    .fn = ~ gsub(paste0(rsn_prefix, "_"), "prior_near_", .x),
+    .cols = starts_with(rsn_prefix)
+  ) %>%
+  select(-contains("mailed"), -contains("certified"), -contains("board")) %>%
+  mutate(across(starts_with("prior_near_"), ~ .x * 10))
+
+# Grab single-PIN sales for vacant land classes. Only used for reference, not
+# to create values
+vacant_land_sales <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT
+      sale.pin AS meta_pin,
+      sale.year AS meta_year,
+      sale.class AS meta_class,
+      sale.sale_price AS meta_sale_price,
+      sale.sale_date AS meta_sale_date,
+      sale.doc_no AS meta_sale_document_num
+  FROM default.vw_pin_sale sale
+  WHERE NOT is_multisale
+  AND class IN ('200', '201', '241')
+  AND (year
+      BETWEEN '{params$input$min_sale_year}'
+      AND '{params$input$max_sale_year}')
+  ")
+)
+
+# Transform sales data from long to wide, keeping most recent 2 sales
+vacant_land_sales_trans <- vacant_land_sales %>%
+  mutate(meta_sale_date = ymd_hms(meta_sale_date)) %>%
+  group_by(meta_pin) %>%
+  slice_max(meta_sale_date, n = 2) %>%
+  distinct(
+    meta_pin, meta_year,
+    meta_sale_price, meta_sale_date, meta_sale_document_num
+  ) %>%
+  mutate(mr = paste0("sale_recent_", row_number())) %>%
+  tidyr::pivot_wider(
+    id_cols = meta_pin,
+    names_from = mr,
+    values_from = c(meta_sale_date, meta_sale_price, meta_sale_document_num),
+    names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
+  ) %>%
+  select(meta_pin, contains("1"), contains("2")) %>%
+  ungroup()
+
+# Load neighborhood level land rates
+land_nbhd_rate <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue("
+  SELECT 
+      town_nbhd AS meta_nbhd_code,
+      land_rate_per_sqft
+  FROM ccao.land_nbhd_rate
+  WHERE year = '{params$assessment$year}'
+  ")
+)
+
+# Combine land data into a single dataframe with the same structure as
+# assessment_pin. Carry over improvement values from prior years
+vacant_land_merged <- vacant_land_trans %>%
+  left_join(vacant_land_sales_trans, by = "meta_pin") %>%
+  left_join(land_nbhd_rate, by = "meta_nbhd_code") %>%
+  left_join(
+    land %>%
+      group_by(meta_pin) %>%
+      summarize(
+        char_land_sf = sum(meta_line_sf),
+        flag_pin_is_multiland = n() > 1
+      ),
+    by = "meta_pin"
+  ) %>%
+  mutate(
+    # Replace missing values for some PINs (very few, usually brand new)
+    across(
+      c(char_land_sf, prior_near_land, prior_near_bldg, prior_near_tot),
+      replace_na, 10
+    ),
+    prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
+    prior_near_land_pct_total = round(prior_near_land / prior_near_tot, 4),
+    pred_pin_final_fmv_bldg = ifelse(
+      !is.na(prior_near_bldg),
+      prior_near_bldg,
+      0
+    ),
+    # Certain PINs have basically placeholder values, we want to carry these
+    # over
+    pred_pin_final_fmv_land = ifelse(
+      prior_near_tot <= 100,
+      prior_near_tot,
+      char_land_sf * land_rate_per_sqft
+    ),
+    pred_pin_final_fmv = pred_pin_final_fmv_bldg + pred_pin_final_fmv_land,
+    pred_pin_final_fmv_round = pred_pin_final_fmv,
+    pred_pin_land_rate_effective = land_rate_per_sqft,
+    prior_near_yoy_change_nom = pred_pin_final_fmv_round - prior_near_tot,
+    prior_near_yoy_change_pct = prior_near_yoy_change_nom / prior_near_tot,
+    across(
+      c(prior_near_yoy_change_pct, prior_near_land_pct_total),
+      ~ replace(.x, is.nan(.x), 0)
+    ),
+    flag_pin_is_prorated = meta_tieback_proration_rate != 1,
+    flag_pin_is_multiland,
+    flag_land_value_capped = 0,
+    flag_prior_near_to_pred_unchanged = prior_near_tot == pred_pin_final_fmv_round,
+    flag_prior_near_yoy_inc_gt_50_pct = prior_near_yoy_change_pct > 0.5,
+    flag_prior_near_yoy_dec_gt_5_pct = prior_near_yoy_change_pct < -0.05,
+    across(starts_with("flag_"), as.numeric)
+  )
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Pull Model Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Pull the PIN-level assessment data, which contains all the fields needed to
@@ -54,21 +245,21 @@ assessment_pin <- dbGetQuery(
   ")
 )
 
-# Pull card-level data only for PINs with multiple cards
+# Pull card-level data only for all PINs. Needed for upload, since values are
+# tracked by card, even though they're presented by PIN
 assessment_card <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT c.*
   FROM model.assessment_card c
   INNER JOIN (
-    SELECT *
-    FROM model.assessment_pin
-    WHERE run_id = '{params$export$run_id}'
-    AND meta_triad_code = '{params$export$triad_code}'
-    AND flag_pin_is_multicard
+      SELECT *
+      FROM model.assessment_pin
+      WHERE run_id = '{params$export$run_id}'
+      AND meta_triad_code = '{params$export$triad_code}'
   ) p
   ON c.year = p.year
-    AND c.run_id = p.run_id
-    AND c.meta_pin = p.meta_pin
+      AND c.run_id = p.run_id
+      AND c.meta_pin = p.meta_pin
   ")
 )
 
@@ -76,12 +267,22 @@ assessment_card <- dbGetQuery(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Prep ----------------------------------------------------------------------
+# 4. Prep Desk Review ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Merge vacant land data with data from the residential AVM
+assessment_pin_merged <- assessment_pin %>%
+  mutate(
+    across(ends_with("_date"), ymd),
+    across(starts_with("flag_"), as.numeric),
+    across(where(is.numeric), ~ na_if(.x, Inf))
+  ) %>%
+  bind_rows(vacant_land_merged) %>%
+  filter(!is.na(pred_pin_final_fmv_land))
 
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
-assessment_pin_prepped <- assessment_pin %>%
+assessment_pin_prepped <- assessment_pin_merged %>%
   mutate(
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
@@ -89,7 +290,7 @@ assessment_pin_prepped <- assessment_pin %>%
     property_full_address = paste0(
       loc_property_address, 
       ", ", loc_property_city, " ", loc_property_state, 
-      ", ",loc_property_zip
+      ", ", loc_property_zip
     )
   ) %>%
   select(
@@ -113,10 +314,7 @@ assessment_pin_prepped <- assessment_pin %>%
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
     flag_char_missing_critical_value
   ) %>%
-  mutate(
-    across(starts_with("flag_"), as.numeric),
-    across(where(is.numeric), ~ na_if(.x, Inf))
-  ) %>%
+  arrange(township_code, meta_pin) %>%
   mutate(
     meta_pin = glue(
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
@@ -128,7 +326,15 @@ assessment_pin_prepped <- assessment_pin %>%
     )
   )
 
+# Get all PINs with multiple cards, break out into supplemental data set to 
+# attach to each town
 assessment_card_prepped <- assessment_card %>%
+  semi_join(
+    assessment_pin %>%
+      filter(as.logical(as.numeric(flag_pin_is_multicard))) %>%
+      select(meta_pin),
+    by = "meta_pin"
+  ) %>%
   select(
     township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
@@ -141,13 +347,13 @@ assessment_card_prepped <- assessment_card %>%
       "{meta_pin}")'
     )
   ) %>%
-  arrange(meta_pin, meta_card_num)
+  arrange(township_code, meta_pin, meta_card_num)
 
 
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Export Spreadsheets -------------------------------------------------------
+# 5. Export Desk Review --------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Write raw data to sheets for parcel details
@@ -155,7 +361,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
   
   
-  ## 4.1. PIN-Level ------------------------------------------------------------
+  ## 5.1. PIN-Level ------------------------------------------------------------
   
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
@@ -239,7 +445,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   
   
-  # 4.2. Card-Level ------------------------------------------------------------
+  # 5.2. Card-Level ------------------------------------------------------------
   
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
@@ -300,4 +506,101 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     overwrite = TRUE
   )
   rm(wb)
+}
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 5. Prep iasWorld Upload ------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Break land totals out to individual lines, where value is proportional to
+# each line's square footage
+upload_data_land <- assessment_pin_merged %>%
+  left_join(land, by = "meta_pin") %>%
+  select(
+    township_code, meta_pin, meta_card_num = meta_line_num,
+    meta_line_sf, pred_pin_final_fmv_land
+  ) %>%
+  group_by(meta_pin) %>%
+  mutate(
+    final_fmv = (meta_line_sf / sum(meta_line_sf)) * pred_pin_final_fmv_land,
+    component = "L",
+    meta_card_num = as.character(meta_card_num)
+  ) %>%
+  ungroup()
+
+# Split land classes that have improvements out into their own records, since
+# the improvements weren't valued by the model (they're carried over)
+upload_data_land_impr <- assessment_pin_merged %>%
+  filter(
+    meta_class %in% c("200", "201", "241"),
+    pred_pin_final_fmv_bldg != 0
+  ) %>%
+  left_join(land, by = "meta_pin") %>%
+  group_by(township_code, meta_pin) %>%
+  arrange(meta_line_num) %>%
+  summarise(
+    meta_line_num = first(meta_line_num),
+    final_fmv = first(pred_pin_final_fmv_bldg),
+    component = "R"
+  ) %>%
+  ungroup()
+
+# Split improvement values out by card for all non-land classes that WERE valued
+# by the model
+upload_data_bldg <- assessment_pin_merged %>%
+  filter(!meta_class %in% c("200", "201", "241")) %>%
+  left_join(assessment_card, by = c("township_code", "meta_pin")) %>%
+  select(
+    township_code, meta_pin, meta_card_num, meta_tieback_proration_rate.x, 
+    meta_card_pct_total_fmv, bldg_fmv = pred_pin_final_fmv_bldg
+  ) %>%
+  mutate(
+    card_fmv_sans_land = meta_card_pct_total_fmv * bldg_fmv,
+    final_fmv = ifelse(
+      is.nan(card_fmv_sans_land),
+      bldg_fmv,
+      card_fmv_sans_land
+    ),
+    component = "R"
+  )
+
+# Combine all records into a single data frame, keeping only the fields needed
+# for upload
+upload_data_merged <- upload_data_bldg %>%
+  bind_rows(upload_data_land, upload_data_land_impr) %>%
+  select(township_code, meta_pin, component, meta_card_num, final_fmv) %>%
+  arrange(township_code, meta_pin)
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 6. Export iasWorld Upload ----------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Write each town to a headerless CSV for mass upload
+for (town in unique(assessment_pin_prepped$township_code)) {
+  message("Now processing: ", town_convert(town))
+  
+  upload_data_fil <- upload_data_merged %>%
+    filter(township_code == town) %>%
+    select(-township_code)
+  
+  write_csv(
+    x = upload_data_fil,
+    file = here(
+      "output", "iasworld",
+      glue(
+        params$assessment$year,
+        str_replace(town_convert(town), " ", "_"),
+        "iasworld_upload.csv",
+        .sep = "_"
+      )
+    ),
+    na = "",
+    col_names = FALSE
+  )
 }
