@@ -14,6 +14,7 @@ library(glue)
 library(here)
 library(lubridate)
 library(openxlsx)
+library(readr)
 library(RJDBC)
 library(stringr)
 library(tidyr)
@@ -86,7 +87,10 @@ vacant_land <- dbGetQuery(
       uni.pin AS meta_pin,
       uni.class AS meta_class,
       uni.nbhd_code AS meta_nbhd_code,
-      uni.prop_address_full AS property_full_address,
+      uni.prop_address_full AS loc_property_address,
+      uni.prop_address_city_name As loc_property_city,
+      uni.prop_address_state AS loc_property_state,
+      uni.prop_address_zipcode_1 AS loc_property_zip,
       uni.cook_municipality_name AS loc_cook_municipality_name,
       uni.tieback_key_pin AS meta_tieback_key_pin,
       uni.tieback_proration_rate AS meta_tieback_proration_rate,
@@ -207,11 +211,12 @@ vacant_land_merged <- vacant_land_trans %>%
     pred_pin_final_fmv_land = ifelse(
       prior_near_tot <= 100,
       prior_near_tot,
-      char_land_sf * land_rate_per_sqft
+      ceiling(char_land_sf * land_rate_per_sqft)
     ),
     pred_pin_final_fmv = pred_pin_final_fmv_bldg + pred_pin_final_fmv_land,
     pred_pin_final_fmv_round = pred_pin_final_fmv,
     pred_pin_land_rate_effective = land_rate_per_sqft,
+    pred_pin_land_pct_total = pred_pin_final_fmv_land / pred_pin_final_fmv_round,
     prior_near_yoy_change_nom = pred_pin_final_fmv_round - prior_near_tot,
     prior_near_yoy_change_pct = prior_near_yoy_change_nom / prior_near_tot,
     across(
@@ -278,7 +283,8 @@ assessment_pin_merged <- assessment_pin %>%
     across(where(is.numeric), ~ na_if(.x, Inf))
   ) %>%
   bind_rows(vacant_land_merged) %>%
-  filter(!is.na(pred_pin_final_fmv_land))
+  filter(!is.na(pred_pin_final_fmv_land)) %>%
+  mutate(across(ends_with("_date"), as_date))
 
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
@@ -525,9 +531,20 @@ upload_data_land <- assessment_pin_merged %>%
   ) %>%
   group_by(meta_pin) %>%
   mutate(
-    final_fmv = (meta_line_sf / sum(meta_line_sf)) * pred_pin_final_fmv_land,
     component = "L",
-    meta_card_num = as.character(meta_card_num)
+    meta_card_num = as.character(meta_card_num),
+    int_fmv = (meta_line_sf / sum(meta_line_sf)) * pred_pin_final_fmv_land,
+    frac_prop = int_fmv - as.integer(int_fmv)
+  ) %>%
+  # Add the fractional portion of each value to whichever fraction is largest
+  # And randomly assign if the fractions are all identical
+  arrange(desc(frac_prop)) %>%
+  mutate(
+    add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & frac_prop > 0.1e-7
+    ),
+    add_diff = add_to_final * (pred_pin_final_fmv_land - sum(as.integer(int_fmv))),
+    final_fmv = as.integer(int_fmv) + add_diff
   ) %>%
   ungroup()
 
@@ -554,17 +571,32 @@ upload_data_bldg <- assessment_pin_merged %>%
   filter(!meta_class %in% c("200", "201", "241")) %>%
   left_join(assessment_card, by = c("township_code", "meta_pin")) %>%
   select(
-    township_code, meta_pin, meta_card_num, meta_tieback_proration_rate.x, 
+    township_code, meta_pin, meta_card_num,
     meta_card_pct_total_fmv, bldg_fmv = pred_pin_final_fmv_bldg
   ) %>%
   mutate(
-    card_fmv_sans_land = meta_card_pct_total_fmv * bldg_fmv,
+    component = "R",
+    int_fmv = meta_card_pct_total_fmv * bldg_fmv,
+    frac_prop = int_fmv - as.integer(int_fmv),
+  ) %>%
+  # Add the fractional portion of each value to whichever fraction is largest
+  # And randomly assign if the fractions are all identical
+  group_by(meta_pin) %>%
+  arrange(desc(frac_prop)) %>%
+  mutate(
+    add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & frac_prop > 0.1e-7
+    ),
+    add_diff = add_to_final * (bldg_fmv - sum(as.integer(int_fmv))),
+    card_fmv_sans_land = as.integer(int_fmv) + add_diff 
+  ) %>%
+  ungroup() %>%
+  mutate(
     final_fmv = ifelse(
-      is.nan(card_fmv_sans_land),
+      is.nan(card_fmv_sans_land) | is.na(card_fmv_sans_land),
       bldg_fmv,
       card_fmv_sans_land
-    ),
-    component = "R"
+    )
   )
 
 # Combine all records into a single data frame, keeping only the fields needed
@@ -572,7 +604,7 @@ upload_data_bldg <- assessment_pin_merged %>%
 upload_data_merged <- upload_data_bldg %>%
   bind_rows(upload_data_land, upload_data_land_impr) %>%
   select(township_code, meta_pin, component, meta_card_num, final_fmv) %>%
-  arrange(township_code, meta_pin)
+  arrange(township_code, meta_pin, component, meta_card_num)
 
 
 
