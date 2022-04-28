@@ -559,7 +559,7 @@ upload_data_land_impr <- assessment_pin_merged %>%
   group_by(township_code, meta_pin) %>%
   arrange(meta_line_num) %>%
   summarise(
-    meta_line_num = first(meta_line_num),
+    meta_card_num = as.character(first(meta_line_num)),
     final_fmv = first(pred_pin_final_fmv_bldg),
     component = "R"
   ) %>%
