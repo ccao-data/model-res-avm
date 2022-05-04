@@ -38,15 +38,13 @@ This repository contains code, data, and documentation for the Cook
 County Assessor’s 2022 residential reassessment model. Information about
 prior year models can be found at the following links:
 
--   [2021 City of Chicago
-    Assessment](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year)
--   [2020 South Triad
-    Assessment](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
--   [2019 North Triad
-    Assessment](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
--   Models for prior to 2019 are not currently available. They are
-    primarily custom SPSS code that is difficult to run outside of the
-    CCAO environment
+| Year(s)     | Triad(s) | Method                                      | Language / Framework       | Link                                                                                                    |
+|-------------|----------|---------------------------------------------|----------------------------|---------------------------------------------------------------------------------------------------------|
+| 2009 - 2017 | All      | Linear regression per township              | SPSS                       | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev/-/tree/master/code.legacy)      |
+| 2018        | City     | Linear regression per township              | N/A                        | Not available. Values provided by vendor                                                                |
+| 2019        | North    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
+| 2020        | South    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
+| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year) |
 
 # Model Overview
 
@@ -330,7 +328,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2022-04-06.
+model as of 2022-05-04.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                                                                                                                                                                                                                                                     |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
