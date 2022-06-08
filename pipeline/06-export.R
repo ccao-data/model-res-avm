@@ -43,7 +43,7 @@ params <- read_yaml("params.yaml")
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Pull Vacant Land ----------------------------------------------------------
+# 2. Pull Vacant Land ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Need to pull all vacant land PINs so that they can be valued separately from
