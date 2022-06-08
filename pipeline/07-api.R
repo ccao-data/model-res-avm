@@ -1,0 +1,126 @@
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1. Setup ---------------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Pre-allocate memory for java JDBC driver
+options(java.parameters = "-Xmx10g")
+
+# Load R libraries
+library(arrow)
+library(ccao)
+library(DBI)
+library(dplyr)
+library(glue)
+library(here)
+library(openxlsx)
+library(purrr)
+library(RJDBC)
+library(stringr)
+library(yaml)
+
+# Load helpers and recipes from files
+walk(list.files("R/", "\\.R$", full.names = TRUE), source)
+
+# Load the parameters file containing the export settings
+params <- read_yaml("params.yaml")
+
+# Initialize a dictionary of file paths. See misc/file_dict.csv for details
+run_id <- params$export$run_id
+year <- substr(run_id, 1, 4)
+paths <- model_file_dict(run_id, year)
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 2. Load Data -----------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Load metadata to get predictors used and other info
+metadata <- read_parquet(paths$output$metadata$s3)
+predictors <- metadata$model_predictor_all_name[[1]]
+towns <- ccao::town_dict %>%
+  pull(township_code)
+
+towns <- town_convert("Norwood Park")
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Export API Workbooks ------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Write raw data to sheets for parcel details
+for (town in towns) {
+  message("Now processing: ", town_convert(town))
+
+  # Load data from file, then make it pretty for saving to sheet
+  card_data <- arrow::read_parquet(
+    file.path(
+      paths$output$assessment_card$s3,
+      paste0("year=", year),
+      paste0("run_id=", run_id),
+      paste0("township_code=", town),
+      "part-0.parquet"
+    )
+  ) %>%
+    mutate(api_prediction = NA, api_prediction_rounded = NA) %>%
+    select(
+      meta_pin, meta_card_num, meta_class, pred_card_initial_fmv, 
+      api_prediction, api_prediction_rounded,
+      meta_township_code, meta_nbhd_code, meta_tieback_proration_rate,
+      starts_with("ind_"),
+      starts_with("char_"),
+      starts_with("loc_"),
+      starts_with("time"),
+      starts_with("prox_"),
+      starts_with("acs5_"),
+      starts_with("other_")
+    ) %>%
+    mutate(across(where(is.numeric), round, 8)) %>%
+    arrange(meta_pin, meta_card_num) %>%
+    var_encode(cols = starts_with("char_"))
+
+  # Write the cleaned data to workbook
+  wb <- loadWorkbook(here("misc", "model_api_template.xlsm"))
+  pin_sheet_header <- paste0("Run ID: ", run_id)
+  pin_row_range <- 5:(nrow(card_data) + 7)
+  style_price <- createStyle(numFmt = "$#,##0")
+  addStyle(
+    wb, 1, style = style_price,
+    rows = pin_row_range, cols = 4:6, gridExpand = TRUE
+  )
+  writeData(
+    wb, 1, tibble(pin_sheet_header),
+    startCol = 2, startRow = 1, colNames = FALSE
+  )
+  writeData(
+    wb, 1, card_data,
+    startCol = 1, startRow = 5, colNames = FALSE
+  )
+  
+  # Save the file workbook to file
+  saveWorkbook(
+    wb, 
+    here(
+      "output", "api_workbook",
+      glue(
+        year,
+        str_replace(town_convert(town), " ", "_"),
+        "API_Workbook.xlsm",
+        .sep = "_"
+      )
+    ),
+    overwrite = TRUE
+  )
+  rm(wb)
+  
+  ### NOTE ###
+  # OpenXLSX is not perfect and messes up the macros and formatting on saved
+  # workbooks. To finish each workbook, you must manually:
+  
+  # 1. Hide row 3 (model API variable names)
+  # 2. Developer tab > Visual Basic. Under Microsoft Excel Objects in the
+  #    explorer panel, copy the code from Sheet1 to Sheet2 (Cards).
+  # 3. Save, then close and re-open the workbook. Test the API by changing a
+  #    characteristic.
+}

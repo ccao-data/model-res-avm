@@ -62,3 +62,43 @@ model_delete_run <- function(run_id, year) {
   purrr::walk(s3_objs_limited, aws.s3::delete_object)
   purrr::walk(s3_objs_w_run_id, aws.s3::delete_object, bucket = bucket)
 }
+
+
+# Silly copy of ccao::vars_recode to convert text versions of categoricals back
+# to numbers
+var_encode <- function(data, cols = dplyr::everything(), dict = ccao::vars_dict) {
+  var <- "var_code"
+  
+  dict_long <- dict %>%
+    dplyr::filter(
+      .data$var_type == "char" &
+      .data$var_data_type == "categorical"
+    ) %>%
+    dplyr::select(
+      dplyr::starts_with("var_name_"),
+      .data$var_code:.data$var_value_short
+    ) %>%
+    tidyr::pivot_longer(
+      dplyr::starts_with("var_name_"),
+      names_to = "var_type",
+      values_to = "var_name"
+    ) %>%
+    dplyr::distinct(
+      .data$var_code,
+      .data$var_value, .data$var_value_short, .data$var_name
+    )
+  
+  dplyr::mutate(
+    data,
+    dplyr::across(dplyr::all_of(cols), function(x, y = dplyr::cur_column()) {
+    if (y %in% dict_long$var_name) {
+        var_rows <- which(dict_long$var_name == y)
+        idx <- match(x, dict_long$var_value[var_rows])
+        out <- dict_long[[var]][var_rows][idx]
+        return(out)
+      } else {
+        return(x)
+      }
+    })
+  )
+}
