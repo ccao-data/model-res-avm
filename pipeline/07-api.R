@@ -42,7 +42,12 @@ predictors <- metadata$model_predictor_all_name[[1]]
 towns <- ccao::town_dict %>%
   pull(township_code)
 
-towns <- town_convert("Norwood Park")
+# Load categorical variable dictionary for lookup and data validation
+dict <- ccao::vars_dict %>%
+  filter(var_data_type == "categorical", var_is_predictor) %>%
+  distinct(var_name_pretty, var_code, var_value)
+
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -76,25 +81,63 @@ for (town in towns) {
       starts_with("acs5_"),
       starts_with("other_")
     ) %>%
-    mutate(across(where(is.numeric), round, 8)) %>%
     arrange(meta_pin, meta_card_num) %>%
+    mutate(
+      across(where(is.numeric), round, 8),
+      meta_pin = ccao::pin_format_pretty(meta_pin, full_length = TRUE)
+    ) %>%
     var_encode(cols = starts_with("char_"))
 
-  # Write the cleaned data to workbook
+  # Load workbook and styles
   wb <- loadWorkbook(here("misc", "model_api_template.xlsm"))
   pin_sheet_header <- paste0("Run ID: ", run_id)
   pin_row_range <- 5:(nrow(card_data) + 7)
   style_price <- createStyle(numFmt = "$#,##0")
+  csht <- "Cards"
+  dsht <- "Dictionary"
+  
+  # Write dictionary and data validation
+  writeData(wb, dsht, dict, startCol = 1, startRow = 2, colNames = FALSE)
+  mappings <- tribble(
+    ~ col, ~ dict,
+    "L", c(2, 3),
+    "M", c(4, 9),
+    "N", c(10, 12),
+    "O", c(13, 15),
+    "R", c(16, 19),
+    "S", c(20, 22),
+    "T", c(23, 26),
+    "W", c(27, 28),
+    "X", c(29, 30),
+    "Y", c(31, 34),
+    "Z", c(35, 42),
+    "AC", c(43, 46),
+    "AE", c(47, 49),
+    "AF", c(50, 55),
+    "AH", c(56, 57),
+    "AI", c(58, 59),
+    "AJ", c(60, 65),
+    "AK", c(66, 67)
+  )
+  
+  pwalk(mappings, function(col, dict) {
+    dataValidation(
+      wb, csht, col = col2int(col), rows = pin_row_range,
+      type = "list", value = glue("'{dsht}'!$B${dict[1]}:$B${dict[2]}")
+    )
+  })
+  
+  # Write the cleaned data to workbook
   addStyle(
-    wb, 1, style = style_price,
+    wb, csht, style = style_price,
     rows = pin_row_range, cols = 4:6, gridExpand = TRUE
   )
   writeData(
-    wb, 1, tibble(pin_sheet_header),
+    wb, csht, tibble(pin_sheet_header),
     startCol = 2, startRow = 1, colNames = FALSE
   )
   writeData(
-    wb, 1, card_data,
+    wb, csht, card_data,
     startCol = 1, startRow = 5, colNames = FALSE
   )
   
