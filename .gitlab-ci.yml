@@ -10,7 +10,7 @@
 
 # Base R image to build the model with. Should be version locked to the highest
 # version most CCAO employees are using locally
-image: rocker/r-ver:4.1.2
+image: rocker/r-ver:4.2.2
 
 # Defining static variables used throughout the CI pipeline
 variables:

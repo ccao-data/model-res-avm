@@ -36,10 +36,10 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to partition results and pull data
-  year: "2022"
+  year: "2023"
   
   # The statutorily "sale date" for the purpose of prediction
-  date: "2022-01-01"
+  date: "2023-01-01"
   
   # Added context for model artifacts stored in s3. Does not change behavior
   triad: "north"
@@ -47,13 +47,13 @@ assessment:
   
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2021"
+  data_year: "2022"
 
 # Parameters used to define the input/training data
 input:
   # The min and max years of sales to use for the training data sample
-  min_sale_year: "2013"
-  max_sale_year: "2021"
+  min_sale_year: "2014"
+  max_sale_year: "2022"
   
   # Time window (in months) used for rolling origin cross-validation and
   # calculating spatial lags i.e. lags are the average of the nearest K
@@ -136,7 +136,7 @@ model:
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
   objective: "rmse"
-  seed: 20220117
+  seed: 20230117
   verbose: -1
   predictor:
   
@@ -371,10 +371,10 @@ pv:
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
 ratio_study:
-  far_year: "2019"
+  far_year: "2020"
   far_stage: "board"
   far_column: "meta_2yr_pri_board_tot"
-  near_year: "2021"
+  near_year: "2022"
   near_stage: "mailed"
   near_column: "meta_mailed_tot"
   
@@ -389,4 +389,4 @@ ratio_study:
 # upload
 export:
   triad_code: "2"
-  run_id: "2022-04-27-keen-gabe"
+  run_id: ""

@@ -1,34 +1,41 @@
 Table of Contents
 ================
 
--   [Prior Models](#prior-models)
--   [Model Overview](#model-overview)
-    -   [How It Works](#how-it-works)
-    -   [Choices Made](#choices-made)
-        -   [Model Selection](#model-selection)
-        -   [Framework Selection](#framework-selection)
-        -   [Hyperparameter Selection](#hyperparameter-selection)
-        -   [Features Used](#features-used)
-        -   [Data Used](#data-used)
-        -   [Post-Modeling](#post-modeling)
-    -   [Major Changes from Previous
-        Versions](#major-changes-from-previous-versions)
-        -   [Compared to 2021](#compared-to-2021)
-        -   [Prior to 2020](#prior-to-2020)
--   [Ongoing Issues](#ongoing-issues)
-    -   [Data Quality and Integrity](#data-quality-and-integrity)
-    -   [Heterogeneity and Extremes](#heterogeneity-and-extremes)
--   [FAQs](#faqs)
--   [Usage](#usage)
-    -   [Installation](#installation)
-    -   [Running](#running)
-    -   [Parameters](#parameters)
-    -   [Output](#output)
-    -   [Getting Data](#getting-data)
-    -   [System Requirements](#system-requirements)
-    -   [Troubleshooting](#troubleshooting)
--   [License](#license)
--   [Contributing](#contributing)
+- <a href="#prior-models" id="toc-prior-models">Prior Models</a>
+- <a href="#model-overview" id="toc-model-overview">Model Overview</a>
+  - <a href="#how-it-works" id="toc-how-it-works">How It Works</a>
+  - <a href="#choices-made" id="toc-choices-made">Choices Made</a>
+    - <a href="#model-selection" id="toc-model-selection">Model Selection</a>
+    - <a href="#framework-selection" id="toc-framework-selection">Framework
+      Selection</a>
+    - <a href="#hyperparameter-selection"
+      id="toc-hyperparameter-selection">Hyperparameter Selection</a>
+    - <a href="#features-used" id="toc-features-used">Features Used</a>
+    - <a href="#data-used" id="toc-data-used">Data Used</a>
+    - <a href="#post-modeling" id="toc-post-modeling">Post-Modeling</a>
+  - <a href="#major-changes-from-previous-versions"
+    id="toc-major-changes-from-previous-versions">Major Changes from
+    Previous Versions</a>
+    - <a href="#compared-to-2021" id="toc-compared-to-2021">Compared to
+      2021</a>
+    - <a href="#prior-to-2020" id="toc-prior-to-2020">Prior to 2020</a>
+- <a href="#ongoing-issues" id="toc-ongoing-issues">Ongoing Issues</a>
+  - <a href="#data-quality-and-integrity"
+    id="toc-data-quality-and-integrity">Data Quality and Integrity</a>
+  - <a href="#heterogeneity-and-extremes"
+    id="toc-heterogeneity-and-extremes">Heterogeneity and Extremes</a>
+- <a href="#faqs" id="toc-faqs">FAQs</a>
+- <a href="#usage" id="toc-usage">Usage</a>
+  - <a href="#installation" id="toc-installation">Installation</a>
+  - <a href="#running" id="toc-running">Running</a>
+  - <a href="#parameters" id="toc-parameters">Parameters</a>
+  - <a href="#output" id="toc-output">Output</a>
+  - <a href="#getting-data" id="toc-getting-data">Getting Data</a>
+  - <a href="#system-requirements" id="toc-system-requirements">System
+    Requirements</a>
+  - <a href="#troubleshooting" id="toc-troubleshooting">Troubleshooting</a>
+- <a href="#license" id="toc-license">License</a>
+- <a href="#contributing" id="toc-contributing">Contributing</a>
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -45,6 +52,7 @@ prior year models can be found at the following links:
 | 2019        | North    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
 | 2020        | South    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
 | 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year) |
+| 2022        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2022-assessment-year) |
 
 # Model Overview
 
@@ -53,14 +61,14 @@ fair, accurate, and transparent way. The Assessor is committed to
 transparency throughout the assessment process. As such, this document
 contains:
 
--   [A brief walkthrough of the overall process used to generate
-    residential assessed values](#how-it-works)
--   [Rationale for different modeling, feature, and code decisions that
-    affect assessed values](#choices-made)
--   [An outline of ongoing data quality issues that affect assessed
-    values](#ongoing-issues)
--   [Instructions to replicate our valuation process and
-    results](#installation)
+- [A brief walkthrough of the overall process used to generate
+  residential assessed values](#how-it-works)
+- [Rationale for different modeling, feature, and code decisions that
+  affect assessed values](#choices-made)
+- [An outline of ongoing data quality issues that affect assessed
+  values](#ongoing-issues)
+- [Instructions to replicate our valuation process and
+  results](#installation)
 
 The repository itself contains the [code](./pipeline) and
 [data](./input) for the Automated Valuation Model (AVM) used to generate
@@ -198,38 +206,36 @@ stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/
 We chose LightGBM because it has the right mix of trade-offs for our
 needs. Specifically, LightGBM is:
 
--   [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The
-    docs contain good explanations of LightGBM’s features and useful
-    troubleshooting sections.
--   Highly accurate. It consistently beat other methods in accuracy, as
-    [measured by RMSE (root mean squared error) using a test
-    set](#faqs).
--   Extremely fast. It trained faster than other model types by a nearly
-    2:1 margin using our data (CPU training only).
--   [Capable of natively handling categorical
-    features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support).
-    This is extremely important as a large amount of our property data
-    is categorical (type of roof, neighborhood, etc.). Other methods,
-    such as XGBoost, require feature transformation such as one-hot
-    encoding to use categorical data.
--   Widely used in housing-specific machine learning models and
-    competitions.
--   Simpler to use and implement than ensemble methods or neural
-    networks, which can involve lots of fiddling and configuration.
--   Easy to diagnose problems with, as it has built-in feature
-    importance and contribution methods.
+- [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The
+  docs contain good explanations of LightGBM’s features and useful
+  troubleshooting sections.
+- Highly accurate. It consistently beat other methods in accuracy, as
+  [measured by RMSE (root mean squared error) using a test set](#faqs).
+- Extremely fast. It trained faster than other model types by a nearly
+  2:1 margin using our data (CPU training only).
+- [Capable of natively handling categorical
+  features](https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html#categorical-feature-support).
+  This is extremely important as a large amount of our property data is
+  categorical (type of roof, neighborhood, etc.). Other methods, such as
+  XGBoost, require feature transformation such as one-hot encoding to
+  use categorical data.
+- Widely used in housing-specific machine learning models and
+  competitions.
+- Simpler to use and implement than ensemble methods or neural networks,
+  which can involve lots of fiddling and configuration.
+- Easy to diagnose problems with, as it has built-in feature importance
+  and contribution methods.
 
 The downsides of LightGBM are that it is:
 
--   Relatively difficult to explain compared to simpler models such as
-    linear regression.
--   Not particularly well-integrated into
-    [Tidymodels](https://www.tidymodels.org/), the R framework we use
-    for machine learning. See [Framework
-    Selection](#framework-selection).
--   Painful to train, since it has a large number of hyperparameters.
--   Prone to over-fitting if not trained carefully, unlike other methods
-    such as random forest.
+- Relatively difficult to explain compared to simpler models such as
+  linear regression.
+- Not particularly well-integrated into
+  [Tidymodels](https://www.tidymodels.org/), the R framework we use for
+  machine learning. See [Framework Selection](#framework-selection).
+- Painful to train, since it has a large number of hyperparameters.
+- Prone to over-fitting if not trained carefully, unlike other methods
+  such as random forest.
 
 ### Framework Selection
 
@@ -241,25 +247,25 @@ allow us to focus on improving our data and models.
 
 Additionally, Tidymodels is:
 
--   [Well-documented](https://www.tmwr.org/). There are resources for
-    quickly learning the Tidymodels approach as well as complete
-    documentation for each Tidymodels package.
--   [Under very active development](https://github.com/tidymodels).
-    Developers are quick to respond to issues and feature requests.
--   Quick to teach, since a lot of complicated code is abstracted away.
--   [Extensible](https://www.tidymodels.org/learn/develop/models/). The
-    API allows for easy integration of additional model types. See
-    [Lightsnip](#lightsnip).
--   Verbose. It tends to warn you about common machine-learning
-    footguns. It also useful error handling and messages.
+- [Well-documented](https://www.tmwr.org/). There are resources for
+  quickly learning the Tidymodels approach as well as complete
+  documentation for each Tidymodels package.
+- [Under very active development](https://github.com/tidymodels).
+  Developers are quick to respond to issues and feature requests.
+- Quick to teach, since a lot of complicated code is abstracted away.
+- [Extensible](https://www.tidymodels.org/learn/develop/models/). The
+  API allows for easy integration of additional model types. See
+  [Lightsnip](#lightsnip).
+- Verbose. It tends to warn you about common machine-learning footguns.
+  It also useful error handling and messages.
 
 Some downsides to Tidymodels are that it is:
 
--   Relatively new. While its API is mature, there are still bugs in
-    core packages.
--   [Under active development](https://github.com/tidymodels). Packages
-    and features change fairly quickly, so we need to constantly update
-    code to stay current.
+- Relatively new. While its API is mature, there are still bugs in core
+  packages.
+- [Under active development](https://github.com/tidymodels). Packages
+  and features change fairly quickly, so we need to constantly update
+  code to stay current.
 
 ##### Lightsnip
 
@@ -268,12 +274,12 @@ We’ve create a custom R package called
 to better integrate LightGBM with Tidymodels and unlock some of its more
 advanced features, including:
 
--   Early stopping, which reduces training time by stopping based on a
-    holdout validation set
--   Additional [hyperparameters](#hyperparameter-selection),
-    particularly those related to categorical features
--   The ability to link certain hyperparameters which typically move in
-    tandem, such as `num_leaves` and `max_depth`
+- Early stopping, which reduces training time by stopping based on a
+  holdout validation set
+- Additional [hyperparameters](#hyperparameter-selection), particularly
+  those related to categorical features
+- The ability to link certain hyperparameters which typically move in
+  tandem, such as `num_leaves` and `max_depth`
 
 Lightsnip also ensures that the link between the model engine (LightGBM)
 and the model framework (Tidymodels) is stable. It lets us quickly
@@ -288,19 +294,19 @@ well-specified in order for a model to be accurate and useful. LightGBM
 has a large number of tunable parameters, but we tune only a small
 proportion, including:
 
-| LightGBM Parameter                                                                                                        | CV Search Range | Parameter Description                                                              |
-|:--------------------------------------------------------------------------------------------------------------------------|:----------------|:-----------------------------------------------------------------------------------|
-| [num\_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                                       | 500 - 2500      | Maximum number of leaves in each tree. Main parameter to control model complexity. |
-| [add\_to\_linked\_depth](https://ccao-data-science---modeling.gitlab.io/packages/lightsnip/reference/train_lightgbm.html) | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.           |
-| [feature\_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)                           | 0.3 - 0.8       | The random subset of features selected for a tree, as a percentage.                |
-| [min\_gain\_to\_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)                       | 0 - 31.623      | The minimum gain needed to create a split.                                         |
-| [min\_data\_in\_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)                         | 2 - 150         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
-| [max\_cat\_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)                        | 20 - 250        | Maximum number of split points for categorical features                            |
-| [min\_data\_per\_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group)                     | 20 - 200        | Minimum number of observations per categorical group                               |
-| [cat\_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                                       | 10 - 100        | Categorical smoothing. Used to reduce noise.                                       |
-| [cat\_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                                               | 0.001 - 10      | Categorical-specific L2 regularization                                             |
-| [lambda\_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                                         | 0.001 - 10      | L1 regularization                                                                  |
-| [lambda\_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l2)                                         | 0.001 - 10      | L2 regularization                                                                  |
+| LightGBM Parameter                                                                                                     | CV Search Range | Parameter Description                                                              |
+|:-----------------------------------------------------------------------------------------------------------------------|:----------------|:-----------------------------------------------------------------------------------|
+| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                                     | 500 - 2500      | Maximum number of leaves in each tree. Main parameter to control model complexity. |
+| [add_to_linked_depth](https://ccao-data-science---modeling.gitlab.io/packages/lightsnip/reference/train_lightgbm.html) | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.           |
+| [feature_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)                         | 0.3 - 0.8       | The random subset of features selected for a tree, as a percentage.                |
+| [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)                       | 0 - 31.623      | The minimum gain needed to create a split.                                         |
+| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)                         | 2 - 150         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
+| [max_cat_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)                       | 20 - 250        | Maximum number of split points for categorical features                            |
+| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group)                     | 20 - 200        | Minimum number of observations per categorical group                               |
+| [cat_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                                     | 10 - 100        | Categorical smoothing. Used to reduce noise.                                       |
+| [cat_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                                             | 0.001 - 10      | Categorical-specific L2 regularization                                             |
+| [lambda_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                                       | 0.001 - 10      | L1 regularization                                                                  |
+| [lambda_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l2)                                       | 0.001 - 10      | L2 regularization                                                                  |
 
 These parameters are tuned using [Bayesian hyperparameter
 optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which
@@ -328,31 +334,31 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2022-05-04.
+model as of 2023-01-23.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                                                                                                                                                                                                                                                     |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Percent Population Age, Under 19 Years Old                              | ACS5           | numeric     |                                                                      | Percent of the population 17 years or younger. (B01001\_003E + B01001\_004E + B01001\_005E + B01001\_006E + B01001\_007E + B01001\_027E + B01001\_028E + B01001\_029E + B01001\_030E + B01001\_031E) / B01001\_001E                                                                                                                                                                       |
-| Percent Population Age, Over 65 Years Old                               | ACS5           | numeric     |                                                                      | Percent of the population 65 years or older. (B01001\_020E + B01001\_021E + B01001\_022E + B01001\_023E + B01001\_024E + B01001\_025E + B01001\_044E + B01001\_045E + B01001\_046E + B01001\_046E + B01001\_048E + B01001\_049E) / B01001\_001E                                                                                                                                           |
-| Median Population Age                                                   | ACS5           | numeric     |                                                                      | Median age for whole population. B01002\_001E                                                                                                                                                                                                                                                                                                                                             |
-| Percent Population Mobility, In Same House 1 Year Ago                   | ACS5           | numeric     |                                                                      | Percent of people (older than 1 year) who have not moved in the past 12 months. B07003\_004E / B07003\_001E                                                                                                                                                                                                                                                                               |
-| Percent Population Mobility, Moved From Other State in Past Year        | ACS5           | numeric     |                                                                      | Percent of people (older than 1 year) who moved from another state in the past 12 months. B07003\_013E / B07003\_001E                                                                                                                                                                                                                                                                     |
-| Percent Households Family, Married                                      | ACS5           | numeric     |                                                                      | Percent of households that are family, married (married). B11001\_003E / B11001\_001E                                                                                                                                                                                                                                                                                                     |
-| Percent Households Nonfamily, Living Alone                              | ACS5           | numeric     |                                                                      | Percent of households that are non-family, alone (single). B11001\_008E / B11001\_001E                                                                                                                                                                                                                                                                                                    |
-| Percent Population Education, High School Degree                        | ACS5           | numeric     |                                                                      | Percent of people older than 25 who attained a high school degree. (B15002\_011E + B15002\_028E) / B15002\_001E                                                                                                                                                                                                                                                                           |
-| Percent Population Education, Bachelor Degree                           | ACS5           | numeric     |                                                                      | Percent of people older than 25 who attained a bachelor degree. (B15002\_015E + B15002\_032E) / B15002\_001E                                                                                                                                                                                                                                                                              |
-| Percent Population Education, Graduate Degree                           | ACS5           | numeric     |                                                                      | Percent of people older than 25 who attained a graduate degree. (B15002\_016E + B15002\_017E + B15002\_018E + B15002\_033E + B15002\_034E + B15002\_035E) / B15002\_001E                                                                                                                                                                                                                  |
-| Percent Population Income, Below Poverty Level                          | ACS5           | numeric     |                                                                      | Percent of people below poverty level. B17001\_002E / B17001\_001E                                                                                                                                                                                                                                                                                                                        |
-| Median Income, Household in Past Year                                   | ACS5           | numeric     |                                                                      | Median income per household in the past 12 months. B19013\_001E                                                                                                                                                                                                                                                                                                                           |
-| Median Income, Per Capita in Past Year                                  | ACS5           | numeric     |                                                                      | Median income per capita in the past 12 months. B19301\_001E                                                                                                                                                                                                                                                                                                                              |
-| Percent Population Income, Received SNAP in Past Year                   | ACS5           | numeric     |                                                                      | Percent of households that received SNAP in the past 12 months. B22003\_002E / B22003\_001E                                                                                                                                                                                                                                                                                               |
-| Percent Population Employment, Unemployed                               | ACS5           | numeric     |                                                                      | Percent of people 16 years and older unemployed. B23025\_005E / B23025\_003E                                                                                                                                                                                                                                                                                                              |
-| Median Occupied Household, Total, Year Built                            | ACS5           | numeric     |                                                                      | Median year built for all occupied housing units. B25037\_001E                                                                                                                                                                                                                                                                                                                            |
-| Median Occupied Household, Renter, Gross Rent                           | ACS5           | numeric     |                                                                      | Median gross rent for only renter-occupied units. B25064\_001E                                                                                                                                                                                                                                                                                                                            |
-| Median Occupied Household, Owner, Market Value                          | ACS5           | numeric     |                                                                      | Median household value for only owner-occupied units. B25077\_001E                                                                                                                                                                                                                                                                                                                        |
-| Percent Occupied Households, Owner                                      | ACS5           | numeric     |                                                                      | Percent of households that are owner-occupied. B25003\_002E / B25003\_001E                                                                                                                                                                                                                                                                                                                |
-| Percent Occupied Households, Total, One or More Selected Conditions     | ACS5           | numeric     |                                                                      | Selected conditions, including: incomplete plumbing or kitchens, overcrowding, 30% or more of the household income spent on rent or monthly owner costs. (B25123\_003E + B25123\_004E + B25123\_005E + B25123\_006E + B25123\_009E + B25123\_010E + B25123\_011E + B25123\_012E) / B25123\_001E                                                                                           |
-| Percent Population Mobility, Moved From Within Same County in Past Year | ACS5           | numeric     |                                                                      | Percent of people (older than 1 year) who moved in county in the past 12 months. B07003\_007E / B07003\_001E                                                                                                                                                                                                                                                                              |
+| Percent Population Age, Under 19 Years Old                              | ACS5           | numeric     |                                                                      | Percent of the population 17 years or younger. (B01001_003E + B01001_004E + B01001_005E + B01001_006E + B01001_007E + B01001_027E + B01001_028E + B01001_029E + B01001_030E + B01001_031E) / B01001_001E                                                                                                                                                                                  |
+| Percent Population Age, Over 65 Years Old                               | ACS5           | numeric     |                                                                      | Percent of the population 65 years or older. (B01001_020E + B01001_021E + B01001_022E + B01001_023E + B01001_024E + B01001_025E + B01001_044E + B01001_045E + B01001_046E + B01001_046E + B01001_048E + B01001_049E) / B01001_001E                                                                                                                                                        |
+| Median Population Age                                                   | ACS5           | numeric     |                                                                      | Median age for whole population. B01002_001E                                                                                                                                                                                                                                                                                                                                              |
+| Percent Population Mobility, In Same House 1 Year Ago                   | ACS5           | numeric     |                                                                      | Percent of people (older than 1 year) who have not moved in the past 12 months. B07003_004E / B07003_001E                                                                                                                                                                                                                                                                                 |
+| Percent Population Mobility, Moved From Other State in Past Year        | ACS5           | numeric     |                                                                      | Percent of people (older than 1 year) who moved from another state in the past 12 months. B07003_013E / B07003_001E                                                                                                                                                                                                                                                                       |
+| Percent Households Family, Married                                      | ACS5           | numeric     |                                                                      | Percent of households that are family, married (married). B11001_003E / B11001_001E                                                                                                                                                                                                                                                                                                       |
+| Percent Households Nonfamily, Living Alone                              | ACS5           | numeric     |                                                                      | Percent of households that are non-family, alone (single). B11001_008E / B11001_001E                                                                                                                                                                                                                                                                                                      |
+| Percent Population Education, High School Degree                        | ACS5           | numeric     |                                                                      | Percent of people older than 25 who attained a high school degree. (B15002_011E + B15002_028E) / B15002_001E                                                                                                                                                                                                                                                                              |
+| Percent Population Education, Bachelor Degree                           | ACS5           | numeric     |                                                                      | Percent of people older than 25 who attained a bachelor degree. (B15002_015E + B15002_032E) / B15002_001E                                                                                                                                                                                                                                                                                 |
+| Percent Population Education, Graduate Degree                           | ACS5           | numeric     |                                                                      | Percent of people older than 25 who attained a graduate degree. (B15002_016E + B15002_017E + B15002_018E + B15002_033E + B15002_034E + B15002_035E) / B15002_001E                                                                                                                                                                                                                         |
+| Percent Population Income, Below Poverty Level                          | ACS5           | numeric     |                                                                      | Percent of people below poverty level. B17001_002E / B17001_001E                                                                                                                                                                                                                                                                                                                          |
+| Median Income, Household in Past Year                                   | ACS5           | numeric     |                                                                      | Median income per household in the past 12 months. B19013_001E                                                                                                                                                                                                                                                                                                                            |
+| Median Income, Per Capita in Past Year                                  | ACS5           | numeric     |                                                                      | Median income per capita in the past 12 months. B19301_001E                                                                                                                                                                                                                                                                                                                               |
+| Percent Population Income, Received SNAP in Past Year                   | ACS5           | numeric     |                                                                      | Percent of households that received SNAP in the past 12 months. B22003_002E / B22003_001E                                                                                                                                                                                                                                                                                                 |
+| Percent Population Employment, Unemployed                               | ACS5           | numeric     |                                                                      | Percent of people 16 years and older unemployed. B23025_005E / B23025_003E                                                                                                                                                                                                                                                                                                                |
+| Median Occupied Household, Total, Year Built                            | ACS5           | numeric     |                                                                      | Median year built for all occupied housing units. B25037_001E                                                                                                                                                                                                                                                                                                                             |
+| Median Occupied Household, Renter, Gross Rent                           | ACS5           | numeric     |                                                                      | Median gross rent for only renter-occupied units. B25064_001E                                                                                                                                                                                                                                                                                                                             |
+| Median Occupied Household, Owner, Market Value                          | ACS5           | numeric     |                                                                      | Median household value for only owner-occupied units. B25077_001E                                                                                                                                                                                                                                                                                                                         |
+| Percent Occupied Households, Owner                                      | ACS5           | numeric     |                                                                      | Percent of households that are owner-occupied. B25003_002E / B25003_001E                                                                                                                                                                                                                                                                                                                  |
+| Percent Occupied Households, Total, One or More Selected Conditions     | ACS5           | numeric     |                                                                      | Selected conditions, including: incomplete plumbing or kitchens, overcrowding, 30% or more of the household income spent on rent or monthly owner costs. (B25123_003E + B25123_004E + B25123_005E + B25123_006E + B25123_009E + B25123_010E + B25123_011E + B25123_012E) / B25123_001E                                                                                                    |
+| Percent Population Mobility, Moved From Within Same County in Past Year | ACS5           | numeric     |                                                                      | Percent of people (older than 1 year) who moved in county in the past 12 months. B07003_007E / B07003_001E                                                                                                                                                                                                                                                                                |
 | Year Built                                                              | Characteristic | numeric     |                                                                      |                                                                                                                                                                                                                                                                                                                                                                                           |
 | Central Air Conditioning                                                | Characteristic | categorical | Central A/C, No Central A/C                                          |                                                                                                                                                                                                                                                                                                                                                                                           |
 | Apartments                                                              | Characteristic | categorical | Two, Three, Four, Five, Six, None                                    | Number of apartments for class 211 and 212 properties. CAUTION: Note the numerically encoded values DO NOT correspond to the number of apartments i.e. code 1 means 2 apartments, code 6 means 0 apartments                                                                                                                                                                               |
@@ -376,9 +382,9 @@ model as of 2022-05-04.
 | Porch                                                                   | Characteristic | categorical | None, Frame Enclosed, Masonry Enclosed                               |                                                                                                                                                                                                                                                                                                                                                                                           |
 | Roof Material                                                           | Characteristic | categorical | Shingle + Asphalt, Tar + Gravel, Slate, Shake, Tile, Other           |                                                                                                                                                                                                                                                                                                                                                                                           |
 | Rooms                                                                   | Characteristic | numeric     |                                                                      | Number of total rooms in the building (excluding baths). Not to be confused with bedrooms                                                                                                                                                                                                                                                                                                 |
-| Cathedral Ceiling                                                       | Characteristic | categorical | Yes, No                                                              |                                                                                                                                                                                                                                                                                                                                                                                           |
+| Cathedral Ceiling                                                       | Characteristic | categorical | Yes, No                                                              | Field has not been updated recently enough to be useful for modeling.                                                                                                                                                                                                                                                                                                                     |
 | Design Plan                                                             | Characteristic | categorical | Architect, Stock Plan                                                |                                                                                                                                                                                                                                                                                                                                                                                           |
-| Type of Residence                                                       | Characteristic | categorical | 1 Story, 2 Story, 3 Story +, Split Level, 1.5 Story                  |                                                                                                                                                                                                                                                                                                                                                                                           |
+| Type of Residence                                                       | Characteristic | categorical | 1 Story, 2 Story, 3 Story +, Split Level, 1.5 Story, Missing         |                                                                                                                                                                                                                                                                                                                                                                                           |
 | Single vs. Multi-family Use                                             | Characteristic | categorical | Single-Family, Multi-Family                                          |                                                                                                                                                                                                                                                                                                                                                                                           |
 | Multicard PIN                                                           | Indicator      | logical     |                                                                      | Indicator for a PIN with more than one building (ADU, coach house, etc.)                                                                                                                                                                                                                                                                                                                  |
 | Longitude                                                               | Location       | numeric     |                                                                      | PIN location derived from the centroid of the largest polygon associated with the PIN                                                                                                                                                                                                                                                                                                     |
@@ -480,16 +486,16 @@ directory for the purpose of replication.
 
 #### Primary Data
 
--   [`training_data`](input/training_data.parquet) - Includes
-    residential sales from ***the 9 years prior to the next assessment
-    date***, which gives us a sufficient amount of data for accurate
-    prediction without including outdated price information. This is the
-    data used to train and evaluate the model. Its approximate size is
-    400K rows with 100 features.
--   [`assessment_data`](input/assessment_data.parquet) - Includes all
-    residential properties (sold and unsold) which need assessed values.
-    This is the data the final model is used on. Its approximate size is
-    1.1 million rows with 100 features.
+- [`training_data`](input/training_data.parquet) - Includes residential
+  sales from ***the 9 years prior to the next assessment date***, which
+  gives us a sufficient amount of data for accurate prediction without
+  including outdated price information. This is the data used to train
+  and evaluate the model. Its approximate size is 400K rows with 100
+  features.
+- [`assessment_data`](input/assessment_data.parquet) - Includes all
+  residential properties (sold and unsold) which need assessed values.
+  This is the data the final model is used on. Its approximate size is
+  1.1 million rows with 100 features.
 
 These data sets contain only *residential single- and multi-family
 properties*. Single-family includes property classes 202, 203, 204, 205,
@@ -563,18 +569,18 @@ The pipeline also uses a few secondary data sets in the valuation
 process. These data sets are included in [input/](./input) but are not
 actually used by the model itself. They include:
 
--   [`complex_id_data`](input/complex_id_data.parquet) - Complex
-    identifiers for class 210 and 295 town/rowhomes. Intended to group
-    like units together to ensure that nearly identical units in close
-    proximity receive the same assessed value. This is accomplished with
-    a “fuzzy grouping” strategy that allows slightly dissimilar
-    characteristics.
--   [`land_site_rate_data`](input/land_site_rate_data.parquet) - Fixed,
-    PIN-level land values for class 210 and 295 units. Provided by the
-    Valuations department.
--   [`land_nbhd_rate_data`](input/land_nbhd_rate_data.parquet) - Fixed
-    $/sqft land rates by assessor neighborhood for residential property
-    classes except 210 and 295. Provided by the Valuations department.
+- [`complex_id_data`](input/complex_id_data.parquet) - Complex
+  identifiers for class 210 and 295 town/rowhomes. Intended to group
+  like units together to ensure that nearly identical units in close
+  proximity receive the same assessed value. This is accomplished with a
+  “fuzzy grouping” strategy that allows slightly dissimilar
+  characteristics.
+- [`land_site_rate_data`](input/land_site_rate_data.parquet) - Fixed,
+  PIN-level land values for class 210 and 295 units. Provided by the
+  Valuations department.
+- [`land_nbhd_rate_data`](input/land_nbhd_rate_data.parquet) - Fixed
+  \$/sqft land rates by assessor neighborhood for residential property
+  classes except 210 and 295. Provided by the Valuations department.
 
 #### Representativeness
 
@@ -588,12 +594,12 @@ representative of the actual market. This means dropping non-arms-length
 sales, removing outliers, and manually reviewing suspect sales.
 Specifically, we:
 
--   Drop any sales with a sale price of less than $10,000.
--   Drop sales on any properties with more than 40 rooms or 18 bedrooms
-    (these are usually data entry errors).
--   Drop sales whose price is more than 4 standard deviations away from
-    the mean price of sales in the same class and township.
--   Drop sales with a significant amount of missing data.
+- Drop any sales with a sale price of less than \$10,000.
+- Drop sales on any properties with more than 40 rooms or 18 bedrooms
+  (these are usually data entry errors).
+- Drop sales whose price is more than 4 standard deviations away from
+  the mean price of sales in the same class and township.
+- Drop sales with a significant amount of missing data.
 
 ### Post-Modeling
 
@@ -617,7 +623,7 @@ in the first model’s predictions. Specifically, post-modeling will:
     individual predicted values with the average predicted value for the
     complex.
 
-3.  Round PIN-level values (typically to the nearest $1,000). This is
+3.  Round PIN-level values (typically to the nearest \$1,000). This is
     done to indicate that model values are *estimates*, not precise
     values.
 
@@ -630,38 +636,36 @@ people with nearly identical properties receive the same value.
 
 ### Compared to 2021
 
--   Moved previously separate processes into this repository and
-    improved their integration with the overall modeling process. For
-    example, the
-    [etl\_res\_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
-    process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R),
-    while the process to [finalize model
-    values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values)
-    was moved to [pipeline/06-export.R](pipeline/06-export.R).
--   Added [DVC](https://dvc.org/) support/integration. This repository
-    uses DVC in 2 ways:
-    1.  All input data in [input/](input/) is versioned, tracked, and
-        stored using DVC. Previous input data sets are stored in
-        peretuity on S3.
-    2.  [DVC
-        Pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files)
-        are used to sequentially run R pipeline scripts and track/cache
-        inputs and outputs.
--   All model runs are now saved in perpetuity on S3. Each model’s
-    outputs are saved as Parquet files which can be queried using Amazon
-    Athena.
--   Offloaded model reporting entirely to Tableau. This repository no
-    longer produces markdown-based model reports.
--   Improved model accuracy significantly while reducing training time.
-    This is largely due to the use of
-    [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip)
-    and the inclusion of many [new features](#features-used).
--   Added per feature, per property contributions via LightGBM’s
-    built-in SHAP methods.
--   Reorganized the codebase into explicit pipeline stages, each of
-    which can be run independently or via DVC.
--   Added GitLab [CI integration](./.gitlab-ci.yml), which ensures that
-    any model changes don’t result in significant output changes.
+- Moved previously separate processes into this repository and improved
+  their integration with the overall modeling process. For example, the
+  [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
+  process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R),
+  while the process to [finalize model
+  values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values)
+  was moved to [pipeline/06-export.R](pipeline/06-export.R).
+- Added [DVC](https://dvc.org/) support/integration. This repository
+  uses DVC in 2 ways:
+  1.  All input data in [input/](input/) is versioned, tracked, and
+      stored using DVC. Previous input data sets are stored in peretuity
+      on S3.
+  2.  [DVC
+      Pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files)
+      are used to sequentially run R pipeline scripts and track/cache
+      inputs and outputs.
+- All model runs are now saved in perpetuity on S3. Each model’s outputs
+  are saved as Parquet files which can be queried using Amazon Athena.
+- Offloaded model reporting entirely to Tableau. This repository no
+  longer produces markdown-based model reports.
+- Improved model accuracy significantly while reducing training time.
+  This is largely due to the use of
+  [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip)
+  and the inclusion of many [new features](#features-used).
+- Added per feature, per property contributions via LightGBM’s built-in
+  SHAP methods.
+- Reorganized the codebase into explicit pipeline stages, each of which
+  can be run independently or via DVC.
+- Added GitLab [CI integration](./.gitlab-ci.yml), which ensures that
+  any model changes don’t result in significant output changes.
 
 ### Prior to 2020
 
@@ -673,36 +677,36 @@ department has grown, we’ve been able to dedicate more resources to
 building models, applications, and other tools. As a result, we’ve made
 the following major changes to the residential modeling codebase:
 
--   Reduced the size of the codebase substantially from around 16,000
-    lines of R code. This was accomplished by moving complicated data
-    handling to our [internal R
-    package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
-    and abstracting away machine learning logic to
-    [Tidymodels](https://www.tidymodels.org/).
--   Unified modeling for the entire county. Prior iterations of the
-    residential model used individual models for each township. This was
-    difficult to implement and track and performed worse than a single
-    large model. The new model can value any residential property in the
-    county, is significantly faster to train, and is much easier to
-    replicate.
--   Split the residential codebase into separate models for
-    [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm)
-    and
-    [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
-    Previously, these models were combined in the same scripts, leading
-    to a lot of complications and unnecessary overhead. Separating them
-    makes it much easier to understand and diagnose each model.
--   Switched to using LightGBM as our primary valuation model. LightGBM
-    is essentially the most bleeding-edge machine learning framework
-    widely available that isn’t a neural network. Prior to using
-    LightGBM, we used linear models or R’s gbm package. Prior to 2018,
-    the CCAO used linear models in SPSS for residential valuations.
--   Improved dependency management via
-    [renv](https://rstudio.github.io/renv/articles/renv.html).
-    Previously, users trying replicate our model needed to manually
-    install a list of needed R packages. By switching to renv, we’ve
-    vastly reduced the effort needed to replicate our modeling
-    environment, see the [installation section](#installation) below.
+- Reduced the size of the codebase substantially from around 16,000
+  lines of R code. This was accomplished by moving complicated data
+  handling to our [internal R
+  package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
+  and abstracting away machine learning logic to
+  [Tidymodels](https://www.tidymodels.org/).
+- Unified modeling for the entire county. Prior iterations of the
+  residential model used individual models for each township. This was
+  difficult to implement and track and performed worse than a single
+  large model. The new model can value any residential property in the
+  county, is significantly faster to train, and is much easier to
+  replicate.
+- Split the residential codebase into separate models for
+  [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm)
+  and
+  [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+  Previously, these models were combined in the same scripts, leading to
+  a lot of complications and unnecessary overhead. Separating them makes
+  it much easier to understand and diagnose each model.
+- Switched to using LightGBM as our primary valuation model. LightGBM is
+  essentially the most bleeding-edge machine learning framework widely
+  available that isn’t a neural network. Prior to using LightGBM, we
+  used linear models or R’s gbm package. Prior to 2018, the CCAO used
+  linear models in SPSS for residential valuations.
+- Improved dependency management via
+  [renv](https://rstudio.github.io/renv/articles/renv.html). Previously,
+  users trying replicate our model needed to manually install a list of
+  needed R packages. By switching to renv, we’ve vastly reduced the
+  effort needed to replicate our modeling environment, see the
+  [installation section](#installation) below.
 
 # Ongoing Issues
 
@@ -727,16 +731,16 @@ those 40, about 25 are [usable in modeling](#data-used). The remaining
 Additionally, our data is missing features commonly used in property
 valuation, such as:
 
--   Property condition.
--   Lot frontage.
--   Land slope.
--   Percentage of property above grade.
--   Quality of finishes.
--   Electrical and utility systems.
--   Interior characteristics like finish quality, recent remodeling, or
-    kitchen quality.
--   Any information about pools.
--   Information about location desirability or views.
+- Property condition.
+- Lot frontage.
+- Land slope.
+- Percentage of property above grade.
+- Quality of finishes.
+- Electrical and utility systems.
+- Interior characteristics like finish quality, recent remodeling, or
+  kitchen quality.
+- Any information about pools.
+- Information about location desirability or views.
 
 This lack of characteristics contributes to larger errors when modeling,
 as it becomes difficult to distinguish between individual properties.
@@ -835,14 +839,14 @@ an ongoing challenge.
 Mass appraisal models need lots of sales data in order to accurately
 predict sale prices, but sales become more sparse toward either end of
 the price spectrum. The vast majority of properties (over 90%) in Cook
-County sell for between $50K and $2.5M. Predicting sale prices outside
+County sell for between \$50K and \$2.5M. Predicting sale prices outside
 of that range is difficult; there just aren’t enough representative
 sales to train the model effectively.
 
 This issue is particularly prevalent within certain geographies with
 unevenly distributed sales. For example, in New Trier township the
-average 2021 sale price was around $1.2 million, compared to the whole
-county average of around $400K. Lower values sales closer to the county
+average 2021 sale price was around \$1.2 million, compared to the whole
+county average of around \$400K. Lower values sales closer to the county
 average are rare in New Trier. Due to that rarity, lower value
 properties in New Trier are more likely to be overvalued. The same
 situation exists in reverse for lower value areas.
@@ -893,33 +897,33 @@ performance.
 **Q: What are the most important features in the model?**
 
 The importance of individual features in the model varies from place to
-place. Some properties will gain $50K in value from an additional
+place. Some properties will gain \$50K in value from an additional
 bedroom, while others will gain almost nothing. However, some factors do
 stand out as more influential:
 
--   Location. Two identical single-family homes, one in Wicker Park, the
-    other in Markham, will not receive the same valuation. Location is
-    the largest driver of county-wide variation in property value. This
-    is accounted for in our model through a number of [location-based
-    features](#features-used) such as school district, neighborhood,
-    township, and others.
--   Square footage. Larger homes tend to be worth more than smaller
-    ones, though there are diminishing marginal returns.
--   Number of bedrooms and bathrooms. Generally speaking, the more rooms
-    the better, though again there are diminishing returns. The value
-    added by a second bedroom is much more than the value added by a
-    twentieth bedroom.
+- Location. Two identical single-family homes, one in Wicker Park, the
+  other in Markham, will not receive the same valuation. Location is the
+  largest driver of county-wide variation in property value. This is
+  accounted for in our model through a number of [location-based
+  features](#features-used) such as school district, neighborhood,
+  township, and others.
+- Square footage. Larger homes tend to be worth more than smaller ones,
+  though there are diminishing marginal returns.
+- Number of bedrooms and bathrooms. Generally speaking, the more rooms
+  the better, though again there are diminishing returns. The value
+  added by a second bedroom is much more than the value added by a
+  twentieth bedroom.
 
 **Q: How much will one additional bedroom add to my assessed value?**
 
 Our model is non-linear, meaning it’s difficult to say things like,
 “Each additional square foot will increase this property’s value by
-$50,” as the relationship between price and individual features varies
+\$50,” as the relationship between price and individual features varies
 from property to property.
 
 We do calculate the contribution of each feature to each property’s
 final value. For example, we can say things like, “Your close proximity
-to Lake Michigan added $5,000 to your home’s value.” We’re currently
+to Lake Michigan added \$5,000 to your home’s value.” We’re currently
 working on a way to share those feature-level results with property
 owners.
 
@@ -936,12 +940,12 @@ Assessors tend to use [housing and assessment-specific
 measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf)
 to gauge the performance of their mass appraisal systems, including:
 
--   [COD (Coefficient of
-    Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
--   [PRD (Price-Related
-    Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
--   [PRB (Price-Related
-    Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
+- [COD (Coefficient of
+  Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
+- [PRD (Price-Related
+  Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
+- [PRB (Price-Related
+  Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
@@ -957,7 +961,7 @@ place during the downtime between reassessments, so about once per year.
 
 The code in this repository is written primarily in
 [R](https://www.r-project.org/about.html). Please install the [latest
-version of R](https://cloud.r-project.org/) (requires R version &gt;=
+version of R](https://cloud.r-project.org/) (requires R version \>=
 4.1.0) and [RStudio](https://rstudio.com/products/rstudio/download/)
 before proceeding with the steps below.
 
@@ -992,13 +996,13 @@ To use this repository, simply open the [pipeline/](./pipeline)
 directory and run the R scripts in order. Non-CCAO users can skip the
 following stages:
 
--   [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to
-    CCAO internal AWS services to pull data. Use [git
-    LFS](#getting-data) instead.
--   [`pipeline/05-finalize.R`](pipeline/05-finalize.R) - Requires access
-    to CCAO internal AWS services to upload model results.
--   [`pipeline/06-export.R`](pipeline/06-export.R) - Only required for
-    CCAO internal processes.
+- [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to
+  CCAO internal AWS services to pull data. Use [git LFS](#getting-data)
+  instead.
+- [`pipeline/05-finalize.R`](pipeline/05-finalize.R) - Requires access
+  to CCAO internal AWS services to upload model results.
+- [`pipeline/06-export.R`](pipeline/06-export.R) - Only required for
+  CCAO internal processes.
 
 #### Using DVC
 
@@ -1066,19 +1070,19 @@ into the following Athena tables:
 
 #### Athena Tables
 
-| Athena Table          | Observation Unit                   | Primary Key                                                                      | Description                                                                           |
-|:----------------------|:-----------------------------------|:---------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------|
-| assessment\_card      | card                               | year, run\_id, township\_code, meta\_pin, meta\_card\_num                        | Assessment results at the card level AKA raw model output                             |
-| assessment\_pin       | pin                                | year, run\_id, township\_code, meta\_pin                                         | Assessment results at the PIN level AKA aggregated and cleaned                        |
-| metadata              | model run                          | year, run\_id                                                                    | Information about each run, including parameters, run ID, git info, etc.              |
-| parameter\_final      | model run                          | year, run\_id                                                                    | Chosen set of hyperparameters for each run                                            |
-| parameter\_range      | parameter                          | year, run\_id, parameter\_name                                                   | Range of hyperparameters searched during CV tuning                                    |
-| parameter\_search     | model cv fold                      | year, run\_id, configuration, fold\_id                                           | Tidymodels tuning output from cross-validation                                        |
-| performance           | geography \[by class\]             | year, run\_id, stage, geography\_type, geography\_id, by\_class, class           | Peformance metrics (optionally) broken out by class for different levels of geography |
-| performance\_quantile | geography \[by class\] by quantile | year, run\_id, stage, geography\_type, geography\_id, by\_class, class, quantile | Performance metrics by quantile within class and geography                            |
-| shap                  | card                               | year, run\_id, township\_code, meta\_pin, meta\_card\_num                        | SHAP values for each feature for each card in the assessment data                     |
-| test\_card            | card                               | year, meta\_pin, meta\_card\_num                                                 | Test set predictions at the card level                                                |
-| timing                | model run                          | year, run\_id                                                                    | Finalized time elapsed for each stage of the run                                      |
+| Athena Table         | Observation Unit                   | Primary Key                                                                  | Description                                                                           |
+|:---------------------|:-----------------------------------|:-----------------------------------------------------------------------------|:--------------------------------------------------------------------------------------|
+| assessment_card      | card                               | year, run_id, township_code, meta_pin, meta_card_num                         | Assessment results at the card level AKA raw model output                             |
+| assessment_pin       | pin                                | year, run_id, township_code, meta_pin                                        | Assessment results at the PIN level AKA aggregated and cleaned                        |
+| metadata             | model run                          | year, run_id                                                                 | Information about each run, including parameters, run ID, git info, etc.              |
+| parameter_final      | model run                          | year, run_id                                                                 | Chosen set of hyperparameters for each run                                            |
+| parameter_range      | parameter                          | year, run_id, parameter_name                                                 | Range of hyperparameters searched during CV tuning                                    |
+| parameter_search     | model cv fold                      | year, run_id, configuration, fold_id                                         | Tidymodels tuning output from cross-validation                                        |
+| performance          | geography \[by class\]             | year, run_id, stage, geography_type, geography_id, by_class, class           | Peformance metrics (optionally) broken out by class for different levels of geography |
+| performance_quantile | geography \[by class\] by quantile | year, run_id, stage, geography_type, geography_id, by_class, class, quantile | Performance metrics by quantile within class and geography                            |
+| shap                 | card                               | year, run_id, township_code, meta_pin, meta_card_num                         | SHAP values for each feature for each card in the assessment data                     |
+| test_card            | card                               | year, meta_pin, meta_card_num                                                | Test set predictions at the card level                                                |
+| timing               | model run                          | year, run_id                                                                 | Finalized time elapsed for each stage of the run                                      |
 
 #### Run Types
 
@@ -1093,19 +1097,19 @@ We recommend using the `limited` run type for testing features and
 changes and finalizing with the `full` run type. The table below shoes
 breakdown of what is created for each type:
 
-| Athena Table          | Limited Run | Full Run          |
-|:----------------------|:------------|:------------------|
-| assessment\_card      | No          | Yes               |
-| assessment\_pin       | No          | Yes               |
-| metadata              | Yes         | Yes               |
-| parameter\_final      | Yes         | Yes               |
-| parameter\_range      | No          | If CV enabled     |
-| parameter\_search     | No          | If CV enabled     |
-| performance           | Test only   | Test + assessment |
-| performance\_quantile | Test only   | Test + assessment |
-| shap                  | No          | Yes               |
-| test\_card            | Yes         | Yes               |
-| timing                | Yes         | Yes               |
+| Athena Table         | Limited Run | Full Run          |
+|:---------------------|:------------|:------------------|
+| assessment_card      | No          | Yes               |
+| assessment_pin       | No          | Yes               |
+| metadata             | Yes         | Yes               |
+| parameter_final      | Yes         | Yes               |
+| parameter_range      | No          | If CV enabled     |
+| parameter_search     | No          | If CV enabled     |
+| performance          | Test only   | Test + assessment |
+| performance_quantile | Test only   | Test + assessment |
+| shap                 | No          | Yes               |
+| test_card            | Yes         | Yes               |
+| timing               | Yes         | Yes               |
 
 ## Getting Data
 
@@ -1147,19 +1151,19 @@ turned **off**, while parallel processing in LightGBM is turned **on**.
 This means that models are fit sequentially, but each model fitting is
 sped up using the parallel processing built-in to LightGBM. Note that:
 
--   The total amount of RAM needed for overall model fitting is around
-    6GB.
--   The number of threads is set via the
-    [num\_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads)
-    parameter, which is passed to the model using the `set_args()`
-    function from `parsnip`. By default, `num_threads` is equal to the
-    full number of physical cores available. More (or faster) cores will
-    decrease total training time.
--   This repository uses the CPU version of LightGBM included with the
-    [LightGBM R
-    package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If
-    you’d like to use the GPU version you’ll need to [build it
-    yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
+- The total amount of RAM needed for overall model fitting is around
+  6GB.
+- The number of threads is set via the
+  [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads)
+  parameter, which is passed to the model using the `set_args()`
+  function from `parsnip`. By default, `num_threads` is equal to the
+  full number of physical cores available. More (or faster) cores will
+  decrease total training time.
+- This repository uses the CPU version of LightGBM included with the
+  [LightGBM R
+  package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If
+  you’d like to use the GPU version you’ll need to [build it
+  yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
 
 ## Troubleshooting
 
@@ -1167,18 +1171,18 @@ The dependencies for this repository are numerous and not all of them
 may install correctly. Here are some common install issues (as seen in
 the R console) as well as their respective resolutions:
 
--   Error:
-    `WARNING: Rtools is required to build R packages, but is not currently installed`
-    <br>Solution: Install the latest version of Rtools [from
-    CRAN](https://cran.r-project.org/bin/windows/Rtools/), following the
-    instructions listed.
+- Error:
+  `WARNING: Rtools is required to build R packages, but is not currently installed`
+  <br>Solution: Install the latest version of Rtools [from
+  CRAN](https://cran.r-project.org/bin/windows/Rtools/), following the
+  instructions listed.
 
--   Error:
-    `DLL '<package-name>' not found: maybe not installed for this architecture?`
-    <br>Solution: Try installing the package manually with the
-    `INSTALL_opts` flag set. See
-    [here](https://github.com/rstudio/renv/issues/162#issuecomment-612380245)
-    for an example.
+- Error:
+  `DLL '<package-name>' not found: maybe not installed for this architecture?`
+  <br>Solution: Try installing the package manually with the
+  `INSTALL_opts` flag set. See
+  [here](https://github.com/rstudio/renv/issues/162#issuecomment-612380245)
+  for an example.
 
 # License
 
