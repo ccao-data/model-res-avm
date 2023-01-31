@@ -525,14 +525,14 @@ stages:
     cmd: Rscript pipeline/04-interpret.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 1c4f325d0cf2d0a6ca7cd37f6d78185e
-      size: 320070115
+      md5: 95b1263689af199a4f9b39c111117716
+      size: 323329207
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 78a03502881f1a6b1266032e831cb094
-      size: 35285194
+      md5: 77f014da4d1c94cab60c69dbf2fd3448
+      size: 41014607
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: a0190c6f1481cc2afc86708f989eac91
-      size: 2331294
+      md5: ac3045886c9883d12b5bf5d6c0bafb91
+      size: 2330246
     params:
       params.yaml:
         model.predictor.all:
@@ -566,6 +566,7 @@ stages:
         - char_tp_plan
         - char_type_resd
         - char_use
+        - char_recent_renovation
         - loc_longitude
         - loc_latitude
         - loc_cook_municipality_name
@@ -581,7 +582,7 @@ stages:
         - loc_access_cmap_walk_nta_score
         - loc_access_cmap_walk_total_score
         - loc_misc_subdivision_id
-        - loc_misc_unincorporated_area_bool
+        - loc_cook_municipality_name
         - prox_num_pin_in_half_mile
         - prox_num_bus_stop_in_half_mile
         - prox_num_foreclosure_per_1000_pin_past_5_years
@@ -600,6 +601,7 @@ stages:
         - prox_nearest_park_dist_ft
         - prox_nearest_railroad_dist_ft
         - prox_nearest_water_dist_ft
+        - prox_nearest_golf_course_dist_ft
         - acs5_percent_age_children
         - acs5_percent_age_senior
         - acs5_median_age_total
@@ -636,11 +638,11 @@ stages:
         - ind_pin_is_multicard
     outs:
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: c52aec3ae91f284642feb1de546e831c
-      size: 2359
+      md5: 5b2cf09ac8a75a3ba2b02185654f49bc
+      size: 2935
     - path: output/shap/model_shap.parquet
-      md5: 8469ec3eaad387feb9ca910b2134fadb
-      size: 891060227
+      md5: 9637f1252a02f3d5219e392f033dc096
+      size: 900261000
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:
