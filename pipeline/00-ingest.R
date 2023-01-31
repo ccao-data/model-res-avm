@@ -16,6 +16,7 @@ library(here)
 library(igraph)
 library(lubridate)
 library(purrr)
+library(reticulate)
 library(RJDBC)
 library(s2)
 library(sf)
@@ -23,6 +24,10 @@ library(tictoc)
 library(tidyr)
 library(yaml)
 source(here("R", "helpers.R"))
+
+# Load Python packages and functions with reticulate
+use_virtualenv("pipenv/")
+source_python("R/flagging.py")
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
@@ -62,6 +67,9 @@ training_data <- dbGetQuery(
       sale.sale_price AS meta_sale_price,
       sale.sale_date AS meta_sale_date,
       sale.doc_no AS meta_sale_document_num,
+      sale.deed_type AS meta_sale_deed_type,
+      sale.seller_name AS meta_sale_seller_name,
+      sale.buyer_name AS meta_sale_buyer_name,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
@@ -70,10 +78,6 @@ training_data <- dbGetQuery(
   WHERE (res.meta_year
       BETWEEN '{params$input$min_sale_year}'
       AND '{params$input$max_sale_year}')
-  AND ((sale.sale_price_log10
-      BETWEEN sale.sale_filter_lower_limit
-      AND sale.sale_filter_upper_limit)
-      AND sale.sale_filter_count >= 10)
   AND NOT is_multisale
   ")
 )
@@ -204,7 +208,10 @@ hie_data_training_sparse <- hie_data %>%
 # Merge the HIE data with the training data, updating/adding to training data
 # characteristics
 training_data_w_hie <- training_data %>%
-  mutate(char_ncu = as.numeric(char_ncu)) %>%
+  mutate(across(
+    all_of(ccao::chars_cols$add$target),
+    ~ recode_column_type(.x, cur_column())
+  )) %>%
   left_join(
     hie_data_training_sparse,
     by = c("meta_pin" = "pin", "meta_year" = "year", "ind_pin_is_multicard")
@@ -243,7 +250,10 @@ hie_data_assessment_sparse <- hie_data %>%
 # Update assessment data with any expiring HIEs. Add a field for the number
 # of HIEs expired for each PIN
 assessment_data_w_hie <- assessment_data %>%
-  mutate(char_ncu = as.numeric(char_ncu)) %>%
+  mutate(across(
+    all_of(ccao::chars_cols$add$target),
+    ~ recode_column_type(.x, cur_column())
+  )) %>%
   left_join(
     hie_data_assessment_sparse,
     by = c("meta_pin" = "pin", "meta_year" = "year", "ind_pin_is_multicard")
@@ -264,14 +274,39 @@ assessment_data_w_hie <- assessment_data %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 5. Add Features and Clean ----------------------------------------------------
+# 5. Validate Sales ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-## 5.1. Training Data ----------------------------------------------------------
+# Create an outlier sale flag using a variety of heuristics. See flagging.py for
+# the full list
+training_data_w_sv <- training_data_w_hie %>%
+  mutate(meta_sale_price = as.numeric(meta_sale_price)) %>%
+  create_stats(as.list(params$input$sale_validation$stat_groups)) %>%
+  string_processing() %>%
+  iso_forest(
+    as.list(params$input$sale_validation$stat_groups),
+    params$input$sale_validation$iso_forest
+  ) %>%
+  outlier_taxonomy(
+    as.list(params$input$sale_validation$dev_bounds),
+    as.list(params$input$sale_validation$stat_groups)
+  ) %>%
+  select(-(starts_with("sv_") & !sv_is_outlier & !sv_outlier_type))
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 6. Add Features and Clean ----------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+## 6.1. Training Data ----------------------------------------------------------
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, filling, etc. is handled via Tidymodels recipes
-training_data_clean <- training_data_w_hie %>%
+training_data_clean <- training_data_w_sv %>%
+  # Dump any misrecorded sale dates
+  filter(meta_sale_date >= make_date(params$input$min_sale_year)) %>%
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)
@@ -279,7 +314,10 @@ training_data_clean <- training_data_w_hie %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
-  mutate(across(everything(), ~ recode_column_type(.x, cur_column()))) %>%
+  mutate(across(
+    !starts_with("sv_"),
+    ~ recode_column_type(.x, cur_column())
+  )) %>%
   # Create sale date features using lubridate
   dplyr::mutate(
     # Calculate interval periods and times since Jan 01, 1997
@@ -332,7 +370,7 @@ training_data_lagged <- training_data_clean %>%
   write_parquet(paths$input$training$local)
 
 
-## 5.2. Assessment Data --------------------------------------------------------
+## 6.2. Assessment Data --------------------------------------------------------
 
 # Clean the assessment data. This the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
@@ -411,7 +449,7 @@ assessment_data_lagged <- assessment_data_clean %>%
   write_parquet(paths$input$assessment$local)
 
 
-## 5.3. Complex IDs ------------------------------------------------------------
+## 6.3. Complex IDs ------------------------------------------------------------
 
 # Townhomes and rowhomes within the same "complex" or building should
 # ultimately receive the same final assessed value. However, a single row of
@@ -478,7 +516,7 @@ complex_id_data <- assessment_data_clean %>%
   write_parquet(paths$input$complex_id$local)
 
 
-## 5.4. Land Rates -------------------------------------------------------------
+## 6.4. Land Rates -------------------------------------------------------------
 
 # Write land data directly to file, since it's already mostly clean
 land_site_rate_data %>%

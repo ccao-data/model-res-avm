@@ -12,8 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Disabled early stopping. Added more late 2021 sales. No CV. Same as
-  nostalgic-gabe
+  Initial 2023 South Triad test run
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -42,7 +41,7 @@ assessment:
   date: "2023-01-01"
   
   # Added context for model artifacts stored in s3. Does not change behavior
-  triad: "north"
+  triad: "south"
   group: "residential"
   
   # Year from which property characteristics are pulled. Usually lags the
@@ -59,6 +58,33 @@ input:
   # calculating spatial lags i.e. lags are the average of the nearest K
   # properties for each N month window
   time_split: 9
+  
+  # Parameters used to trim the training data (sales) using a variety
+  # of heuristics
+  sale_validation:
+  
+    # Summary statistics grouping for detecting outlier sales.
+    # i.e. an outlier would be 3 std devs from the mean of township and class
+    stat_groups: [
+      "meta_year",
+      "meta_township_code",
+      "meta_class"
+    ]
+    
+    # Predictor variables to use in the isolation forest classifier used
+    # to detect outlier sales
+    iso_forest: [
+      "meta_sale_price",
+      "sv_price_per_sqft",
+      "sv_days_since_last_transaction",
+      "sv_cgdr",
+      "sv_sale_dup_counts"
+    ]
+    
+    # Left and right boundaries (in std deviations) used to trim the training
+    # sample e.g. any sales more than 3 standard deviations from the mean will
+    # be dropped
+    dev_bounds: [2, 3]
   
   # Parameters used to construct spatially lagged features
   spatial_lag:
@@ -116,7 +142,7 @@ cv:
   initial_set: 20
   
   # Maximum number of search iterations
-  max_iterations: 70
+  max_iterations: 50
   
   # Max number of search iterations without improvement before stopping search
   no_improve: 25
@@ -307,7 +333,7 @@ model:
     
     # Maximum number of bins for discretizing continuous features. Lower uses
     # less memory and speeds up training
-    max_bin: 2000
+    max_bin: 512
     
     # During CV, the number of iterations to go without improvement before
     # stopping training
@@ -388,5 +414,5 @@ ratio_study:
 # Final run ID(s) chosen for export to Desk Review spreadsheets and iasWorld
 # upload
 export:
-  triad_code: "2"
+  triad_code: "3"
   run_id: ""

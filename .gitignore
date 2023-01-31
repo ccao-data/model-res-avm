@@ -20,3 +20,7 @@
 *.csv
 *.xlsx
 *.xlsm
+
+# Ignore python environment
+pipenv/
+pipenv

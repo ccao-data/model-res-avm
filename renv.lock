@@ -132,9 +132,9 @@
       "RemoteRepo": "packages/assessr",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "bef79bfe7c29351e705ead03b909003341e5329e",
+      "RemoteSha": "805ecdb84dd1460e6e075596a8d8fcbf3aa2445d",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
-      "Hash": "072a472a8608ef6d27e1861264d59b89",
+      "Hash": "56f6050d49d2d680272defa2d9ec56da",
       "Requirements": [
         "clustMixType",
         "dbscan"
@@ -255,9 +255,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "7c7cbd40338bb6b7e074bf516e4cfa73264c1690",
+      "RemoteSha": "57c5325f0440885d0ce92dd9db154b3ec93a2c40",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "71bef1d142d0237f123925d46797b370",
+      "Hash": "8ae39c0cc8b2729a3a5fb8935f0efd5c",
       "Requirements": [
         "assessr",
         "dplyr",
@@ -961,18 +961,6 @@
       "Hash": "b04c27110bf367b4daa93f34f3d58e75",
       "Requirements": [
         "askpass"
-      ]
-    },
-    "openxlsx": {
-      "Package": "openxlsx",
-      "Version": "4.2.5.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "e398ce13682a7409d16e13df09f65875",
-      "Requirements": [
-        "Rcpp",
-        "stringi",
-        "zip"
       ]
     },
     "parallelly": {
