@@ -52,7 +52,7 @@ col_rename_dict <- c(
   "geography_id" = "meta_township_name",
   "geography_id" = "meta_nbhd_code",
   "geography_id" = "loc_cook_municipality_name",
-  "geography_id" = "loc_chicago_ward_num",
+  "geography_id" = "loc_ward_num",
   "geography_id" = "loc_census_puma_geoid",
   "geography_id" = "loc_census_tract_geoid",
   "geography_id" = "loc_school_elementary_district_geoid",
@@ -79,7 +79,7 @@ if (run_type == "full") {
   assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
     select(
       meta_pin, meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
-      loc_cook_municipality_name, loc_chicago_ward_num, loc_census_puma_geoid,
+      loc_cook_municipality_name, loc_ward_num, loc_census_puma_geoid,
       loc_census_tract_geoid, loc_school_elementary_district_geoid,
       loc_school_secondary_district_geoid, loc_school_unified_district_geoid,
       char_total_bldg_sf, prior_far_tot, prior_near_tot,
@@ -319,7 +319,7 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 geographies_quosures <- rlang::quos(
   meta_township_code,
   meta_nbhd_code, loc_cook_municipality_name,
-  loc_chicago_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
+  loc_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
   loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
   loc_school_unified_district_geoid,
   NULL

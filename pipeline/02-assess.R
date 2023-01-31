@@ -287,7 +287,7 @@ assessment_data_pin <- assessment_data_merged %>%
         # Keep locations, prior year values, and indicators
         loc_longitude, loc_latitude,
         starts_with(c(
-          "loc_property_", "loc_cook_", "loc_chicago_",
+          "loc_property_", "loc_cook_", "loc_chicago_", "loc_ward_",
           "loc_census", "loc_school_", "prior_", "ind_"
         )),
         
