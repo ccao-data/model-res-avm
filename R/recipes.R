@@ -23,6 +23,8 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     update_role(meta_sale_price, new_role = "outcome") %>%
     update_role(all_of(pred_vars), new_role = "predictor") %>%
     update_role(all_of(id_vars), new_role = "ID") %>%
+    update_role_requirements("ID", bake = FALSE) %>%
+    update_role_requirements("NA", bake = FALSE) %>%
 
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
