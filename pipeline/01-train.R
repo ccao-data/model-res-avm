@@ -60,7 +60,7 @@ set.seed(params$model$seed)
 # there is multiple buildings on a PIN. Sales for multicard PINs are
 # often for multiple buildings and will therefore bias the model training
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard) %>%
+  filter(!ind_pin_is_multicard, sv_is_outlier == "Not outlier") %>%
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
@@ -336,7 +336,7 @@ test %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num,
     meta_triad_code, meta_township_code, meta_nbhd_code,
-    loc_cook_municipality_name, loc_chicago_ward_num, loc_census_puma_geoid,
+    loc_cook_municipality_name, loc_ward_num, loc_census_puma_geoid,
     loc_census_tract_geoid, loc_school_elementary_district_geoid,
     loc_school_secondary_district_geoid, loc_school_unified_district_geoid,
     char_bldg_sf,
