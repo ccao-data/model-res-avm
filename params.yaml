@@ -162,10 +162,17 @@ model:
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
   objective: "rmse"
-  seed: 20230117
-  verbose: -1
-  predictor:
   
+  # Parameters related to model determinism. Current settings should force 
+  # the same output every time if the same hyperparameters are used
+  seed: 2023
+  deterministic: "true"
+  force_row_wise: "true"
+  
+  # Model verbosity: < 0: Fatal, = 0: Error (Warning), = 1: Info, > 1: Debug
+  verbose: -1
+  
+  predictor:
     # Vector of predictors from the training data included in the model. Edit
     # this list to add or remove variables from the model
     all: [
@@ -202,7 +209,6 @@ model:
       "char_recent_renovation",
       "loc_longitude",
       "loc_latitude",
-      "loc_cook_municipality_name",
       "loc_env_flood_fema_sfha",
       "loc_env_flood_fs_factor",
       "loc_env_flood_fs_risk_direction",

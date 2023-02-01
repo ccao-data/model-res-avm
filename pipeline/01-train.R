@@ -107,7 +107,12 @@ lgbm_model <- parsnip::boost_tree(
   set_mode("regression") %>%
   set_engine(
     engine = params$model$engine,
+    
+    # Parameters required to make the model deterministic i.e. output the same
+    # predictions if the same hyperparameters are used
     seed = params$model$seed,
+    deterministic = params$model$deterministic,
+    force_row_wise = params$model$force_row_wise,
 
 
     ### 3.1.1. Manual Parameters -----------------------------------------------
