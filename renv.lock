@@ -798,7 +798,7 @@
     },
     "lightsnip": {
       "Package": "lightsnip",
-      "Version": "0.0.2",
+      "Version": "0.0.3",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -806,8 +806,8 @@
       "RemoteRepo": "packages/lightsnip",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "cd8a7c59d6bd48916249ceafe8ff97a2383596d6",
-      "Hash": "ac377df9fc4169dc1edbad58285f6dc5",
+      "RemoteSha": "09748c6f2fd38c35b5f07615b22e8dd92a223d9e",
+      "Hash": "0b90b04dc2e357a7955f206d3994b750",
       "Requirements": [
         "butcher",
         "dials",
