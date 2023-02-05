@@ -64,6 +64,37 @@ model_delete_run <- function(run_id, year) {
 }
 
 
+# Extract the number of iterations that occurred before early stopping during
+# cross-validation. See the tune::tune_bayes() argument `extract`
+extract_num_iterations <- function(x) {
+  fit <- workflows::extract_fit_engine(x)
+  evals <- fit$record_evals$validation$rmse$eval
+  length(evals)
+}
+
+
+# Given the result of a CV search, get the max number of iterations from the
+# result set with the best performing hyperparameters
+select_max_iterations <- function(tune_results, metric) {
+  dplyr::bind_cols(
+    tune_results %>%
+      dplyr::select(id, .metrics, .extracts) %>%
+      tidyr::unnest(cols = .metrics) %>%
+      dplyr::filter(.metric == params$cv$best_metric) %>%
+      dplyr::select(-.extracts),
+    tune_results %>%
+      tidyr::unnest(cols = .extracts) %>%
+      tidyr::unnest(cols = .extracts) %>%
+      dplyr::select(.extracts)
+  ) %>%
+    dplyr::inner_join(
+      tune::select_best(tune_results, metric = metric),
+      by = ".config"
+    ) %>%
+    dplyr::summarize(num_iterations = max(.extracts))
+}
+
+
 # Silly copy of ccao::vars_recode to convert text versions of categoricals back
 # to numbers
 var_encode <- function(data, cols = dplyr::everything(), dict = ccao::vars_dict) {

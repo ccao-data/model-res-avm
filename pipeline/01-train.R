@@ -186,17 +186,6 @@ lgbm_wflow <- workflow() %>%
 # produce similarly accurate results
 if (cv_enable) {
   
-  # Collapse the first and last CV window into there respective neighbors. This
-  # is done because the first and last period tend to be very small (and
-  # therefore potentially unrepresentative of the larger data set)
-  train <- train %>%
-    mutate(
-      time_split = case_when(
-        time_split == max(time_split) ~ max(time_split) - 1,
-        time_split == min(time_split) ~ min(time_split) + 1,
-        TRUE ~ time_split
-      )
-    )
   
   # Using rolling forecast origin resampling to create a cumulative, sliding
   # window-based training set, where the validation set is always just after the
@@ -248,6 +237,7 @@ if (cv_enable) {
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
       no_improve = params$cv$no_improve,
+      extract = extract_num_iterations,
       seed = params$model$seed
     )
   )
@@ -275,7 +265,8 @@ if (cv_enable) {
     seed = params$model$seed,
     objective = params$model$objective
   ) %>%
-    bind_cols(as_tibble(params$model$parameter)) %>%
+    bind_cols(select_max_iterations(lgbm_search, metric = params$cv$best_metric)) %>%
+    bind_cols(as_tibble(params$model$parameter) %>% select(-num_iterations)) %>%
     bind_cols(select_best(lgbm_search, metric = params$cv$best_metric)) %>%
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
@@ -307,22 +298,25 @@ if (cv_enable) {
 
 ## 3.3. Fit Models -------------------------------------------------------------
 
-# NOTE: The model specifications here use early stopping by measuring the change
-# in the objective function on the TRAINING set (rather than the 10% sample
-# validation set used during CV). In practice, this means early stopping is
-# disabled, since you can almost always improve on the training set
+# Finalize the model specification by disabling early stopping, instead using
+# the maximum number of iterations used during the best cross-validation round
+lgbm_model_final <- lgbm_model %>%
+  set_args(
+    validation = 0,
+    trees = lgbm_final_params$num_iterations
+  )
 
 # Fit the final model using the training data and our final hyperparameters
 # This model is used to measure performance on the test set
 lgbm_wflow_final_fit <- lgbm_wflow %>%
-  update_model(lgbm_model %>% set_args(validation = 0)) %>%
+  update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  update_model(lgbm_model %>% set_args(validation = 0)) %>%
+  update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
 
