@@ -334,7 +334,16 @@ training_data_clean <- training_data_w_sv %>%
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
     
     # Time window to use for cross-validation and calculating spatial lags
-    time_split = time_interval %/% months(params$input$time_split)
+    time_split = time_interval %/% months(params$input$time_split),
+    
+    # Collapse the first and last splits into their respective neighbors.
+    # This is done because the first and last splits tend to be very small
+    # and therefore potentially unrepresentative of the larger data set
+    time_split = case_when(
+      time_split == max(time_split) ~ max(time_split) - 1,
+      time_split == min(time_split) ~ min(time_split) + 1,
+      TRUE ~ time_split
+    )
   )
 
 # Calculate KNN spatial lags for each N month period used in CV. The N month

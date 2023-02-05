@@ -186,17 +186,6 @@ lgbm_wflow <- workflow() %>%
 # produce similarly accurate results
 if (cv_enable) {
   
-  # Collapse the first and last CV window into there respective neighbors. This
-  # is done because the first and last period tend to be very small (and
-  # therefore potentially unrepresentative of the larger data set)
-  train <- train %>%
-    mutate(
-      time_split = case_when(
-        time_split == max(time_split) ~ max(time_split) - 1,
-        time_split == min(time_split) ~ min(time_split) + 1,
-        TRUE ~ time_split
-      )
-    )
   
   # Using rolling forecast origin resampling to create a cumulative, sliding
   # window-based training set, where the validation set is always just after the
