@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Initial 2023 South Triad test run
+  Test full CV run with improved early stopping 
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -23,7 +23,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -325,13 +325,13 @@ model:
     
     # When early stopping is enabled, num_iterations is effectively the MAX
     # number of iterations
-    num_iterations: 1500
-    learning_rate: 0.05
+    num_iterations: 2000
+    learning_rate: 0.03
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
-    validation_prop: 0.0
+    validation_prop: 0.1
     validation_metric: "rmse"
     
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
@@ -345,7 +345,7 @@ model:
     
     # During CV, the number of iterations to go without improvement before
     # stopping training
-    stop_iter: 40
+    stop_iter: 25
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled. See docs for
