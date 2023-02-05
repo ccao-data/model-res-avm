@@ -95,6 +95,39 @@ select_max_iterations <- function(tune_results, metric) {
 }
 
 
+# Modified rolling origin forecast split function. Splits the training data into
+# a cumulatively expanding time window. The window contains the training data
+# and the most recent X% of the window is validation data (they overlap! see
+# issue #82). See README for more information
+rolling_origin_pct_split <- function(data, order_col, split_col, assessment_pct) {
+  data <- dplyr::arrange(data, {{ order_col }})
+  split_sc <- data %>%
+    dplyr::group_by({{ split_col }}) %>%
+    dplyr::group_size() %>%
+    cumsum()
+  starts <- rep(1, length(split_sc))
+  in_idx <- mapply(seq, starts, split_sc, SIMPLIFY = FALSE)
+  out_idx <- lapply(in_idx, function(x) {
+    len <- length(x)
+    start_idx <- len - floor(len * assessment_pct) + 1
+    seq(start_idx, len)
+  })
+  indices <- mapply(rsample:::merge_lists, in_idx, out_idx, SIMPLIFY = FALSE)
+  split_objs <- purrr::map(
+    indices, rsample::make_splits, data = data, class = "rof_split"
+  )
+  split_objs <- list(
+    splits = split_objs,
+    id = names0(length(split_objs), "Slice")
+  )
+  new_rset(
+    splits = split_objs$splits,
+    ids = split_objs$id, 
+    subclass = c("rolling_origin", "rset")
+  )
+}
+
+
 # Silly copy of ccao::vars_recode to convert text versions of categoricals back
 # to numbers
 var_encode <- function(data, cols = dplyr::everything(), dict = ccao::vars_dict) {
