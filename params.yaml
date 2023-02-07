@@ -331,7 +331,9 @@ model:
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
+    # WARNING: See issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
+    validation_type: "recent"
     validation_metric: "rmse"
     
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting

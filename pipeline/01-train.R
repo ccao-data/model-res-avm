@@ -135,8 +135,9 @@ lgbm_model <- parsnip::boost_tree(
     # Enable early stopping using a proportion of each training sample as a
     # validation set. If lgb.train goes stop_iter() rounds without improvement
     # in the chosen metric, then it will end training early. This saves an
-    # immense amount of time during CV
+    # immense amount of time during CV. WARNING: See issue #82 for more info
     validation = params$model$parameter$validation_prop,
+    sample_type = params$model$parameter$validation_type,
     metric = params$model$parameter$validation_metric,
 
     # Lightsnip custom parameter. Links the value of max_depth to num_leaves
@@ -299,6 +300,7 @@ if (cv_enable) {
 # the maximum number of iterations used during the best cross-validation round
 lgbm_model_final <- lgbm_model %>%
   set_args(
+    stop_iter = NULL,
     validation = 0,
     trees = lgbm_final_params$num_iterations
   )
