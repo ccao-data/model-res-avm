@@ -24,3 +24,6 @@
 # Ignore python environment
 pipenv/
 pipenv
+
+# Reporting files
+/reports/balance_test/balance_test_files/
