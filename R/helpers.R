@@ -108,9 +108,9 @@ rolling_origin_pct_split <- function(data, order_col, split_col, assessment_pct)
   starts <- rep(1, length(split_sc))
   in_idx <- mapply(seq, starts, split_sc, SIMPLIFY = FALSE)
   out_idx <- lapply(in_idx, function(x) {
-    len <- length(x)
-    start_idx <- len - floor(len * assessment_pct) + 1
-    seq(start_idx, len)
+    n <- length(x)
+    m <- min(n - floor(n * assessment_pct), n - 1) + 1
+    seq(max(m, 3), n)
   })
   indices <- mapply(rsample:::merge_lists, in_idx, out_idx, SIMPLIFY = FALSE)
   split_objs <- purrr::map(
@@ -118,7 +118,7 @@ rolling_origin_pct_split <- function(data, order_col, split_col, assessment_pct)
   )
   split_objs <- list(
     splits = split_objs,
-    id = names0(length(split_objs), "Slice")
+    id = recipes::names0(length(split_objs), "Slice")
   )
   new_rset(
     splits = split_objs$splits,
