@@ -124,7 +124,7 @@
     },
     "assessr": {
       "Package": "assessr",
-      "Version": "0.4.5",
+      "Version": "0.4.8",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -132,9 +132,9 @@
       "RemoteRepo": "packages/assessr",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "805ecdb84dd1460e6e075596a8d8fcbf3aa2445d",
+      "RemoteSha": "01f385846ced9fc19bd551ec08a9cf154e27a414",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
-      "Hash": "56f6050d49d2d680272defa2d9ec56da",
+      "Hash": "24ac2171602ee03e2d744929aa213846",
       "Requirements": [
         "clustMixType",
         "dbscan"
@@ -202,10 +202,10 @@
     },
     "broom": {
       "Package": "broom",
-      "Version": "1.0.2",
+      "Version": "1.0.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "1773f8d5102f9853ecd18a0d13d460fd",
+      "Hash": "ab67f5ce0aa79b8db7ddba5cb0d4012d",
       "Requirements": [
         "backports",
         "dplyr",
@@ -247,7 +247,7 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "1.2.0",
+      "Version": "1.2.1",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -255,9 +255,9 @@
       "RemoteRepo": "packages/ccao",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "57c5325f0440885d0ce92dd9db154b3ec93a2c40",
+      "RemoteSha": "3c9267c27aec95cab155012279d737e2a667df43",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "8ae39c0cc8b2729a3a5fb8935f0efd5c",
+      "Hash": "92e060c63d8dd38ee43ae11514bc8469",
       "Requirements": [
         "assessr",
         "dplyr",
@@ -318,10 +318,10 @@
     },
     "codetools": {
       "Package": "codetools",
-      "Version": "0.2-18",
+      "Version": "0.2-19",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "019388fc48e48b3da0d3a76ff94608a8",
+      "Hash": "c089a619a7fae175d149d89164f8c7d8",
       "Requirements": []
     },
     "colorspace": {
@@ -334,11 +334,12 @@
     },
     "conflicted": {
       "Package": "conflicted",
-      "Version": "1.1.0",
+      "Version": "1.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "c6bb5e1ef58f2f1c84f238f55bd2e56a",
+      "Hash": "bb097fccb22d156624fd07cd2894ddb6",
       "Requirements": [
+        "cli",
         "memoise",
         "rlang"
       ]
@@ -417,12 +418,13 @@
     },
     "dplyr": {
       "Package": "dplyr",
-      "Version": "1.0.10",
+      "Version": "1.1.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "539412282059f7f0c07295723d23f987",
+      "Hash": "d3c34618017e7ae252d46d79a1b9ec32",
       "Requirements": [
         "R6",
+        "cli",
         "generics",
         "glue",
         "lifecycle",
@@ -504,10 +506,10 @@
     },
     "future": {
       "Package": "future",
-      "Version": "1.30.0",
+      "Version": "1.31.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "d8a0dcbc9350c1e40edc644611d1ee15",
+      "Hash": "f3f0fbe5ce9b77c002f8c5170790538a",
       "Requirements": [
         "digest",
         "globals",
@@ -557,10 +559,10 @@
     },
     "git2r": {
       "Package": "git2r",
-      "Version": "0.30.1",
+      "Version": "0.31.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "e0c6a04a3e7b90e64213d09128f74f1b",
+      "Hash": "acb972e0be37f83b9c762d962d75a188",
       "Requirements": []
     },
     "globals": {
@@ -719,14 +721,13 @@
     },
     "knitr": {
       "Package": "knitr",
-      "Version": "1.41",
+      "Version": "1.42",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "6d4971f3610e75220534a1befe81bc92",
+      "Hash": "8329a9bcc82943c8069104d4be3ee22d",
       "Requirements": [
         "evaluate",
         "highr",
-        "stringr",
         "xfun",
         "yaml"
       ]
@@ -798,7 +799,7 @@
     },
     "lightsnip": {
       "Package": "lightsnip",
-      "Version": "0.0.3",
+      "Version": "0.0.5",
       "Source": "GitLab",
       "RemoteType": "gitlab",
       "RemoteHost": "gitlab.com",
@@ -806,8 +807,8 @@
       "RemoteRepo": "packages/lightsnip",
       "RemoteSubdir": "",
       "RemoteRef": "master",
-      "RemoteSha": "09748c6f2fd38c35b5f07615b22e8dd92a223d9e",
-      "Hash": "0b90b04dc2e357a7955f206d3994b750",
+      "RemoteSha": "7db9209ce502daf40b16d73f8e38e46d2b6a4591",
+      "Hash": "2cf4df385f4e0676b1ff0df6d2c3687f",
       "Requirements": [
         "butcher",
         "dials",
@@ -843,10 +844,10 @@
     },
     "lubridate": {
       "Package": "lubridate",
-      "Version": "1.9.0",
+      "Version": "1.9.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "2af4550c2f0f7fbe7cbbf3dbf4ea3902",
+      "Hash": "88ad585eb49669b7f2db3f5ef3c8307d",
       "Requirements": [
         "generics",
         "timechange"
@@ -892,10 +893,10 @@
     },
     "modeldata": {
       "Package": "modeldata",
-      "Version": "1.0.1",
+      "Version": "1.1.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "98cac4808d592f43c9aaba293dfdf247",
+      "Hash": "df65cdee10e24635c6491ed5a98a31ef",
       "Requirements": [
         "MASS",
         "dplyr",
@@ -929,10 +930,10 @@
     },
     "nlme": {
       "Package": "nlme",
-      "Version": "3.1-161",
+      "Version": "3.1-162",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "b49e163093c0ef46fbbfc40bcb87916c",
+      "Hash": "0984ce8da8da9ead8643c5cbbb60f83e",
       "Requirements": [
         "lattice"
       ]
@@ -1030,10 +1031,10 @@
     },
     "paws.common": {
       "Package": "paws.common",
-      "Version": "0.5.4",
+      "Version": "0.5.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "587bd5da7e2bd74b4d75f988b8a041ee",
+      "Hash": "982a2cb00caf4e4096b150649987d231",
       "Requirements": [
         "Rcpp",
         "base64enc",
@@ -1365,19 +1366,20 @@
     },
     "tidyr": {
       "Package": "tidyr",
-      "Version": "1.2.1",
+      "Version": "1.3.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "cdb403db0de33ccd1b6f53b83736efa8",
+      "Hash": "e47debdc7ce599b070c8e78e8ac0cfcf",
       "Requirements": [
+        "cli",
         "cpp11",
         "dplyr",
-        "ellipsis",
         "glue",
         "lifecycle",
         "magrittr",
         "purrr",
         "rlang",
+        "stringr",
         "tibble",
         "tidyselect",
         "vctrs"
@@ -1459,10 +1461,10 @@
     },
     "utf8": {
       "Package": "utf8",
-      "Version": "1.2.2",
+      "Version": "1.2.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "c9c462b759a5cc844ae25b5942654d13",
+      "Hash": "1fe17157424bb09c48a8b3b550c753bc",
       "Requirements": []
     },
     "vctrs": {
@@ -1574,10 +1576,10 @@
     },
     "xfun": {
       "Package": "xfun",
-      "Version": "0.36",
+      "Version": "0.37",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "f5baec54606751aa53ac9c0e05848ed6",
+      "Hash": "a6860e1400a8fd1ddb6d9b4230cc34ab",
       "Requirements": []
     },
     "xml2": {

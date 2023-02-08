@@ -135,8 +135,9 @@ lgbm_model <- parsnip::boost_tree(
     # Enable early stopping using a proportion of each training sample as a
     # validation set. If lgb.train goes stop_iter() rounds without improvement
     # in the chosen metric, then it will end training early. This saves an
-    # immense amount of time during CV
+    # immense amount of time during CV. WARNING: See issue #82 for more info
     validation = params$model$parameter$validation_prop,
+    sample_type = params$model$parameter$validation_type,
     metric = params$model$parameter$validation_metric,
 
     # Lightsnip custom parameter. Links the value of max_depth to num_leaves
@@ -186,23 +187,20 @@ lgbm_wflow <- workflow() %>%
 # produce similarly accurate results
 if (cv_enable) {
   
+  # Using rolling origin resampling to create a cumulative, sliding time window
+  # training set, where the validation set is always the X% of sales following
+  # the training set in time. See https://www.tmwr.org/resampling.html#rolling
   
-  # Using rolling forecast origin resampling to create a cumulative, sliding
-  # window-based training set, where the validation set is always just after the
-  # training set in time. See https://www.tmwr.org/resampling.html#rolling
-  train_folds <- rolling_origin(
-    data = nest(train, data = -time_split),
-    initial = 1, assess = 1, skip = 0, cumulative = TRUE
-  ) %>%
-    mutate(splits = map(splits, ~ make_splits(
-      bind_rows(analysis(.x)$data),
-      bind_rows(assessment(.x)$data)
-    ))) %>%
-    rsample::new_rset(
-      splits = .$splits,
-      ids = .$id,
-      subclass = c("rolling_origin", "rset")
-    )
+  # CRITICAL NOTE: In the folds created here, the validation set is the last X%
+  # of the training set, meaning they overlap! This is because Lightsnip cuts
+  # out the last X% of each training set to use as a validation set for early
+  # stopping. See issue #82 for more information
+  train_folds <- rolling_origin_pct_split(
+    data = train,
+    order_col = meta_sale_date,
+    split_col = time_split,
+    assessment_pct = params$model$parameter$validation_prop
+  )
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
@@ -302,6 +300,7 @@ if (cv_enable) {
 # the maximum number of iterations used during the best cross-validation round
 lgbm_model_final <- lgbm_model %>%
   set_args(
+    stop_iter = NULL,
     validation = 0,
     trees = lgbm_final_params$num_iterations
   )
