@@ -343,7 +343,8 @@ training_data_clean <- training_data_w_sv %>%
       time_split == max(time_split) ~ max(time_split) - 1,
       time_split == min(time_split) ~ min(time_split) + 1,
       TRUE ~ time_split
-    )
+    ),
+    time_split = time_split - (min(time_split) - 1)
   )
 
 # Calculate KNN spatial lags for each N month period used in CV. The N month
