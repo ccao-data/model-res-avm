@@ -1,0 +1,106 @@
+---
+title: "Input QC and Feature Investigation"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    page-layout: full
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+    theme:
+      light: flatly
+      dark: darkly
+editor: source
+---
+
+```{r setup}
+
+# This script runs balance tests comparing the universe of residential parcels
+# to the sample of residential parcels with sales in the previous 8 years
+# that are used to train the data department's CAMA.
+
+# Load necessary libraries
+library(arrow)
+library(DBI)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(noctua)
+library(plotly)
+library(scales)
+library(skimr)
+library(stringr)
+library(tidyr)
+
+options(knitr.kable.NA = '')
+
+# Connect to Athena
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+
+# Declare time frame for study
+
+training_data <- read_parquet("~/ccao_res_avm/input/training_data.parquet")
+
+```
+
+## Sales Sample
+
+::: {.panel-tabset}
+
+## Township/Year
+
+``` {r town_year}
+
+township <- training_data %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_township_name, meta_year) %>%
+  summarise(sales = n()) %>%
+  select(Sales = sales, Year = meta_year, Township = meta_township_name) %>%
+  ggplot() +
+  geom_line(aes(x = Year, y = Sales, color = Township)) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
+  scale_x_continuous(breaks = seq(2014, 2022, 1)) +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+  )
+  
+ggplotly(township)
+
+```
+
+## Class/Year
+
+``` {r class_year}
+
+temp <- training_data %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_class, meta_year) %>%
+  summarise(sales = n()) %>%
+  pivot_wider(id_cols = meta_class, names_from = meta_year, values_from = sales)
+
+temp  %>%
+  kable() %>%
+  kable_styling() %>%
+  row_spec(
+    unique(which(is.na(temp), arr.ind = TRUE)[,1]),
+    bold = T,
+    background = "lightgrey"
+    )
+
+```
+## Characteristics
+
+``` {r chars}
+
+skim(training_data)
+
+```
+
+:::
+
+## check forward filling

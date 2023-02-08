@@ -10,8 +10,8 @@ format:
     fig-align: center
     fontsize: 12pt
     theme:
-        light: cosmo
-        dark: [cosmo, theme-dark.scss]
+        light: flatly
+        dark: darkly
 editor: source
 ---
 
