@@ -635,8 +635,7 @@ ggplot(
 ``` {r Volume2, fig.height=6}
 
 ggplot(
-  sales %>%
-    ungroup(),
+  sales,
   aes(x = time_sale_month_of_year, group = sv_is_outlier)
   ) + 
   geom_bar(aes(fill = sv_is_outlier)) +
@@ -652,6 +651,30 @@ ggplot(
     axis.text.x = element_text(angle = 45, hjust=1)
         ) +
   facet_wrap(vars(meta_year))
+
+```
+
+## Monthly Sale Prices
+
+``` {r}
+
+sales %>%
+    group_by(time_sale_month_of_year, time_sale_year, sv_is_outlier) %>%
+  summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
+  ggplot() +
+  geom_line(aes(x = time_sale_month_of_year, y = median_sale_price, color = sv_is_outlier)) +
+  labs(y = "Median Sale Price", x = "Year", title = "By Year, Month, and Outlier Status") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::dollar) +
+  scale_x_continuous(breaks = 1:12, labels = month.name) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust=1)
+        ) +
+  facet_wrap(vars(time_sale_year))
 
 ```
 
