@@ -20,10 +20,12 @@
 *.csv
 *.xlsx
 *.xlsm
+*.html
 
 # Ignore python environment
 pipenv/
 pipenv
 
 # Reporting files
-/reports/balance_test/balance_test_files/
+reports/balance_test/balance_test_files/
+
