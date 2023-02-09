@@ -10,9 +10,6 @@ format:
     toc_float: true
     fig-align: center
     fontsize: 12pt
-    theme:
-      light: flatly
-      dark: darkly
 editor: source
 ---
 
@@ -26,7 +23,9 @@ editor: source
 library(arrow)
 library(DBI)
 library(dplyr)
+library(DT)
 library(ggplot2)
+library(glue)
 library(kableExtra)
 library(noctua)
 library(plotly)
@@ -36,13 +35,41 @@ library(stringr)
 library(tidyr)
 
 options(knitr.kable.NA = '')
+options(scipen=999)
 
 # Connect to Athena
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
-# Declare time frame for study
+# Data path
+data_path <- "~/data/shaps.parquet"
 
+# Ingest training set
 training_data <- read_parquet("~/ccao_res_avm/input/training_data.parquet")
+
+# Declare model IDs
+model_ids <- glue_collapse(
+  c('2023-02-03-vigilant-tayun', '2023-01-31-unruffled-kyra'),
+  sep = "', '"
+  )
+
+# Ingest shap values
+if (!file.exists(data_path)) {
+  
+  dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  glue("
+
+    SELECT *
+      FROM model.shap
+      WHERE run_id IN ('{model_ids}')
+
+  ")
+) %>%
+  write_parquet(data_path)
+  
+}
+
+shaps <- read_parquet(data_path)
 
 ```
 
@@ -77,27 +104,83 @@ ggplotly(township)
 
 ``` {r class_year}
 
-temp <- training_data %>%
+class <- training_data %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
   group_by(meta_class, meta_year) %>%
   summarise(sales = n()) %>%
-  pivot_wider(id_cols = meta_class, names_from = meta_year, values_from = sales)
+  rename(Class = meta_class) %>%
+  pivot_wider(id_cols = Class, names_from = meta_year, values_from = sales)
 
-temp  %>%
+class  %>%
   kable() %>%
   kable_styling() %>%
   row_spec(
-    unique(which(is.na(temp), arr.ind = TRUE)[,1]),
+    unique(which(is.na(class), arr.ind = TRUE)[,1]),
     bold = T,
     background = "lightgrey"
     )
 
 ```
-## Characteristics
+:::
+
+## Shap Values
 
 ``` {r chars}
 
-skim(training_data)
+shap_tables <-  shaps %>%
+  split(.$run_id) %>%
+  lapply(function(x) {
+    
+    x %>%
+    slice_sample(n = 100000) %>%
+  select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
+  skim() %>%
+  rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+  select(-c(type, n_missing, complete_rate, p25, p75)) %>%
+  rename("histogram" = "hist", "median" = "p50", "min" = "p0", "max" = "p100") %>%
+  mutate(
+    variable = str_replace_all(variable, "_", " "),
+    across(is.numeric, ~ round(.x, 1)),
+    `mean direction` = case_when(
+      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
+      ),
+    `median direction` = case_when(
+      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
+      ),
+    mean = abs(mean),
+    median = abs(median)
+    ) %>%
+  relocate(`mean direction`, .before = mean) %>%
+  relocate(`median direction`, .before = median) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+            columnDefs = list(
+              list(className = 'dt-center', targets = c(1:7))
+              )
+            )
+    )
+    
+  })
+
+```
+
+::: {.panel-tabset}
+
+## `r names(shap_tables)[1]`
+
+``` {r}
+
+shap_tables[[1]]
+
+```
+
+## `r names(shap_tables)[2]`
+
+``` {r}
+
+shap_tables[[2]]
 
 ```
 
