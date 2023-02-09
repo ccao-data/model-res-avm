@@ -9,9 +9,6 @@ format:
     toc_float: true
     fig-align: center
     fontsize: 12pt
-    theme:
-        light: flatly
-        dark: darkly
 editor: source
 ---
 
@@ -33,6 +30,7 @@ library(gridExtra)
 library(gtools)
 library(kableExtra)
 library(noctua)
+library(plotly)
 library(purrr)
 library(scales)
 library(sf)
@@ -604,6 +602,54 @@ ggplot(
     axis.title.x = element_blank()
         )
 
+temp <- ggplot(
+  sales %>%
+    filter(sv_is_outlier == "Not outlier" & meta_year >= '2019') %>%
+    group_by(meta_year, meta_township_name, meta_triad_name) %>%
+    summarise(median_price = median(meta_sale_price)) %>%
+    group_by(meta_township_name, meta_triad_name) %>%
+    mutate(median_price_change = (median_price / first(median_price, order_by = meta_year)) - 1),
+  aes(x = meta_year, y = median_price_change, group = meta_township_name)
+  ) +
+  geom_line(aes(color = meta_township_name)) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(y = "Median Sale Price", x = "Year",
+       title = "Price / 2019 Price", subtitle = "By Tri, Township, and Year") +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank()
+    ) +
+  facet_wrap(vars(meta_triad_name), scales = "free")
+
+ggplotly(temp)
+
+```
+
+``` {r}
+
+sales %>%
+  filter(sv_is_outlier == "Not outlier") %>%
+  mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
+    group_by(time_sale_week_of_year, time_sale_year) %>%
+  summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
+  ggplot() +
+  geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
+  labs(y = "Median Sale Price", x = "Week", title = "By Year and Week") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::dollar) +
+  #scale_x_continuous(breaks = 1:12, labels = month.name) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank()
+        ) +
+  facet_wrap(vars(time_sale_year), scales = "free")
+
 ```
 
 ## Number of Sales
@@ -651,30 +697,6 @@ ggplot(
     axis.text.x = element_text(angle = 45, hjust=1)
         ) +
   facet_wrap(vars(meta_year))
-
-```
-
-## Monthly Sale Prices
-
-``` {r}
-
-sales %>%
-    group_by(time_sale_month_of_year, time_sale_year, sv_is_outlier) %>%
-  summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
-  ggplot() +
-  geom_line(aes(x = time_sale_month_of_year, y = median_sale_price, color = sv_is_outlier)) +
-  labs(y = "Median Sale Price", x = "Year", title = "By Year, Month, and Outlier Status") +
-  theme_minimal() +
-  scale_y_continuous(labels = scales::dollar) +
-  scale_x_continuous(breaks = 1:12, labels = month.name) +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust=1)
-        ) +
-  facet_wrap(vars(time_sale_year))
 
 ```
 
