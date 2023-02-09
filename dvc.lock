@@ -74,14 +74,14 @@ stages:
     cmd: Rscript pipeline/01-train.R
     deps:
     - path: input/training_data.parquet
-      md5: bded72965fabe69151876dcea88a1ca9
-      size: 160028868
+      md5: 1cf2fba5ae3994f0c8173cf73da3f0d2
+      size: 159952227
     params:
       params.yaml:
         cv:
           split_prop: 0.9
-          initial_set: 20
-          max_iterations: 50
+          initial_set: 25
+          max_iterations: 60
           no_improve: 25
           best_metric: rmse
         input.time_split: 9
@@ -101,25 +101,25 @@ stages:
             lambda_l2: 0.024
           range:
             num_leaves:
-            - 500
+            - 50
             - 2500
             add_to_linked_depth:
             - 1
             - 7
             feature_fraction:
             - 0.3
-            - 0.8
+            - 0.9
             min_gain_to_split:
             - -4.0
             - 1.5
             min_data_in_leaf:
             - 2
-            - 150
+            - 200
             max_cat_threshold:
-            - 20
+            - 10
             - 250
             min_data_per_group:
-            - 20
+            - 10
             - 200
             cat_smooth:
             - 10.0
@@ -135,13 +135,14 @@ stages:
             - 1
         model.objective: rmse
         model.parameter:
-          num_iterations: 1500
+          num_iterations: 2000
           learning_rate: 0.05
-          validation_prop: 0.0
+          validation_prop: 0.1
+          validation_type: recent
           validation_metric: rmse
           link_max_depth: true
-          max_bin: 512
-          stop_iter: 40
+          max_bin: 1024
+          stop_iter: 30
         model.predictor:
           all:
           - meta_township_code
@@ -177,7 +178,6 @@ stages:
           - char_recent_renovation
           - loc_longitude
           - loc_latitude
-          - loc_cook_municipality_name
           - loc_env_flood_fema_sfha
           - loc_env_flood_fs_factor
           - loc_env_flood_fs_risk_direction
@@ -278,7 +278,7 @@ stages:
           - meta_class
           - meta_card_num
           - meta_sale_document_num
-        model.seed: 20230117
+        model.seed: 2023
         model.verbose: -1
         ratio_study:
           far_year: '2020'
@@ -291,38 +291,38 @@ stages:
           - 3
           - 5
           - 10
-        toggle.cv_enable: false
+        toggle.cv_enable: true
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 3a13e341902c5638b190bc45dc46bc8b
+      md5: 0806efd0fa0a2cb4cfb5e4591e5f49a8
       size: 2872
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 95d6e53591192f1aa9ca96ed39f5776c
-      size: 8173
+      md5: 754e343f20347cacbbd72caa0cb6ccb8
+      size: 8494
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: f0b60caef60f8d11d1d582256677912b
-      size: 696
+      md5: ceefea81b859f99a85830b1489563d6d
+      size: 1939
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: f0b60caef60f8d11d1d582256677912b
-      size: 696
+      md5: 9d06bcbcf85a535ab0d380563897076e
+      size: 235740
     - path: output/test_card/model_test_card.parquet
-      md5: 7a108c3fae947a59fae629cb3b40dee9
-      size: 2024214
+      md5: ff66d927c8bc6be6c98d2a81e11962d9
+      size: 2024347
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 77f014da4d1c94cab60c69dbf2fd3448
-      size: 41014607
+      md5: 09c7a33cf95554be850a7ef36ed54429
+      size: 7071544
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: ac3045886c9883d12b5bf5d6c0bafb91
-      size: 2330246
+      md5: b3cf59ce44feb893a91d33f2dd6f63a2
+      size: 2330264
   assess:
     cmd: Rscript pipeline/02-assess.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 95b1263689af199a4f9b39c111117716
-      size: 323329207
+      md5: 2a7580dc77de4e01c275392e63f28cc4
+      size: 323836861
     - path: input/complex_id_data.parquet
-      md5: 9605012a86b9ea71f5a733b9a8c3c91f
-      size: 725122
+      md5: 64e5d3594969e1229f6a1919082d8aa8
+      size: 725014
     - path: input/land_nbhd_rate_data.parquet
       md5: 7bcbdda4239f4dffb9122002ee663ddf
       size: 1293
@@ -330,14 +330,14 @@ stages:
       md5: 5128757c64eabe301358b1d41f54b2d9
       size: 1754
     - path: input/training_data.parquet
-      md5: bded72965fabe69151876dcea88a1ca9
-      size: 160028868
+      md5: 1cf2fba5ae3994f0c8173cf73da3f0d2
+      size: 159952227
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 77f014da4d1c94cab60c69dbf2fd3448
-      size: 41014607
+      md5: 09c7a33cf95554be850a7ef36ed54429
+      size: 7071544
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: ac3045886c9883d12b5bf5d6c0bafb91
-      size: 2330246
+      md5: b3cf59ce44feb893a91d33f2dd6f63a2
+      size: 2330264
     params:
       params.yaml:
         assessment:
@@ -380,7 +380,6 @@ stages:
         - char_recent_renovation
         - loc_longitude
         - loc_latitude
-        - loc_cook_municipality_name
         - loc_env_flood_fema_sfha
         - loc_env_flood_fs_factor
         - loc_env_flood_fs_risk_direction
@@ -473,23 +472,23 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: ae1e46bd674e4066adb9416262b67144
-      size: 221885916
+      md5: 1957b846a4d22e8e57c9b38a00982e64
+      size: 221944079
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 99bcb5a4833e754246382b7cca1f563f
-      size: 94349927
+      md5: 2f85db29d4356228e6a7a6deafe0c4a1
+      size: 94149910
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: aeaacdbe1f0bb741fe9627140cb19d80
-      size: 2879
+      md5: 9e328729216bb30f0f07961b6fff7a26
+      size: 2886
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 99bcb5a4833e754246382b7cca1f563f
-      size: 94349927
+      md5: 2f85db29d4356228e6a7a6deafe0c4a1
+      size: 94149910
     - path: output/test_card/model_test_card.parquet
-      md5: 7a108c3fae947a59fae629cb3b40dee9
-      size: 2024214
+      md5: ff66d927c8bc6be6c98d2a81e11962d9
+      size: 2024347
     params:
       params.yaml:
         assessment.data_year: '2022'
@@ -507,32 +506,32 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 62f2a640a51bbc40f161f9efa6087579
+      md5: 3cebae93e89b1a2b93b042442d416562
       size: 2914
     - path: output/performance/model_performance_assessment.parquet
-      md5: bb505c8db6857a905d50c3325fc5ec08
-      size: 11993431
+      md5: c476a14d42d5c2f8c6b52f64799c3707
+      size: 11991033
     - path: output/performance/model_performance_test.parquet
-      md5: 00f47c27f117627c48485b65ee509778
-      size: 8806289
+      md5: ddf8c47769f9d1b4d5fc27d498dd3a59
+      size: 8803394
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: abb329dee5bfd5670ccbf436a8bb7e35
-      size: 4723392
+      md5: ef6d25213ae86bcca1beafdf9caee937
+      size: 4712541
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 7d397da6c60383b04f420a8c2e5f6688
-      size: 5134152
+      md5: bc98a9bc1f3dd1c2dcbf986eafd8211d
+      size: 5135252
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 95b1263689af199a4f9b39c111117716
-      size: 323329207
+      md5: 2a7580dc77de4e01c275392e63f28cc4
+      size: 323836861
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 77f014da4d1c94cab60c69dbf2fd3448
-      size: 41014607
+      md5: 09c7a33cf95554be850a7ef36ed54429
+      size: 7071544
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: ac3045886c9883d12b5bf5d6c0bafb91
-      size: 2330246
+      md5: b3cf59ce44feb893a91d33f2dd6f63a2
+      size: 2330264
     params:
       params.yaml:
         model.predictor.all:
@@ -569,7 +568,6 @@ stages:
         - char_recent_renovation
         - loc_longitude
         - loc_latitude
-        - loc_cook_municipality_name
         - loc_env_flood_fema_sfha
         - loc_env_flood_fs_factor
         - loc_env_flood_fs_risk_direction
@@ -638,77 +636,91 @@ stages:
         - ind_pin_is_multicard
     outs:
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 5b2cf09ac8a75a3ba2b02185654f49bc
-      size: 2935
+      md5: 7c0d66f96fbce715f17165a7492f4d9d
+      size: 2928
     - path: output/shap/model_shap.parquet
-      md5: 9637f1252a02f3d5219e392f033dc096
-      size: 900261000
+      md5: 5a1d87a963783f9c9dad39e17f3fb08e
+      size: 893231296
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: e774ce3a1dbb3abc7a44faae2d984b9a
-      size: 214900842
+      md5: 1957b846a4d22e8e57c9b38a00982e64
+      size: 221944079
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 9cbdfb2312566962da8ce59438eaf9c2
-      size: 102454801
+      md5: 2f85db29d4356228e6a7a6deafe0c4a1
+      size: 94149910
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 20e5a4d568cbdc3c2dd7c6102d7cc6d9
-      size: 2338
+      md5: 9e328729216bb30f0f07961b6fff7a26
+      size: 2886
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: a79afa9d2a456c75426fc8a7854e0bfc
-      size: 2352
+      md5: 3cebae93e89b1a2b93b042442d416562
+      size: 2914
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: c52aec3ae91f284642feb1de546e831c
-      size: 2359
+      md5: 7c0d66f96fbce715f17165a7492f4d9d
+      size: 2928
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 6b3fde1c4582413d504b6ac00310117f
-      size: 2331
+      md5: 0806efd0fa0a2cb4cfb5e4591e5f49a8
+      size: 2872
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 30b3ab1a0dae6d9a739c1f1de7d8e9a1
-      size: 8172
+      md5: 754e343f20347cacbbd72caa0cb6ccb8
+      size: 8494
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: 1f71c12f05375bf2674e696d3e70eb23
-      size: 695
+      md5: ceefea81b859f99a85830b1489563d6d
+      size: 1939
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: 1f71c12f05375bf2674e696d3e70eb23
-      size: 695
+      md5: 9d06bcbcf85a535ab0d380563897076e
+      size: 235740
     - path: output/performance/model_performance_assessment.parquet
-      md5: 58f8a40803e85449e60ac08a8d2f0fe5
-      size: 12113819
+      md5: c476a14d42d5c2f8c6b52f64799c3707
+      size: 11991033
     - path: output/performance/model_performance_test.parquet
-      md5: 5b958e78f29703c14604bb5e13fb3d44
-      size: 8646703
+      md5: ddf8c47769f9d1b4d5fc27d498dd3a59
+      size: 8803394
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: c5b3590bf834339870580e5428d9b605
-      size: 4862604
+      md5: ef6d25213ae86bcca1beafdf9caee937
+      size: 4712541
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 364e00cb790fb70005f7d3da5b68d8e7
-      size: 5013631
+      md5: bc98a9bc1f3dd1c2dcbf986eafd8211d
+      size: 5135252
     - path: output/shap/model_shap.parquet
-      md5: 8469ec3eaad387feb9ca910b2134fadb
-      size: 891060227
+      md5: 5a1d87a963783f9c9dad39e17f3fb08e
+      size: 893231296
     - path: output/test_card/model_test_card.parquet
-      md5: 3041d02224086e27bdd5f5d9fb429325
-      size: 2083019
+      md5: ff66d927c8bc6be6c98d2a81e11962d9
+      size: 2024347
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 78a03502881f1a6b1266032e831cb094
-      size: 35285194
+      md5: 09c7a33cf95554be850a7ef36ed54429
+      size: 7071544
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: a0190c6f1481cc2afc86708f989eac91
-      size: 2331294
+      md5: b3cf59ce44feb893a91d33f2dd6f63a2
+      size: 2330264
     params:
       params.yaml:
         cv:
           split_prop: 0.9
-          initial_set: 20
-          max_iterations: 70
+          initial_set: 25
+          max_iterations: 60
           no_improve: 25
           best_metric: rmse
         input:
-          min_sale_year: '2013'
-          max_sale_year: '2021'
+          min_sale_year: '2014'
+          max_sale_year: '2022'
           time_split: 9
+          sale_validation:
+            stat_groups:
+            - meta_year
+            - meta_township_code
+            - meta_class
+            iso_forest:
+            - meta_sale_price
+            - sv_price_per_sqft
+            - sv_days_since_last_transaction
+            - sv_cgdr
+            - sv_sale_dup_counts
+            dev_bounds:
+            - 2
+            - 3
           spatial_lag:
             k: 20
             predictor:
@@ -738,7 +750,9 @@ stages:
         model:
           engine: lightgbm
           objective: rmse
-          seed: 20220117
+          seed: 2023
+          deterministic: true
+          force_row_wise: true
           verbose: -1
           predictor:
             all:
@@ -772,9 +786,9 @@ stages:
             - char_tp_plan
             - char_type_resd
             - char_use
+            - char_recent_renovation
             - loc_longitude
             - loc_latitude
-            - loc_cook_municipality_name
             - loc_env_flood_fema_sfha
             - loc_env_flood_fs_factor
             - loc_env_flood_fs_risk_direction
@@ -787,7 +801,7 @@ stages:
             - loc_access_cmap_walk_nta_score
             - loc_access_cmap_walk_total_score
             - loc_misc_subdivision_id
-            - loc_misc_unincorporated_area_bool
+            - loc_cook_municipality_name
             - prox_num_pin_in_half_mile
             - prox_num_bus_stop_in_half_mile
             - prox_num_foreclosure_per_1000_pin_past_5_years
@@ -806,6 +820,7 @@ stages:
             - prox_nearest_park_dist_ft
             - prox_nearest_railroad_dist_ft
             - prox_nearest_water_dist_ft
+            - prox_nearest_golf_course_dist_ft
             - acs5_percent_age_children
             - acs5_percent_age_senior
             - acs5_median_age_total
@@ -875,13 +890,14 @@ stages:
             - meta_card_num
             - meta_sale_document_num
           parameter:
-            num_iterations: 1500
+            num_iterations: 2000
             learning_rate: 0.05
-            validation_prop: 0.0
+            validation_prop: 0.1
+            validation_type: recent
             validation_metric: rmse
             link_max_depth: true
-            max_bin: 2000
-            stop_iter: 40
+            max_bin: 1024
+            stop_iter: 30
           hyperparameter:
             default:
               num_leaves: 1363
@@ -897,25 +913,25 @@ stages:
               lambda_l2: 0.024
             range:
               num_leaves:
-              - 500
+              - 50
               - 2500
               add_to_linked_depth:
               - 1
               - 7
               feature_fraction:
               - 0.3
-              - 0.8
+              - 0.9
               min_gain_to_split:
               - -4.0
               - 1.5
               min_data_in_leaf:
               - 2
-              - 150
+              - 200
               max_cat_threshold:
-              - 20
+              - 10
               - 250
               min_data_per_group:
-              - 20
+              - 10
               - 200
               cat_smooth:
               - 10.0
@@ -943,43 +959,44 @@ stages:
           - 10000
           round_type: floor
         ratio_study:
-          far_year: '2019'
+          far_year: '2020'
           far_stage: board
           far_column: meta_2yr_pri_board_tot
-          near_year: '2021'
+          near_year: '2022'
           near_stage: mailed
           near_column: meta_mailed_tot
           num_quantile:
           - 3
           - 5
           - 10
-        run_note: "Disabled early stopping. Added more late 2021 sales. No CV. Same\
-          \ as nostalgic-gabe\n"
+        run_note: "Test full CV run with improved early stopping and wide parameter\
+          \ ranges\n"
         run_type: full
         toggle:
-          cv_enable: false
+          cv_enable: true
           upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
-      md5: 4a9ba6c1b9ef8a1524c34d327eb3aaa7
-      size: 23703
+      md5: b71d4e095c3362218b46dbf533c6db5f
+      size: 23549
     - path: output/timing/model_timing.parquet
-      md5: 78c6ddd312f12a1c714afeae5d46082b
-      size: 5207
+      md5: e9b768233f0b6a42cf1986985971a06c
+      size: 5229
   export:
     cmd: Rscript pipeline/06-export.R
     params:
       params.yaml:
-        assessment.year: '2022'
+        assessment.year: '2023'
         export:
-          triad_code: '2'
-          run_id_res: nostalgic-gabe-2022-03-13
-          run_id_condo:
+          triad_code: '3'
+          run_id: ''
+        input.max_sale_year: '2022'
+        input.min_sale_year: '2014'
         ratio_study:
-          far_year: '2019'
+          far_year: '2020'
           far_stage: board
           far_column: meta_2yr_pri_board_tot
-          near_year: '2021'
+          near_year: '2022'
           near_stage: mailed
           near_column: meta_mailed_tot
           num_quantile:

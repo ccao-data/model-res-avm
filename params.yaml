@@ -37,7 +37,7 @@ assessment:
   # Year of assessment. Used to partition results and pull data
   year: "2023"
   
-  # The statutorily "sale date" for the purpose of prediction
+  # The statutorily set "sale date" for the purpose of prediction
   date: "2023-01-01"
   
   # Added context for model artifacts stored in s3. Does not change behavior
