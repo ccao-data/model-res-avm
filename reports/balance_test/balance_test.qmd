@@ -1,5 +1,5 @@
 ---
-title: "Balance Testing Residential Parcels Across Sales"
+title: "Balance Testing Residential Parcels Across Sale Status"
 execute:
   echo: false
   warning: false
@@ -132,7 +132,7 @@ vars <- names(sf_parcels) %>%
 
 ## Logit Regressions
 
-All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus.  Sample is universe of '21 & '22 single family parcels.
+All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus.  Sample is universe of '21 & '22 single family parcels, excluding some parcels with incomplete characteristics.
 
 ```{r logit}
 
@@ -431,11 +431,15 @@ logits[["Worth"]]
 
 :::
 
-Across the township regressions we see two characteristics that tend to be significant and have large magnitudes: type of residence (stories), and the recent renovation indicator. For the South Tri, the recent renovation indicator is most significant in Bloom and Palos. What this implies for predicted AVs and desk review may be worth investigating further.
+Across the township regressions we see two characteristics that tend to be significant and have large magnitudes: type of residence (stories), and the recent renovation indicator. For the South Tri, the recent renovation indicator is most significant in Bloom and Palos. What this implies for predicted AVs and desk review is hard to say - the recent reno indicator is clearly important, but difficult to update on the fly. Keep an eye out for older homes with unexpectedly high AVs next to homes that have just been renovated.
 
 ## Standardized mean differences
 
-Looking for SMDs greater than .1 or .05 for sensitive covariates.
+The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
+
+$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
+
+We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
 ```{r SMDs}
 
@@ -614,7 +618,7 @@ temp <- ggplot(
   geom_line(aes(color = meta_township_name)) +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(y = "Median Sale Price", x = "Year",
-       title = "Price / 2019 Price", subtitle = "By Tri, Township, and Year") +
+       title = "Price / 2019 Price, Outliers Excluded", subtitle = "By Tri, Township, and Year") +
   theme_minimal() +
   theme(
     legend.position = "none",
@@ -630,16 +634,21 @@ ggplotly(temp)
 
 ``` {r}
 
-sales %>%
+temp <- sales %>%
   filter(sv_is_outlier == "Not outlier") %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
-    group_by(time_sale_week_of_year, time_sale_year) %>%
+    group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
   summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
-  ggplot() +
+  split(.$meta_triad_name)
+  
+temp_graph <- function(x, title, limits = NULL) {
+    
+    x %>%
+      ggplot() +
   geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
-  labs(y = "Median Sale Price", x = "Week", title = "By Year and Week", subtitle = "Outliers excluded") +
+  labs(y = "Median Sale Price", x = "Week", title = paste(title, "Tri, By Year and Week"), subtitle = "Outliers excluded") +
   theme_minimal() +
-  scale_y_continuous(labels = scales::dollar, limits = c(140000, 360000)) +
+  scale_y_continuous(labels = scales::dollar, limits = limits) +
   theme(
     legend.position = "bottom",
     legend.title = element_blank(),
@@ -648,6 +657,14 @@ sales %>%
     axis.text.x = element_blank()
         ) +
   facet_wrap(vars(time_sale_year))
+    
+  }
+  
+temp[["City"]] %>% temp_graph(title = "City")
+
+temp[["North"]] %>% temp_graph(title = "North")
+
+temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
 
 ```
 
