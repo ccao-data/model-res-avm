@@ -361,13 +361,16 @@ training_data_lagged <- training_data_clean %>%
   # Divide training data into N-month periods and calculate spatial lags
   # for each period
   group_by(time_split) %>%
-  mutate(
-    nb = st_knn(geometry, k = params$input$spatial_lag$k),
-    across(
+  mutate(nb = st_knn(geometry, k = params$input$spatial_lag$k)) %>%
+  group_split() %>%
+  map_dfr(
+    function(x) mutate(x, across(
       all_of(params$input$spatial_lag$predictor),
-      function(x) purrr::map_dbl(nb, function(idx, var = x) mean(var[idx])),
-      .names = "lag_{.col}"
-    )
+      ~ purrr::map_dbl(nb, function(idx, var = cur_column()) {
+        mean(x[[var]][idx])
+      }),
+      .names = "lag_{.col}" 
+    ))
   ) %>%
   # Clean up output, bind rows that were missing lat/lon, and write to file
   ungroup() %>%
