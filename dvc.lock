@@ -29,7 +29,7 @@ stages:
             - 2
             - 3
           spatial_lag:
-            k: 20
+            k: 10
             predictor:
             - meta_sale_price
             - char_bldg_sf
@@ -56,11 +56,11 @@ stages:
               dist_ft: 250
     outs:
     - path: input/assessment_data.parquet
-      md5: 2a7580dc77de4e01c275392e63f28cc4
-      size: 323836861
+      md5: 8cf6728816efec36a151ea4ee5076177
+      size: 319652602
     - path: input/complex_id_data.parquet
-      md5: 64e5d3594969e1229f6a1919082d8aa8
-      size: 725014
+      md5: 81d935997379c6328f60e6eacf8a86a6
+      size: 719964
     - path: input/land_nbhd_rate_data.parquet
       md5: 7bcbdda4239f4dffb9122002ee663ddf
       size: 1293
@@ -68,20 +68,20 @@ stages:
       md5: 5128757c64eabe301358b1d41f54b2d9
       size: 1754
     - path: input/training_data.parquet
-      md5: 1cf2fba5ae3994f0c8173cf73da3f0d2
-      size: 159952227
+      md5: 0defba0bf89e2d908a0e704f33e5cbc8
+      size: 157074056
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
     - path: input/training_data.parquet
-      md5: 1cf2fba5ae3994f0c8173cf73da3f0d2
-      size: 159952227
+      md5: 0defba0bf89e2d908a0e704f33e5cbc8
+      size: 157074056
     params:
       params.yaml:
         cv:
           split_prop: 0.9
           initial_set: 25
-          max_iterations: 60
+          max_iterations: 70
           no_improve: 25
           best_metric: rmse
         input.time_split: 9
@@ -137,7 +137,7 @@ stages:
         model.parameter:
           num_iterations: 644
           learning_rate: 0.05
-          validation_prop: 0
+          validation_prop: 0.1
           validation_type: recent
           validation_metric: rmse
           link_max_depth: true
@@ -148,6 +148,8 @@ stages:
           - meta_township_code
           - meta_nbhd_code
           - meta_tieback_proration_rate
+          - meta_cdu
+          - meta_modeling_group
           - char_yrblt
           - char_air
           - char_apts
@@ -174,7 +176,6 @@ stages:
           - char_tp_dsgn
           - char_tp_plan
           - char_type_resd
-          - char_use
           - char_recent_renovation
           - loc_longitude
           - loc_latitude
@@ -185,8 +186,6 @@ stages:
           - loc_env_ohare_noise_contour_no_buffer_bool
           - loc_school_elementary_district_geoid
           - loc_school_secondary_district_geoid
-          - loc_school_unified_district_geoid
-          - loc_tax_special_service_area_num
           - loc_access_cmap_walk_nta_score
           - loc_access_cmap_walk_total_score
           - loc_misc_subdivision_id
@@ -243,10 +242,20 @@ stages:
           - time_sale_day_of_month
           - time_sale_day_of_week
           - time_sale_post_covid
-          - ind_pin_is_multicard
+          - lag_meta_sale_price
+          - lag_char_bldg_sf
+          - lag_char_land_sf
+          - lag_char_beds
+          - lag_char_fbath
+          - lag_char_hbath
+          - lag_char_frpl
+          - lag_char_yrblt
+          - lag_other_tax_bill_amount_total
           categorical:
           - meta_township_code
           - meta_nbhd_code
+          - meta_cdu
+          - meta_modeling_group
           - char_air
           - char_apts
           - char_attic_fnsh
@@ -264,12 +273,9 @@ stages:
           - char_tp_dsgn
           - char_tp_plan
           - char_type_resd
-          - char_use
           - loc_cook_municipality_name
           - loc_school_elementary_district_geoid
           - loc_school_secondary_district_geoid
-          - loc_school_unified_district_geoid
-          - loc_tax_special_service_area_num
           - loc_misc_subdivision_id
           - time_sale_quarter_of_year
           id:
@@ -291,38 +297,38 @@ stages:
           - 3
           - 5
           - 10
-        toggle.cv_enable: false
+        toggle.cv_enable: true
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: ac5037bc825a5d920dcde68923450911
-      size: 2865
+      md5: 967a206f594da1e35dec7a83ae1f4551
+      size: 2879
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 28bc9b8497a7a628656ae32d460b7a11
-      size: 8464
+      md5: 7406bae48af2b1a88c381c7e2f74acd4
+      size: 8501
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: f0b60caef60f8d11d1d582256677912b
-      size: 696
+      md5: ceefea81b859f99a85830b1489563d6d
+      size: 1939
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: f0b60caef60f8d11d1d582256677912b
-      size: 696
+      md5: 847cf719db53da9949c52f9418362291
+      size: 259474
     - path: output/test_card/model_test_card.parquet
-      md5: 834226124023eb0d32afe6e3e6d0398a
-      size: 2024363
+      md5: eba2152c1f1e9d1201715b531faba0b3
+      size: 2024886
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 7ece937785964f7daa8846fb7a30046f
-      size: 7145147
+      md5: c5c169f6df1e49bd94131ba52ed30ccc
+      size: 3330005
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: b3cf59ce44feb893a91d33f2dd6f63a2
-      size: 2330264
+      md5: 66ebe0d93bbfbe355c386e167944c402
+      size: 2328921
   assess:
     cmd: Rscript pipeline/02-assess.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 2a7580dc77de4e01c275392e63f28cc4
-      size: 323836861
+      md5: 8cf6728816efec36a151ea4ee5076177
+      size: 319652602
     - path: input/complex_id_data.parquet
-      md5: 64e5d3594969e1229f6a1919082d8aa8
-      size: 725014
+      md5: 81d935997379c6328f60e6eacf8a86a6
+      size: 719964
     - path: input/land_nbhd_rate_data.parquet
       md5: 7bcbdda4239f4dffb9122002ee663ddf
       size: 1293
@@ -330,14 +336,14 @@ stages:
       md5: 5128757c64eabe301358b1d41f54b2d9
       size: 1754
     - path: input/training_data.parquet
-      md5: 1cf2fba5ae3994f0c8173cf73da3f0d2
-      size: 159952227
+      md5: 0defba0bf89e2d908a0e704f33e5cbc8
+      size: 157074056
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 7ece937785964f7daa8846fb7a30046f
-      size: 7145147
+      md5: c5c169f6df1e49bd94131ba52ed30ccc
+      size: 3330005
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: b3cf59ce44feb893a91d33f2dd6f63a2
-      size: 2330264
+      md5: 66ebe0d93bbfbe355c386e167944c402
+      size: 2328921
     params:
       params.yaml:
         assessment:
@@ -350,6 +356,8 @@ stages:
         - meta_township_code
         - meta_nbhd_code
         - meta_tieback_proration_rate
+        - meta_cdu
+        - meta_modeling_group
         - char_yrblt
         - char_air
         - char_apts
@@ -376,7 +384,6 @@ stages:
         - char_tp_dsgn
         - char_tp_plan
         - char_type_resd
-        - char_use
         - char_recent_renovation
         - loc_longitude
         - loc_latitude
@@ -387,8 +394,6 @@ stages:
         - loc_env_ohare_noise_contour_no_buffer_bool
         - loc_school_elementary_district_geoid
         - loc_school_secondary_district_geoid
-        - loc_school_unified_district_geoid
-        - loc_tax_special_service_area_num
         - loc_access_cmap_walk_nta_score
         - loc_access_cmap_walk_total_score
         - loc_misc_subdivision_id
@@ -445,7 +450,15 @@ stages:
         - time_sale_day_of_month
         - time_sale_day_of_week
         - time_sale_post_covid
-        - ind_pin_is_multicard
+        - lag_meta_sale_price
+        - lag_char_bldg_sf
+        - lag_char_land_sf
+        - lag_char_beds
+        - lag_char_fbath
+        - lag_char_hbath
+        - lag_char_frpl
+        - lag_char_yrblt
+        - lag_other_tax_bill_amount_total
         pv:
           multicard_yoy_cap: 2.0
           land_pct_of_total_cap: 0.5
@@ -472,23 +485,23 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 65df3bc708e0febefc31ad4d360a43e3
-      size: 221949939
+      md5: 8c57e696486f99f412afd59edcf05c5e
+      size: 243486109
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 4aef9a2ab7e8e88acdb9ac6a05da2bfe
-      size: 94009255
+      md5: bb7e47d7aae4e91fe4bcf72c818f1729
+      size: 93957708
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 1706380ba6caede590646d03e7a7b2c7
+      md5: ce21378fe1537f25d27e605b2826ddc7
       size: 2886
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 4aef9a2ab7e8e88acdb9ac6a05da2bfe
-      size: 94009255
+      md5: bb7e47d7aae4e91fe4bcf72c818f1729
+      size: 93957708
     - path: output/test_card/model_test_card.parquet
-      md5: 834226124023eb0d32afe6e3e6d0398a
-      size: 2024363
+      md5: eba2152c1f1e9d1201715b531faba0b3
+      size: 2024886
     params:
       params.yaml:
         assessment.data_year: '2022'
@@ -506,38 +519,40 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: a16db40287c50962fbf78589d2f47027
+      md5: 9ca4ec5a31255901907162969b46daca
       size: 2914
     - path: output/performance/model_performance_assessment.parquet
-      md5: f085f43573ff3ca72351d3c6c55aba5f
-      size: 11936518
+      md5: 5e175580abb594fa4eb4ac881f5b185c
+      size: 11943865
     - path: output/performance/model_performance_test.parquet
-      md5: a0d866d14f99bd0bdbd5069f351508f2
-      size: 8803766
+      md5: 0867da9c16658e52d005c54e8fb9d17f
+      size: 8804257
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 1293f8271b7c27c58e9ca159916ebbe1
-      size: 4598182
+      md5: 76350b0edb81db77b9de9361a42f800d
+      size: 4602501
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 7a83f743a51ed94314c621ddab030950
-      size: 5135052
+      md5: 06dd7c70b94cfe36b643654683c9b666
+      size: 5132240
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 2a7580dc77de4e01c275392e63f28cc4
-      size: 323836861
+      md5: 8cf6728816efec36a151ea4ee5076177
+      size: 319652602
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 7ece937785964f7daa8846fb7a30046f
-      size: 7145147
+      md5: c5c169f6df1e49bd94131ba52ed30ccc
+      size: 3330005
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: b3cf59ce44feb893a91d33f2dd6f63a2
-      size: 2330264
+      md5: 66ebe0d93bbfbe355c386e167944c402
+      size: 2328921
     params:
       params.yaml:
         model.predictor.all:
         - meta_township_code
         - meta_nbhd_code
         - meta_tieback_proration_rate
+        - meta_cdu
+        - meta_modeling_group
         - char_yrblt
         - char_air
         - char_apts
@@ -564,7 +579,6 @@ stages:
         - char_tp_dsgn
         - char_tp_plan
         - char_type_resd
-        - char_use
         - char_recent_renovation
         - loc_longitude
         - loc_latitude
@@ -575,8 +589,6 @@ stages:
         - loc_env_ohare_noise_contour_no_buffer_bool
         - loc_school_elementary_district_geoid
         - loc_school_secondary_district_geoid
-        - loc_school_unified_district_geoid
-        - loc_tax_special_service_area_num
         - loc_access_cmap_walk_nta_score
         - loc_access_cmap_walk_total_score
         - loc_misc_subdivision_id
@@ -633,74 +645,82 @@ stages:
         - time_sale_day_of_month
         - time_sale_day_of_week
         - time_sale_post_covid
-        - ind_pin_is_multicard
+        - lag_meta_sale_price
+        - lag_char_bldg_sf
+        - lag_char_land_sf
+        - lag_char_beds
+        - lag_char_fbath
+        - lag_char_hbath
+        - lag_char_frpl
+        - lag_char_yrblt
+        - lag_other_tax_bill_amount_total
     outs:
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 5e4bc844836da82e16eb958d264aab56
-      size: 2935
+      md5: 4eabc5bc65284faa6f531a26f97f0028
+      size: 2928
     - path: output/shap/model_shap.parquet
-      md5: 44687a15df0da8482301c1a4a1c7a3b7
-      size: 893145585
+      md5: 8dacda412d4913069bc5e749d86e356c
+      size: 964871897
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 65df3bc708e0febefc31ad4d360a43e3
-      size: 221949939
+      md5: 8c57e696486f99f412afd59edcf05c5e
+      size: 243486109
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 4aef9a2ab7e8e88acdb9ac6a05da2bfe
-      size: 94009255
+      md5: bb7e47d7aae4e91fe4bcf72c818f1729
+      size: 93957708
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 1706380ba6caede590646d03e7a7b2c7
+      md5: ce21378fe1537f25d27e605b2826ddc7
       size: 2886
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: a16db40287c50962fbf78589d2f47027
+      md5: 9ca4ec5a31255901907162969b46daca
       size: 2914
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 5e4bc844836da82e16eb958d264aab56
-      size: 2935
+      md5: 4eabc5bc65284faa6f531a26f97f0028
+      size: 2928
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: ac5037bc825a5d920dcde68923450911
-      size: 2865
+      md5: 967a206f594da1e35dec7a83ae1f4551
+      size: 2879
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 28bc9b8497a7a628656ae32d460b7a11
-      size: 8464
+      md5: 7406bae48af2b1a88c381c7e2f74acd4
+      size: 8501
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: f0b60caef60f8d11d1d582256677912b
-      size: 696
+      md5: ceefea81b859f99a85830b1489563d6d
+      size: 1939
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: f0b60caef60f8d11d1d582256677912b
-      size: 696
+      md5: 847cf719db53da9949c52f9418362291
+      size: 259474
     - path: output/performance/model_performance_assessment.parquet
-      md5: f085f43573ff3ca72351d3c6c55aba5f
-      size: 11936518
+      md5: 5e175580abb594fa4eb4ac881f5b185c
+      size: 11943865
     - path: output/performance/model_performance_test.parquet
-      md5: a0d866d14f99bd0bdbd5069f351508f2
-      size: 8803766
+      md5: 0867da9c16658e52d005c54e8fb9d17f
+      size: 8804257
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 1293f8271b7c27c58e9ca159916ebbe1
-      size: 4598182
+      md5: 76350b0edb81db77b9de9361a42f800d
+      size: 4602501
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 7a83f743a51ed94314c621ddab030950
-      size: 5135052
+      md5: 06dd7c70b94cfe36b643654683c9b666
+      size: 5132240
     - path: output/shap/model_shap.parquet
-      md5: 44687a15df0da8482301c1a4a1c7a3b7
-      size: 893145585
+      md5: 8dacda412d4913069bc5e749d86e356c
+      size: 964871897
     - path: output/test_card/model_test_card.parquet
-      md5: 834226124023eb0d32afe6e3e6d0398a
-      size: 2024363
+      md5: eba2152c1f1e9d1201715b531faba0b3
+      size: 2024886
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 7ece937785964f7daa8846fb7a30046f
-      size: 7145147
+      md5: c5c169f6df1e49bd94131ba52ed30ccc
+      size: 3330005
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: b3cf59ce44feb893a91d33f2dd6f63a2
-      size: 2330264
+      md5: 66ebe0d93bbfbe355c386e167944c402
+      size: 2328921
     params:
       params.yaml:
         cv:
           split_prop: 0.9
           initial_set: 25
-          max_iterations: 60
+          max_iterations: 70
           no_improve: 25
           best_metric: rmse
         input:
@@ -722,7 +742,7 @@ stages:
             - 2
             - 3
           spatial_lag:
-            k: 20
+            k: 10
             predictor:
             - meta_sale_price
             - char_bldg_sf
@@ -759,6 +779,8 @@ stages:
             - meta_township_code
             - meta_nbhd_code
             - meta_tieback_proration_rate
+            - meta_cdu
+            - meta_modeling_group
             - char_yrblt
             - char_air
             - char_apts
@@ -785,7 +807,6 @@ stages:
             - char_tp_dsgn
             - char_tp_plan
             - char_type_resd
-            - char_use
             - char_recent_renovation
             - loc_longitude
             - loc_latitude
@@ -796,8 +817,6 @@ stages:
             - loc_env_ohare_noise_contour_no_buffer_bool
             - loc_school_elementary_district_geoid
             - loc_school_secondary_district_geoid
-            - loc_school_unified_district_geoid
-            - loc_tax_special_service_area_num
             - loc_access_cmap_walk_nta_score
             - loc_access_cmap_walk_total_score
             - loc_misc_subdivision_id
@@ -854,10 +873,20 @@ stages:
             - time_sale_day_of_month
             - time_sale_day_of_week
             - time_sale_post_covid
-            - ind_pin_is_multicard
+            - lag_meta_sale_price
+            - lag_char_bldg_sf
+            - lag_char_land_sf
+            - lag_char_beds
+            - lag_char_fbath
+            - lag_char_hbath
+            - lag_char_frpl
+            - lag_char_yrblt
+            - lag_other_tax_bill_amount_total
             categorical:
             - meta_township_code
             - meta_nbhd_code
+            - meta_cdu
+            - meta_modeling_group
             - char_air
             - char_apts
             - char_attic_fnsh
@@ -875,12 +904,9 @@ stages:
             - char_tp_dsgn
             - char_tp_plan
             - char_type_resd
-            - char_use
             - loc_cook_municipality_name
             - loc_school_elementary_district_geoid
             - loc_school_secondary_district_geoid
-            - loc_school_unified_district_geoid
-            - loc_tax_special_service_area_num
             - loc_misc_subdivision_id
             - time_sale_quarter_of_year
             id:
@@ -892,7 +918,7 @@ stages:
           parameter:
             num_iterations: 644
             learning_rate: 0.05
-            validation_prop: 0
+            validation_prop: 0.1
             validation_type: recent
             validation_metric: rmse
             link_max_depth: true
@@ -969,19 +995,19 @@ stages:
           - 3
           - 5
           - 10
-        run_note: "Repeat angry-nicole but with sales trimmed from assessment ratio\
-          \ study\n"
+        run_note: "Full CV. Re-add spatial lags. Change CV time fold to 15 months.\
+          \ Drop some less then useful variables.\n"
         run_type: full
         toggle:
-          cv_enable: false
+          cv_enable: true
           upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
-      md5: 4d1cd45d50f0ace4900401790c849ccd
-      size: 23507
+      md5: fd28749735ca295207a09becd51015c2
+      size: 24291
     - path: output/timing/model_timing.parquet
-      md5: da089a6a8d77b8787be53888425ed45c
-      size: 5208
+      md5: 76a768ecdd4d345228c2ae2ca2e57713
+      size: 5236
   export:
     cmd: Rscript pipeline/06-export.R
     params:

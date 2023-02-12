@@ -12,7 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Repeat angry-nicole but with sales trimmed from assessment ratio study
+  Full CV. Re-add spatial lags. Change CV time fold to 15 months.
+  Drop some less then useful variables.
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -23,7 +24,7 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
   
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -90,7 +91,7 @@ input:
   spatial_lag:
     # Number of nearest neighbors (K) used to calculate spatial lags of both the
     # dependent variable (sale price) and predictors (sqft, year built, etc.)
-    k: 20
+    k: 10
     
     # Standard features to create lags from + the outcome variable
     predictor: [
@@ -142,7 +143,7 @@ cv:
   initial_set: 25
   
   # Maximum number of search iterations
-  max_iterations: 60
+  max_iterations: 70
   
   # Max number of search iterations without improvement before stopping search
   no_improve: 25
@@ -179,6 +180,8 @@ model:
       "meta_township_code",
       "meta_nbhd_code",
       "meta_tieback_proration_rate",
+      "meta_cdu",
+      "meta_modeling_group",
       "char_yrblt",
       "char_air",
       "char_apts",
@@ -205,7 +208,6 @@ model:
       "char_tp_dsgn",
       "char_tp_plan",
       "char_type_resd",
-      "char_use",
       "char_recent_renovation",
       "loc_longitude",
       "loc_latitude",
@@ -216,8 +218,6 @@ model:
       "loc_env_ohare_noise_contour_no_buffer_bool",
       "loc_school_elementary_district_geoid",
       "loc_school_secondary_district_geoid",
-      "loc_school_unified_district_geoid",
-      "loc_tax_special_service_area_num",
       "loc_access_cmap_walk_nta_score",
       "loc_access_cmap_walk_total_score",
       "loc_misc_subdivision_id",
@@ -274,7 +274,15 @@ model:
       "time_sale_day_of_month",
       "time_sale_day_of_week",
       "time_sale_post_covid",
-      "ind_pin_is_multicard"
+      "lag_meta_sale_price",
+      "lag_char_bldg_sf",
+      "lag_char_land_sf",
+      "lag_char_beds",
+      "lag_char_fbath",
+      "lag_char_hbath",
+      "lag_char_frpl",
+      "lag_char_yrblt",
+      "lag_other_tax_bill_amount_total"
     ]
     
     # List of predictors included in predictor.all which are categoricals. It is
@@ -283,6 +291,8 @@ model:
     categorical: [
       "meta_township_code",
       "meta_nbhd_code",
+      "meta_cdu",
+      "meta_modeling_group",
       "char_air",
       "char_apts",
       "char_attic_fnsh",
@@ -300,12 +310,9 @@ model:
       "char_tp_dsgn",
       "char_tp_plan",
       "char_type_resd",
-      "char_use",
       "loc_cook_municipality_name",
       "loc_school_elementary_district_geoid",
       "loc_school_secondary_district_geoid",
-      "loc_school_unified_district_geoid",
-      "loc_tax_special_service_area_num",
       "loc_misc_subdivision_id",
       "time_sale_quarter_of_year"
     ]
@@ -332,7 +339,7 @@ model:
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See issue #82 for critical notes about early stopping / CV
-    validation_prop: 0
+    validation_prop: 0.1
     validation_type: "recent"
     validation_metric: "rmse"
     
