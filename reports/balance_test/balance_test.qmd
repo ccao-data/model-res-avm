@@ -5,6 +5,7 @@ execute:
   warning: false
 format:
   html:
+    embed-resources: true
     toc: true
     toc_float: true
     fig-align: center
@@ -62,23 +63,9 @@ if (!file.exists(data_path)) {
   conn = AWS_ATHENA_CONN_NOCTUA,
   glue("
 
-    SELECT
-      vcri.*,
-      CASE WHEN vps.pin IS NOT NULL THEN 1 ELSE 0 END AS sale,
-    sale_date
-    FROM model.vw_card_res_input vcri
-    LEFT JOIN (
-      SELECT pin, CAST(year(max(sale_date)) as varchar) as year, max(sale_date) AS sale_date
-        FROM default.vw_pin_sale
-        WHERE ((sale_price_log10
-          BETWEEN sale_filter_lower_limit
-          AND sale_filter_upper_limit)
-          AND sale_filter_count >= 10)
-        AND NOT is_multisale
-        GROUP BY pin
-    ) vps
-      ON vcri.meta_pin = vps.pin and vcri.meta_year = vps.year
+    SELECT * FROM model.vw_card_res_input vcri
     WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
+    AND meta_class NOT IN ('211', '212')
 
   ")
 ) %>%
@@ -86,8 +73,22 @@ if (!file.exists(data_path)) {
   
 }
 
-sf_parcels <- read_parquet(data_path) %>%
-  filter(!(meta_class %in% c(211, 212)))
+temp <- read_parquet(data_path) %>%
+  # Join on sales indicator for most recent sale in the last two years -
+  # if there is one
+  left_join(
+    sales %>%
+      filter(
+        between(meta_year, time_frame['min'], time_frame['max']) &
+          sv_is_outlier == "Not outlier"
+        ) %>%
+      select(meta_pin, meta_sale_date, meta_year) %>%
+      group_by(meta_pin) %>%
+      filter(meta_sale_date == max(meta_sale_date, na.rm = TRUE)) %>%
+      ungroup()
+  ) %>%
+  mutate(sale = as.numeric(!is.na(meta_sale_date)))
+  
 
 # Vars to test across
 vars <- grep("char_|3435|acs5_median|township_name", names(sf_parcels), value = TRUE) %>%

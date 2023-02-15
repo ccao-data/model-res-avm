@@ -27,30 +27,34 @@ library(DT)
 library(ggplot2)
 library(glue)
 library(kableExtra)
+library(leaflet)
 library(noctua)
 library(plotly)
 library(scales)
+library(sf)
 library(skimr)
 library(stringr)
+library(tableone)
 library(tidyr)
 
 options(knitr.kable.NA = '')
-options(scipen=999)
+options(scipen = 999)
+options(width = 150)
 
 # Connect to Athena
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
-# Data path
+# Data paths
 data_path <- "~/data/shaps.parquet"
+centroids_path <- "~/data/centroids.parquet"
 
 # Ingest training set
 training_data <- read_parquet("~/ccao_res_avm/input/training_data.parquet")
 
 # Declare model IDs
-model_ids <- glue_collapse(
-  c('2023-02-03-vigilant-tayun', '2023-01-31-unruffled-kyra'),
-  sep = "', '"
-  )
+model_ids <- c('2023-02-03-vigilant-tayun', '2023-01-31-unruffled-kyra')
+
+pull_ids <- glue_collapse(model_ids, sep = "', '")
 
 # Ingest shap values
 if (!file.exists(data_path)) {
@@ -61,7 +65,7 @@ if (!file.exists(data_path)) {
 
     SELECT *
       FROM model.shap
-      WHERE run_id IN ('{model_ids}')
+      WHERE run_id IN ('{pull_ids}')
 
   ")
 ) %>%
@@ -69,7 +73,25 @@ if (!file.exists(data_path)) {
   
 }
 
-shaps <- read_parquet(data_path)
+shaps <- read_parquet(data_path) %>%
+  slice_sample(n = 50000)
+
+# Ingest centroids
+if (!file.exists(centroids_path)) {
+  
+  dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  "
+  SELECT pin as meta_pin, lon, lat
+    FROM default.vw_pin_universe
+    WHERE year = '2022'
+  "
+) %>%
+  write_parquet(centroids_path)
+  
+}
+
+centroids <- read_parquet(centroids_path)
 
 ```
 
@@ -127,40 +149,39 @@ class  %>%
 
 ``` {r chars}
 
-shap_tables <-  shaps %>%
+shap_tables <- shaps %>%
   split(.$run_id) %>%
   lapply(function(x) {
     
     x %>%
-    slice_sample(n = 100000) %>%
-  select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
-  skim() %>%
-  rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
-  select(-c(type, n_missing, complete_rate, p25, p75)) %>%
-  rename("histogram" = "hist", "median" = "p50", "min" = "p0", "max" = "p100") %>%
-  mutate(
-    variable = str_replace_all(variable, "_", " "),
-    across(is.numeric, ~ round(.x, 1)),
-    `mean direction` = case_when(
-      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
-      ),
-    `median direction` = case_when(
-      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
-      ),
-    mean = abs(mean),
-    median = abs(median)
-    ) %>%
-  relocate(`mean direction`, .before = mean) %>%
-  relocate(`median direction`, .before = median) %>%
-  datatable(
-    rownames = FALSE,
-    height = "500px",
-    options = list(
-            columnDefs = list(
-              list(className = 'dt-center', targets = c(1:7))
-              )
-            )
-    )
+      select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
+      skim() %>%
+      rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+      select(-c(type, n_missing, complete_rate, p25, p75)) %>%
+      rename("histogram" = "hist", "median" = "p50", "min" = "p0", "max" = "p100") %>%
+      mutate(
+        variable = str_replace_all(variable, "_", " "),
+        across(where(is.numeric), ~ round(.x, 1)),
+        `mean direction` = case_when(
+          mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
+          ),
+        `median direction` = case_when(
+          median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
+          ),
+        mean = abs(mean),
+        median = abs(median)
+        ) %>%
+      relocate(`mean direction`, .before = mean) %>%
+      relocate(`median direction`, .before = median) %>%
+      datatable(
+        rownames = FALSE,
+        height = "500px",
+        options = list(
+                columnDefs = list(
+                  list(className = 'dt-center', targets = c(1:7))
+                  )
+                )
+        )
     
   })
 
@@ -186,4 +207,125 @@ shap_tables[[2]]
 
 :::
 
-## check forward filling
+### Consistency Across Runs
+
+#### Median and Standard Deviation
+
+``` {r}
+
+model_ids %>%
+  lapply(function(x) {
+    
+    shaps %>% filter(run_id == !!x) %>%
+    select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
+    skim() %>%
+    rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+    select(variable, median = p50, sd) %>%
+    mutate(run_id = x)
+    
+  }) %>%
+  bind_rows() %>%
+  pivot_wider(values_from = c(median, sd), names_from = run_id) %>%
+  mutate(
+    variable = str_replace_all(variable, "_", " "),
+    median_difference = .[[2]] - .[[3]],
+    sd_difference = .[[4]] - .[[5]]
+    ) %>%
+  select(1, 2, 3, 6, 4, 5, 7) %>%
+  kable(
+    col.names = c("Feature", rep(c(model_ids, "Difference"), 2))
+  ) %>%
+  kable_styling(
+    "striped"
+  ) %>%
+  add_header_above(c("", "Median" = 3, "Standard Deviation" = 3))
+
+```
+
+#### Standardized Mean Difference
+
+The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
+
+$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
+
+We're looking for SMDs greater than .1 or .05 for sensitive covariates.
+
+
+``` {r}
+
+vars <- names(
+  shaps %>%
+  select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric))
+)
+
+smd_table <- CreateTableOne(
+  vars = vars,
+  strata = "run_id",
+  data = shaps,
+  test = FALSE,
+  includeNA = TRUE
+)
+
+print(smd_table, smd = TRUE)
+
+```
+
+### Outliers
+
+``` {r}
+
+top5 <- shaps %>%
+  select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric), run_id) %>%
+  group_by(run_id) %>%
+  summarise(across(.cols = everything(), ~ median(.x, na.rm = TRUE))) %>%
+  pivot_longer(cols = !run_id, values_to = "median", names_to = "feature") %>%
+  pivot_wider(values_from = "median", names_from = "run_id")
+
+top5 <- top5 %>%
+  filter(feature %in% unique(c(
+       top5 %>%
+         arrange(desc(abs(.[[2]]))) %>%
+         slice_head(n = 5) %>%
+         pull(feature),
+       top5 %>%
+         arrange(desc(abs(.[[3]]))) %>%
+         slice_head(n = 5) %>%
+         pull(feature)
+         ))) %>%
+  pull(feature
+       )
+
+outliers_detect <- function(x) {
+  
+  median <- median(x, na.rm = TRUE)
+  
+  mad <- mad(x, constant = 1, na.rm = TRUE)
+  
+  x < median - 3 * mad | x > median + 3 * mad
+  
+}
+
+top5_outliers <- shaps %>%
+  select(meta_pin, !!top5) %>%
+  mutate(across(!!top5, ~ outliers_detect(.x), .names = "{.col}_outlier")) %>%
+  left_join(centroids) %>%
+  filter(!is.na(lat)) %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326)
+
+temp <- lapply(top5, function(x) {
+  
+  top5_outliers %>% 
+    select(contains(x)) %>%
+    filter(.[[2]])
+  
+})
+
+```
+
+### Spatial Distribution
+
+``` {r}
+
+```
+
+:::
