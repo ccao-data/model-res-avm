@@ -70,6 +70,7 @@ training_data <- dbGetQuery(
       sale.deed_type AS meta_sale_deed_type,
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
+      sale.sale_filter_is_outlier AS sv_is_ptax203_outlier,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
@@ -78,7 +79,7 @@ training_data <- dbGetQuery(
   WHERE (res.meta_year
       BETWEEN '{params$input$min_sale_year}'
       AND '{params$input$max_sale_year}')
-  AND NOT is_multisale
+  AND NOT sale.is_multisale
   ")
 )
 tictoc::toc()
@@ -225,10 +226,11 @@ training_data_w_hie <- training_data %>%
   mutate(
     hie_num_active = replace_na(hie_num_active, 0),
     char_porch = recode(char_porch, "3" = "0")
-  )
+  ) %>%
+  relocate(hie_num_active, .before = meta_cdu)
 
 
-## 4.2. Assessment Data ----------------------------------------------------------
+## 4.2. Assessment Data --------------------------------------------------------
 
 # For assessment data, we want to include ONLY the HIEs that expire in the
 # assessment year
@@ -268,7 +270,8 @@ assessment_data_w_hie <- assessment_data %>%
     hie_num_active = replace_na(hie_num_active, 0),
     char_porch = recode(char_porch, "3" = "0")
   ) %>%
-  rename(hie_num_expired = hie_num_active)
+  rename(hie_num_expired = hie_num_active) %>%
+  relocate(hie_num_expired, .before = meta_cdu)
 
 
 
@@ -278,9 +281,14 @@ assessment_data_w_hie <- assessment_data %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Create an outlier sale flag using a variety of heuristics. See flagging.py for
-# the full list
+# the full list. Also exclude any sales that have a flag on Q10 of the PTAX-203
+# form AND are large statistical outliers
 training_data_w_sv <- training_data_w_hie %>%
-  mutate(meta_sale_price = as.numeric(meta_sale_price)) %>%
+  mutate(
+    meta_sale_price = as.numeric(meta_sale_price),
+    sv_is_ptax203_outlier = as.logical(as.numeric(sv_is_ptax203_outlier))
+  ) %>%
+  # Run Python-based automatic sales validation to identify outliers
   create_stats(as.list(params$input$sale_validation$stat_groups)) %>%
   string_processing() %>%
   iso_forest(
@@ -291,7 +299,28 @@ training_data_w_sv <- training_data_w_hie %>%
     as.list(params$input$sale_validation$dev_bounds),
     as.list(params$input$sale_validation$stat_groups)
   ) %>%
-  select(-(starts_with("sv_") & !sv_is_outlier & !sv_outlier_type))
+  # Combine outliers identified via PTAX-203 with the hueristic-based outliers
+  rename(sv_is_autoval_outlier = sv_is_outlier) %>%
+  mutate(
+    sv_is_autoval_outlier = sv_is_autoval_outlier == "Outlier",
+    sv_is_autoval_outlier = replace_na(sv_is_autoval_outlier, FALSE),
+    sv_is_outlier = sv_is_autoval_outlier | sv_is_ptax203_outlier,
+    sv_outlier_type = ifelse(
+      sv_outlier_type == "Not outlier" & sv_is_ptax203_outlier,
+      "PTAX-203 flag",
+      sv_outlier_type
+    ),
+    sv_outlier_type = replace_na(sv_outlier_type, "Not outlier"),
+    sv_is_outlier = sv_outlier_type != "Not outlier"
+  ) %>%
+  select(
+    -(starts_with("sv_") &
+      !sv_is_ptax203_outlier &
+      !sv_is_autoval_outlier &
+      !sv_is_outlier &
+      !sv_outlier_type
+    )
+  )
 
 
 
@@ -352,7 +381,12 @@ training_data_clean <- training_data_w_sv %>%
 # during CV
 training_data_lagged <- training_data_clean %>%
   # Convert coords to geometry used to calculate weights
-  filter(!is.na(loc_longitude), !is.na(loc_latitude)) %>%
+  filter(
+    !is.na(loc_longitude),
+    !is.na(loc_latitude),
+    !sv_is_outlier,
+    !ind_pin_is_multicard
+  ) %>%
   st_as_sf(
     coords = c("loc_longitude", "loc_latitude"),
     crs = 4326,
@@ -377,9 +411,23 @@ training_data_lagged <- training_data_clean %>%
   st_drop_geometry() %>%
   bind_rows(
     training_data_clean %>%
-      filter(is.na(loc_x_3435) | is.na(loc_y_3435))
+      filter(
+        is.na(loc_longitude) |
+        is.na(loc_latitude) |
+        sv_is_outlier |
+        ind_pin_is_multicard
+      )
   ) %>%
   select(-c(nb, time_interval)) %>%
+  relocate(
+    c(
+      sv_is_ptax203_outlier,
+      sv_is_autoval_outlier,
+      sv_is_outlier,
+      sv_outlier_type
+    ),
+    .after = everything()
+  ) %>%
   write_parquet(paths$input$training$local)
 
 
@@ -414,8 +462,10 @@ sales_data <- training_data_clean %>%
   filter(
     meta_sale_date >= as_date(params$assessment$date) -
       months(params$input$time_split * 3),
-    !ind_pin_is_multicard,
-    !is.na(loc_longitude)
+    !is.na(loc_longitude),
+    !is.na(loc_latitude),
+    !sv_is_outlier,
+    !ind_pin_is_multicard
   ) %>%
   group_by(meta_pin) %>%
   filter(max(meta_sale_date) == meta_sale_date) %>%
@@ -456,7 +506,7 @@ assessment_data_lagged <- assessment_data_clean %>%
   st_drop_geometry() %>%
   bind_rows(
     assessment_data_clean %>%
-      filter(is.na(loc_x_3435) | is.na(loc_y_3435))
+      filter(is.na(loc_longitude) | is.na(loc_latitude))
   ) %>%
   select(-c(nb, meta_sale_price, time_interval)) %>%
   write_parquet(paths$input$assessment$local)

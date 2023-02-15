@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Re-run 2023-01-31-unruffled-kyra with new features but no spatial lags
+  Re-run 2023-02-12-beautiful-antonia with PTAX-203 flagged sales removed 
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -90,7 +90,7 @@ input:
   spatial_lag:
     # Number of nearest neighbors (K) used to calculate spatial lags of both the
     # dependent variable (sale price) and predictors (sqft, year built, etc.)
-    k: 10
+    k: 5
     
     # Standard features to create lags from + the outcome variable
     predictor: [
