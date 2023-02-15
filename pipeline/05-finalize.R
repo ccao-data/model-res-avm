@@ -172,7 +172,7 @@ timings_df <- purrr::map_dfr(timings, read_parquet) %>%
     values_from = elapsed
   ) %>%
   mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) %>%
-  mutate(across(ends_with("_sec_elapsed"), round, 2)) %>%
+  mutate(across(ends_with("_sec_elapsed"), function(x) round(x, 2))) %>%
   write_parquet(paths$output$timing$local)
 
 # Clear any remaining logs from tictoc
