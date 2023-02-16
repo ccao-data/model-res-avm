@@ -77,7 +77,7 @@ temp <- read_parquet(data_path) %>%
   # Join on sales indicator for most recent sale in the last two years -
   # if there is one
   left_join(
-    sales %>%
+    temp <- sales %>%
       filter(
         between(meta_year, time_frame['min'], time_frame['max']) &
           sv_is_outlier == "Not outlier"

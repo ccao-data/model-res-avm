@@ -26,6 +26,7 @@ library(dplyr)
 library(DT)
 library(ggplot2)
 library(glue)
+library(htmltools)
 library(kableExtra)
 library(leaflet)
 library(noctua)
@@ -36,6 +37,7 @@ library(skimr)
 library(stringr)
 library(tableone)
 library(tidyr)
+library(purrr)
 
 options(knitr.kable.NA = '')
 options(scipen = 999)
@@ -73,8 +75,7 @@ if (!file.exists(data_path)) {
   
 }
 
-shaps <- read_parquet(data_path) %>%
-  slice_sample(n = 50000)
+shaps <- read_parquet(data_path)
 
 # Ingest centroids
 if (!file.exists(centroids_path)) {
@@ -270,7 +271,9 @@ print(smd_table, smd = TRUE)
 
 ```
 
-### Outliers
+### Outlier Maps
+
+
 
 ``` {r}
 
@@ -301,13 +304,16 @@ outliers_detect <- function(x) {
   
   mad <- mad(x, constant = 1, na.rm = TRUE)
   
-  x < median - 3 * mad | x > median + 3 * mad
+  x < median - 6 * mad | x > median + 6 * mad
   
 }
 
 top5_outliers <- shaps %>%
-  select(meta_pin, !!top5) %>%
+  mutate(triad = ccao::town_get_triad(township_code)) %>%
+  select(meta_pin, triad, run_id, !!top5) %>%
+  group_by(triad, run_id) %>%
   mutate(across(!!top5, ~ outliers_detect(.x), .names = "{.col}_outlier")) %>%
+  ungroup() %>%
   left_join(centroids) %>%
   filter(!is.na(lat)) %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326)
@@ -315,17 +321,68 @@ top5_outliers <- shaps %>%
 temp <- lapply(top5, function(x) {
   
   top5_outliers %>% 
-    select(contains(x)) %>%
-    filter(.[[2]])
+    select(contains(x), triad, run_id) %>%
+    group_by(triad, run_id) %>%
+    mutate(median = median(.data[[x]], na.rm = TRUE)) %>%
+    ungroup() %>%
+    filter(.[[2]]) %>%
+    mutate(up_low = case_when(.data[[x]] > median ~ "upper", TRUE ~ "lower"))
   
 })
 
+pal <- colorFactor(
+  c("#FFAF00", "#29428D"),
+  domain = c("lower", "upper")
+  )
+
+hug <- mapply(function(data, model) {
+  
+      data %>%
+      filter(run_id == model) %>%
+      leaflet() %>%
+      addProviderTiles('CartoDB.Positron') %>%
+      addCircles(
+        radius = 5,
+        color = ~pal(up_low)
+      ) %>%
+      addLegend("bottomright", pal = pal, values = ~ up_low,
+        title = paste0("Shap Outliers</br>", names(data)[1], "</br>", model),
+        opacity = 1
+      )
+      
+  
+}, rep(temp, 2), c(rep(model_ids[1], length(temp)), rep(model_ids[2], length(temp))), SIMPLIFY = FALSE, USE.NAMES = TRUE)
+
 ```
 
-### Spatial Distribution
+<div line-height = 2>
 
-``` {r}
+:::: {.columns}
 
-```
+::: {.column width="4%"}
 
 :::
+
+::: {.column width="44%"}
+```{r}
+tagList(hug[1:(length(hug)/2)])
+```
+:::
+
+::: {.column width="4%"}
+
+:::
+
+::: {.column width="44%"}
+```{r}
+tagList(hug[(length(hug)/2+1):length(hug)])
+```
+:::
+
+::: {.column width="4%"}
+
+:::
+
+::::
+
+<div/>
