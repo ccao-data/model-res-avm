@@ -249,26 +249,32 @@ if (params$toggle$upload_to_s3) {
       write_parquet(paths$output$parameter_range$s3)
 
     # Clean and unnest the raw parameters data, then write the results to S3
-    read_parquet(paths$output$parameter_raw$local) %>%
-      tidyr::unnest(cols = .metrics) %>%
-      mutate(run_id = run_id) %>%
-      left_join(
-        rename(., notes = .notes) %>%
-          tidyr::unnest(cols = notes) %>%
-          rename(notes = note)
-      ) %>%
-      select(-.notes) %>%
-      rename_with(~ gsub("^\\.", "", .x)) %>%
-      tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
-      relocate(
-        all_of(c(
-          "run_id",
-          "iteration" = "iter",
-          "configuration" = "config", "fold_id" = "id"
-        ))
-      ) %>%
-      relocate(notes, .after = everything()) %>%
-      dplyr::select(-any_of(c("estimator"))) %>%
+    bind_cols(
+      read_parquet(paths$output$parameter_raw$local) %>%
+        tidyr::unnest(cols = .metrics) %>%
+        mutate(run_id = run_id) %>%
+        left_join(
+          rename(., notes = .notes) %>%
+            tidyr::unnest(cols = notes) %>%
+            rename(notes = note)
+        ) %>%
+        select(-.notes) %>%
+        rename_with(~ gsub("^\\.", "", .x)) %>%
+        tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
+        relocate(
+          all_of(c(
+            "run_id",
+            "iteration" = "iter",
+            "configuration" = "config", "fold_id" = "id"
+          ))
+        ) %>%
+        relocate(c(location, type, notes), .after = everything()),
+      read_parquet(paths$output$parameter_raw$local) %>%
+        tidyr::unnest(cols = .extracts) %>%
+        tidyr::unnest(cols = .extracts) %>%
+        dplyr::select(num_iterations = .extracts)
+    ) %>%
+      dplyr::select(-any_of(c("estimator")), -extracts) %>%
       write_parquet(paths$output$parameter_search$s3)
   }
 
