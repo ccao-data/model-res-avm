@@ -134,7 +134,7 @@
       "RemoteRef": "master",
       "RemoteSha": "01f385846ced9fc19bd551ec08a9cf154e27a414",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/ccao",
-      "Hash": "24ac2171602ee03e2d744929aa213846",
+      "Hash": "650dd2a1b987f4865baa6e5ebe8a6ffc",
       "Requirements": [
         "clustMixType",
         "dbscan"
@@ -257,7 +257,7 @@
       "RemoteRef": "master",
       "RemoteSha": "3c9267c27aec95cab155012279d737e2a667df43",
       "Remotes": "gitlab::ccao-data-science---modeling/packages/assessr",
-      "Hash": "92e060c63d8dd38ee43ae11514bc8469",
+      "Hash": "30776f7fe445a02f045ec31ec02d05ec",
       "Requirements": [
         "assessr",
         "dplyr",
@@ -1011,20 +1011,20 @@
     },
     "paws.analytics": {
       "Package": "paws.analytics",
-      "Version": "0.1.12",
+      "Version": "0.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "cb8bfd9ff536e7c45a68cdaa8a16785d",
+      "Hash": "cde4b7e77dba080d60160959c7076fe3",
       "Requirements": [
         "paws.common"
       ]
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
-      "Version": "0.1.13",
+      "Version": "0.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "59c31bec4bf93502a7de2b0027519b1c",
+      "Hash": "a8091ac6c39991cec0249a9dde11b9ad",
       "Requirements": [
         "paws.common"
       ]

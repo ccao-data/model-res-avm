@@ -41,12 +41,13 @@ library(tidyr)
 library(tools)
 
 options(width = 120)
+options(knitr.kable.NA = '')
 
 # Connect to Athena
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
 # Declare time frame for study
-time_frame <- c("min" = 2021, "max" = 2022)
+time_frame <- c("min" = "2021", "max" = "2022")
 
 # Data path
 data_path <- "~/data/res_parcels.parquet"
@@ -73,14 +74,14 @@ if (!file.exists(data_path)) {
   
 }
 
-temp <- read_parquet(data_path) %>%
+sf_parcels <- read_parquet(data_path) %>%
   # Join on sales indicator for most recent sale in the last two years -
   # if there is one
   left_join(
-    temp <- sales %>%
+    sales %>%
       filter(
-        between(meta_year, time_frame['min'], time_frame['max']) &
-          sv_is_outlier == "Not outlier"
+        dplyr::between(meta_year, time_frame['min'], time_frame['max']) &
+          sv_is_outlier == FALSE
         ) %>%
       select(meta_pin, meta_sale_date, meta_year) %>%
       group_by(meta_pin) %>%
@@ -609,7 +610,7 @@ ggplot(
 
 temp <- ggplot(
   sales %>%
-    filter(sv_is_outlier == "Not outlier" & meta_year >= '2019') %>%
+    filter(sv_is_outlier == FALSE & meta_year >= '2019') %>%
     group_by(meta_year, meta_township_name, meta_triad_name) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     group_by(meta_township_name, meta_triad_name) %>%
@@ -636,7 +637,7 @@ ggplotly(temp)
 ``` {r}
 
 temp <- sales %>%
-  filter(sv_is_outlier == "Not outlier") %>%
+  filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
     group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
   summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
@@ -734,13 +735,21 @@ ggplot(
     geom_text(aes(
       label = count
       ), vjust = -0.5) +
-    ylim(0, 1750) +
+    ylim(0, 3300) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust=1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
     )
+
+sales %>%
+  group_by(meta_year, sv_outlier_type) %>%
+  summarise(n = n()) %>%
+  rename(Year = meta_year) %>%
+  pivot_wider(id_cols = Year, names_from = sv_outlier_type, values_from = n) %>%
+  kable() %>%
+  kable_styling("striped")
 
 ```
 
@@ -751,7 +760,7 @@ ggplot(
 ggplot(
   sales %>%
     group_by(meta_class) %>%
-  summarise(percent = mean(case_when(sv_is_outlier == "Outlier" ~ 1, TRUE ~ 0))) %>%
+  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = meta_class, y = percent)
   ) +
@@ -776,7 +785,7 @@ ggplot(
 ggplot(
   sales %>%
     group_by(meta_township_name) %>%
-  summarise(percent = mean(case_when(sv_is_outlier == "Outlier" ~ 1, TRUE ~ 0))) %>%
+  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = reorder(meta_township_name, -percent), y = percent)
   ) +
@@ -848,7 +857,7 @@ ggplot(
       values_from = median_sale_price
       ) %>%
     mutate(
-      percent = Outlier / `Not outlier`,
+      percent = `TRUE` / `FALSE`,
       above_below = ifelse(percent > 1, "Outlier > Not Outlier", "Not Outlier > Outlier"),
       above_below = factor(above_below, levels = c("Outlier > Not Outlier", "Not Outlier > Outlier"))
       ),
@@ -946,7 +955,7 @@ ggplot(
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
     group_by(decile) %>%
-  summarise(percent = mean(case_when(sv_is_outlier == "Outlier" ~ 1, TRUE ~ 0))) %>%
+  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = decile, y = percent)
   ) +
