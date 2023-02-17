@@ -14,9 +14,7 @@ library(ccao)
 library(dplyr)
 library(here)
 library(lightsnip)
-library(purrr)
 library(recipes)
-library(stringr)
 library(tictoc)
 library(tidyr)
 library(yaml)
@@ -113,7 +111,7 @@ assessment_data_mc <- assessment_data_pred %>%
 ## 3.2. Townhomes --------------------------------------------------------------
 
 # For class 210 and 295s, we want all units in the same complex to
-# have the same value (assuming they are identical)
+# have the same value (assuming they are nearly identical)
 
 # Load townhome/rowhome complex IDs
 complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
@@ -291,7 +289,7 @@ assessment_data_pin <- assessment_data_merged %>%
           "loc_property_", "loc_cook_", "loc_chicago_", "loc_ward_",
           "loc_census", "loc_school_", "prior_", "ind_"
         )),
-        
+
         # Keep HIE flag
         hie_num_expired,
 
@@ -306,10 +304,8 @@ assessment_data_pin <- assessment_data_merged %>%
     char_total_bldg_sf = sum(char_bldg_sf)
   ) %>%
   ungroup() %>%
-  
   # Overwrite missing land values (only a few PINs)
   mutate(char_land_sf = replace_na(char_land_sf, 0)) %>%
-  
   # Make a flag for any vital missing characteristics
   bind_cols(
     assessment_data_merged %>%
@@ -346,11 +342,11 @@ assessment_data_pin_2 <- assessment_data_pin %>%
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round *
           params$pv$land_pct_of_total_cap) ~
-      pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
+        pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
       char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round *
         params$pv$land_pct_of_total_cap ~
-      pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
+        pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
     )),
     pred_pin_uncapped_fmv_land = case_when(
@@ -380,7 +376,7 @@ assessment_data_pin_2 <- assessment_data_pin %>%
 
 ## 5.4. Add Flags --------------------------------------------------------------
 
-# Flags are used for identifying PINs for potential desktop review
+# Flags are used to identify PINs for potential desktop review
 assessment_data_pin_final <- assessment_data_pin_2 %>%
   # Rename existing indicators to flags
   rename_with(~ gsub("ind_", "flag_", .x), starts_with("ind_")) %>%

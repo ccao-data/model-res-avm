@@ -14,7 +14,6 @@ library(here)
 library(lubridate)
 library(paws.application.integration)
 library(purrr)
-library(stringr)
 library(tidyr)
 library(tune)
 library(yaml)
@@ -187,7 +186,6 @@ tictoc::tic.clearlog()
 
 # Only upload files if explicitly enabled
 if (params$toggle$upload_to_s3) {
-
   # Initialize a dictionary of paths AND S3 URIs specific to the run ID and year
   paths <- model_file_dict(
     run_id = run_id,
@@ -235,7 +233,6 @@ if (params$toggle$upload_to_s3) {
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame
   if (cv_enable) {
-
     # Upload the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
       paths$output$parameter_raw$local,
@@ -374,7 +371,6 @@ if (params$toggle$upload_to_s3) {
 # This will run a Glue crawler to update schemas and send an email to any SNS
 # subscribers. Only run when actually uploading
 if (params$toggle$upload_to_s3) {
-
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # any new partitions
   if (run_type == "full") {

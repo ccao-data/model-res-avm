@@ -9,7 +9,6 @@ options(java.parameters = "-Xmx10g")
 library(arrow)
 library(ccao)
 library(DBI)
-library(data.table)
 library(dplyr)
 library(glue)
 library(here)
@@ -299,7 +298,7 @@ training_data_w_sv <- training_data_w_hie %>%
     as.list(params$input$sale_validation$dev_bounds),
     as.list(params$input$sale_validation$stat_groups)
   ) %>%
-  # Combine outliers identified via PTAX-203 with the hueristic-based outliers
+  # Combine outliers identified via PTAX-203 with the heuristic-based outliers
   rename(sv_is_autoval_outlier = sv_is_outlier) %>%
   mutate(
     sv_is_autoval_outlier = sv_is_autoval_outlier == "Outlier",
@@ -334,11 +333,11 @@ training_data_w_sv <- training_data_w_hie %>%
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, filling, etc. is handled via Tidymodels recipes
 training_data_clean <- training_data_w_sv %>%
-  # Dump any misrecorded sale dates
+  # Dump any mis-recorded sale dates
   filter(meta_sale_date >= make_date(params$input$min_sale_year)) %>%
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
-  # them to NA (useful since there are a lot of misrecorded variables)
+  # them to NA (useful since there are a lot of mis-recorded variables)
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
@@ -353,18 +352,15 @@ training_data_clean <- training_data_w_sv %>%
     time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
     time_sale_year = as.numeric(year(meta_sale_date)),
     time_sale_day = as.numeric(time_interval %/% days(1)),
-
-    # Get components of dates for to correct for seasonality and other factors
+    # Get components of dates to correct for seasonality and other factors
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
     time_sale_month_of_year = as.integer(month(meta_sale_date)),
     time_sale_day_of_year = as.integer(yday(meta_sale_date)),
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
-    
     # Time window to use for cross-validation and calculating spatial lags
     time_split = time_interval %/% months(params$input$time_split),
-    
     # Collapse the first and last splits into their respective neighbors.
     # This is done because the first and last splits tend to be very small
     # and therefore potentially unrepresentative of the larger data set
@@ -380,7 +376,7 @@ training_data_clean <- training_data_w_sv %>%
 # partitioning ensures that no training data leaks into the validation set
 # during CV
 training_data_lagged <- training_data_clean %>%
-  # Convert coords to geometry used to calculate weights
+  # Convert coordinates to geometry used to calculate weights
   filter(
     !is.na(loc_longitude),
     !is.na(loc_latitude),
@@ -398,13 +394,15 @@ training_data_lagged <- training_data_clean %>%
   mutate(nb = st_knn(geometry, k = params$input$spatial_lag$k)) %>%
   group_split() %>%
   map_dfr(
-    function(x) mutate(x, across(
-      all_of(params$input$spatial_lag$predictor),
-      ~ purrr::map_dbl(nb, function(idx, var = cur_column()) {
-        mean(x[[var]][idx])
-      }),
-      .names = "lag_{.col}" 
-    ))
+    function(x) {
+      mutate(x, across(
+        all_of(params$input$spatial_lag$predictor),
+        ~ purrr::map_dbl(nb, function(idx, var = cur_column()) {
+          mean(x[[var]][idx])
+        }),
+        .names = "lag_{.col}"
+      ))
+    }
   ) %>%
   # Clean up output, bind rows that were missing lat/lon, and write to file
   ungroup() %>%
@@ -413,9 +411,9 @@ training_data_lagged <- training_data_clean %>%
     training_data_clean %>%
       filter(
         is.na(loc_longitude) |
-        is.na(loc_latitude) |
-        sv_is_outlier |
-        ind_pin_is_multicard
+          is.na(loc_latitude) |
+          sv_is_outlier |
+          ind_pin_is_multicard
       )
   ) %>%
   select(-c(nb, time_interval)) %>%
@@ -433,7 +431,7 @@ training_data_lagged <- training_data_clean %>%
 
 ## 6.2. Assessment Data --------------------------------------------------------
 
-# Clean the assessment data. This the target data that the trained model is
+# Clean the assessment data. This is the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
 # time vars and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
@@ -457,7 +455,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
   )
 
 # Grab the most recent sale within the last 3 split periods for each PIN. This
-# will be the search space for the spatial lag for assessment data
+# will be the search space for the spatial lag variables for assessment data
 sales_data <- training_data_clean %>%
   filter(
     meta_sale_date >= as_date(params$assessment$date) -
@@ -476,7 +474,7 @@ sales_data <- training_data_clean %>%
     remove = TRUE
   ) %>%
   select(
-    meta_pin, meta_year, meta_sale_price, 
+    meta_pin, meta_year, meta_sale_price,
     all_of(params$input$spatial_lag$predictor),
   )
 
@@ -495,9 +493,11 @@ assessment_data_lagged <- assessment_data_clean %>%
     meta_sale_price = NA_real_,
     across(
       all_of(params$input$spatial_lag$predictor),
-      function(x) purrr::map_dbl(nb, function(idx, var = dplyr::cur_column()) {
-        mean(sales_data[[var]][idx])
-      }),
+      function(x) {
+        purrr::map_dbl(nb, function(idx, var = dplyr::cur_column()) {
+          mean(sales_data[[var]][idx])
+        })
+      },
       .names = "lag_{.col}"
     )
   ) %>%
@@ -543,7 +543,6 @@ complex_id_temp <- assessment_data_clean %>%
       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
       is.na(char_yrblt.x)
     ),
-
     # Units must be within 250 feet of other units
     ((loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
       loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
@@ -565,7 +564,8 @@ complex_id_temp <- assessment_data_clean %>%
   mutate(ind = as.character(ind)) %>%
   rename(meta_pin = ind, meta_complex_id = values)
 
-# Attach original PIN data and fill any missing with a sequential integer
+# Attach original PIN data and fill any missing complexes with
+# a sequential integer
 complex_id_data <- assessment_data_clean %>%
   filter(meta_class %in% c("210", "295")) %>%
   distinct(meta_pin, meta_township_code, meta_class) %>%
@@ -592,5 +592,6 @@ land_nbhd_rate_data %>%
 # Reminder to upload to DVC store
 message(
   "Be sure to add updated input data to DVC and finalized data to git LFS!\n",
-  "See https://dvc.org/doc/start/data-and-model-versioning for more information"
+  "See https://dvc.org/doc/start/data-management/data-versioning ",
+  "for more information"
 )
