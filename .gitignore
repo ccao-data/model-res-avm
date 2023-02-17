@@ -29,5 +29,5 @@ pipenv
 # Reporting files
 reports/*
 !/reports/balance_test/balance_test.qmd
-!/reports/qc_features/qc_features.qmd
+!/reports/shap_summary/shap_summary.qmd
 
