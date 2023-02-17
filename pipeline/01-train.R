@@ -230,12 +230,14 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mae, mape),
+    metrics = metric_set(mape, mae, rmse),
     control = control_bayes(
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
       no_improve = params$cv$no_improve,
-      extract = extract_num_iterations,
+      extract = function(x) extract_num_iterations(
+        x, params$model$parameter$validation_metric
+      ),
       seed = params$model$seed
     )
   )

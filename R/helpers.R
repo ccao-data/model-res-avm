@@ -66,9 +66,9 @@ model_delete_run <- function(run_id, year) {
 
 # Extract the number of iterations that occurred before early stopping during
 # cross-validation. See the tune::tune_bayes() argument `extract`
-extract_num_iterations <- function(x) {
+extract_num_iterations <- function(x, metric) {
   fit <- workflows::extract_fit_engine(x)
-  evals <- fit$record_evals$validation$rmse$eval
+  evals <- fit$record_evals$validation[[metric]]$eval
   length(evals)
 }
 
