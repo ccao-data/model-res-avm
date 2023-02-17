@@ -1,10 +1,11 @@
 ---
-title: "Input QC and Feature Investigation"
+title: "Shap Value Summary"
 execute:
   echo: false
   warning: false
 format:
   html:
+    embed-resources: true
     page-layout: full
     toc: true
     toc_float: true
@@ -54,7 +55,7 @@ centroids_path <- "~/data/centroids.parquet"
 training_data <- read_parquet("~/ccao_res_avm/input/training_data.parquet")
 
 # Declare model IDs
-model_ids <- c('2023-02-03-vigilant-tayun', '2023-01-31-unruffled-kyra')
+model_ids <- c('2023-02-13-beautiful-antonia', '2023-01-31-unruffled-kyra')
 
 pull_ids <- glue_collapse(model_ids, sep = "', '")
 
@@ -346,7 +347,7 @@ hug <- mapply(function(data, model) {
         color = ~pal(up_low)
       ) %>%
       addLegend("bottomright", pal = pal, values = ~ up_low,
-        title = paste0("Shap Outliers</br>", names(data)[1], "</br>", model),
+        title = paste0(names(data)[1], "</br>", model),
         opacity = 1
       )
       
