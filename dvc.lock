@@ -83,26 +83,26 @@ stages:
           initial_set: 25
           max_iterations: 70
           no_improve: 25
-          best_metric: rmse
+          best_metric: mape
         input.time_split: 9
         model.engine: lightgbm
         model.hyperparameter:
           default:
-            num_leaves: 1363
-            add_to_linked_depth: 2
-            feature_fraction: 0.475
-            min_gain_to_split: 3.73
-            min_data_in_leaf: 7
-            max_cat_threshold: 195
-            min_data_per_group: 80
-            cat_smooth: 40.44
-            cat_l2: 0.83
-            lambda_l1: 0.105
-            lambda_l2: 0.025
+            num_leaves: 655
+            add_to_linked_depth: 7
+            feature_fraction: 0.329
+            min_gain_to_split: 2.2e-12
+            min_data_in_leaf: 125
+            max_cat_threshold: 228
+            min_data_per_group: 27
+            cat_smooth: 41.44
+            cat_l2: 0.001
+            lambda_l1: 7.78e-07
+            lambda_l2: 0.00449
           range:
             num_leaves:
             - 50
-            - 2500
+            - 2000
             add_to_linked_depth:
             - 1
             - 7
@@ -110,8 +110,8 @@ stages:
             - 0.3
             - 0.9
             min_gain_to_split:
-            - -4.0
-            - 1.5
+            - -13.0
+            - -8.0
             min_data_in_leaf:
             - 2
             - 200
@@ -125,21 +125,21 @@ stages:
             - 10.0
             - 100.0
             cat_l2:
-            - -3
-            - 1
+            - -8
+            - -2
             lambda_l1:
-            - -3
-            - 1
+            - -8
+            - -2
             lambda_l2:
-            - -3
-            - 1
-        model.objective: rmse
+            - -8
+            - -2
+        model.objective: mape
         model.parameter:
           num_iterations: 1000
-          learning_rate: 0.03
+          learning_rate: 0.05
           validation_prop: 0.1
           validation_type: recent
-          validation_metric: rmse
+          validation_metric: mape
           link_max_depth: true
           max_bin: 512
           stop_iter: 30
@@ -291,10 +291,10 @@ stages:
         toggle.cv_enable: false
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: bdd84668c0328738eef5498df68cfd19
+      md5: 2fda3b09d932ad9b076716f53e9fe87d
       size: 2865
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 64151b64a123322edf97812c6ef68664
+      md5: 690f002af1e52d6b16414837019fef79
       size: 8508
     - path: output/parameter_range/model_parameter_range.parquet
       md5: f0b60caef60f8d11d1d582256677912b
@@ -303,11 +303,11 @@ stages:
       md5: f0b60caef60f8d11d1d582256677912b
       size: 696
     - path: output/test_card/model_test_card.parquet
-      md5: 78386fa96276a240c90260e7ddb0b27f
-      size: 2019525
+      md5: 5d449edc7e0b0d137114f98ed04e7d65
+      size: 2019509
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: c572125ab15affefc9ef5e3738bded45
-      size: 36022513
+      md5: 43b301fac7b801d6debc76ce1de2e08a
+      size: 18985776
     - path: output/workflow/recipe/model_workflow_recipe.rds
       md5: f4bfb25f7e24ed6da5571517b882c4d5
       size: 2324918
@@ -315,11 +315,11 @@ stages:
     cmd: Rscript pipeline/02-assess.R
     deps:
     - path: input/assessment_data.parquet
-      md5: ece4faef69183d560335557395f73c7e
-      size: 320633945
+      md5: 6468427eb5f849ef6405e21d221e4a69
+      size: 317984434
     - path: input/complex_id_data.parquet
-      md5: 82126d1ba678fda72e000fcdeffdc18e
-      size: 720433
+      md5: d6e02a0cbce6f8ecc03847091d2efdcb
+      size: 720429
     - path: input/land_nbhd_rate_data.parquet
       md5: 7bcbdda4239f4dffb9122002ee663ddf
       size: 1293
@@ -327,19 +327,19 @@ stages:
       md5: 5128757c64eabe301358b1d41f54b2d9
       size: 1754
     - path: input/training_data.parquet
-      md5: 270e95597e16d6afd8e97a581c62e99e
-      size: 157064212
+      md5: 15f1f0176fba8a22cb2024d7911be8b7
+      size: 156162796
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 9425c43d7a4a1f4ea40e7e07180c336d
-      size: 36929606
+      md5: 43b301fac7b801d6debc76ce1de2e08a
+      size: 18985776
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: eb87f2a6324f7615c4c9b3003919b1d4
-      size: 2328880
+      md5: f4bfb25f7e24ed6da5571517b882c4d5
+      size: 2324918
     params:
       params.yaml:
         assessment:
           year: '2023'
-          date: '2022-06-01'
+          date: '2023-01-01'
           triad: south
           group: residential
           data_year: '2022'
@@ -467,23 +467,23 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 79049508bdab49a96b712f6a062da1a4
-      size: 221906854
+      md5: 4d1183d2c6fa0e5775fcc60758906d56
+      size: 221829574
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 8d65d303541ed7ddab8e39e7e35524e0
-      size: 94064874
+      md5: abeab89903d7a70bd2a2a56d3b884508
+      size: 93818541
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: bc884a3e80d87c8401d9466beeca4e40
+      md5: 5068bd74f32b056050f83f96bada0af5
       size: 2886
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 8d65d303541ed7ddab8e39e7e35524e0
-      size: 94064874
+      md5: abeab89903d7a70bd2a2a56d3b884508
+      size: 93818541
     - path: output/test_card/model_test_card.parquet
-      md5: 7be4f7a76a7eb7167c8c4afa0daa325a
-      size: 2023428
+      md5: 5d449edc7e0b0d137114f98ed04e7d65
+      size: 2019509
     params:
       params.yaml:
         assessment.data_year: '2022'
@@ -501,32 +501,32 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 7f2ec9460abe254819c20fdc3be47b7e
-      size: 2921
+      md5: d45332f0b16a1d182675c2c97e8ed785
+      size: 2914
     - path: output/performance/model_performance_assessment.parquet
-      md5: a277d30d2eed203f180b6e86c727a377
-      size: 11939438
+      md5: 0991b0f1baf27afdd40a8b738dd769e5
+      size: 11965522
     - path: output/performance/model_performance_test.parquet
-      md5: f6646069358df7a7e41136eee359701e
-      size: 8805106
+      md5: 5e322be4d5f1bd7a0cb7cbfe0a83e8cc
+      size: 8802456
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 7a95f6dcff056b1d1fd1829cb769497d
-      size: 4636740
+      md5: 979eaaf015bae851376b52bbb0dede47
+      size: 4663209
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: febb771f4575da6e1305c770ef8f7ecc
-      size: 5137475
+      md5: bfcbf136b99c08fb9e6c1fb4df8f2298
+      size: 5117521
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
     - path: input/assessment_data.parquet
-      md5: 8cf6728816efec36a151ea4ee5076177
-      size: 319652602
+      md5: 6468427eb5f849ef6405e21d221e4a69
+      size: 317984434
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 0da959f1005f233c7dc6329b6afd4189
-      size: 53896034
+      md5: 43b301fac7b801d6debc76ce1de2e08a
+      size: 18985776
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 4978dffc1e006c7c64e86dae8b29c95b
-      size: 2328882
+      md5: f4bfb25f7e24ed6da5571517b882c4d5
+      size: 2324918
     params:
       params.yaml:
         model.predictor.all:
@@ -629,34 +629,34 @@ stages:
         - time_sale_post_covid
     outs:
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 9b606d24d5f170d5d94e8134089be809
-      size: 2935
+      md5: 700e0edb775303b00e3ec2a5daa073c3
+      size: 2928
     - path: output/shap/model_shap.parquet
-      md5: 64d0401d1d90a1e78fc0f0b8b83fa6ab
-      size: 891200556
+      md5: 7115bf1c5c0d36448735628031fd5132
+      size: 891132562
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 3790cc0f998843b67c723363e07ba0ee
-      size: 221888539
+      md5: 4d1183d2c6fa0e5775fcc60758906d56
+      size: 221829574
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 0e87369ce08c10c31a118ead1df5ffa9
-      size: 94095587
+      md5: abeab89903d7a70bd2a2a56d3b884508
+      size: 93818541
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 794f2b1fcceb0466deb45b1823957689
+      md5: 5068bd74f32b056050f83f96bada0af5
       size: 2886
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 3b97975bdf504e02fbc73335d34e708e
-      size: 2921
+      md5: d45332f0b16a1d182675c2c97e8ed785
+      size: 2914
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 9b606d24d5f170d5d94e8134089be809
-      size: 2935
+      md5: 700e0edb775303b00e3ec2a5daa073c3
+      size: 2928
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 9b596efccd8bb2351f15ccb4707cf951
+      md5: 2fda3b09d932ad9b076716f53e9fe87d
       size: 2865
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: f6b698323e80aaac2c31db2759a39a65
+      md5: 690f002af1e52d6b16414837019fef79
       size: 8508
     - path: output/parameter_range/model_parameter_range.parquet
       md5: f0b60caef60f8d11d1d582256677912b
@@ -665,29 +665,29 @@ stages:
       md5: f0b60caef60f8d11d1d582256677912b
       size: 696
     - path: output/performance/model_performance_assessment.parquet
-      md5: 3024d525300508266121746151d38307
-      size: 11939422
+      md5: 0991b0f1baf27afdd40a8b738dd769e5
+      size: 11965522
     - path: output/performance/model_performance_test.parquet
-      md5: 813eb45c806939e7593dc113b1dd0ae1
-      size: 8803453
+      md5: 5e322be4d5f1bd7a0cb7cbfe0a83e8cc
+      size: 8802456
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 5e9e9de70d1d0f1c4c120a5d4828854c
-      size: 4635951
+      md5: 979eaaf015bae851376b52bbb0dede47
+      size: 4663209
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: a3d4ce228d450b4a7a2f780a87d4fbca
-      size: 5129808
+      md5: bfcbf136b99c08fb9e6c1fb4df8f2298
+      size: 5117521
     - path: output/shap/model_shap.parquet
-      md5: 64d0401d1d90a1e78fc0f0b8b83fa6ab
-      size: 891200556
+      md5: 7115bf1c5c0d36448735628031fd5132
+      size: 891132562
     - path: output/test_card/model_test_card.parquet
-      md5: 156ad5bc3927ce62ea0c84e4df4fc276
-      size: 2024926
+      md5: 5d449edc7e0b0d137114f98ed04e7d65
+      size: 2019509
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 0da959f1005f233c7dc6329b6afd4189
-      size: 53896034
+      md5: 43b301fac7b801d6debc76ce1de2e08a
+      size: 18985776
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: 4978dffc1e006c7c64e86dae8b29c95b
-      size: 2328882
+      md5: f4bfb25f7e24ed6da5571517b882c4d5
+      size: 2324918
     params:
       params.yaml:
         cv:
@@ -695,7 +695,7 @@ stages:
           initial_set: 25
           max_iterations: 70
           no_improve: 25
-          best_metric: rmse
+          best_metric: mape
         input:
           min_sale_year: '2014'
           max_sale_year: '2022'
@@ -715,7 +715,7 @@ stages:
             - 2
             - 3
           spatial_lag:
-            k: 10
+            k: 5
             predictor:
             - meta_sale_price
             - char_bldg_sf
@@ -742,7 +742,7 @@ stages:
               dist_ft: 250
         model:
           engine: lightgbm
-          objective: rmse
+          objective: mape
           seed: 2023
           deterministic: true
           force_row_wise: true
@@ -880,31 +880,31 @@ stages:
             - meta_card_num
             - meta_sale_document_num
           parameter:
-            num_iterations: 1500
-            learning_rate: 0.03
+            num_iterations: 1000
+            learning_rate: 0.05
             validation_prop: 0.1
             validation_type: recent
-            validation_metric: rmse
+            validation_metric: mape
             link_max_depth: true
             max_bin: 512
             stop_iter: 30
           hyperparameter:
             default:
-              num_leaves: 1363
-              add_to_linked_depth: 2
-              feature_fraction: 0.475
-              min_gain_to_split: 3.73
-              min_data_in_leaf: 7
-              max_cat_threshold: 195
-              min_data_per_group: 80
-              cat_smooth: 40.44
-              cat_l2: 0.83
-              lambda_l1: 0.105
-              lambda_l2: 0.025
+              num_leaves: 655
+              add_to_linked_depth: 7
+              feature_fraction: 0.329
+              min_gain_to_split: 2.2e-12
+              min_data_in_leaf: 125
+              max_cat_threshold: 228
+              min_data_per_group: 27
+              cat_smooth: 41.44
+              cat_l2: 0.001
+              lambda_l1: 7.78e-07
+              lambda_l2: 0.00449
             range:
               num_leaves:
               - 50
-              - 2500
+              - 2000
               add_to_linked_depth:
               - 1
               - 7
@@ -912,8 +912,8 @@ stages:
               - 0.3
               - 0.9
               min_gain_to_split:
-              - -4.0
-              - 1.5
+              - -13.0
+              - -8.0
               min_data_in_leaf:
               - 2
               - 200
@@ -927,14 +927,14 @@ stages:
               - 10.0
               - 100.0
               cat_l2:
-              - -3
-              - 1
+              - -8
+              - -2
               lambda_l1:
-              - -3
-              - 1
+              - -8
+              - -2
               lambda_l2:
-              - -3
-              - 1
+              - -8
+              - -2
         pv:
           multicard_yoy_cap: 2.0
           land_pct_of_total_cap: 0.5
@@ -959,19 +959,19 @@ stages:
           - 3
           - 5
           - 10
-        run_note: "Re-run 2023-01-31-unruffled-kyra with new features but no spatial\
-          \ lags\n"
+        run_note: "Manual run with MAPE as the objective function for early stopping,\
+          \ validation, and training\n"
         run_type: full
         toggle:
           cv_enable: false
           upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
-      md5: d1258abfdd620d5868a54d0bd8796a35
-      size: 23590
+      md5: 000e21356c73bf8b8e0bad3a6e91597f
+      size: 23703
     - path: output/timing/model_timing.parquet
-      md5: 27bc0a19934902c1bde89796043140ba
-      size: 5264
+      md5: 7c9500a51f57bc8a01872dfe5141557e
+      size: 5243
   export:
     cmd: Rscript pipeline/06-export.R
     params:
