@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Back to GBDT and RMSE. Full CV with low learning rate. Drop some of the least
-  important vars. Widen hyperparameter range
+  Replicate params from 2023-02-21-silly-billy with higher max_iterations
+  and max_bin
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -316,7 +316,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
     # When early stopping is enabled, num_iterations is effectively the MAX
     # number of iterations
-    num_iterations: 2000
+    num_iterations: 3000
     learning_rate: 0.01
     
     # For CV only, proportion of the training data to hold out for use in 
@@ -334,7 +334,7 @@ model:
     
     # Maximum number of bins for discretizing continuous features. Lower uses
     # less memory and speeds up training
-    max_bin: 128
+    max_bin: 1024
     
     # During CV, the number of iterations to go without improvement before
     # stopping training
@@ -344,17 +344,17 @@ model:
     # Default set of hyperparameters to use if CV is not enabled. See docs for
     # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     default:
-      num_leaves: 1363
+      num_leaves: 456
       add_to_linked_depth: 2
-      feature_fraction: 0.475
-      min_gain_to_split: 3.73
-      min_data_in_leaf: 7
-      max_cat_threshold: 195
-      min_data_per_group: 80
-      cat_smooth: 40.44
-      cat_l2: 0.83
-      lambda_l1: 0.105
-      lambda_l2: 0.025
+      feature_fraction: 0.492
+      min_gain_to_split: 2.117
+      min_data_in_leaf: 39
+      max_cat_threshold: 173
+      min_data_per_group: 53
+      cat_smooth: 15.98
+      cat_l2: 0.562
+      lambda_l1: 0.135
+      lambda_l2: 0.114
  
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
