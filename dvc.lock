@@ -83,26 +83,26 @@ stages:
           initial_set: 25
           max_iterations: 70
           no_improve: 25
-          best_metric: mape
+          best_metric: rmse
         input.time_split: 9
         model.engine: lightgbm
         model.hyperparameter:
           default:
-            num_leaves: 655
-            add_to_linked_depth: 7
-            feature_fraction: 0.329
-            min_gain_to_split: 2.2e-12
-            min_data_in_leaf: 125
-            max_cat_threshold: 228
-            min_data_per_group: 27
-            cat_smooth: 41.44
-            cat_l2: 0.001
-            lambda_l1: 7.78e-07
-            lambda_l2: 0.00449
+            num_leaves: 2300
+            add_to_linked_depth: 2
+            feature_fraction: 0.475
+            min_gain_to_split: 4.75
+            min_data_in_leaf: 7
+            max_cat_threshold: 195
+            min_data_per_group: 80
+            cat_smooth: 40.44
+            cat_l2: 0.83
+            lambda_l1: 0.105
+            lambda_l2: 0.025
           range:
             num_leaves:
             - 50
-            - 2000
+            - 2500
             add_to_linked_depth:
             - 1
             - 7
@@ -110,8 +110,8 @@ stages:
             - 0.3
             - 0.9
             min_gain_to_split:
-            - -13.0
-            - -8.0
+            - -4.0
+            - 1.5
             min_data_in_leaf:
             - 2
             - 200
@@ -125,21 +125,25 @@ stages:
             - 10.0
             - 100.0
             cat_l2:
-            - -8
-            - -2
+            - -3
+            - 1
             lambda_l1:
-            - -8
-            - -2
+            - -3
+            - 1
             lambda_l2:
-            - -8
-            - -2
-        model.objective: mape
+            - -3
+            - 1
+        model.objective: rmse
         model.parameter:
-          num_iterations: 1000
-          learning_rate: 0.05
-          validation_prop: 0.1
+          boosting: dart
+          dart_drop_rate: 0.1
+          dart_max_drop: 50
+          dart_skip_drop: 0.5
+          num_iterations: 2000
+          learning_rate: 0.03
+          validation_prop: 0.0
           validation_type: recent
-          validation_metric: mape
+          validation_metric: rmse
           link_max_depth: true
           max_bin: 512
           stop_iter: 30
@@ -291,11 +295,11 @@ stages:
         toggle.cv_enable: false
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 2fda3b09d932ad9b076716f53e9fe87d
-      size: 2865
+      md5: 9f85f2c4a842ce4c9ebf1f9dfa43224b
+      size: 2872
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 690f002af1e52d6b16414837019fef79
-      size: 8508
+      md5: 48f077f6def0e2f5e2db73b833e94ca1
+      size: 9981
     - path: output/parameter_range/model_parameter_range.parquet
       md5: f0b60caef60f8d11d1d582256677912b
       size: 696
@@ -303,11 +307,11 @@ stages:
       md5: f0b60caef60f8d11d1d582256677912b
       size: 696
     - path: output/test_card/model_test_card.parquet
-      md5: 5d449edc7e0b0d137114f98ed04e7d65
-      size: 2019509
+      md5: f2d84694e6be92940f1e5738689b13c8
+      size: 2019525
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 43b301fac7b801d6debc76ce1de2e08a
-      size: 18985776
+      md5: 03bac7ba805523d152e8367c3b0d510c
+      size: 163093471
     - path: output/workflow/recipe/model_workflow_recipe.rds
       md5: f4bfb25f7e24ed6da5571517b882c4d5
       size: 2324918
@@ -330,8 +334,8 @@ stages:
       md5: 15f1f0176fba8a22cb2024d7911be8b7
       size: 156162796
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 43b301fac7b801d6debc76ce1de2e08a
-      size: 18985776
+      md5: 03bac7ba805523d152e8367c3b0d510c
+      size: 163093471
     - path: output/workflow/recipe/model_workflow_recipe.rds
       md5: f4bfb25f7e24ed6da5571517b882c4d5
       size: 2324918
@@ -467,23 +471,23 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: 4d1183d2c6fa0e5775fcc60758906d56
-      size: 221829574
+      md5: ca0e2e738f8f79faaa36c1c31338e448
+      size: 221874796
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: abeab89903d7a70bd2a2a56d3b884508
-      size: 93818541
+      md5: 4dcacfc7dfa6934edc9fc835163a5249
+      size: 93961349
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 5068bd74f32b056050f83f96bada0af5
+      md5: c824b1c8fd37844665f6e5d1d83e0f2e
       size: 2886
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: abeab89903d7a70bd2a2a56d3b884508
-      size: 93818541
+      md5: 4dcacfc7dfa6934edc9fc835163a5249
+      size: 93961349
     - path: output/test_card/model_test_card.parquet
-      md5: 5d449edc7e0b0d137114f98ed04e7d65
-      size: 2019509
+      md5: f2d84694e6be92940f1e5738689b13c8
+      size: 2019525
     params:
       params.yaml:
         assessment.data_year: '2022'
@@ -501,20 +505,20 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: d45332f0b16a1d182675c2c97e8ed785
-      size: 2914
+      md5: 5a9566f97dbc28589ab66919b7800be3
+      size: 2907
     - path: output/performance/model_performance_assessment.parquet
-      md5: 0991b0f1baf27afdd40a8b738dd769e5
-      size: 11965522
+      md5: 121dcd1cd856c2c6e40e6c118ea36196
+      size: 11962927
     - path: output/performance/model_performance_test.parquet
-      md5: 5e322be4d5f1bd7a0cb7cbfe0a83e8cc
-      size: 8802456
+      md5: cbb7ff6079face3de7ec1875b8cd46f2
+      size: 8797155
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 979eaaf015bae851376b52bbb0dede47
-      size: 4663209
+      md5: a1a913b6d811c9beb4f63ab820e6190d
+      size: 4695733
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: bfcbf136b99c08fb9e6c1fb4df8f2298
-      size: 5117521
+      md5: 29554495eb1bf293df266d5629fa881e
+      size: 5117625
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:

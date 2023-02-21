@@ -98,6 +98,7 @@ train_recipe <- model_main_recipe(
 # lightgbm as "engine arguments" i.e. things specific to lightgbm, as opposed to
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
+  stop_iter = params$model$parameter$stop_iter,
   trees = params$model$parameter$num_iterations
 ) %>%
   set_mode("regression") %>%
@@ -117,13 +118,6 @@ lgbm_model <- parsnip::boost_tree(
     # See lightsnip::train_lightgbm for details
     num_threads = num_threads,
     verbose = params$model$verbose,
-    
-    # Parameters controlling DART (dropout) behavior
-    boosting = params$model$parameter$boosting,
-    drop_rate = params$model$parameter$dart_drop_rate,
-    max_drop = params$model$parameter$dart_max_drop,
-    skip_drop = params$model$parameter$dart_skip_drop,
-    drop_seed = params$model$seed,
 
     # Set the objective function. This is what lightgbm will try to minimize
     objective = params$model$objective,
