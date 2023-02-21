@@ -13,7 +13,7 @@
 # or add context
 run_note: >
   Back to GBDT and RMSE. Full CV with low learning rate. Drop some of the least
-  important vars
+  important vars. Widen hyperparameter range
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
