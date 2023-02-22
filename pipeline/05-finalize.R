@@ -25,9 +25,12 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
-# Override CV toggle and run_type, used for CI or limited runs
+# Override CV toggle, SHAP toggle, and run_type, used for CI or limited runs
 cv_enable <- as.logical(
   Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
+)
+shap_enable <- as.logical(
+  Sys.getenv("SHAP_ENABLE_OVERRIDE", unset = params$toggle$shap_enable)
 )
 run_type <- as.character(
   Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
@@ -333,7 +336,7 @@ if (params$toggle$upload_to_s3) {
   # Upload SHAP values if a full run. SHAP values are one row per card and one
   # column per feature, so the output is very large. Therefore, we partition
   # the data by year, run, and township
-  if (run_type == "full") {
+  if (run_type == "full" && shap_enable) {
     read_parquet(paths$output$shap$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
