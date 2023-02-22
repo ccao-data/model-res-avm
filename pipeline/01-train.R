@@ -231,11 +231,7 @@ if (cv_enable) {
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
       no_improve = params$cv$no_improve,
-      extract = function(x) {
-        extract_num_iterations(
-          x, params$model$parameter$validation_metric
-        )
-      },
+      extract = extract_num_iterations,
       seed = params$model$seed
     )
   )
