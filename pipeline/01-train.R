@@ -144,9 +144,6 @@ lgbm_model <- parsnip::boost_tree(
 
     # Max number of bins that feature values will be bucketed in
     max_bin = params$model$parameter$max_bin,
-    
-    # Test path smoothing regularization
-    path_smooth = params$model$parameter$path_smooth,
 
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
@@ -229,7 +226,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mae, mape),
+    metrics = metric_set(huber_loss, rmse, mae, mape),
     control = control_bayes(
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
