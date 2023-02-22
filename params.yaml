@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Try Huber loss function instead of RMSE. Keep high iters but increase learn
+  Try MAE loss function instead of RMSE. Keep high iters but increase learn
   rate. Compare to 2023-02-22-silly-billy
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
@@ -142,7 +142,7 @@ cv:
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
-  initial_set: 25
+  initial_set: 20
   
   # Maximum number of search iterations
   max_iterations: 70
@@ -152,7 +152,7 @@ cv:
   
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
-  best_metric: "huber_loss"
+  best_metric: "mae"
 
 
 # Model (Hyper)parameters ------------------------------------------------------
@@ -164,7 +164,7 @@ model:
   
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "huber"
+  objective: "mae"
   
   # Parameters related to model determinism. Current settings should force 
   # the same output every time if the same hyperparameters are used
@@ -328,7 +328,7 @@ model:
     # WARNING: See issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
     validation_type: "recent"
-    validation_metric: "huber"
+    validation_metric: "mae"
     
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
     # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
