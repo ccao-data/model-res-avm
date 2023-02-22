@@ -89,6 +89,10 @@ if (shap_enable) {
       all_of(params$model$predictor$all), township_code
     ) %>%
     write_parquet(paths$output$shap$local)
+} else {
+  # If SHAP creation is disabled, we still need to write an empty stub file
+  # so DVC doesn't complain
+  arrow::write_parquet(data.frame(), paths$output$shap$local)
 }
 
 # End the stage timer and write the time elapsed to a temporary file
