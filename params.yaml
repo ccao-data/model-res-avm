@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Test path_regularization parameter = 1
+  Test path_smooth regularization parameter = 10
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -336,7 +336,7 @@ model:
     max_bin: 256
     
     # Test path smoothing regularization parameter
-    path_smooth: 1
+    path_smooth: 10
     
     # During CV, the number of iterations to go without improvement before
     # stopping training
