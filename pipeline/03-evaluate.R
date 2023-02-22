@@ -353,7 +353,7 @@ future_map_dfr(
     col_dict = col_rename_dict
   ),
   .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = TRUE
+  .progress = FALSE
 ) %>%
   write_parquet(paths$output$performance_test$local)
 
@@ -373,7 +373,7 @@ future_map_dfr(
     num_quantile = .x[[3]]
   ),
   .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = TRUE
+  .progress = FALSE
 ) %>%
   write_parquet(paths$output$performance_quantile_test$local)
 
@@ -399,7 +399,7 @@ if (run_type == "full") {
       col_dict = col_rename_dict
     ),
     .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = TRUE
+    .progress = FALSE
   ) %>%
     write_parquet(paths$output$performance_assessment$local)
 
@@ -419,7 +419,7 @@ if (run_type == "full") {
       num_quantile = .x[[3]]
     ),
     .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = TRUE
+    .progress = FALSE
   ) %>%
     write_parquet(paths$output$performance_quantile_assessment$local)
 }
