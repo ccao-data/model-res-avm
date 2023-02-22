@@ -12,8 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Replicate params from 2023-02-21-silly-billy with higher max_iterations
-  and max_bin
+  Test path_regularization parameter = 1
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -335,6 +334,9 @@ model:
     # Maximum number of bins for discretizing continuous features. Lower uses
     # less memory and speeds up training
     max_bin: 256
+    
+    # Test path smoothing regularization parameter
+    path_smooth: 1
     
     # During CV, the number of iterations to go without improvement before
     # stopping training

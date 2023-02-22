@@ -144,6 +144,9 @@ lgbm_model <- parsnip::boost_tree(
 
     # Max number of bins that feature values will be bucketed in
     max_bin = params$model$parameter$max_bin,
+    
+    # Test path smoothing regularization
+    path_smooth = params$model$parameter$path_smooth,
 
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
