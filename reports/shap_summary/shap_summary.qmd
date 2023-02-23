@@ -124,6 +124,29 @@ ggplotly(township)
 
 ```
 
+## Township/Quintile
+
+``` {r town_bin}
+
+township <- training_data %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_township_name, meta_year) %>%
+  summarise(sales = n()) %>%
+  select(Sales = sales, Year = meta_year, Township = meta_township_name) %>%
+  ggplot() +
+  geom_line(aes(x = Year, y = Sales, color = Township)) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
+  scale_x_continuous(breaks = seq(2014, 2022, 1)) +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+  )
+  
+ggplotly(township)
+
+```
+
 ## Class/Year
 
 ``` {r class_year}
@@ -271,119 +294,3 @@ smd_table <- CreateTableOne(
 print(smd_table, smd = TRUE)
 
 ```
-
-### Outlier Maps
-
-
-
-``` {r}
-
-top5 <- shaps %>%
-  select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric), run_id) %>%
-  group_by(run_id) %>%
-  summarise(across(.cols = everything(), ~ median(.x, na.rm = TRUE))) %>%
-  pivot_longer(cols = !run_id, values_to = "median", names_to = "feature") %>%
-  pivot_wider(values_from = "median", names_from = "run_id")
-
-top5 <- top5 %>%
-  filter(feature %in% unique(c(
-       top5 %>%
-         arrange(desc(abs(.[[2]]))) %>%
-         slice_head(n = 5) %>%
-         pull(feature),
-       top5 %>%
-         arrange(desc(abs(.[[3]]))) %>%
-         slice_head(n = 5) %>%
-         pull(feature)
-         ))) %>%
-  pull(feature
-       )
-
-outliers_detect <- function(x) {
-  
-  median <- median(x, na.rm = TRUE)
-  
-  mad <- mad(x, constant = 1, na.rm = TRUE)
-  
-  x < median - 6 * mad | x > median + 6 * mad
-  
-}
-
-top5_outliers <- shaps %>%
-  mutate(triad = ccao::town_get_triad(township_code)) %>%
-  select(meta_pin, triad, run_id, !!top5) %>%
-  group_by(triad, run_id) %>%
-  mutate(across(!!top5, ~ outliers_detect(.x), .names = "{.col}_outlier")) %>%
-  ungroup() %>%
-  left_join(centroids) %>%
-  filter(!is.na(lat)) %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326)
-
-temp <- lapply(top5, function(x) {
-  
-  top5_outliers %>% 
-    select(contains(x), triad, run_id) %>%
-    group_by(triad, run_id) %>%
-    mutate(median = median(.data[[x]], na.rm = TRUE)) %>%
-    ungroup() %>%
-    filter(.[[2]]) %>%
-    mutate(up_low = case_when(.data[[x]] > median ~ "upper", TRUE ~ "lower"))
-  
-})
-
-pal <- colorFactor(
-  c("#FFAF00", "#29428D"),
-  domain = c("lower", "upper")
-  )
-
-hug <- mapply(function(data, model) {
-  
-      data %>%
-      filter(run_id == model) %>%
-      leaflet() %>%
-      addProviderTiles('CartoDB.Positron') %>%
-      addCircles(
-        radius = 5,
-        color = ~pal(up_low)
-      ) %>%
-      addLegend("bottomright", pal = pal, values = ~ up_low,
-        title = paste0(names(data)[1], "</br>", model),
-        opacity = 1
-      )
-      
-  
-}, rep(temp, 2), c(rep(model_ids[1], length(temp)), rep(model_ids[2], length(temp))), SIMPLIFY = FALSE, USE.NAMES = TRUE)
-
-```
-
-<div line-height = 2>
-
-:::: {.columns}
-
-::: {.column width="4%"}
-
-:::
-
-::: {.column width="44%"}
-```{r}
-tagList(hug[1:(length(hug)/2)])
-```
-:::
-
-::: {.column width="4%"}
-
-:::
-
-::: {.column width="44%"}
-```{r}
-tagList(hug[(length(hug)/2+1):length(hug)])
-```
-:::
-
-::: {.column width="4%"}
-
-:::
-
-::::
-
-<div/>
