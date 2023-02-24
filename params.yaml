@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Try MAE loss function instead of RMSE. Keep high iters but increase learn
-  rate. Compare to 2023-02-22-silly-billy
+  MAE loss function with high iters and low learn rate. Reduced number of CV
+  folds and removed all spatial lag code
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -24,14 +24,15 @@ run_type: "full"
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: TRUE
 
-  # Should SHAP values be calculated for this run in the interpret stage?
-  shap_enable: false
+  # Should SHAP values be calculated for this run in the interpret stage? Can be
+  # desirable to save time when testing many models
+  shap_enable: FALSE
 
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
-  upload_to_s3: true
+  upload_to_s3: TRUE
 
 
 # Data/Ingest ------------------------------------------------------------------
@@ -54,17 +55,14 @@ assessment:
 
 # Parameters used to define the input/training data
 input:
-  # The min and max years of sales to use for the training data sample
+  # The min and max year of sales to use for the training data sample
   min_sale_year: "2014"
   max_sale_year: "2022"
   
-  # Time window (in months) used for rolling origin cross-validation and
-  # calculating spatial lags i.e. lags are the average of the nearest K
-  # properties for each N month window
-  time_split: 9
+  # Time window (in months) used for rolling origin cross-validation
+  time_split: 15
   
-  # Parameters used to trim the training data (sales) using a variety
-  # of heuristics
+  # Parameters used to trim the training data (sales) of outliers
   sale_validation:
   
     # Summary statistics grouping for detecting outlier sales i.e. an outlier
@@ -88,27 +86,7 @@ input:
     # training sample e.g. any sales more than 3 standard deviations from the
     # mean will be dropped
     dev_bounds: [2, 3]
-  
-  # Parameters used to construct spatially lagged features
-  spatial_lag:
-    # Number of nearest neighbors (K) used to calculate spatial lags of both the
-    # dependent variable (sale price) and predictors (sqft, year built, etc.)
-    k: 5
-    
-    # Features to create spatial lags for + the outcome variable (sale price)
-    predictor: [
-      "meta_sale_price",
-      "char_bldg_sf",
-      "char_land_sf",
-      "char_rooms",
-      "char_beds",
-      "char_fbath",
-      "char_hbath",
-      "char_frpl",
-      "char_yrblt",
-      "other_tax_bill_amount_total"
-    ]
-  
+
   # Parameters used to generate townhome complex identifiers
   complex:
     # Townhomes (class 210/295) should match exactly on these variables to be
@@ -144,7 +122,7 @@ cv:
   # be greater than the number of hyperparameters being tuned
   initial_set: 20
   
-  # Maximum number of search iterations
+  # Max number of total search iterations
   max_iterations: 70
   
   # Max number of search iterations without improvement before stopping search
@@ -275,9 +253,9 @@ model:
       "time_sale_post_covid"
     ]
     
-    # List of predictors included in predictor.all which are categoricals. It is
-    # CRITICAL that any categorical variables are included in this list, else
-    # LightGBM will treat them as numeric
+    # List of predictors included in predictor.all which are categoricals.
+    # It is CRITICAL that any categorical variables are included in this list,
+    # else LightGBM will treat them as numeric
     categorical: [
       "meta_township_code",
       "meta_nbhd_code",
@@ -333,11 +311,11 @@ model:
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
     # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
     # This is to prevent tune_bayes from exploring useless parameter space
-    link_max_depth: true
+    link_max_depth: TRUE
     
     # Maximum number of bins for discretizing continuous features. Lower uses
     # less memory and speeds up training
-    max_bin: 256
+    max_bin: 512
     
     # During CV, the number of iterations to go without improvement before
     # stopping training

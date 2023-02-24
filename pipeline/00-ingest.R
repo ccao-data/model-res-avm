@@ -17,8 +17,6 @@ library(lubridate)
 library(purrr)
 library(reticulate)
 library(RJDBC)
-library(s2)
-library(sf)
 library(tictoc)
 library(tidyr)
 library(yaml)
@@ -79,6 +77,7 @@ training_data <- dbGetQuery(
       BETWEEN '{params$input$min_sale_year}'
       AND '{params$input$max_sale_year}')
   AND NOT sale.is_multisale
+  AND Year(sale.sale_date) >= {params$input$min_sale_year}
   ")
 )
 tictoc::toc()
@@ -107,7 +106,7 @@ assessment_data <- dbGetQuery(
 tictoc::toc()
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
-# rates per sqft, as calculated by Valuations
+# rates ($/sqft), as calculated by Valuations
 tictoc::tic()
 land_site_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
@@ -137,7 +136,7 @@ rm(AWS_ATHENA_CONN_JDBC, aws_athena_jdbc_driver)
 # 3. Define Functions ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Ingest-specific helper functions for data cleaning, spatial lags, etc.
+# Ingest-specific helper functions for data cleaning, etc.
 
 # Create a dictionary of column types, as specified in ccao::vars_dict
 col_type_dict <- ccao::vars_dict %>%
@@ -156,22 +155,6 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
     categorical = as.factor(col),
     date = lubridate::as_date(col)
   )
-}
-
-
-# Find the K-nearest neighbors within a group to calculate a spatial lag
-st_knn <- function(x, y = NULL, k = 1) {
-  s2x <- sf::st_as_s2(x)
-  if (is.null(y)) {
-    z <- s2::s2_closest_edges(s2x, s2x, k = (k + 1))
-    # Drop the starting observation/point
-    z <- lapply(z, sort)
-    z <- lapply(seq_along(z), function(i) setdiff(z[[i]], i))
-    return(z)
-  } else {
-    s2y <- sf::st_as_s2(y)
-    z <- s2::s2_closest_edges(s2x, s2y, k = k)
-  }
 }
 
 
@@ -313,11 +296,17 @@ training_data_w_sv <- training_data_w_hie %>%
     sv_is_outlier = sv_outlier_type != "Not outlier"
   ) %>%
   select(
-    -(starts_with("sv_") &
-      !sv_is_ptax203_outlier &
-      !sv_is_autoval_outlier &
-      !sv_is_outlier &
-      !sv_outlier_type
+    meta_pin, meta_card_num, meta_sale_date, meta_sale_document_num,
+    sv_is_ptax203_outlier, sv_is_autoval_outlier, sv_is_outlier, sv_outlier_type
+  ) %>%
+  # Rejoin validation output to the original training data. CAUTION: converting
+  # data to pandas and back WILL alter certain R data types. For example,
+  # missing character values are replaced with "NA"
+  right_join(
+    training_data_w_hie %>% select(-sv_is_ptax203_outlier),
+    by = c(
+      "meta_pin", "meta_card_num",
+      "meta_sale_date", "meta_sale_document_num"
     )
   )
 
@@ -331,13 +320,11 @@ training_data_w_sv <- training_data_w_hie %>%
 ## 6.1. Training Data ----------------------------------------------------------
 
 # Clean up the training data. Goal is to get it into a publishable format.
-# Final featurization, filling, etc. is handled via Tidymodels recipes
+# Final featurization, missingness, etc. is handled via Tidymodels recipes
 training_data_clean <- training_data_w_sv %>%
-  # Dump any mis-recorded sale dates
-  filter(meta_sale_date >= make_date(params$input$min_sale_year)) %>%
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
-  # them to NA (useful since there are a lot of mis-recorded variables)
+  # them to NA (useful since there are a lot of misrecorded variables)
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
@@ -346,12 +333,15 @@ training_data_clean <- training_data_w_sv %>%
     !starts_with("sv_"),
     ~ recode_column_type(.x, cur_column())
   )) %>%
-  # Create sale date features using lubridate
+  # Create time/date features using lubridate
   dplyr::mutate(
-    # Calculate interval periods and times since Jan 01, 1997
-    time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
+    # Calculate interval periods and time since the start of the sales sample
+    time_interval = interval(
+      make_date(params$input$min_sale_year, 1, 1),
+      ymd(meta_sale_date)
+    ),
     time_sale_year = as.numeric(year(meta_sale_date)),
-    time_sale_day = as.numeric(time_interval %/% days(1)),
+    time_sale_day = as.numeric(time_interval %/% days(1)) + 1,
     # Get components of dates to correct for seasonality and other factors
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
     time_sale_month_of_year = as.integer(month(meta_sale_date)),
@@ -359,73 +349,22 @@ training_data_clean <- training_data_w_sv %>%
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
-    # Time window to use for cross-validation and calculating spatial lags
+    # Time window to use for cross-validation during training. The last X% of
+    # each window is held out as a validation set
     time_split = time_interval %/% months(params$input$time_split),
-    # Collapse the first and last splits into their respective neighbors.
-    # This is done because the first and last splits tend to be very small
-    # and therefore potentially unrepresentative of the larger data set
-    time_split = case_when(
-      time_split == max(time_split) ~ max(time_split) - 1,
-      time_split == min(time_split) ~ min(time_split) + 1,
-      TRUE ~ time_split
+    # Collapse the last 2 splits into their earlier neighbor. This is done
+    # because part of the final time window will be held out for the test set,
+    # which will shrink the last split to the point of being too small for CV
+    time_split = ifelse(
+      time_split > max(time_split) - 2,
+      max(time_split) - 2,
+      time_split
     ),
-    time_split = time_split - (min(time_split) - 1)
-  )
-
-# Calculate KNN spatial lags for each N month period used in CV. The N month
-# partitioning ensures that no training data leaks into the validation set
-# during CV
-training_data_lagged <- training_data_clean %>%
-  # Convert coordinates to geometry used to calculate weights
-  filter(
-    !is.na(loc_longitude),
-    !is.na(loc_latitude),
-    !sv_is_outlier,
-    !ind_pin_is_multicard
+    time_split = as.character(time_split + 1),
+    time_split = factor(time_split, levels = sort(unique(time_split)))
   ) %>%
-  st_as_sf(
-    coords = c("loc_longitude", "loc_latitude"),
-    crs = 4326,
-    remove = FALSE
-  ) %>%
-  # Divide training data into N-month periods and calculate spatial lags
-  # for each period
-  group_by(time_split) %>%
-  mutate(nb = st_knn(geometry, k = params$input$spatial_lag$k)) %>%
-  group_split() %>%
-  map_dfr(
-    function(x) {
-      mutate(x, across(
-        all_of(params$input$spatial_lag$predictor),
-        ~ purrr::map_dbl(nb, function(idx, var = cur_column()) {
-          mean(x[[var]][idx])
-        }),
-        .names = "lag_{.col}"
-      ))
-    }
-  ) %>%
-  # Clean up output, bind rows that were missing lat/lon, and write to file
-  ungroup() %>%
-  st_drop_geometry() %>%
-  bind_rows(
-    training_data_clean %>%
-      filter(
-        is.na(loc_longitude) |
-          is.na(loc_latitude) |
-          sv_is_outlier |
-          ind_pin_is_multicard
-      )
-  ) %>%
-  select(-c(nb, time_interval)) %>%
-  relocate(
-    c(
-      sv_is_ptax203_outlier,
-      sv_is_autoval_outlier,
-      sv_is_outlier,
-      sv_outlier_type
-    ),
-    .after = everything()
-  ) %>%
+  select(-time_interval) %>%
+  relocate(starts_with("sv_"), .after = everything()) %>%
   write_parquet(paths$input$training$local)
 
 
@@ -433,7 +372,7 @@ training_data_lagged <- training_data_clean %>%
 
 # Clean the assessment data. This is the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
-# time vars and identifying complexes
+# time variables and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
   mutate(across(everything(), ~ recode_column_type(.x, cur_column()))) %>%
@@ -442,73 +381,19 @@ assessment_data_clean <- assessment_data_w_hie %>%
   # actual sale
   dplyr::mutate(
     meta_sale_date = as_date(params$assessment$date),
-    time_interval = interval(ymd("1997-01-01"), ymd(.data$meta_sale_date)),
+    time_interval = interval(
+      make_date(params$input$min_sale_year, 1, 1),
+      ymd(meta_sale_date)
+    ),
     time_sale_year = as.numeric(year(meta_sale_date)),
-    time_sale_day = as.numeric(time_interval %/% days(1)),
+    time_sale_day = as.numeric(time_interval %/% days(1)) + 1,
     time_sale_quarter_of_year = paste0("Q", quarter(meta_sale_date)),
     time_sale_month_of_year = as.integer(month(meta_sale_date)),
     time_sale_day_of_year = as.integer(yday(meta_sale_date)),
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
-    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
-    time_split = time_interval %/% months(params$input$time_split)
-  )
-
-# Grab the most recent sale within the last 3 split periods for each PIN. This
-# will be the search space for the spatial lag variables for assessment data
-sales_data <- training_data_clean %>%
-  filter(
-    meta_sale_date >= as_date(params$assessment$date) -
-      months(params$input$time_split * 3),
-    !is.na(loc_longitude),
-    !is.na(loc_latitude),
-    !sv_is_outlier,
-    !ind_pin_is_multicard
+    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
-  group_by(meta_pin) %>%
-  filter(max(meta_sale_date) == meta_sale_date) %>%
-  ungroup() %>%
-  st_as_sf(
-    coords = c("loc_longitude", "loc_latitude"),
-    crs = 4326,
-    remove = TRUE
-  ) %>%
-  select(
-    meta_pin, meta_year, meta_sale_price,
-    all_of(params$input$spatial_lag$predictor),
-  )
-
-# Join the sales data to the assessment data. Create lagged spatial predictors
-# using the K-nearest neighboring sales. This replicates a spatial Durbin model
-# with a time component
-assessment_data_lagged <- assessment_data_clean %>%
-  filter(!is.na(loc_longitude), !is.na(loc_latitude)) %>%
-  st_as_sf(
-    coords = c("loc_longitude", "loc_latitude"),
-    crs = 4326,
-    remove = FALSE
-  ) %>%
-  mutate(
-    nb = st_knn(geometry, sales_data$geometry, k = params$input$spatial_lag$k),
-    meta_sale_price = NA_real_,
-    across(
-      all_of(params$input$spatial_lag$predictor),
-      function(x) {
-        purrr::map_dbl(nb, function(idx, var = dplyr::cur_column()) {
-          mean(sales_data[[var]][idx])
-        })
-      },
-      .names = "lag_{.col}"
-    )
-  ) %>%
-  # Clean up output and write to file
-  ungroup() %>%
-  st_drop_geometry() %>%
-  bind_rows(
-    assessment_data_clean %>%
-      filter(is.na(loc_longitude) | is.na(loc_latitude))
-  ) %>%
-  select(-c(nb, meta_sale_price, time_interval)) %>%
   write_parquet(paths$input$assessment$local)
 
 
@@ -532,7 +417,11 @@ complex_id_temp <- assessment_data_clean %>%
     char_bsmt, char_gar1_size, char_attic_fnsh, char_beds,
     char_rooms, char_bldg_sf, char_yrblt, loc_x_3435, loc_y_3435
   ) %>%
-  full_join(eval(.), by = params$input$complex$match_exact) %>%
+  full_join(
+    eval(.),
+    by = params$input$complex$match_exact,
+    multiple = "all"
+  ) %>%
   # Filter with attributes that can be "fuzzy" matched
   filter(
     char_rooms.x >= char_rooms.y - params$input$complex$match_fuzzy$rooms,
