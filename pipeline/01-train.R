@@ -232,7 +232,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(mae, rmse, mape),
+    metrics = metric_set(rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
