@@ -266,7 +266,7 @@ land_nbhd_rate <- read_parquet(
 
 
 ## 5.2. Collapse to PIN Level --------------------------------------------------
-message("Collapsing card-level data to PIN-level")
+message("Collapsing card-level data to PIN level")
 
 # Collapse card-level data to the PIN level, keeping the largest building on
 # each PIN but summing the total square footage of all buildings

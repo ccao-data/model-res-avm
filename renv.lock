@@ -88,10 +88,10 @@
     },
     "arrow": {
       "Package": "arrow",
-      "Version": "11.0.0.2",
+      "Version": "10.0.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "aac084fe3bbdddc61dfbca3077e1995d",
+      "Hash": "05f9b803e1f6a5d47ff0a885ed04ebd2",
       "Requirements": [
         "R6",
         "assertthat",
