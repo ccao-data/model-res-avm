@@ -28,7 +28,7 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: FALSE
+  shap_enable: TRUE
 
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -297,8 +297,8 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
     # When early stopping is enabled, num_iterations is effectively the MAX
     # number of iterations
-    num_iterations: 1500
-    learning_rate: 0.05
+    num_iterations: 3000
+    learning_rate: 0.02
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
