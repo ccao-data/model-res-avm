@@ -3,7 +3,7 @@
 model_file_dict <- function(run_id = NULL, year = NULL) {
   env <- environment()
   wd <- here::here()
-  library(magrittr)
+  suppressPackageStartupMessages(library(magrittr))
   
   # Convert flat dictionary file to nested list
   dict <- readr::read_csv(

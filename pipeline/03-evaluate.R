@@ -8,20 +8,22 @@ tictoc::tic("Evaluate")
 
 # Load libraries and scripts
 options(dplyr.summarise.inform = FALSE)
-library(arrow)
-library(assessr)
-library(ccao)
-library(dplyr)
-library(here)
-library(furrr)
-library(lightsnip)
-library(purrr)
-library(rlang)
-library(recipes)
-library(tictoc)
-library(tidyr)
-library(yaml)
-library(yardstick)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(assessr)
+  library(ccao)
+  library(dplyr)
+  library(here)
+  library(furrr)
+  library(lightsnip)
+  library(purrr)
+  library(rlang)
+  library(recipes)
+  library(tictoc)
+  library(tidyr)
+  library(yaml)
+  library(yardstick)
+})
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -65,6 +67,7 @@ col_rename_dict <- c(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Loading evaluation data")
 
 # Load the test results from the end of the train stage. This will be the most
 # recent 10% of sales and already includes predictions. This data will NOT
@@ -338,6 +341,7 @@ geographies_list_quantile <- purrr::cross3(
 
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
+message("Calculating test set aggregate statistics")
 future_map_dfr(
   geographies_list,
   ~ gen_agg_stats(
@@ -358,6 +362,7 @@ future_map_dfr(
   write_parquet(paths$output$performance_test$local)
 
 # Same as above, but calculate stats per quantile of sale price
+message("Calculating test set quantile statistics")
 future_map_dfr(
   geographies_list_quantile,
   ~ gen_agg_stats_quantile(
@@ -384,6 +389,7 @@ future_map_dfr(
 if (run_type == "full") {
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also includes unsold properties
+  message("Calculating assessment set aggregate statistics")
   future_map_dfr(
     geographies_list,
     ~ gen_agg_stats(
@@ -404,6 +410,7 @@ if (run_type == "full") {
     write_parquet(paths$output$performance_assessment$local)
 
   # Same as above, but calculate stats per quantile of sale price
+  message("Calculating assessment set quantile statistics")
   future_map_dfr(
     geographies_list_quantile,
     ~ gen_agg_stats_quantile(

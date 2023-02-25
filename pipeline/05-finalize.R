@@ -6,17 +6,19 @@
 # setup and multi-factor authentication help
 
 # Load libraries and scripts
-library(arrow)
-library(aws.s3)
-library(ccao)
-library(dplyr)
-library(here)
-library(lubridate)
-library(paws.application.integration)
-library(purrr)
-library(tidyr)
-library(tune)
-library(yaml)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(aws.s3)
+  library(ccao)
+  library(dplyr)
+  library(here)
+  library(lubridate)
+  library(paws.application.integration)
+  library(purrr)
+  library(tidyr)
+  library(tune)
+  library(yaml)
+})
 source(here("R", "helpers.R"))
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
@@ -42,6 +44,7 @@ run_type <- as.character(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Save Metadata -------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Saving run metadata")
 
 ## 2.1. Run Info ---------------------------------------------------------------
 
@@ -138,6 +141,7 @@ metadata <- tibble::tibble(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Save Timings --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Saving run timings")
 
 # Filter ensure we only get timing files for stages that actually ran
 if (run_type == "full") {
@@ -186,6 +190,7 @@ tictoc::tic.clearlog()
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Upload --------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Uploading run artifacts")
 
 # Only upload files if explicitly enabled
 if (params$toggle$upload_to_s3) {
@@ -236,6 +241,8 @@ if (params$toggle$upload_to_s3) {
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame
   if (cv_enable) {
+    message("Uploading cross-validation artifacts")
+    
     # Upload the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
       paths$output$parameter_raw$local,
@@ -280,6 +287,7 @@ if (params$toggle$upload_to_s3) {
 
 
   # 4.2. Assess ----------------------------------------------------------------
+  message("Uploading final assessment results")
 
   # Upload PIN and card-level values for full runs. These outputs are very
   # large, so to help reduce file size and improve query performance we
@@ -307,8 +315,9 @@ if (params$toggle$upload_to_s3) {
 
 
   # 4.3. Evaluate --------------------------------------------------------------
-
+  
   # Upload test set performance
+  message("Uploading test set evaluation")
   read_parquet(paths$output$performance_test$local) %>%
     mutate(run_id = run_id) %>%
     relocate(run_id) %>%
@@ -320,6 +329,7 @@ if (params$toggle$upload_to_s3) {
 
   # Upload assessment set performance if a full run
   if (run_type == "full") {
+    message("Uploading assessment set evaluation")
     read_parquet(paths$output$performance_assessment$local) %>%
       mutate(run_id = run_id) %>%
       relocate(run_id) %>%
@@ -337,6 +347,7 @@ if (params$toggle$upload_to_s3) {
   # column per feature, so the output is very large. Therefore, we partition
   # the data by year, run, and township
   if (run_type == "full" && shap_enable) {
+    message("Uploading SHAP values")
     read_parquet(paths$output$shap$local) %>%
       mutate(run_id = run_id, year = params$assessment$year) %>%
       group_by(year, run_id, township_code) %>%
@@ -350,6 +361,7 @@ if (params$toggle$upload_to_s3) {
 
 
   # 4.5. Finalize --------------------------------------------------------------
+  message("Uploading run metadata and timings")
 
   # Upload metadata
   aws.s3::put_object(
@@ -374,6 +386,8 @@ if (params$toggle$upload_to_s3) {
 # This will run a Glue crawler to update schemas and send an email to any SNS
 # subscribers. Only run when actually uploading
 if (params$toggle$upload_to_s3) {
+  message("Sending run email and running model crawler")
+  
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # any new partitions
   if (run_type == "full") {

@@ -6,17 +6,19 @@
 options(java.parameters = "-Xmx10g")
 
 # Load R libraries
-library(arrow)
-library(ccao)
-library(DBI)
-library(dplyr)
-library(glue)
-library(here)
-library(openxlsx)
-library(purrr)
-library(RJDBC)
-library(stringr)
-library(yaml)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(ccao)
+  library(DBI)
+  library(dplyr)
+  library(glue)
+  library(here)
+  library(openxlsx)
+  library(purrr)
+  library(RJDBC)
+  library(stringr)
+  library(yaml)
+})
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -35,6 +37,7 @@ paths <- model_file_dict(run_id, year)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Loading data for API creation")
 
 # Load metadata to get predictors used and other info
 metadata <- read_parquet(paths$output$metadata$s3)

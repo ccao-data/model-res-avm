@@ -2,24 +2,30 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# Start the stage timer
+tictoc::tic.clearlog()
+tictoc::tic("Ingest")
+
 # Pre-allocate memory for java JDBC driver
 options(java.parameters = "-Xmx10g")
 
 # Load R libraries
-library(arrow)
-library(ccao)
-library(DBI)
-library(dplyr)
-library(glue)
-library(here)
-library(igraph)
-library(lubridate)
-library(purrr)
-library(reticulate)
-library(RJDBC)
-library(tictoc)
-library(tidyr)
-library(yaml)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(ccao)
+  library(DBI)
+  library(dplyr)
+  library(glue)
+  library(here)
+  library(igraph)
+  library(lubridate)
+  library(purrr)
+  library(reticulate)
+  library(RJDBC)
+  library(tictoc)
+  library(tidyr)
+  library(yaml)
+})
 source(here("R", "helpers.R"))
 
 # Load Python packages and functions with reticulate
@@ -54,10 +60,11 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Pull Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Pulling data from Athena")
 
 # Pull the training data, which contains actual sales + attached characteristics
 # from the residential input view
-tictoc::tic()
+tictoc::tic("Training data pulled")
 training_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT
@@ -84,7 +91,7 @@ tictoc::toc()
 
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
-tictoc::tic()
+tictoc::tic("HIE data pulled")
 hie_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
@@ -95,7 +102,7 @@ tictoc::toc()
 
 # Pull all residential PIN input data for the assessment year. This will be the
 # data we actually run the model on
-tictoc::tic()
+tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
@@ -107,7 +114,7 @@ tictoc::toc()
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
-tictoc::tic()
+tictoc::tic("Land rate data pulled")
 land_site_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT *
@@ -163,6 +170,7 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Home Improvement Exemptions -----------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Adding HIE data to training and assessment sets")
 
 # HIEs need to be combined with the training data such that the training data
 # uses the characteristics at the time of sale, rather than the un-updated
@@ -261,6 +269,7 @@ assessment_data_w_hie <- assessment_data %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 5. Validate Sales ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Validating training data sales")
 
 # Create an outlier sale flag using a variety of heuristics. See flagging.py for
 # the full list. Also exclude any sales that have a flag on Q10 of the PTAX-203
@@ -316,6 +325,7 @@ training_data_w_sv <- training_data_w_hie %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 6. Add Features and Clean ----------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Adding time features and cleaning")
 
 ## 6.1. Training Data ----------------------------------------------------------
 
@@ -398,6 +408,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
 
 
 ## 6.3. Complex IDs ------------------------------------------------------------
+message("Creating townhome complex identifiers")
 
 # Townhomes and rowhomes within the same "complex" or building should
 # ultimately receive the same final assessed value. However, a single row of
@@ -469,6 +480,7 @@ complex_id_data <- assessment_data_clean %>%
 
 
 ## 6.4. Land Rates -------------------------------------------------------------
+message("Saving land rates")
 
 # Write land data directly to file, since it's already mostly clean
 land_site_rate_data %>%
@@ -484,3 +496,6 @@ message(
   "See https://dvc.org/doc/start/data-management/data-versioning ",
   "for more information"
 )
+
+# End the stage timer
+tictoc::toc(log = FALSE)

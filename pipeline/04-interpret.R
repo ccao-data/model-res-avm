@@ -8,14 +8,16 @@ tictoc::tic("Interpret")
 
 # Load libraries and scripts
 options(scipen = 99)
-library(arrow)
-library(dplyr)
-library(here)
-library(recipes)
-library(tidyr)
-library(tictoc)
-library(yaml)
-source(here("R", "helpers.R"))
+suppressPackageStartupMessages({
+  library(arrow)
+  library(dplyr)
+  library(here)
+  library(recipes)
+  library(tidyr)
+  library(tictoc)
+  library(yaml)
+  source(here("R", "helpers.R"))
+})
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
@@ -36,6 +38,8 @@ shap_enable <- as.logical(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (shap_enable) {
+  message("Loading model fit and assessment data")
+  
   # Load the final lightgbm model object and recipe from file
   lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
   lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
@@ -60,6 +64,8 @@ if (shap_enable) {
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (shap_enable) {
+  message("Calculating SHAP values")
+  
   # Calculate a SHAP value for each observation for each feature in the
   # assessment data. Uses lightgbm's built-in method (predcontrib = TRUE)
   shap_values <- predict(

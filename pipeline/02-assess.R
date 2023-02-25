@@ -8,17 +8,19 @@ tictoc::tic("Assess")
 
 # Load libraries and scripts
 options(dplyr.summarise.inform = FALSE)
-library(arrow)
-library(assessr)
-library(ccao)
-library(dplyr)
-library(here)
-library(lightsnip)
-library(purrr)
-library(recipes)
-library(tictoc)
-library(tidyr)
-library(yaml)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(assessr)
+  library(ccao)
+  library(dplyr)
+  library(here)
+  library(lightsnip)
+  library(purrr)
+  library(recipes)
+  library(tictoc)
+  library(tidyr)
+  library(yaml)
+})
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -45,6 +47,7 @@ sales_data <- read_parquet(paths$input$training$local) %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Predict Values ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Predicting off-market values with trained model")
 
 # Load the final lightgbm model object and recipe from file
 lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
@@ -72,8 +75,10 @@ assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Post-Modeling Adjustments -------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Performing post-modeling adjustments")
 
 ## 3.1. Multicards -------------------------------------------------------------
+message("Fixing multicard PINs")
 
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is (usually) the sum of all cards
@@ -110,6 +115,7 @@ assessment_data_mc <- assessment_data_pred %>%
 
 
 ## 3.2. Townhomes --------------------------------------------------------------
+message("Averaging townhome complex predictions")
 
 # For class 210 and 295s, we want all units in the same complex to
 # have the same value (assuming they are nearly identical)
@@ -135,6 +141,7 @@ assessment_data_cid <- assessment_data_mc %>%
 
 
 ## 3.3. Prorate/Round ----------------------------------------------------------
+message("Rounding and prorating predictions")
 
 # Round PIN-level predictions using the breaks and amounts specified in params
 assessment_data_final <- assessment_data_cid %>%
@@ -184,6 +191,7 @@ assessment_data_merged <- assessment_data_pred %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Card-Level Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Saving card-level data")
 
 # Keep only card-level variables of interest, including: ID variables (run_id,
 # pin, card), characteristics, and predictions
@@ -211,6 +219,7 @@ assessment_data_merged %>%
 # looking at YoY changes, comparing to sales, etc.
 
 ## 5.1. Load Sales/Land --------------------------------------------------------
+message("Attaching recent sales to PIN-level data")
 
 # Load the MOST RECENT sale per PIN from the year prior to the assessment year.
 # These are the sales that will be used for ratio studies in the evaluate stage.
@@ -257,6 +266,7 @@ land_nbhd_rate <- read_parquet(
 
 
 ## 5.2. Collapse to PIN Level --------------------------------------------------
+message("Collapsing card-level data to PIN-level")
 
 # Collapse card-level data to the PIN level, keeping the largest building on
 # each PIN but summing the total square footage of all buildings
@@ -327,6 +337,7 @@ assessment_data_pin <- assessment_data_merged %>%
 
 
 ## 5.3. Value Land -------------------------------------------------------------
+message("Attaching and parsing land values")
 
 # Attach land and sales data to the PIN-level data, then calculate land and
 # building values for each PIN
@@ -376,6 +387,7 @@ assessment_data_pin_2 <- assessment_data_pin %>%
 
 
 ## 5.4. Add Flags --------------------------------------------------------------
+message("Adding Desk Review flags")
 
 # Flags are used to identify PINs for potential desktop review
 assessment_data_pin_final <- assessment_data_pin_2 %>%
@@ -422,6 +434,7 @@ assessment_data_pin_final <- assessment_data_pin_2 %>%
 
 
 ## 5.5. Clean/Reorder/Save -----------------------------------------------------
+message("Saving final PIN-level data")
 
 # Recode characteristics from numeric encodings to human-readable strings
 assessment_data_pin_final %>%

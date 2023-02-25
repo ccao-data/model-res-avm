@@ -2,23 +2,25 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Start the stage timer
+# Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Train")
 
 # Load libraries and scripts
 options(tidymodels.dark = TRUE)
-library(arrow)
-library(butcher)
-library(ccao)
-library(dplyr)
-library(here)
-library(lightgbm)
-library(lightsnip)
-library(tictoc)
-library(tidymodels)
-library(vctrs)
-library(yaml)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(butcher)
+  library(ccao)
+  library(dplyr)
+  library(here)
+  library(lightgbm)
+  library(lightsnip)
+  library(tictoc)
+  library(tidymodels)
+  library(vctrs)
+  library(yaml)
+})
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -49,6 +51,7 @@ set.seed(params$model$seed)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Prepare Data --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Preparing model training data")
 
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
@@ -85,6 +88,7 @@ train_recipe <- model_main_recipe(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. LightGBM Model ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Initializing LightGBM model")
 
 # This is the main model used to value 200-class residential property. It uses
 # lightgbm as a backend, which is a boosted tree model similar to xgboost or
@@ -183,6 +187,8 @@ lgbm_wflow <- workflow() %>%
 # search take a very long time to produce good results due to the high number
 # of hyperparameters
 if (cv_enable) {
+  message("Starting cross-validation")
+  
   # Using rolling origin resampling to create a cumulative, sliding time window
   # training set, where the validation set is always the X% of sales following
   # the training set in time. See https://www.tmwr.org/resampling.html#rolling
@@ -303,6 +309,7 @@ lgbm_model_final <- lgbm_model %>%
 
 # Fit the final model using the training data and our final hyperparameters
 # This model is used to measure performance on the test set
+message("Fitting final model on training data")
 lgbm_wflow_final_fit <- lgbm_wflow %>%
   update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
@@ -310,6 +317,7 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
+message("Fitting final model on full data")
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
@@ -321,6 +329,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Finalize Models -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Finalizing and saving trained model")
 
 # Get predictions on the test set using the training data model. These
 # predictions are used to evaluate model performance on the unseen test set.

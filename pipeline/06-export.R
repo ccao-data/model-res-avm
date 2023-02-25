@@ -6,19 +6,21 @@
 options(java.parameters = "-Xmx10g")
 
 # Load R libraries
-library(aws.s3)
-library(ccao)
-library(DBI)
-library(dplyr)
-library(glue)
-library(here)
-library(lubridate)
-library(openxlsx)
-library(readr)
-library(RJDBC)
-library(stringr)
-library(tidyr)
-library(yaml)
+suppressPackageStartupMessages({
+  library(aws.s3)
+  library(ccao)
+  library(DBI)
+  library(dplyr)
+  library(glue)
+  library(here)
+  library(lubridate)
+  library(openxlsx)
+  library(readr)
+  library(RJDBC)
+  library(stringr)
+  library(tidyr)
+  library(yaml)
+})
 
 # Setup the Athena JDBC driver
 aws_athena_jdbc_driver <- RJDBC::JDBC(
@@ -45,6 +47,7 @@ params <- read_yaml("params.yaml")
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Pull Vacant Land ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Pulling vacant land data from Athena")
 
 # Need to pull all vacant land PINs so that they can be valued separately from
 # the regression model using a flat rate per neighborhood
@@ -238,6 +241,7 @@ vacant_land_merged <- vacant_land_trans %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Pull Model Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Pulling model data from Athena")
 
 # Pull the PIN-level assessment data, which contains all the fields needed to
 # create the review spreadsheets
@@ -274,6 +278,7 @@ assessment_card <- dbGetQuery(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Prep Desk Review ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Preparing data for Desk Review export")
 
 # Merge vacant land data with data from the residential AVM
 assessment_pin_merged <- assessment_pin %>%
@@ -520,6 +525,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 5. Prep iasWorld Upload ------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Preparing data for iasWorld export")
 
 # Break land totals out to individual lines, where value is proportional to
 # each line's square footage
