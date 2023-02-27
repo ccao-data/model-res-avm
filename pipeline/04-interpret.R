@@ -36,13 +36,14 @@ shap_enable <- as.logical(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Loading model fit and recipe")
+
+# Load the final lightgbm model object and recipe from file
+lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
+lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 
 if (shap_enable) {
-  message("Loading model fit and assessment data")
-  
-  # Load the final lightgbm model object and recipe from file
-  lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
-  lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
+  message("Loading assessment data for SHAP calculation")
   
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
@@ -100,6 +101,27 @@ if (shap_enable) {
   # so DVC doesn't complain
   arrow::write_parquet(data.frame(), paths$output$shap$local)
 }
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Calculate Feature Importance ----------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Calculating feature importance metrics")
+
+# Calculate feature importance using LightGBM's built-in method
+lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
+  as_tibble() %>%
+  rename(model_predictor_all_name = Feature) %>%
+  rename_with(tolower, Gain:Frequency) %>%
+  mutate(across(
+    gain:frequency,
+    ~ order(order(.x, decreasing = TRUE)),
+    .names = "{.col}_rank"
+  )) %>%
+  rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
+  write_parquet(paths$output$feature_importance$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)

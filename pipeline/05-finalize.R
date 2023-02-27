@@ -358,6 +358,15 @@ if (params$toggle$upload_to_s3) {
         compression = "snappy"
       )
   }
+  
+  # Upload feature importance metrics
+  if (run_type == "full") {
+    message("Uploading feature importance metrics")
+    read_parquet(paths$output$feature_importance$local) %>%
+      mutate(run_id = run_id) %>%
+      relocate(run_id) %>%
+      write_parquet(paths$output$feature_importance$s3)
+  }
 
 
   # 4.5. Finalize --------------------------------------------------------------
