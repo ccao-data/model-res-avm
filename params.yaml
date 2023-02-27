@@ -12,8 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  CV run replicating busy-damini. Looking for simplest model with many shallow
-  trees
+  Drop Assessor neighborhood and small area price indexes. Full CV, high iters
+  but low num_leaves
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -28,7 +28,7 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: FALSE
+  shap_enable: TRUE
 
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -158,7 +158,6 @@ model:
     # this list to add or remove variables from the model
     all: [
       "meta_township_code",
-      "meta_nbhd_code",
       "meta_tieback_proration_rate",
       "meta_modeling_group",
       "char_yrblt",
@@ -235,11 +234,9 @@ model:
       "acs5_percent_employment_unemployed",
       "acs5_median_household_total_occupied_year_built",
       "acs5_median_household_renter_occupied_gross_rent",
-      "acs5_median_household_owner_occupied_value",
       "acs5_percent_household_owner_occupied",
       "acs5_percent_household_total_occupied_w_sel_cond",
       "acs5_percent_mobility_moved_in_county",
-      "other_ihs_avg_year_index",
       "other_tax_bill_rate",
       "other_school_district_elementary_avg_rating",
       "other_school_district_secondary_avg_rating",
@@ -258,7 +255,6 @@ model:
     # else LightGBM will treat them as numeric
     categorical: [
       "meta_township_code",
-      "meta_nbhd_code",
       "meta_modeling_group",
       "char_air",
       "char_apts",
@@ -297,8 +293,8 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
     # When early stopping is enabled, num_iterations is effectively the MAX
     # number of iterations
-    num_iterations: 1500
-    learning_rate: 0.03
+    num_iterations: 4000
+    learning_rate: 0.025
     
     # For CV only, proportion of the training data to hold out for use in 
     # early stopping + the metric to evaluate. See R docs for details:
@@ -315,7 +311,7 @@ model:
     
     # Maximum number of bins for discretizing continuous features. Lower uses
     # less memory and speeds up training
-    max_bin: 512
+    max_bin: 1024
     
     # During CV, the number of iterations to go without improvement before
     # stopping training
@@ -325,21 +321,21 @@ model:
     # Default set of hyperparameters to use if CV is not enabled. See docs for
     # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     default:
-      num_leaves: 1300
+      num_leaves: 96
       add_to_linked_depth: 3
       feature_fraction: 0.475
-      min_gain_to_split: 5
+      min_gain_to_split: 60.75
       min_data_in_leaf: 4
-      max_cat_threshold: 200
-      min_data_per_group: 80
-      cat_smooth: 40.00 
-      cat_l2: 1.00
-      lambda_l1: 0.125
-      lambda_l2: 1.25
+      max_cat_threshold: 175
+      min_data_per_group: 165
+      cat_smooth: 20.00
+      cat_l2: 27.00
+      lambda_l1: 0.493
+      lambda_l2: 2.100
  
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
-      num_leaves: [20, 150]
+      num_leaves: [20, 200]
       add_to_linked_depth: [2, 7]
       feature_fraction: [0.4, 0.6]
       min_gain_to_split: [-2.0, 2] # 10 ^ X

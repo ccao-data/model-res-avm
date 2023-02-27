@@ -75,17 +75,17 @@ stages:
         model.engine: lightgbm
         model.hyperparameter:
           default:
-            num_leaves: 1300
+            num_leaves: 96
             add_to_linked_depth: 3
             feature_fraction: 0.475
-            min_gain_to_split: 5
+            min_gain_to_split: 60.75
             min_data_in_leaf: 4
-            max_cat_threshold: 200
-            min_data_per_group: 80
-            cat_smooth: 40.0
-            cat_l2: 1.0
-            lambda_l1: 0.125
-            lambda_l2: 1.25
+            max_cat_threshold: 175
+            min_data_per_group: 165
+            cat_smooth: 20.0
+            cat_l2: 27.0
+            lambda_l1: 0.493
+            lambda_l2: 2.1
           range:
             num_leaves:
             - 20
@@ -122,13 +122,13 @@ stages:
             - 1
         model.objective: rmse
         model.parameter:
-          num_iterations: 4000
+          num_iterations: 3000
           learning_rate: 0.025
           validation_prop: 0.1
           validation_type: recent
           validation_metric: rmse
           link_max_depth: true
-          max_bin: 1024
+          max_bin: 512
           stop_iter: 40
         model.predictor:
           all:
@@ -210,11 +210,9 @@ stages:
           - acs5_percent_employment_unemployed
           - acs5_median_household_total_occupied_year_built
           - acs5_median_household_renter_occupied_gross_rent
-          - acs5_median_household_owner_occupied_value
           - acs5_percent_household_owner_occupied
           - acs5_percent_household_total_occupied_w_sel_cond
           - acs5_percent_mobility_moved_in_county
-          - other_ihs_avg_year_index
           - other_tax_bill_rate
           - other_school_district_elementary_avg_rating
           - other_school_district_secondary_avg_rating
@@ -270,29 +268,29 @@ stages:
           - 3
           - 5
           - 10
-        toggle.cv_enable: true
+        toggle.cv_enable: false
     outs:
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 5b3e4f9238100dc8415efa0c3ab87952
-      size: 2879
+      md5: 39e12ee82b45d88edeb2a4047141908d
+      size: 2865
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: 45e3e3d1aebece4634ab42f6ae610d83
-      size: 8501
+      md5: 255327e8158b49c84d5b2de28f052541
+      size: 8508
     - path: output/parameter_range/model_parameter_range.parquet
-      md5: 02b3f76d4cb7e2a6f76e807c8564f699
-      size: 1944
+      md5: bef5a22b3eb8fb426e80cb5f9cd4eb48
+      size: 696
     - path: output/parameter_search/model_parameter_search.parquet
-      md5: 8819b5954318d8fd325eec324c4c21e7
-      size: 223278
+      md5: bef5a22b3eb8fb426e80cb5f9cd4eb48
+      size: 696
     - path: output/test_card/model_test_card.parquet
-      md5: 03efcd2b1eb830248b6bcfb8525bfda8
-      size: 2015519
+      md5: cb8ed6571c5fe7631ddf68ae5d4ccd3a
+      size: 2015551
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: fe73fa1043d9301848d1bdc708a47b12
-      size: 6190655
+      md5: 51b452ea287aaa46a91c1d46cf6a5c98
+      size: 11817370
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: f36d3e588db5e55674ce7a15e46d8332
-      size: 2013904
+      md5: 194e4006892d05f9b99ad74995068ea0
+      size: 2013919
   assess:
     cmd: Rscript pipeline/02-assess.R
     deps:
@@ -312,11 +310,11 @@ stages:
       md5: bbb2b8ab23d1b41485acbded877cd55e
       size: 149263348
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 48601512953680229b80dd09a64c3f64
-      size: 92237695
+      md5: 51b452ea287aaa46a91c1d46cf6a5c98
+      size: 11817370
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: f36d3e588db5e55674ce7a15e46d8332
-      size: 2013904
+      md5: 194e4006892d05f9b99ad74995068ea0
+      size: 2013919
     params:
       params.yaml:
         assessment:
@@ -404,11 +402,9 @@ stages:
         - acs5_percent_employment_unemployed
         - acs5_median_household_total_occupied_year_built
         - acs5_median_household_renter_occupied_gross_rent
-        - acs5_median_household_owner_occupied_value
         - acs5_percent_household_owner_occupied
         - acs5_percent_household_total_occupied_w_sel_cond
         - acs5_percent_mobility_moved_in_county
-        - other_ihs_avg_year_index
         - other_tax_bill_rate
         - other_school_district_elementary_avg_rating
         - other_school_district_secondary_avg_rating
@@ -446,23 +442,23 @@ stages:
           - 10
     outs:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: af7257ec50e87e5da60c28341b408db8
-      size: 219410926
+      md5: 6d412e5181354565a796bb0b4f004168
+      size: 217880210
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 5266a3ea8690129a5570b29f79e938fa
-      size: 94554816
+      md5: acda6f518ba076e1f6badf6b8cf2731a
+      size: 94405527
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 115cc4b3446cfc3348ea20e75a691002
+      md5: c26508cb72b0dc7430fc0f5b62eb1813
       size: 2886
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 5266a3ea8690129a5570b29f79e938fa
-      size: 94554816
+      md5: acda6f518ba076e1f6badf6b8cf2731a
+      size: 94405527
     - path: output/test_card/model_test_card.parquet
-      md5: 034a62dbd1349c2c02925cb0744828ac
-      size: 2015567
+      md5: cb8ed6571c5fe7631ddf68ae5d4ccd3a
+      size: 2015551
     params:
       params.yaml:
         assessment.data_year: '2022'
@@ -480,20 +476,20 @@ stages:
         run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 1d6c63b8c3187d8d67f448aa9fee3458
-      size: 2914
+      md5: ee0f0f549e3ea5489619f8fa81a9adbe
+      size: 2907
     - path: output/performance/model_performance_assessment.parquet
-      md5: de3c9589b716e8d62c46251fbc5534a2
-      size: 12016835
+      md5: 2f5b3024bc4da3d4c3378f5c8c32cff5
+      size: 12028204
     - path: output/performance/model_performance_test.parquet
-      md5: d1ef7fc8c5445e04e680d1df61de6754
-      size: 8818117
+      md5: 0cae8256c2862c047d1a2116b5409997
+      size: 8818460
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 337fdc44dec9106f1e5f1e19b2c65e9f
-      size: 4708364
+      md5: ccd559e0f1594661a0c7d445bfc8f2c2
+      size: 4712730
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 46117a0493740246738a2ae85d8eb598
-      size: 5113260
+      md5: a10fe96400d9373dc17e92ffe0501d0c
+      size: 5117340
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
@@ -501,11 +497,11 @@ stages:
       md5: 3c775f1d6666a718221dc505f121aa52
       size: 299492881
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 48601512953680229b80dd09a64c3f64
-      size: 92237695
+      md5: 51b452ea287aaa46a91c1d46cf6a5c98
+      size: 11817370
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: f36d3e588db5e55674ce7a15e46d8332
-      size: 2013904
+      md5: 194e4006892d05f9b99ad74995068ea0
+      size: 2013919
     params:
       params.yaml:
         model.predictor.all:
@@ -587,11 +583,9 @@ stages:
         - acs5_percent_employment_unemployed
         - acs5_median_household_total_occupied_year_built
         - acs5_median_household_renter_occupied_gross_rent
-        - acs5_median_household_owner_occupied_value
         - acs5_percent_household_owner_occupied
         - acs5_percent_household_total_occupied_w_sel_cond
         - acs5_percent_mobility_moved_in_county
-        - other_ihs_avg_year_index
         - other_tax_bill_rate
         - other_school_district_elementary_avg_rating
         - other_school_district_secondary_avg_rating
@@ -604,9 +598,12 @@ stages:
         - time_sale_day_of_week
         - time_sale_post_covid
     outs:
+    - path: output/feature_importance/model_feature_importance.parquet
+      md5: 4680d1a33efd027814000514b60ce857
+      size: 9439
     - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 724076192b97bc68c5b7c0a6bc740609
-      size: 2907
+      md5: e66833ce18f41781f22ca6aa5b35ee9f
+      size: 2921
     - path: output/shap/model_shap.parquet
       md5: bef5a22b3eb8fb426e80cb5f9cd4eb48
       size: 696
@@ -614,26 +611,29 @@ stages:
     cmd: Rscript pipeline/05-finalize.R
     deps:
     - path: output/assessment_card/model_assessment_card.parquet
-      md5: af7257ec50e87e5da60c28341b408db8
-      size: 219410926
+      md5: 6d412e5181354565a796bb0b4f004168
+      size: 217880210
     - path: output/assessment_pin/model_assessment_pin.parquet
-      md5: 5266a3ea8690129a5570b29f79e938fa
-      size: 94554816
+      md5: acda6f518ba076e1f6badf6b8cf2731a
+      size: 94405527
+    - path: output/feature_importance/model_feature_importance.parquet
+      md5: 4680d1a33efd027814000514b60ce857
+      size: 9439
     - path: output/intermediate/timing/model_timing_assess.parquet
-      md5: 115cc4b3446cfc3348ea20e75a691002
+      md5: c26508cb72b0dc7430fc0f5b62eb1813
       size: 2886
     - path: output/intermediate/timing/model_timing_evaluate.parquet
-      md5: 1d6c63b8c3187d8d67f448aa9fee3458
-      size: 2914
-    - path: output/intermediate/timing/model_timing_interpret.parquet
-      md5: 724076192b97bc68c5b7c0a6bc740609
+      md5: ee0f0f549e3ea5489619f8fa81a9adbe
       size: 2907
+    - path: output/intermediate/timing/model_timing_interpret.parquet
+      md5: e66833ce18f41781f22ca6aa5b35ee9f
+      size: 2921
     - path: output/intermediate/timing/model_timing_train.parquet
-      md5: 2a24caf1f1674d705a39a9cdb459b137
-      size: 2872
+      md5: 39e12ee82b45d88edeb2a4047141908d
+      size: 2865
     - path: output/parameter_final/model_parameter_final.parquet
-      md5: b78977dcab5440560041fef98fafff75
-      size: 8464
+      md5: 255327e8158b49c84d5b2de28f052541
+      size: 8508
     - path: output/parameter_range/model_parameter_range.parquet
       md5: bef5a22b3eb8fb426e80cb5f9cd4eb48
       size: 696
@@ -641,29 +641,29 @@ stages:
       md5: bef5a22b3eb8fb426e80cb5f9cd4eb48
       size: 696
     - path: output/performance/model_performance_assessment.parquet
-      md5: de3c9589b716e8d62c46251fbc5534a2
-      size: 12016835
+      md5: 2f5b3024bc4da3d4c3378f5c8c32cff5
+      size: 12028204
     - path: output/performance/model_performance_test.parquet
-      md5: d1ef7fc8c5445e04e680d1df61de6754
-      size: 8818117
+      md5: 0cae8256c2862c047d1a2116b5409997
+      size: 8818460
     - path: output/performance_quantile/model_performance_quantile_assessment.parquet
-      md5: 337fdc44dec9106f1e5f1e19b2c65e9f
-      size: 4708364
+      md5: ccd559e0f1594661a0c7d445bfc8f2c2
+      size: 4712730
     - path: output/performance_quantile/model_performance_quantile_test.parquet
-      md5: 46117a0493740246738a2ae85d8eb598
-      size: 5113260
+      md5: a10fe96400d9373dc17e92ffe0501d0c
+      size: 5117340
     - path: output/shap/model_shap.parquet
       md5: bef5a22b3eb8fb426e80cb5f9cd4eb48
       size: 696
     - path: output/test_card/model_test_card.parquet
-      md5: 034a62dbd1349c2c02925cb0744828ac
-      size: 2015567
+      md5: cb8ed6571c5fe7631ddf68ae5d4ccd3a
+      size: 2015551
     - path: output/workflow/fit/model_workflow_fit.zip
-      md5: 48601512953680229b80dd09a64c3f64
-      size: 92237695
+      md5: 51b452ea287aaa46a91c1d46cf6a5c98
+      size: 11817370
     - path: output/workflow/recipe/model_workflow_recipe.rds
-      md5: f36d3e588db5e55674ce7a15e46d8332
-      size: 2013904
+      md5: 194e4006892d05f9b99ad74995068ea0
+      size: 2013919
     params:
       params.yaml:
         cv:
@@ -790,11 +790,9 @@ stages:
             - acs5_percent_employment_unemployed
             - acs5_median_household_total_occupied_year_built
             - acs5_median_household_renter_occupied_gross_rent
-            - acs5_median_household_owner_occupied_value
             - acs5_percent_household_owner_occupied
             - acs5_percent_household_total_occupied_w_sel_cond
             - acs5_percent_mobility_moved_in_county
-            - other_ihs_avg_year_index
             - other_tax_bill_rate
             - other_school_district_elementary_avg_rating
             - other_school_district_secondary_avg_rating
@@ -838,7 +836,7 @@ stages:
             - meta_card_num
             - meta_sale_document_num
           parameter:
-            num_iterations: 2000
+            num_iterations: 3000
             learning_rate: 0.025
             validation_prop: 0.1
             validation_type: recent
@@ -848,39 +846,39 @@ stages:
             stop_iter: 40
           hyperparameter:
             default:
-              num_leaves: 1300
+              num_leaves: 96
               add_to_linked_depth: 3
               feature_fraction: 0.475
-              min_gain_to_split: 5
+              min_gain_to_split: 60.75
               min_data_in_leaf: 4
-              max_cat_threshold: 200
-              min_data_per_group: 80
-              cat_smooth: 40.0
-              cat_l2: 1.0
-              lambda_l1: 0.125
-              lambda_l2: 1.25
+              max_cat_threshold: 175
+              min_data_per_group: 165
+              cat_smooth: 20.0
+              cat_l2: 27.0
+              lambda_l1: 0.493
+              lambda_l2: 2.1
             range:
               num_leaves:
-              - 50
-              - 2000
+              - 20
+              - 150
               add_to_linked_depth:
-              - 1
+              - 2
               - 7
               feature_fraction:
-              - 0.3
-              - 0.7
+              - 0.4
+              - 0.6
               min_gain_to_split:
-              - -3.0
-              - 4
+              - -2.0
+              - 2
               min_data_in_leaf:
               - 2
-              - 300
+              - 50
               max_cat_threshold:
-              - 10
+              - 150
               - 250
               min_data_per_group:
-              - 4
-              - 300
+              - 100
+              - 200
               cat_smooth:
               - 10.0
               - 200.0
@@ -889,10 +887,10 @@ stages:
               - 2
               lambda_l1:
               - -3
-              - 2
+              - 1
               lambda_l2:
               - -3
-              - 2
+              - 1
         pv:
           multicard_yoy_cap: 2.0
           land_pct_of_total_cap: 0.5
@@ -917,7 +915,8 @@ stages:
           - 3
           - 5
           - 10
-        run_note: "Hand-tuned hyperparameters to combine sweet-matt and beautiful-antonia\n"
+        run_note: "Re-run busy-damini with IHS index or median owner-occupied value.\
+          \ Add feature importance output\n"
         run_type: full
         toggle:
           cv_enable: false
@@ -925,11 +924,11 @@ stages:
           upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
-      md5: 2807b165b600bb09e0701cfb34f9f581
-      size: 23424
+      md5: 4962f8efca01158ffe8ac4dde6d362fb
+      size: 23655
     - path: output/timing/model_timing.parquet
-      md5: 72118aa87952d3f5a2aa13d502c4864b
-      size: 5257
+      md5: 7a88160fd1dcb2e72fd2fd61284d8508
+      size: 5229
   export:
     cmd: Rscript pipeline/06-export.R
     params:
