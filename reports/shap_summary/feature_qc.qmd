@@ -1,0 +1,597 @@
+---
+title: "Feature QC"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    page-layout: full
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+editor: source
+---
+
+```{r setup}
+
+# This script runs balance tests comparing the universe of residential parcels
+# to the sample of residential parcels with sales in the previous 8 years
+# that are used to train the data department's CAMA.
+
+# Load necessary libraries
+library(arrow)
+library(DBI)
+library(dplyr)
+library(DT)
+library(ggplot2)
+library(glue)
+library(htmltools)
+library(kableExtra)
+library(leaflet)
+library(noctua)
+library(plotly)
+library(scales)
+library(sf)
+library(skimr)
+library(stringr)
+library(tableone)
+library(tidyr)
+library(purrr)
+
+options(knitr.kable.NA = '')
+options(scipen = 999)
+options(width = 150)
+
+# Connect to Athena
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+
+# Data paths
+shaps_path <- "~/data/shaps.parquet"
+preds_path <- "~/data/predictions.parquet"
+chars_path <- "~/data/characteristics.parquet"
+sales_path <- "~/data/sales.parquet"
+
+# Ingest training set
+training_data <- read_parquet("~/ccao_res_avm/input/training_data.parquet")
+
+# Declare model IDs
+model_ids <- c('2023-02-13-beautiful-antonia', '2023-01-31-unruffled-kyra')
+
+pull_ids <- glue_collapse(model_ids, sep = "', '")
+
+# Ingest shap values
+if (!file.exists(shaps_path)) {
+  
+  dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  glue("
+
+    SELECT *
+    FROM model.shap
+    WHERE run_id IN ('{pull_ids}')
+
+  ")
+) %>%
+  write_parquet(shaps_path)
+  
+}
+
+shaps <- read_parquet(shaps_path)
+
+# Ingest predictions
+if (!file.exists(preds_path)) {
+  
+  dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  glue("
+
+    SELECT
+      meta_year, meta_pin,
+      meta_township_code, meta_triad_code, meta_class,
+      meta_complex_id,
+      char_total_bldg_sf,
+      pred_pin_final_fmv, run_id, prior_far_tot, prior_near_tot
+    FROM model.assessment_pin
+    WHERE run_id IN ('{pull_ids}')
+
+  ")
+) %>%
+  write_parquet(preds_path)
+  
+}
+
+preds <- read_parquet(preds_path)
+
+# Ingest shap values
+if (!file.exists(chars_path)) {
+  
+  dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  glue("
+
+    WITH rr AS (
+    
+    SELECT distinct pin
+    FROM default.vw_card_res_char
+    WHERE char_recent_renovation = TRUE
+    
+    )
+    
+    SELECT vcrc.*
+    FROM default.vw_card_res_char vcrc
+    RIGHT JOIN rr ON vcrc.pin = rr.pin
+
+  ")
+) %>%
+  write_parquet(chars_path)
+  
+}
+
+chars <- read_parquet(chars_path)
+
+# Ingest sales
+if (!file.exists(sales_path)) {
+  
+  dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  "
+
+    SELECT * FROM default.vw_pin_sale
+    WHERE year > '2014'
+    AND SUBSTR(class, 1, 1) = '2'
+    AND is_multisale = FALSE
+
+  "
+) %>%
+  write_parquet(sales_path)
+  
+}
+
+sales <- read_parquet(sales_path)
+
+
+```
+
+## Sales Sample
+
+Note - outliers filtered.
+
+::: {.panel-tabset}
+
+## Township/Year
+
+``` {r town_year}
+
+township <- training_data %>%
+  filter(!sv_is_outlier) %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_township_name, meta_year) %>%
+  summarise(sales = n()) %>%
+  select(Sales = sales, Year = meta_year, Township = meta_township_name) %>%
+  ggplot() +
+  geom_line(aes(x = Year, y = Sales, color = Township)) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
+  scale_x_continuous(breaks = seq(2014, 2022, 1)) +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+  )
+  
+ggplotly(township)
+
+```
+
+## Township Sales by Month
+
+``` {r town_bin1, fig.height=10, fig.width = 8}
+
+training_data %>%
+  filter(!sv_is_outlier & meta_triad_name == "South" & meta_year >= "2018") %>%
+  mutate(Bin = cut(
+    meta_sale_price,
+    breaks = c(1, 100000, 300000, 600000, 1000000, max(meta_sale_price)),
+    labels = c(
+      "$1 - $100,000",
+      "$100,000 - $300,000",
+      "$300,000 - $600,000",
+      "$600,000 - $1,000,000",
+      "$1,000,000+"
+      )
+    ),
+    Quarter = lubridate::quarter(meta_sale_date) + 4 * (as.numeric(meta_year) - 2018)
+    ) %>%
+  group_by(meta_township_name, Quarter, Bin) %>%
+  summarise(
+    Sales = n()
+  ) %>%
+  ungroup() %>%
+  select(Sales, Bin, Township = meta_township_name, Quarter) %>%
+  ggplot(aes(x = Quarter, y = Sales, fill = Bin, group = Bin)) +
+  geom_area() +
+  scale_color_brewer(palette = "PuOr") +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) +
+  #scale_x_continuous(breaks = seq(1, 10, 1)) +
+  facet_wrap(vars(Township), scales = "free_y", ncol = 3)
+
+```
+
+## Class/Year
+
+``` {r class_year}
+
+class <- training_data %>%
+  filter(!sv_is_outlier) %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_class, meta_year) %>%
+  summarise(sales = n()) %>%
+  rename(Class = meta_class) %>%
+  pivot_wider(id_cols = Class, names_from = meta_year, values_from = sales)
+
+class  %>%
+  kable() %>%
+  kable_styling() %>%
+  row_spec(
+    unique(which(is.na(class), arr.ind = TRUE)[,1]),
+    bold = T,
+    background = "lightgrey"
+    )
+
+```
+
+:::
+
+## Sale Outliers
+
+::: {.panel-tabset}
+
+## Sales View
+
+``` {r}
+
+temp_sales <- sales %>%
+  left_join(
+    ccao::town_dict %>% select(township_code, township_name, triad_name)
+    ) %>%
+  filter(class != '200' & triad_name == 'South')
+
+temp_sales %>%
+  filter(sale_filter_is_outlier) %>%
+  mutate(`Outlier Type` = case_when(
+      sale_price_log10 > sale_filter_upper_limit ~ "High",
+      sale_price_log10 < sale_filter_lower_limit ~ "Low",
+      TRUE ~ NA_character_
+    )) %>%
+  group_by(class, `Outlier Type`, township_name) %>%
+  summarise(
+    `Min Sale Price` = min(sale_price, na.rm = TRUE),
+    `Median Sale Price` = median(sale_price, na.rm = TRUE),
+    `Max Sale Price` = max(sale_price, na.rm = TRUE),
+    n = n()
+  ) %>%
+    left_join(
+      temp_sales %>%
+  filter(!sale_filter_is_outlier) %>%
+  group_by(class, township_name) %>%
+  summarise(`Median Non-outlier Sale Price` = median(sale_price, na.rm = TRUE))
+    ) %>%
+  mutate(across(contains("Sale"), dollar)) %>%
+  dplyr::rename(Class = class, "Township Name" = township_name) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+            columnDefs = list(
+              list(className = 'dt-center', targets = c(1:7))
+              )
+            )
+    )
+
+```
+
+## Training Data
+
+Top and bottom 25ish outliers.
+
+``` {r}
+
+rbind(
+  
+  training_data %>%
+  filter(sv_is_outlier) %>%
+  slice_max(order_by = meta_sale_price, n = 25),
+  
+  training_data %>%
+  filter(sv_is_outlier) %>%
+  slice_min(order_by = meta_sale_price, n = 25)
+  
+) %>%
+  datatable(rownames = FALSE)
+
+```
+
+:::
+
+## Shap Values
+
+``` {r chars}
+
+shap_tables <- shaps %>%
+  slice_sample(n = 100000) %>%
+  split(.$run_id) %>%
+  lapply(function(x) {
+    
+    x %>%
+      select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
+      skim() %>%
+      rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+      select(-c(type, n_missing, complete_rate, p25, p75)) %>%
+      rename("histogram" = "hist", "median" = "p50", "min" = "p0", "max" = "p100") %>%
+      mutate(
+        variable = str_replace_all(variable, "_", " "),
+        across(where(is.numeric), ~ round(.x, 1)),
+        `mean direction` = case_when(
+          mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
+          ),
+        `median direction` = case_when(
+          median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
+          ),
+        mean = abs(mean),
+        median = abs(median)
+        ) %>%
+      relocate(`mean direction`, .before = mean) %>%
+      relocate(`median direction`, .before = median) %>%
+      datatable(
+        rownames = FALSE,
+        height = "500px",
+        options = list(
+                columnDefs = list(
+                  list(className = 'dt-center', targets = c(1:7))
+                  )
+                )
+        )
+    
+  })
+
+```
+
+::: {.panel-tabset}
+
+## `r names(shap_tables)[1]`
+
+``` {r}
+
+shap_tables[[1]]
+
+```
+
+## `r names(shap_tables)[2]`
+
+``` {r}
+
+shap_tables[[2]]
+
+```
+
+:::
+
+### Consistency Across Runs
+
+#### Median and Standard Deviation
+
+``` {r}
+
+model_ids %>%
+  lapply(function(x) {
+    
+    shaps %>% filter(run_id == !!x) %>%
+    select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
+    skim() %>%
+    rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+    select(variable, median = p50, sd) %>%
+    mutate(run_id = x)
+    
+  }) %>%
+  bind_rows() %>%
+  pivot_wider(values_from = c(median, sd), names_from = run_id) %>%
+  mutate(
+    variable = str_replace_all(variable, "_", " "),
+    median_difference = .[[2]] - .[[3]],
+    sd_difference = .[[4]] - .[[5]]
+    ) %>%
+  select(1, 2, 3, 6, 4, 5, 7) %>%
+  kable(
+    col.names = c("Feature", rep(c(model_ids, "Difference"), 2))
+  ) %>%
+  kable_styling(
+    "striped"
+  ) %>%
+  add_header_above(c("", "Median" = 3, "Standard Deviation" = 3))
+
+```
+
+#### Standardized Mean Difference
+
+The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
+
+$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
+
+We're looking for SMDs greater than .1 or .05 for sensitive covariates.
+
+
+``` {r}
+
+vars <- names(
+  shaps %>%
+  select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric))
+)
+
+smd_table <- CreateTableOne(
+  vars = vars,
+  strata = "run_id",
+  data = shaps,
+  test = FALSE,
+  includeNA = TRUE
+)
+
+print(smd_table, smd = TRUE)
+
+```
+
+## 211/212s
+
+::: {.panel-tabset}
+
+## YoY Changes
+
+``` {r}
+
+preds %>%
+  filter(meta_class %in% c('211', '212') & meta_triad_code == '3') %>%
+  mutate(
+    yoy_far = abs((pred_pin_final_fmv - prior_far_tot) / pred_pin_final_fmv),
+    yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv)
+      ) %>%
+  mutate(
+    big_swing_near = yoy_near > 0.5,
+    big_swing_far = yoy_far > 0.5
+) %>%
+  group_by(meta_township_code, meta_class, run_id) %>%
+  summarise(
+    big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE) / n(),
+    big_swings_far = sum(as.numeric(big_swing_far), na.rm = TRUE) / n()
+  ) %>%
+  ungroup() %>%
+  arrange(desc(big_swings_near)) %>%
+  mutate(across(starts_with('big'), ~ label_percent(accuracy = 0.1)(.x))) %>%
+  left_join(
+    ccao::town_dict %>% select(meta_township_code = township_code, township_name)
+    ) %>%
+  select(
+    "Township Name" = township_name,
+    Class = meta_class, run_id,
+    "% Delta Near > 50%" = big_swings_near,
+    "% Delta Far > 50%" = big_swings_far
+    ) %>%
+  datatable(
+  rownames = FALSE,
+  height = "500px",
+  options = list(
+          columnDefs = list(
+            list(className = 'dt-center', targets = c(1:2))
+            )
+          )
+  )
+
+```
+
+## Large SQFT 212s
+
+``` {r}
+
+training_data %>%
+  filter(meta_class %in% c('211', '212') & meta_triad_code == '3' & !duplicated(meta_pin)) %>%
+  group_by(meta_class) %>%
+  mutate(
+    mean_sf = round(mean(char_bldg_sf, na.rm = TRUE), 0),
+    outlier = abs(char_bldg_sf) > mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE)
+    ) %>%
+  ungroup() %>%
+  filter(outlier) %>%
+  select(
+    PIN = meta_pin,
+    Township = meta_township_name,
+    Class = meta_class,
+    "Mean SF" = mean_sf,
+    "Building SF" = char_bldg_sf
+    ) %>%
+  datatable(
+  rownames = FALSE,
+  height = "500px",
+  options = list(
+          columnDefs = list(
+            list(className = 'dt-center', targets = c(1:4))
+            )
+          )
+  )
+
+```
+
+:::
+
+## 210s/295s
+
+Standard deviations of less than $5 of FMV per SQFT excluded.
+
+``` {r}
+
+preds %>%
+  filter(!is.na(meta_complex_id) & meta_triad_code == '3') %>%
+  group_by(meta_complex_id, run_id) %>%
+  mutate(fmvpsf = pred_pin_final_fmv / char_total_bldg_sf) %>%
+  summarise(
+    n = n(),
+    "FMV per SQFT Standard Deviation" = sd(fmvpsf, na.rm = TRUE),
+    "Min FMV per SQFT" = min(fmvpsf, na.rm = TRUE),
+    "Max FMV per SQFT" = max(fmvpsf, na.rm = TRUE),
+    "Min SQFT" = min(char_total_bldg_sf, na.rm = TRUE),
+    "Max SQFT" = max(char_total_bldg_sf, na.rm = TRUE)
+    ) %>%
+  filter(`FMV per SQFT Standard Deviation` > 5) %>%
+  mutate(
+    across(contains("SQFT"), ~ round(.x, 1)),
+    across(contains("FMV"), dollar)
+    ) %>%
+  select(
+    "Complex ID" = meta_complex_id, run_id, n,
+    `FMV per SQFT Standard Deviation`, `Min FMV per SQFT`, `Max FMV per SQFT`,
+    `Min SQFT`, `Max SQFT`
+    ) %>%
+  datatable(
+  rownames = FALSE,
+  height = "500px",
+  options = list(
+          columnDefs = list(
+            list(className = 'dt-center', targets = c(1:7))
+            )
+          )
+  )
+
+```
+
+## Recent Renovations
+
+TRUE indicates change in any column with prefix "char" between first year where char_recent_reno = TRUE and previous year. Sample is all PINs in default.vw_card_res_char with at least one TRUE observation for char_recent_reno.
+
+``` {r}
+
+chars %>%
+  left_join(
+    chars %>%
+      filter(char_recent_renovation) %>%
+      group_by(pin) %>%
+      summarise(reno_year = as.numeric(min(year))) %>%
+      select(pin, reno_year)
+  ) %>%
+  filter(year == reno_year | year == reno_year - 1) %>%
+  group_by(pin) %>%
+  summarise(
+    across(starts_with("char") & where(is.numeric), ~ sd(.x, na.rm = TRUE))
+  ) %>%
+  ungroup() %>%
+  mutate(`Characteristics Change` = if_any(starts_with("char"), ~ !is.na(.x) & .x > 0)) %>%
+  group_by(`Characteristics Change`) %>%
+  summarise(n = n()) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+
+
+```
