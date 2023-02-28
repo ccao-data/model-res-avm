@@ -383,7 +383,63 @@ shap_tables[[2]]
 
 :::
 
-### Consistency Across Runs
+## RMSE
+
+``` {r}
+
+RMSE <- training_data %>%
+  filter(!sv_is_outlier) %>%
+  left_join(
+    ccao::town_dict %>% select(meta_township_code = township_code, triad_name)
+    ) %>%
+  filter(meta_year == '2022' & triad_name == 'South') %>%
+  left_join(preds, by = "meta_pin") %>%
+  group_by(run_id, meta_township_name) %>%
+  arrange(meta_sale_price) %>%
+  mutate(Quintile = ntile(meta_sale_price, 5)) %>%
+  group_by(run_id, meta_township_name, Quintile) %>%
+  summarise(
+    median_sale_price = median(meta_sale_price, na.rm = TRUE),
+    median_predicted_fmv = median(pred_pin_final_fmv, na.rm = TRUE),
+    RMSE = sqrt((sum(meta_sale_price - pred_pin_final_fmv) ^ 2) / n())
+  ) %>%
+  rename(Township = meta_township_name)
+
+```
+
+::: {.panel-tabset}
+
+## `r names(shap_tables)[1]`
+
+``` {r}
+
+ggplotly(
+  RMSE %>%
+  filter(run_id == model_ids[1]) %>%
+  ggplot(aes(x = Quintile, y = RMSE, color = Township)) +
+  geom_line() +
+  theme_minimal()
+)
+
+```
+
+## `r names(shap_tables)[2]`
+
+``` {r}
+
+ggplotly(
+  RMSE %>%
+  filter(run_id == model_ids[2]) %>%
+  ggplot(aes(x = Quintile, y = RMSE, color = Township)) +
+  geom_line() +
+  theme_minimal()
+)
+
+```
+
+:::
+
+## Consistency Across Runs
 
 #### Median and Standard Deviation
 
