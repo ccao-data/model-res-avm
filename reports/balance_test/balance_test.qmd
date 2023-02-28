@@ -998,3 +998,49 @@ ggplot(
 ```
 
 :::
+
+## Sale Outliers
+
+::: {.panel-tabset}
+
+## Sales View
+
+``` {r}
+temp_sales <- sales %>%
+  left_join(
+    ccao::town_dict %>% select(township_code, township_name, triad_name)
+  ) %>%
+  filter(class != "200" & triad_name == "South")
+
+temp_sales %>%
+  filter(sale_filter_is_outlier) %>%
+  mutate(`Outlier Type` = case_when(
+    sale_price_log10 > sale_filter_upper_limit ~ "High",
+    sale_price_log10 < sale_filter_lower_limit ~ "Low",
+    TRUE ~ NA_character_
+  )) %>%
+  group_by(class, `Outlier Type`, township_name) %>%
+  summarise(
+    `Min Sale Price` = min(sale_price, na.rm = TRUE),
+    `Median Sale Price` = median(sale_price, na.rm = TRUE),
+    `Max Sale Price` = max(sale_price, na.rm = TRUE),
+    n = n()
+  ) %>%
+  left_join(
+    temp_sales %>%
+      filter(!sale_filter_is_outlier) %>%
+      group_by(class, township_name) %>%
+      summarise(`Median Non-outlier Sale Price` = median(sale_price, na.rm = TRUE))
+  ) %>%
+  mutate(across(contains("Sale"), dollar)) %>%
+  dplyr::rename(Class = class, "Township Name" = township_name) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1:7))
+      )
+    )
+  )
+```
