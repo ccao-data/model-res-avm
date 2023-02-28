@@ -73,14 +73,14 @@ before_script:
   artifacts:
     paths:
       - output/
-    expire_in: 1 day
+    expire_in: 6 hrs
   only:
     - master
+    - /^[0-9]*-assessment-year$/
 
 # Note that the assess and interpret stages are skipped because they take too
-# long on shared GitLab runners. CV is also skipped. Therefore, each CI run
-# produces a model trained with the default hyperparameters + performance
-# metrics on the test set only
+# long on shared GitLab runners. Therefore, each CI run produces metrics on the
+# test set only
 stages:
   - train
   - evaluate
@@ -89,12 +89,16 @@ stages:
 train:
   <<: *run_stage
   stage: train
+  tags: 
+    - saas-linux-large-amd64
   script:
     - Rscript pipeline/01-train.R
 
 evaluate:
   <<: *run_stage
   stage: evaluate
+  tags: 
+    - saas-linux-large-amd64
   script:
     - Rscript pipeline/03-evaluate.R
 

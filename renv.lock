@@ -88,10 +88,10 @@
     },
     "arrow": {
       "Package": "arrow",
-      "Version": "10.0.1",
+      "Version": "10.0.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "74b551e105beb7ee0fae1f7861668bac",
+      "Hash": "05f9b803e1f6a5d47ff0a885ed04ebd2",
       "Requirements": [
         "R6",
         "assertthat",
@@ -236,10 +236,10 @@
     },
     "cachem": {
       "Package": "cachem",
-      "Version": "1.0.6",
+      "Version": "1.0.7",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "648c5b3d71e6a37e3043617489a0a0e9",
+      "Hash": "cda74447c42f529de601fe4d4050daef",
       "Requirements": [
         "fastmap",
         "rlang"
@@ -370,10 +370,10 @@
     },
     "data.table": {
       "Package": "data.table",
-      "Version": "1.14.6",
+      "Version": "1.14.8",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "aecef50008ea7b57c76f1cb5c127fb02",
+      "Hash": "b4c06e554f33344e044ccd7fdca750a9",
       "Requirements": []
     },
     "dbscan": {
@@ -472,10 +472,10 @@
     },
     "fastmap": {
       "Package": "fastmap",
-      "Version": "1.1.0",
+      "Version": "1.1.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "77bd60a6157420d4ffa93b27cf6a58b8",
+      "Hash": "f7736a18de97dea803bde0a2daaafb27",
       "Requirements": []
     },
     "foreach": {
@@ -538,10 +538,10 @@
     },
     "ggplot2": {
       "Package": "ggplot2",
-      "Version": "3.4.0",
+      "Version": "3.4.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "fd2aab12f54400c6bca43687231e246b",
+      "Hash": "d494daf77c4aa7f084dbbe6ca5dcaca7",
       "Requirements": [
         "MASS",
         "cli",
@@ -648,10 +648,10 @@
     },
     "httr": {
       "Package": "httr",
-      "Version": "1.4.4",
+      "Version": "1.4.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "57557fac46471f0dbbf44705cc6a5c8c",
+      "Hash": "f6844033201269bec3ca0097bc6c97b3",
       "Requirements": [
         "R6",
         "curl",
@@ -750,10 +750,10 @@
     },
     "lava": {
       "Package": "lava",
-      "Version": "1.7.1",
+      "Version": "1.7.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "c2a096715467f53104d989f54afd0ee1",
+      "Hash": "a5308eaefc9ddf08131b00f5b4a732bd",
       "Requirements": [
         "SQUAREM",
         "future.apply",
@@ -844,10 +844,10 @@
     },
     "lubridate": {
       "Package": "lubridate",
-      "Version": "1.9.1",
+      "Version": "1.9.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "88ad585eb49669b7f2db3f5ef3c8307d",
+      "Hash": "e25f18436e3efd42c7c590a1c4c15390",
       "Requirements": [
         "generics",
         "timechange"
@@ -974,10 +974,10 @@
     },
     "parsnip": {
       "Package": "parsnip",
-      "Version": "1.0.3",
+      "Version": "1.0.4",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "9cf8cb344a158566a0c785db7b72a316",
+      "Hash": "c798f1abedbea6d64eaf2effd3ff455a",
       "Requirements": [
         "cli",
         "dplyr",
@@ -1129,10 +1129,10 @@
     },
     "readr": {
       "Package": "readr",
-      "Version": "2.1.3",
+      "Version": "2.1.4",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "2dfbfc673ccb3de3d8836b4b3bd23d14",
+      "Hash": "b5047343b3825f37ad9d3b5d89aa1078",
       "Requirements": [
         "R6",
         "cli",
@@ -1149,10 +1149,10 @@
     },
     "recipes": {
       "Package": "recipes",
-      "Version": "1.0.4",
+      "Version": "1.0.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "6ae919cd54d95128965d6ceeb1eab885",
+      "Hash": "a3ad6802b18da51f9d38ac7ae8949166",
       "Requirements": [
         "Matrix",
         "cli",
@@ -1294,10 +1294,10 @@
     },
     "survival": {
       "Package": "survival",
-      "Version": "3.5-0",
+      "Version": "3.5-3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "db758f6f1e367f04222c745ca0260b8a",
+      "Hash": "aea2b8787db7088ba50ba389848569ee",
       "Requirements": [
         "Matrix"
       ]
@@ -1529,10 +1529,10 @@
     },
     "workflows": {
       "Package": "workflows",
-      "Version": "1.1.2",
+      "Version": "1.1.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "e8dbcbfad62d4018386c2dbc1ad5185f",
+      "Hash": "553cd1d3d88da41e40f70b04f657a164",
       "Requirements": [
         "cli",
         "generics",

@@ -3,7 +3,7 @@
 model_file_dict <- function(run_id = NULL, year = NULL) {
   env <- environment()
   wd <- here::here()
-  library(magrittr)
+  suppressPackageStartupMessages(library(magrittr))
   
   # Convert flat dictionary file to nested list
   dict <- readr::read_csv(
@@ -68,7 +68,7 @@ model_delete_run <- function(run_id, year) {
 # cross-validation. See the tune::tune_bayes() argument `extract`
 extract_num_iterations <- function(x) {
   fit <- workflows::extract_fit_engine(x)
-  evals <- fit$record_evals$validation$rmse$eval
+  evals <- purrr::pluck(fit, "record_evals", "validation", 1, "eval")
   length(evals)
 }
 

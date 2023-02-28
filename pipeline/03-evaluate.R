@@ -8,21 +8,22 @@ tictoc::tic("Evaluate")
 
 # Load libraries and scripts
 options(dplyr.summarise.inform = FALSE)
-library(arrow)
-library(assessr)
-library(ccao)
-library(dplyr)
-library(here)
-library(furrr)
-library(lightsnip)
-library(purrr)
-library(rlang)
-library(recipes)
-library(stringr)
-library(tictoc)
-library(tidyr)
-library(yaml)
-library(yardstick)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(assessr)
+  library(ccao)
+  library(dplyr)
+  library(here)
+  library(furrr)
+  library(lightsnip)
+  library(purrr)
+  library(rlang)
+  library(recipes)
+  library(tictoc)
+  library(tidyr)
+  library(yaml)
+  library(yardstick)
+})
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -43,7 +44,7 @@ run_type <- as.character(
 num_threads <- parallel::detectCores(logical = FALSE)
 plan(multisession, workers = num_threads)
 
-# Renaming dictionary for input columns. We want actual value of the column
+# Renaming dictionary for input columns. We want the actual value of the column
 # to become geography_id and the NAME of the column to become geography_name
 col_rename_dict <- c(
   "triad_code" = "meta_triad_code",
@@ -66,6 +67,7 @@ col_rename_dict <- c(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Loading evaluation data")
 
 # Load the test results from the end of the train stage. This will be the most
 # recent 10% of sales and already includes predictions. This data will NOT
@@ -98,7 +100,6 @@ if (run_type == "full") {
 # aggregate performance statistics for different levels of geography
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography, class, col_dict) {
-
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
   # the left
@@ -253,7 +254,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 gen_agg_stats_quantile <- function(data, truth, estimate,
                                    rsn_col, rsf_col, triad, geography,
                                    class, col_dict, num_quantile) {
-
   # Calculate the median ratio by quantile of sale price, plus the upper and
   # lower bounds of each quantile
   df_quantile <- data %>%
@@ -341,6 +341,7 @@ geographies_list_quantile <- purrr::cross3(
 
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
+message("Calculating test set aggregate statistics")
 future_map_dfr(
   geographies_list,
   ~ gen_agg_stats(
@@ -356,11 +357,12 @@ future_map_dfr(
     col_dict = col_rename_dict
   ),
   .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = TRUE
+  .progress = FALSE
 ) %>%
   write_parquet(paths$output$performance_test$local)
 
 # Same as above, but calculate stats per quantile of sale price
+message("Calculating test set quantile statistics")
 future_map_dfr(
   geographies_list_quantile,
   ~ gen_agg_stats_quantile(
@@ -376,7 +378,7 @@ future_map_dfr(
     num_quantile = .x[[3]]
   ),
   .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = TRUE
+  .progress = FALSE
 ) %>%
   write_parquet(paths$output$performance_quantile_test$local)
 
@@ -385,9 +387,9 @@ future_map_dfr(
 
 # Only value the assessment set for full runs
 if (run_type == "full") {
-
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also includes unsold properties
+  message("Calculating assessment set aggregate statistics")
   future_map_dfr(
     geographies_list,
     ~ gen_agg_stats(
@@ -403,11 +405,12 @@ if (run_type == "full") {
       col_dict = col_rename_dict
     ),
     .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = TRUE
+    .progress = FALSE
   ) %>%
     write_parquet(paths$output$performance_assessment$local)
 
   # Same as above, but calculate stats per quantile of sale price
+  message("Calculating assessment set quantile statistics")
   future_map_dfr(
     geographies_list_quantile,
     ~ gen_agg_stats_quantile(
@@ -423,7 +426,7 @@ if (run_type == "full") {
       num_quantile = .x[[3]]
     ),
     .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = TRUE
+    .progress = FALSE
   ) %>%
     write_parquet(paths$output$performance_quantile_assessment$local)
 }

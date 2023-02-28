@@ -2,26 +2,25 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Start the stage timer
+# Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Train")
 
 # Load libraries and scripts
 options(tidymodels.dark = TRUE)
-library(arrow)
-library(assessr)
-library(butcher)
-library(ccao)
-library(dplyr)
-library(here)
-library(lightgbm)
-library(lightsnip)
-library(lubridate)
-library(stringr)
-library(tictoc)
-library(tidymodels)
-library(vctrs)
-library(yaml)
+suppressPackageStartupMessages({
+  library(arrow)
+  library(butcher)
+  library(ccao)
+  library(dplyr)
+  library(here)
+  library(lightgbm)
+  library(lightsnip)
+  library(tictoc)
+  library(tidymodels)
+  library(vctrs)
+  library(yaml)
+})
 
 # Load helpers and recipes from files
 walk(list.files("R/", "\\.R$", full.names = TRUE), source)
@@ -52,15 +51,16 @@ set.seed(params$model$seed)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Prepare Data --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Preparing model training data")
 
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
 
 # NOTE: It is critical to trim "multicard" sales when training. Multicard means
-# there is multiple buildings on a PIN. Sales for multicard PINs are
-# often for multiple buildings and will therefore bias the model training
+# there is multiple buildings on a PIN. Since these sales include multiple
+# buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, sv_is_outlier == "Not outlier") %>%
+  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
@@ -88,6 +88,7 @@ train_recipe <- model_main_recipe(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. LightGBM Model ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Initializing LightGBM model")
 
 # This is the main model used to value 200-class residential property. It uses
 # lightgbm as a backend, which is a boosted tree model similar to xgboost or
@@ -101,13 +102,13 @@ train_recipe <- model_main_recipe(
 # lightgbm as "engine arguments" i.e. things specific to lightgbm, as opposed to
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
-  trees = params$model$parameter$num_iterations,
-  stop_iter = params$model$parameter$stop_iter
+  stop_iter = params$model$parameter$stop_iter,
+  trees = params$model$parameter$num_iterations
 ) %>%
   set_mode("regression") %>%
   set_engine(
     engine = params$model$engine,
-    
+
     # Parameters required to make the model deterministic i.e. output the same
     # predictions if the same hyperparameters are used
     seed = params$model$seed,
@@ -128,12 +129,12 @@ lgbm_model <- parsnip::boost_tree(
     # Typically set manually along with the number of iterations (trees)
     learning_rate = params$model$parameter$learning_rate,
 
-    # Names of integer-encoded categorical columns. This is CRITICAL else
+    # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
     categorical_feature = params$model$predictor$categorical,
 
     # Enable early stopping using a proportion of each training sample as a
-    # validation set. If lgb.train goes stop_iter() rounds without improvement
+    # validation set. If lgb.train goes `stop_iter` rounds without improvement
     # in the chosen metric, then it will end training early. This saves an
     # immense amount of time during CV. WARNING: See issue #82 for more info
     validation = params$model$parameter$validation_prop,
@@ -158,13 +159,13 @@ lgbm_model <- parsnip::boost_tree(
     feature_fraction = tune(),
     min_gain_to_split = tune(),
     min_data_in_leaf = tune(),
-    
+
     # Categorical-specific parameters
     max_cat_threshold = tune(),
     min_data_per_group = tune(),
     cat_smooth = tune(),
     cat_l2 = tune(),
-    
+
     # Regularization parameters
     lambda_l1 = tune(),
     lambda_l2 = tune()
@@ -182,15 +183,16 @@ lgbm_wflow <- workflow() %>%
 
 ## 3.2. Cross-Validation -------------------------------------------------------
 
-# Begin CV tuning if enabled. We use Bayesian tuning, as due to the high number
-# of hyperparameters, grid search or random search take a very long time to
-# produce similarly accurate results
+# Begin CV tuning if enabled. We use Bayesian tuning as grid search or random
+# search take a very long time to produce good results due to the high number
+# of hyperparameters
 if (cv_enable) {
+  message("Starting cross-validation")
   
   # Using rolling origin resampling to create a cumulative, sliding time window
   # training set, where the validation set is always the X% of sales following
   # the training set in time. See https://www.tmwr.org/resampling.html#rolling
-  
+
   # CRITICAL NOTE: In the folds created here, the validation set is the last X%
   # of the training set, meaning they overlap! This is because Lightsnip cuts
   # out the last X% of each training set to use as a validation set for early
@@ -230,7 +232,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mae, mape),
+    metrics = metric_set(rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
       uncertain = params$cv$no_improve - 2,
@@ -240,7 +242,7 @@ if (cv_enable) {
     )
   )
 
-  # Save tuning results to file. This is a data frame where each row is one
+  # Save tuning results to file. This is a data.frame where each row is one
   # CV iteration
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
@@ -269,7 +271,6 @@ if (cv_enable) {
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
 } else {
-
   # If CV is disabled, just use the default set of parameters specified in
   # params.yaml, keeping only the ones used in the model specification
   lgbm_missing_params <- names(params$model$hyperparameter$default)
@@ -288,7 +289,7 @@ if (cv_enable) {
     arrow::write_parquet(paths$output$parameter_final$local)
 
   # If CV is disabled, we still need to write empty stub files for any outputs
-  # created by CV. This is so DVC has something to hash/look for
+  # created by CV so DVC has something to hash/look for
   arrow::write_parquet(data.frame(), paths$output$parameter_raw$local)
   arrow::write_parquet(data.frame(), paths$output$parameter_range$local)
 }
@@ -298,6 +299,7 @@ if (cv_enable) {
 
 # Finalize the model specification by disabling early stopping, instead using
 # the maximum number of iterations used during the best cross-validation round
+# OR the default `num_iterations` if CV was not performed
 lgbm_model_final <- lgbm_model %>%
   set_args(
     stop_iter = NULL,
@@ -307,6 +309,7 @@ lgbm_model_final <- lgbm_model %>%
 
 # Fit the final model using the training data and our final hyperparameters
 # This model is used to measure performance on the test set
+message("Fitting final model on training data")
 lgbm_wflow_final_fit <- lgbm_wflow %>%
   update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
@@ -314,6 +317,7 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
+message("Fitting final model on full data")
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
@@ -325,6 +329,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Finalize Models -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Finalizing and saving trained model")
 
 # Get predictions on the test set using the training data model. These
 # predictions are used to evaluate model performance on the unseen test set.
