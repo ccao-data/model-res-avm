@@ -105,6 +105,15 @@ metadata <- tibble::tibble(
   input_complex_match_fuzzy_value = list(
     as.numeric(params$input$complex$match_fuzzy)
   ),
+  input_sale_validation_stat_groups = list(
+    params$input$sale_validation$stat_groups
+  ),
+  input_sale_validation_iso_forest = list(
+    params$input$sale_validation$iso_forest
+  ),
+  input_sale_validation_dev_bounds = list(
+    params$input$sale_validation$dev_bounds
+  ),
   ratio_study_far_year = params$ratio_study$far_year,
   ratio_study_far_stage = params$ratio_study$far_stage,
   ratio_study_far_column = params$ratio_study$far_column,
@@ -112,6 +121,7 @@ metadata <- tibble::tibble(
   ratio_study_near_stage = params$ratio_study$near_stage,
   ratio_study_near_column = params$ratio_study$near_column,
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
+  shap_enable = shap_enable,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_initial_set = params$cv$initial_set,
