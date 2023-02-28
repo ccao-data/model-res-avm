@@ -105,7 +105,7 @@ assessment_data_mc <- assessment_data_pred %>%
   group_by(meta_pin) %>%
   mutate(
     pred_pin_final_fmv = ifelse(
-      sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
+      sum(pred_card_intermediate_fmv) <=
         params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
         is.na(meta_1yr_pri_board_tot),
       sum(pred_card_intermediate_fmv),
@@ -125,23 +125,22 @@ complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
   select(meta_pin, meta_complex_id)
 
 # Join complex IDs to the predictions, then for each complex, set the
-# prediction to the average prediction of the complex. Also, multiply
-# the PIN-level value by the PIN's proration rate
+# prediction to the average prediction of the complex
 assessment_data_cid <- assessment_data_mc %>%
   left_join(complex_id_data, by = "meta_pin") %>%
-  group_by(meta_complex_id, meta_tieback_proration_rate) %>%
+  group_by(meta_complex_id) %>%
   mutate(
     pred_pin_final_fmv = ifelse(
       is.na(meta_complex_id),
-      pred_pin_final_fmv * meta_tieback_proration_rate,
-      mean(pred_pin_final_fmv) * meta_tieback_proration_rate
+      pred_pin_final_fmv,
+      mean(pred_pin_final_fmv)
     )
   ) %>%
   ungroup()
 
 
-## 3.3. Prorate/Round ----------------------------------------------------------
-message("Rounding and prorating predictions")
+## 3.3. Round ------------------------------------------------------------------
+message("Rounding predictions")
 
 # Round PIN-level predictions using the breaks and amounts specified in params
 assessment_data_final <- assessment_data_cid %>%
