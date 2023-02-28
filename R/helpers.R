@@ -64,6 +64,41 @@ model_delete_run <- function(run_id, year) {
 }
 
 
+# Used to fetch a run's output from S3 and populate it locally. Useful for
+# running reports and performing local troubleshooting
+model_fetch_run <- function(run_id, year) {
+  tictoc::tic(paste0("Fetched run: ", run_id))
+  
+  paths <- model_file_dict(run_id, year)
+  s3_objs <- grep("s3://", unlist(paths), value = TRUE)
+  bucket <- strsplit(s3_objs[1], "/")[[1]][3]
+  
+  for (path in paths$output) {
+    is_dataset <- endsWith(path$s3, "/")
+    if (is_dataset) {
+      dataset_path <- paste0(path$s3, "year=", year, "/run_id=", run_id, "/")
+      message("Now fetching: ", dataset_path)
+      
+      obj_path <- paste0(dataset_path, "township_code=10/part-0.parquet")
+      if (aws.s3::object_exists(obj_path)) {
+        df <- dplyr::collect(arrow::open_dataset(dataset_path))
+        arrow::write_parquet(df, path$local)
+      } else {
+        warning(path$local, " does not exist for this run")
+      }
+    } else {
+      message("Now fetching: ", path$s3)
+      if (aws.s3::object_exists(path$s3, bucket = bucket)) {
+        aws.s3::save_object(path$s3, bucket = bucket, file = path$local)
+      } else {
+        warning(path$local, " does not exist for this run")
+      }
+    }
+  }
+  tictoc::toc()
+}
+
+
 # Extract the number of iterations that occurred before early stopping during
 # cross-validation. See the tune::tune_bayes() argument `extract`
 extract_num_iterations <- function(x) {
