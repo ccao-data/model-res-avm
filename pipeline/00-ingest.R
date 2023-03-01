@@ -425,8 +425,9 @@ complex_id_temp <- assessment_data_clean %>%
   # Self-join with attributes that must be exactly matching
   select(
     meta_pin, meta_card_num, meta_township_code, meta_class,
-    char_bsmt, char_gar1_size, char_attic_fnsh, char_beds,
-    char_rooms, char_bldg_sf, char_yrblt, loc_x_3435, loc_y_3435
+    all_of(params$input$complex$match_exact),
+    any_of(paste0("char_", names(params$input$complex$match_fuzzy))),
+    loc_x_3435, loc_y_3435
   ) %>%
   full_join(
     eval(.),
@@ -476,6 +477,25 @@ complex_id_data <- assessment_data_clean %>%
     meta_complex_id,
     lag(meta_complex_id) + 1
   )) %>%
+  # Break long "chains" of fuzzy matched properties into separate groups if the
+  # chain spans more than the allowed square foot difference
+  left_join(
+    assessment_data_clean %>%
+      filter(meta_class %in% c("210", "295")) %>%
+      group_by(meta_pin) %>%
+      summarize(tot_sqft = sum(char_bldg_sf)),
+    by = "meta_pin"
+  ) %>%
+  group_by(meta_complex_id) %>%
+  mutate(
+    char_break = floor(tot_sqft / params$input$complex$match_fuzzy$bldg_sf),
+    char_break = char_break - min(char_break),
+    char_break = floor(char_break / 2)
+  ) %>%
+  group_by(meta_complex_id, char_break) %>%
+  mutate(meta_complex_id = cur_group_id()) %>%
+  ungroup() %>%
+  select(-c(tot_sqft, char_break)) %>%
   write_parquet(paths$input$complex_id$local)
 
 

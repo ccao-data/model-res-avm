@@ -97,7 +97,9 @@ input:
       "char_bsmt",
       "char_gar1_size",
       "char_attic_fnsh",
-      "char_beds"
+      "char_beds",
+      "meta_pin_num_cards",
+      "meta_tieback_proration_rate"
     ]
     
     # Townhomes should match fuzzily on these variables to be in the same
