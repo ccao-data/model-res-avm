@@ -30,7 +30,7 @@ source(here("R", "helpers.R"))
 
 # Load Python packages and functions with reticulate
 use_virtualenv("pipenv/")
-source_python("R/flagging.py")
+source_python("py/flagging.py")
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
