@@ -29,7 +29,7 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: TRUE
+  shap_enable: FALSE
 
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
@@ -359,7 +359,7 @@ model:
 pv:
   # For multi-card PINs (rare), implement a heuristic that caps the potential
   # change in value. See assess stage code for details
-  multicard_yoy_cap: 2.0
+  multicard_yoy_cap: 2.2
   
   # Cap the proportion of the PIN's total value dedicated to land. This is
   # necessary since sometimes the model provides low predictions relative to the

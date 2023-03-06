@@ -107,7 +107,8 @@ assessment_data_mc <- assessment_data_pred %>%
     pred_pin_final_fmv = ifelse(
       sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
         params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
-        is.na(meta_1yr_pri_board_tot),
+        is.na(meta_1yr_pri_board_tot) |
+        n() != 2,
       sum(pred_card_intermediate_fmv),
       max(pred_card_intermediate_fmv)
     )
