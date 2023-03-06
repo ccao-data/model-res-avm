@@ -1,5 +1,5 @@
 ---
-title: "Model QC"
+title: "Model QC: `r params$run_id`"
 execute:
   echo: false
   warning: false
@@ -13,7 +13,7 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: '2023-02-28-recursing-nathan'
+  run_id: '2023-03-05-gracious-patrick'
   year: '2023'
   dvc_bucket: 's3://ccao-data-dvc-us-east-1'
 ---
@@ -41,6 +41,19 @@ library(stringr)
 library(tableone)
 library(tidyr)
 source(here("R", "helpers.R"))
+
+# TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = '
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+')
+
+ignore_sigpipes()
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict(params$run_id, params$year)
@@ -72,6 +85,10 @@ training_path <- paste0(
 )
 training_data <- read_parquet(training_path)
 
+# Load model-generated output data sets
+assessment_card <- read_parquet(paths$output$assessment_card$local)
+assessment_pin <- read_parquet(paths$output$assessment_pin$local)
+
 # Load SHAP and feature importance data
 shap_exists <- file.exists(paths$output$shap$local)
 if (shap_exists) {
@@ -100,19 +117,18 @@ ggplot() +
   scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
   scale_x_continuous(breaks = seq(2014, 2022, 1)) +
   theme_minimal() +
-  theme(
-    legend.position = "none",
-    axis.title.x = element_blank()
-  )
+  theme(axis.title.x = element_blank())
 
 ggplotly(township)
 ```
 
 ## By Quarter
 
+Sales by bin by quarter since 2018. Goal is to see how different segments of the market are changing as a proportion in each tri-town.
+
 *NOTE: Outliers are removed*
 
-``` {r town_bin1, fig.height=10, fig.width=8}
+``` {r town_bin1, fig.height=8, fig.width=7, out.width="100%"}
 training_data %>%
   filter(!sv_is_outlier, meta_triad_name == run_triad, meta_year >= "2018") %>%
   mutate(
@@ -154,7 +170,7 @@ ggplot(aes(x = Quarter, y = Sales, fill = Bin, group = Bin)) +
 ``` {r class_year}
 class <- training_data %>%
   filter(
-    sv_is_outlier,
+    !sv_is_outlier,
     meta_triad_name == run_triad,
     !ind_pin_is_multicard
   ) %>%
@@ -175,6 +191,8 @@ class %>%
 ```
 
 ## Removed Outliers
+
+These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
 
 ``` {r}
 rbind(
@@ -197,6 +215,8 @@ rbind(
 ```
 
 ## Kept Outliers
+
+These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
 
 ``` {r}
 rbind(
@@ -228,7 +248,7 @@ rbind(
 
 Does the model accurately model time trends for the data it's already seen?
 
-```{r, fig.height=10, fig.width=8}
+```{r, fig.height=8, fig.width=7, out.width="100%"}
 model_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 model_recipe <- readRDS(paths$output$workflow_recipe$local)
 
@@ -278,9 +298,9 @@ ggplot() +
 
 ## Test Data (Unseen)
 
-Does the model accurately model time trends on unseen data slightly in the future?
+Does the model accurately model time trends for unseen data slightly in the future?
 
-```{r, fig.height=10, fig.width=8}
+```{r, fig.height=8, fig.width=7, out.width="100%"}
 test_data <- read_parquet(paths$output$test_card$local)
 test_data %>%
   filter(meta_triad_code == run_triad_code) %>%
@@ -317,176 +337,304 @@ ggplot() +
 
 :::
 
-
-
-## SHAP Values
-
-``` {r chars}
-shap_tables <- shaps %>%
-  slice_sample(n = 100000) %>%
-  split(.$run_id) %>%
-  lapply(function(x) {
-    x %>%
-      select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
-      skim() %>%
-      rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
-      select(-c(type, n_missing, complete_rate, p25, p75)) %>%
-      rename("histogram" = "hist", "median" = "p50", "min" = "p0", "max" = "p100") %>%
-      mutate(
-        variable = str_replace_all(variable, "_", " "),
-        across(where(is.numeric), ~ round(.x, 1)),
-        `mean direction` = case_when(
-          mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
-        ),
-        `median direction` = case_when(
-          median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
-        ),
-        mean = abs(mean),
-        median = abs(median)
-      ) %>%
-      relocate(`mean direction`, .before = mean) %>%
-      relocate(`median direction`, .before = median) %>%
-      datatable(
-        rownames = FALSE,
-        height = "500px",
-        options = list(
-          columnDefs = list(
-            list(className = "dt-center", targets = c(1:7))
-          )
-        )
-      )
-  })
+```{r, results='asis', eval=shap_exists}
+cat("## SHAP Values")
+cat("::: {.panel-tabset}")
 ```
+
+```{r, results='asis', eval=shap_exists}
+cat("## SHAP Summary")
+```
+
+```{r, eval=shap_exists}
+shap_df_filtered <- shap_df %>%
+  left_join(
+    assessment_card %>%
+      mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+      select(meta_year, meta_pin, meta_card_num, meta_triad),
+    by = c("meta_year", "meta_pin", "meta_card_num")
+  ) %>%
+  filter(meta_triad == run_triad_code) %>%
+  arrange(meta_pin, meta_card_num)
+```
+
+```{r, eval=shap_exists}
+shap_df_filtered %>%
+  select(
+    where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)
+  ) %>%
+  skim() %>%
+  rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+  select(-c(type, n_missing, complete_rate, p25, p75)) %>%
+  rename(histogram = hist, median = p50, min = p0, max = p100) %>%
+  mutate(
+    variable = str_replace_all(variable, "_", " "),
+    across(where(is.numeric), ~ round(.x, 1)),
+    `mean direction` = case_when(
+      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
+    ),
+    `median direction` = case_when(
+      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
+    ),
+    mean = abs(mean),
+    median = abs(median)
+  ) %>%
+  relocate(`mean direction`, .before = mean) %>%
+  relocate(`median direction`, .before = median) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1:7))
+      )
+    )
+  )
+```
+
+```{r, eval=shap_exists}
+shap_predictors <- names(shap_df_filtered)
+shap_predictors <- shap_predictors[
+  !shap_predictors %in% c(
+    "meta_year", "meta_pin", "meta_card_num",
+    "pred_card_shap_baseline_fmv", "township_code", "meta_triad"
+  )]
+
+assessment_card_filtered <- assessment_card %>%
+  mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+  filter(meta_triad == run_triad_code) %>%
+  arrange(meta_pin, meta_card_num)
+
+create_shapviz <- function(shap_df, assessment_df, idx) {
+  shap_predictors <- names(shap_df)
+  shap_predictors <- shap_predictors[
+    !shap_predictors %in% c(
+      "meta_year", "meta_pin", "meta_card_num",
+      "pred_card_shap_baseline_fmv", "township_code", "meta_triad"
+    )
+  ]
+  
+  shapviz::shapviz(
+    object = shap_df %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx) %>%
+      as.matrix(),
+    X = assessment_df %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx),
+    baseline = shap_df$pred_card_shap_baseline_fmv[1]
+  )
+}
+```
+
+```{r, results='asis', eval=shap_exists}
+cat("## Riverside Beeswarm")
+```
+
+```{r, eval=shap_exists}
+shap_riverside_idx <- which(
+  assessment_card_filtered$meta_township_code == ccao::town_convert("Riverside")
+)
+create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %>%
+  shapviz::sv_importance("beeswarm") +
+  theme_minimal()
+```
+
+```{r, results='asis', eval=shap_exists}
+cat("## Calumet Beeswarm")
+```
+
+```{r, eval=shap_exists}
+shap_calumet_idx <- which(
+  assessment_card_filtered$meta_township_code == ccao::town_convert("Calumet")
+)
+create_shapviz(shap_df_filtered, assessment_card_filtered, shap_calumet_idx) %>%
+  shapviz::sv_importance("beeswarm") +
+  theme_minimal()
+```
+
+```{r, results='asis', eval=shap_exists}
+cat("## Thornton Beeswarm")
+```
+
+```{r, eval=shap_exists}
+shap_thornton_idx <- which(
+  assessment_card_filtered$meta_township_code == ccao::town_convert("Thornton")
+)
+create_shapviz(shap_df_filtered, assessment_card_filtered, shap_thornton_idx) %>%
+  shapviz::sv_importance("beeswarm") +
+  theme_minimal()
+```
+
+```{r, results='asis', eval=shap_exists}
+cat(":::")
+```
+
+## Township Outliers and Accuracy
 
 ::: {.panel-tabset}
 
-## `r names(shap_tables)[1]`
+## Big Misses
 
-``` {r}
-shap_tables[[1]]
+What is the 2022 sale with the biggest miss for each town and price quartile?
+
+```{r}
+qnt_df <- assessment_pin %>%
+  mutate(Town = ccao::town_convert(meta_township_code)) %>%
+  filter(
+    Town %in% c("Calumet", "Thornton", "Bloom"),
+    !is.na(sale_recent_1_price),
+    sale_recent_1_date >= lubridate::make_date(2022)
+  ) %>%
+  mutate(pred_pin_final_fmv_round) %>%
+  select(
+    PIN = meta_pin, Town, Class = meta_class,
+    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
+    `Sale 1 Date` = sale_recent_2_date, `Sale 1 Price` = sale_recent_2_price,
+    `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price, 
+    `Est. FMV` = pred_pin_final_fmv_round
+  ) %>%
+  group_by(Town) %>%
+  mutate(
+    diff = abs(`Sale 2 Price` - `Est. FMV`),
+    `Qnt.` = cut(
+      `Sale 2 Price` ,
+      breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
+      labels = c("Q1", "Q2", "Q3", "Q4"),
+      include.lowest = TRUE
+    )
+  ) %>%
+  group_by(Town, `Qnt.`) %>%
+  slice_max(diff, n = 1) %>%
+  select(-diff) %>%
+  relocate(`Qnt.`, .after = "Town")
+
+qnt_df %>%
+  datatable(rownames = FALSE)
 ```
 
-## `r names(shap_tables)[2]`
+## MAPE by Quintile
 
+How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by quintile for each tri-town?
+  
 ``` {r}
-shap_tables[[2]]
-```
-
-:::
-
-## RMSE
-
-``` {r}
-
-RMSE <- training_data %>%
+mape <- training_data_pred %>%
   filter(!sv_is_outlier) %>%
   left_join(
-    ccao::town_dict %>% select(meta_township_code = township_code, triad_name)
-    ) %>%
-  filter(meta_year == '2022' & triad_name == 'South') %>%
-  left_join(preds, by = "meta_pin") %>%
-  group_by(run_id, meta_township_name) %>%
+    ccao::town_dict %>%
+      select(meta_township_code = township_code, triad_name)
+  ) %>%
+  filter(triad_name == run_triad, meta_year == max(meta_year)) %>%
+  group_by(meta_township_name) %>%
   arrange(meta_sale_price) %>%
   mutate(Quintile = ntile(meta_sale_price, 5)) %>%
-  group_by(run_id, meta_township_name, Quintile) %>%
+  group_by(meta_township_name, Quintile) %>%
   summarise(
     median_sale_price = median(meta_sale_price, na.rm = TRUE),
-    median_predicted_fmv = median(pred_pin_final_fmv, na.rm = TRUE),
-    RMSE = sqrt((sum(meta_sale_price - pred_pin_final_fmv) ^ 2) / n())
+    median_predicted_fmv = median(pred_card_initial_fmv, na.rm = TRUE),
+    MAPE = yardstick::mape_vec(meta_sale_price, pred_card_initial_fmv)
   ) %>%
   rename(Township = meta_township_name)
 
-```
-
-::: {.panel-tabset}
-
-## `r names(shap_tables)[1]`
-
-``` {r}
-
 ggplotly(
-  RMSE %>%
-  filter(run_id == model_ids[1]) %>%
-  ggplot(aes(x = Quintile, y = RMSE, color = Township)) +
+  mape %>%
+  ggplot(aes(x = Quintile, y = MAPE, color = Township)) +
   geom_line() +
   theme_minimal()
 )
 
 ```
 
-## `r names(shap_tables)[2]`
+## Predicted v Actual By Town
 
-``` {r}
-
-ggplotly(
-  RMSE %>%
-  filter(run_id == model_ids[2]) %>%
-  ggplot(aes(x = Quintile, y = RMSE, color = Township)) +
-  geom_line() +
+```{r}
+pred_v_actual_town <- test_data %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  rename(
+    `Sale Price` = meta_sale_price,
+    `Predicted FMV` = pred_card_initial_fmv,
+    PIN = meta_pin
+  ) %>%
+ggplot() +
+  geom_point(aes(
+    group = PIN,
+    x = `Predicted FMV`,
+    y = `Sale Price`,
+    color = Township
+  )) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_x_continuous(
+    name = "Predicted FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1/1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  scale_y_continuous(
+    name = "Actual FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1/1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
   theme_minimal()
-)
 
+ggplotly(pred_v_actual_town)
+```
+
+## Predicted v Actual By Class
+
+```{r}
+pred_v_actual_class <- test_data %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  rename(
+    `Sale Price` = meta_sale_price,
+    `Predicted FMV` = pred_card_initial_fmv,
+    PIN = meta_pin,
+    Class = meta_class
+  ) %>%
+ggplot() +
+  geom_point(aes(
+    group = PIN,
+    x = `Predicted FMV`,
+    y = `Sale Price`,
+    color = Class
+  )) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_x_continuous(
+    name = "Predicted FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1/1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  scale_y_continuous(
+    name = "Actual FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1/1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  theme_minimal()
+
+ggplotly(pred_v_actual_class)
 ```
 
 :::
-
-## Consistency Across Runs
-
-#### Median and Standard Deviation
-
-``` {r}
-model_ids %>%
-  lapply(function(x) {
-    shaps %>%
-      filter(run_id == !!x) %>%
-      select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)) %>%
-      skim() %>%
-      rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
-      select(variable, median = p50, sd) %>%
-      mutate(run_id = x)
-  }) %>%
-  bind_rows() %>%
-  pivot_wider(values_from = c(median, sd), names_from = run_id) %>%
-  mutate(
-    variable = str_replace_all(variable, "_", " "),
-    median_difference = .[[2]] - .[[3]],
-    sd_difference = .[[4]] - .[[5]]
-  ) %>%
-  select(1, 2, 3, 6, 4, 5, 7) %>%
-  kable(
-    col.names = c("Feature", rep(c(model_ids, "Difference"), 2))
-  ) %>%
-  kable_styling(
-    "striped"
-  ) %>%
-  add_header_above(c("", "Median" = 3, "Standard Deviation" = 3))
-```
-
-#### Standardized Mean Difference
-
-The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
-
-$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
-
-We're looking for SMDs greater than .1 or .05 for sensitive covariates.
-
-
-``` {r}
-vars <- names(
-  shaps %>%
-    select(where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric))
-)
-
-smd_table <- CreateTableOne(
-  vars = vars,
-  strata = "run_id",
-  data = shaps,
-  test = FALSE,
-  includeNA = TRUE
-)
-
-print(smd_table, smd = TRUE)
-```
 
 ## 211/212s
 
@@ -494,9 +642,14 @@ print(smd_table, smd = TRUE)
 
 ## YoY Changes
 
+Where are 211s and 212s increasing a *lot*? Near values are 2022 Certified values, far values are 2020 Board values.
+
 ``` {r}
-preds %>%
-  filter(meta_class %in% c("211", "212") & meta_triad_code == "3") %>%
+assessment_pin %>%
+  filter(
+    meta_class %in% c("211", "212"),
+    meta_triad_code == run_triad_code
+  ) %>%
   mutate(
     yoy_far = abs((pred_pin_final_fmv - prior_far_tot) / pred_pin_final_fmv),
     yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv)
@@ -505,7 +658,7 @@ preds %>%
     big_swing_near = yoy_near > 0.5,
     big_swing_far = yoy_far > 0.5
   ) %>%
-  group_by(meta_township_code, meta_class, run_id) %>%
+  group_by(meta_township_code, meta_class) %>%
   summarise(
     big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE) / n(),
     big_swings_far = sum(as.numeric(big_swing_far), na.rm = TRUE) / n()
@@ -518,7 +671,7 @@ preds %>%
   ) %>%
   select(
     "Township Name" = township_name,
-    Class = meta_class, run_id,
+    Class = meta_class,
     "% Delta Near > 50%" = big_swings_near,
     "% Delta Far > 50%" = big_swings_far
   ) %>%
@@ -533,15 +686,20 @@ preds %>%
   )
 ```
 
-## Large SQFT 212s
+## Large Sqft. 212s
 
 ``` {r}
 training_data %>%
-  filter(meta_class %in% c("211", "212") & meta_triad_code == "3" & !duplicated(meta_pin)) %>%
+  filter(
+    meta_class %in% c("211", "212"),
+    meta_triad_code == run_triad_code,
+    !ind_pin_is_multicard
+  ) %>%
   group_by(meta_class) %>%
   mutate(
     mean_sf = round(mean(char_bldg_sf, na.rm = TRUE), 0),
-    outlier = abs(char_bldg_sf) > mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE)
+    outlier = abs(char_bldg_sf) >
+      mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE)
   ) %>%
   ungroup() %>%
   filter(outlier) %>%
@@ -567,64 +725,193 @@ training_data %>%
 
 ## 210s/295s
 
-Standard deviations of less than $5 of FMV per SQFT excluded.
+How far apart are the initial predicted values for townhomes? Is the average they get assigned reasonable?
 
 ``` {r}
-preds %>%
-  filter(!is.na(meta_complex_id) & meta_triad_code == "3") %>%
-  group_by(meta_complex_id, run_id) %>%
-  mutate(fmvpsf = pred_pin_final_fmv / char_total_bldg_sf) %>%
+assessment_pin %>%
+  filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
+  group_by(meta_complex_id) %>%
+  mutate(
+    fmvpsf = pred_pin_final_fmv / char_total_bldg_sf
+  ) %>%
   summarise(
     n = n(),
-    "FMV per SQFT Standard Deviation" = sd(fmvpsf, na.rm = TRUE),
-    "Min FMV per SQFT" = min(fmvpsf, na.rm = TRUE),
-    "Max FMV per SQFT" = max(fmvpsf, na.rm = TRUE),
-    "Min SQFT" = min(char_total_bldg_sf, na.rm = TRUE),
-    "Max SQFT" = max(char_total_bldg_sf, na.rm = TRUE)
+    "Min Initial FMV" = min(pred_pin_initial_fmv, na.rm = TRUE),
+    "Max Initial FMV" = max(pred_pin_initial_fmv, na.rm = TRUE),
+    "Initial % Range" = (`Max Initial FMV` - `Min Initial FMV`) / `Min Initial FMV`,
+    "Mean Final FMV" = mean(pred_pin_final_fmv, na.rm = TRUE),
+    "FMV per SQFT SD" = sd(fmvpsf, na.rm = TRUE)
   ) %>%
-  filter(`FMV per SQFT Standard Deviation` > 5) %>%
+  slice_max(order_by = `Initial % Range`, n = 20) %>%
   mutate(
     across(contains("SQFT"), ~ round(.x, 1)),
-    across(contains("FMV"), dollar)
+    across(contains("FMV"), dollar),
+    across(contains("%"), ~ percent(.x, accuracy = 0.1))
   ) %>%
-  select(
-    "Complex ID" = meta_complex_id, run_id, n,
-    `FMV per SQFT Standard Deviation`, `Min FMV per SQFT`, `Max FMV per SQFT`,
-    `Min SQFT`, `Max SQFT`
-  ) %>%
+  relocate(c(meta_complex_id, n)) %>%
+  rename("Complex ID" = meta_complex_id, "Count" = n) %>%
   datatable(
     rownames = FALSE,
     height = "500px",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(1:7))
+        list(className = "dt-center", targets = c(1:6))
       )
     )
   )
 ```
 
-## Recent Renovations
+## Data Quality Checks
 
-TRUE indicates change in any column with prefix "char" between first year where char_recent_reno = TRUE and previous year. Sample is all PINs in default.vw_card_res_char with at least one TRUE observation for char_recent_reno.
+::: {.panel-tabset}
 
-``` {r}
-chars %>%
+## HIE Spot Check
+
+Are HIE characteristics getting accurately updated?
+
+```{r}
+AWS_ATHENA_CONN_NOCTUA <- DBI::dbConnect(noctua::athena())
+
+hie_pins <- training_data %>%
+  filter(
+    hie_num_active == 1,
+    meta_triad_code == run_triad_code,
+    meta_year == as.numeric(params$year) - 1
+  ) %>%
+  pull(meta_pin) %>%
+  unique()
+
+hie_data <- DBI::dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue::glue_sql("
+  SELECT *
+  FROM ccao.hie
+  WHERE pin IN ({hie_pins*})
+  AND qu_sqft_bld > 0
+  AND year >= '2018'
+  ",
+  .con = AWS_ATHENA_CONN_NOCTUA
+  )
+)
+
+chars_data <- DBI::dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue::glue_sql("
+  SELECT *
+  FROM default.vw_card_res_char
+  WHERE pin IN ({hie_pins*})
+  AND year = '{as.numeric(params$year) - 1}'
+  ",
+  .con = AWS_ATHENA_CONN_NOCTUA
+  )
+)
+
+chars_data %>%
+  inner_join(hie_data %>% select(-year), by = c("pin")) %>%
   left_join(
-    chars %>%
-      filter(char_recent_renovation) %>%
-      group_by(pin) %>%
-      summarise(reno_year = as.numeric(min(year))) %>%
-      select(pin, reno_year)
+    training_data %>% select(
+      meta_pin, meta_year, train_sqft = char_bldg_sf,
+      train_fbath = char_fbath, train_air = char_air
+    ),
+    by = c("pin" = "meta_pin", "year" = "meta_year")
   ) %>%
-  filter(year == reno_year | year == reno_year - 1) %>%
-  group_by(pin) %>%
-  summarise(
-    across(starts_with("char") & where(is.numeric), ~ sd(.x, na.rm = TRUE))
+  select(
+    pin,
+    `OG SQFT` = char_bldg_sf,
+    `HIE SQFT` = qu_sqft_bld,
+    `NEW SQFT`= train_sqft,
+    `OG FBATH` = char_fbath,
+    `HIE FBATH` = qu_full_bath,
+    `NEW FBATH` = train_fbath,
+    `OG AIR` = char_air,
+    `HIE AIR` = qu_air,
+    `NEW AIR` = train_air
   ) %>%
-  ungroup() %>%
-  mutate(`Characteristics Change` = if_any(starts_with("char"), ~ !is.na(.x) & .x > 0)) %>%
-  group_by(`Characteristics Change`) %>%
-  summarise(n = n()) %>%
-  kable() %>%
-  kable_styling(full_width = FALSE)
+  datatable(rownames = FALSE)
 ```
+
+## Characteristic Filling
+
+Is time filling working as expected?
+
+```{r}
+training_data %>%
+  group_by(meta_pin) %>%
+  filter(
+    !ind_pin_is_multicard,
+    min(meta_sale_date) < lubridate::make_date(2019),
+    max(meta_sale_date) > lubridate::make_date(2019),
+  ) %>%
+  filter(n() > 6) %>%
+  ungroup() %>%
+  select(
+    PIN = meta_pin,
+    Year = meta_year,
+    `Sale Date` = meta_sale_date,
+    `FS Flood Factor (2019)` = loc_env_flood_fs_factor,
+    `Walkability (2017)` = loc_access_cmap_walk_total_score,
+    `GS Rating (2021)` = prox_avg_school_rating_in_half_mile
+  ) %>%
+  arrange(PIN, Year) %>%
+  datatable(rownames = FALSE)
+```
+
+## Multi-Card and Multi-PIN Aggregation
+
+```{r}
+test_card_pins <- c(
+  "17321110470000", "05174150240000",
+  "05213220250000", "08121220400000", "06334030310000")
+
+assessment_card %>%
+  filter(meta_pin %in% test_card_pins) %>%
+  arrange(meta_pin, meta_card_num) %>%
+  select(
+    PIN = meta_pin, Class = meta_class, Card = meta_card_num,
+    `Card %` = meta_card_pct_total_fmv, SQFT = char_bldg_sf,
+    `Card Initial` = pred_card_initial_fmv,
+    `Card Final` = pred_card_final_fmv
+  ) %>%
+  left_join(
+    assessment_pin %>%
+      select(
+        PIN = meta_pin, Proration = meta_tieback_proration_rate,
+        `PIN Far` = prior_far_tot,
+        `PIN Near` = prior_near_tot,
+        `PIN Initial` = pred_pin_initial_fmv,
+        `PIN Final` = pred_pin_final_fmv
+      ),
+    by = c("PIN")
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+## Land Valuation
+
+```{r, out.width="100%"}
+assessment_pin %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
+  select(
+    meta_pin, land_pct,
+    pred_pin_final_fmv_bldg, pred_pin_final_fmv_land,
+    pred_pin_final_fmv_round
+  ) %>%
+ggplot() +
+  geom_histogram(aes(x = land_pct)) +
+  scale_x_continuous(
+    name = "Land % of Total FMV",
+    labels = scales::label_percent()
+  ) +
+  labs(y = "Count") +
+  theme_minimal()
+```
+
+### PINs With 0 Land Sqft.
+
+```{r}
+assessment_pin %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  filter(pred_pin_final_fmv_land == 0) %>%
+  datatable(rownames = FALSE)
+```
+
+:::
