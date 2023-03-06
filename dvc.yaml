@@ -106,7 +106,8 @@ stages:
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     desc: >
-      Generate SHAP values for each card and feature in the assessment data
+      Generate SHAP values for each card and feature as well as feature
+      importance metrics for each feature
     deps:
     - input/assessment_data.parquet
     - output/workflow/fit/model_workflow_fit.zip
@@ -115,6 +116,8 @@ stages:
     - model.predictor.all
     outs:
     - output/shap/model_shap.parquet:
+        cache: false
+    - output/feature_importance/model_feature_importance.parquet:
         cache: false
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
@@ -139,6 +142,7 @@ stages:
     - output/performance/model_performance_assessment.parquet
     - output/performance_quantile/model_performance_quantile_assessment.parquet
     - output/shap/model_shap.parquet
+    - output/feature_importance/model_feature_importance.parquet
     - output/intermediate/timing/model_timing_train.parquet
     - output/intermediate/timing/model_timing_assess.parquet
     - output/intermediate/timing/model_timing_evaluate.parquet

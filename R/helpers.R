@@ -3,7 +3,7 @@
 model_file_dict <- function(run_id = NULL, year = NULL) {
   env <- environment()
   wd <- here::here()
-  library(magrittr)
+  suppressPackageStartupMessages(library(magrittr))
   
   # Convert flat dictionary file to nested list
   dict <- readr::read_csv(
@@ -61,6 +61,105 @@ model_delete_run <- function(run_id, year) {
   # Delete current version of objects
   purrr::walk(s3_objs_limited, aws.s3::delete_object)
   purrr::walk(s3_objs_w_run_id, aws.s3::delete_object, bucket = bucket)
+}
+
+
+# Used to fetch a run's output from S3 and populate it locally. Useful for
+# running reports and performing local troubleshooting
+model_fetch_run <- function(run_id, year) {
+  tictoc::tic(paste0("Fetched run: ", run_id))
+  
+  paths <- model_file_dict(run_id, year)
+  s3_objs <- grep("s3://", unlist(paths), value = TRUE)
+  bucket <- strsplit(s3_objs[1], "/")[[1]][3]
+  
+  for (path in paths$output) {
+    is_dataset <- endsWith(path$s3, "/")
+    if (is_dataset) {
+      dataset_path <- paste0(path$s3, "year=", year, "/run_id=", run_id, "/")
+      message("Now fetching: ", dataset_path)
+      
+      obj_path <- paste0(dataset_path, "township_code=10/part-0.parquet")
+      if (aws.s3::object_exists(obj_path)) {
+        df <- dplyr::collect(arrow::open_dataset(dataset_path))
+        arrow::write_parquet(df, path$local)
+      } else {
+        warning(path$local, " does not exist for this run")
+      }
+    } else {
+      message("Now fetching: ", path$s3)
+      if (aws.s3::object_exists(path$s3, bucket = bucket)) {
+        aws.s3::save_object(path$s3, bucket = bucket, file = path$local)
+      } else {
+        warning(path$local, " does not exist for this run")
+      }
+    }
+  }
+  tictoc::toc()
+}
+
+
+# Extract the number of iterations that occurred before early stopping during
+# cross-validation. See the tune::tune_bayes() argument `extract`
+extract_num_iterations <- function(x) {
+  fit <- workflows::extract_fit_engine(x)
+  evals <- purrr::pluck(fit, "record_evals", "validation", 1, "eval")
+  length(evals)
+}
+
+
+# Given the result of a CV search, get the max number of iterations from the
+# result set with the best performing hyperparameters
+select_max_iterations <- function(tune_results, metric) {
+  dplyr::bind_cols(
+    tune_results %>%
+      dplyr::select(id, .metrics, .extracts) %>%
+      tidyr::unnest(cols = .metrics) %>%
+      dplyr::filter(.metric == params$cv$best_metric) %>%
+      dplyr::select(-.extracts),
+    tune_results %>%
+      tidyr::unnest(cols = .extracts) %>%
+      tidyr::unnest(cols = .extracts) %>%
+      dplyr::select(.extracts)
+  ) %>%
+    dplyr::inner_join(
+      tune::select_best(tune_results, metric = metric),
+      by = ".config"
+    ) %>%
+    dplyr::summarize(num_iterations = max(.extracts))
+}
+
+
+# Modified rolling origin forecast split function. Splits the training data into
+# a cumulatively expanding time window. The window contains the training data
+# and the most recent X% of the window is validation data (they overlap! see
+# issue #82). See README for more information
+rolling_origin_pct_split <- function(data, order_col, split_col, assessment_pct) {
+  data <- dplyr::arrange(data, {{ order_col }})
+  split_sc <- data %>%
+    dplyr::group_by({{ split_col }}) %>%
+    dplyr::group_size() %>%
+    cumsum()
+  starts <- rep(1, length(split_sc))
+  in_idx <- mapply(seq, starts, split_sc, SIMPLIFY = FALSE)
+  out_idx <- lapply(in_idx, function(x) {
+    n <- length(x)
+    m <- min(n - floor(n * assessment_pct), n - 1) + 1
+    seq(max(m, 3), n)
+  })
+  indices <- mapply(rsample:::merge_lists, in_idx, out_idx, SIMPLIFY = FALSE)
+  split_objs <- purrr::map(
+    indices, rsample::make_splits, data = data, class = "rof_split"
+  )
+  split_objs <- list(
+    splits = split_objs,
+    id = recipes::names0(length(split_objs), "Slice")
+  )
+  new_rset(
+    splits = split_objs$splits,
+    ids = split_objs$id, 
+    subclass = c("rolling_origin", "rset")
+  )
 }
 
 
