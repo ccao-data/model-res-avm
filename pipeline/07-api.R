@@ -48,8 +48,37 @@ towns <- ccao::town_dict %>%
 
 # Load categorical variable dictionary for lookup and data validation
 dict <- ccao::vars_dict %>%
-  filter(var_data_type == "categorical", var_is_predictor) %>%
+  filter(
+    var_data_type == "categorical",
+    var_name_model %in% predictors,
+    var_name_model != "meta_modeling_group"
+  ) %>%
   distinct(var_name_pretty, var_code, var_value)
+
+dict <- bind_rows(
+  dict,
+  ccao::vars_dict %>%
+    filter(var_name_model == "meta_modeling_group") %>%
+    distinct(var_name_pretty, var_code = var_value_short, var_value)
+)
+
+# Typically the most important predictors in CCAO models
+top_predictors <- c(
+  "meta_township_code", "meta_nbhd_code",
+  "char_bldg_sf", "char_fbath", "char_yrblt", "char_land_sf", "char_frpl",
+  "loc_school_elementary_district_geoid", "loc_school_secondary_district_geoid",
+  "acs5_median_income_per_capita_past_year"
+)
+
+# Load the final card-level dataset
+card_data <- arrow::open_dataset(
+  file.path(
+    gsub("\\/$", "", paths$output$assessment_card$s3),
+    paste0("year=", year),
+    paste0("run_id=", run_id, "/")
+  )
+) %>%
+  collect()
 
 
 
@@ -63,21 +92,14 @@ for (town in towns) {
   message("Now processing: ", town_convert(town))
 
   # Load data from file, then make it pretty for saving to sheet
-  card_data <- arrow::read_parquet(
-    file.path(
-      paths$output$assessment_card$s3,
-      paste0("year=", year),
-      paste0("run_id=", run_id),
-      paste0("township_code=", town),
-      "part-0.parquet"
-    )
-  ) %>%
+  card_data_town <- card_data %>%
+    filter(meta_township_code == town) %>%
     mutate(api_prediction = NA, api_prediction_rounded = NA) %>%
     select(
       meta_pin, meta_card_num, meta_class, pred_card_initial_fmv, 
       api_prediction, api_prediction_rounded,
-      meta_township_code, meta_nbhd_code, meta_tieback_proration_rate,
-      starts_with("ind_"),
+      all_of(top_predictors),
+      meta_modeling_group, meta_tieback_proration_rate,
       starts_with("char_"),
       starts_with("loc_"),
       starts_with("time"),
@@ -87,7 +109,7 @@ for (town in towns) {
     ) %>%
     arrange(meta_pin, meta_card_num) %>%
     mutate(
-      across(where(is.numeric), round, 8),
+      across(where(is.numeric), ~ round(.x, 8)),
       meta_pin = ccao::pin_format_pretty(meta_pin, full_length = TRUE)
     ) %>%
     var_encode(cols = starts_with("char_"))
@@ -95,7 +117,7 @@ for (town in towns) {
   # Load workbook and styles
   wb <- loadWorkbook(here("misc", "model_api_template.xlsm"))
   pin_sheet_header <- paste0("Run ID: ", run_id)
-  pin_row_range <- 5:(nrow(card_data) + 7)
+  pin_row_range <- 6:(nrow(card_data_town) + 7)
   style_price <- createStyle(numFmt = "$#,##0")
   csht <- "Cards"
   dsht <- "Dictionary"
@@ -104,24 +126,24 @@ for (town in towns) {
   writeData(wb, dsht, dict, startCol = 1, startRow = 2, colNames = FALSE)
   mappings <- tribble(
     ~ col, ~ dict,
-    "L", c(2, 3),
-    "M", c(4, 9),
-    "N", c(10, 12),
-    "O", c(13, 15),
-    "R", c(16, 19),
-    "S", c(20, 22),
-    "T", c(23, 26),
-    "W", c(27, 28),
-    "X", c(29, 30),
-    "Y", c(31, 34),
-    "Z", c(35, 42),
-    "AC", c(43, 46),
-    "AE", c(47, 49),
-    "AF", c(50, 55),
-    "AH", c(56, 57),
-    "AI", c(58, 59),
-    "AJ", c(60, 65),
-    "AK", c(66, 67)
+    "S", c(2, 3),
+    "T", c(4, 9),
+    "U", c(10, 12),
+    "V", c(13, 15),
+    "X", c(16, 19),
+    "Y", c(20, 22),
+    "Z", c(23, 26),
+    "AA", c(27, 28),
+    "AB", c(29, 30),
+    "AC", c(31, 34),
+    "AD", c(35, 42),
+    "AF", c(43, 46),
+    "AG", c(47, 49),
+    "AI", c(50, 55),
+    "AK", c(56, 57),
+    "AL", c(58, 59),
+    "AM", c(60, 65),
+    "Q", c(66, 70)
   )
   
   pwalk(mappings, function(col, dict) {
@@ -141,8 +163,8 @@ for (town in towns) {
     startCol = 2, startRow = 1, colNames = FALSE
   )
   writeData(
-    wb, csht, card_data,
-    startCol = 1, startRow = 5, colNames = FALSE
+    wb, csht, card_data_town,
+    startCol = 1, startRow = 6, colNames = FALSE
   )
   
   # Save the file workbook to file
