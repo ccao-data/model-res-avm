@@ -232,7 +232,7 @@ vacant_land_merged <- vacant_land_trans %>%
     flag_prior_near_to_pred_unchanged = prior_near_tot == pred_pin_final_fmv_round,
     flag_prior_near_yoy_inc_gt_50_pct = prior_near_yoy_change_pct > 0.5,
     flag_prior_near_yoy_dec_gt_5_pct = prior_near_yoy_change_pct < -0.05,
-    across(starts_with("flag_"), as.numeric)
+    across(c(starts_with("flag_"), ends_with("_price")), as.numeric)
   )
 
 
@@ -530,7 +530,7 @@ message("Preparing data for iasWorld export")
 # Break land totals out to individual lines, where value is proportional to
 # each line's square footage
 upload_data_land <- assessment_pin_merged %>%
-  left_join(land, by = "meta_pin") %>%
+  left_join(land, by = c("meta_pin"), multiple = "all") %>%
   select(
     township_code, meta_pin, meta_card_num = meta_line_num,
     meta_line_sf, pred_pin_final_fmv_land
@@ -561,7 +561,7 @@ upload_data_land_impr <- assessment_pin_merged %>%
     meta_class %in% c("200", "201", "241"),
     pred_pin_final_fmv_bldg != 0
   ) %>%
-  left_join(land, by = "meta_pin") %>%
+  left_join(land, by = c("meta_pin"), multiple = "all") %>%
   group_by(township_code, meta_pin) %>%
   arrange(meta_line_num) %>%
   summarise(
@@ -575,7 +575,11 @@ upload_data_land_impr <- assessment_pin_merged %>%
 # by the model
 upload_data_bldg <- assessment_pin_merged %>%
   filter(!meta_class %in% c("200", "201", "241")) %>%
-  left_join(assessment_card, by = c("township_code", "meta_pin")) %>%
+  left_join(
+    assessment_card,
+    by = c("township_code", "meta_pin"),
+    multiple = "all"
+  ) %>%
   select(
     township_code, meta_pin, meta_card_num,
     meta_card_pct_total_fmv, bldg_fmv = pred_pin_final_fmv_bldg
