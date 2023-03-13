@@ -527,54 +527,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Preparing data for iasWorld export")
 
-# Break land totals out to individual lines, where value is proportional to
-# each line's square footage
-upload_data_land <- assessment_pin_merged %>%
-  left_join(land, by = c("meta_pin"), multiple = "all") %>%
-  select(
-    township_code, meta_pin, meta_card_num = meta_line_num,
-    meta_line_sf, pred_pin_final_fmv_land
-  ) %>%
-  group_by(meta_pin) %>%
-  mutate(
-    component = "L",
-    meta_card_num = as.character(meta_card_num),
-    int_fmv = (meta_line_sf / sum(meta_line_sf)) * pred_pin_final_fmv_land,
-    frac_prop = int_fmv - as.integer(int_fmv)
-  ) %>%
-  # Add the fractional portion of each value to whichever fraction is largest
-  # And randomly assign if the fractions are all identical
-  arrange(desc(frac_prop)) %>%
-  mutate(
-    add_to_final = as.numeric(
-      n() > 1 & row_number() == 1 & frac_prop > 0.1e-7
-    ),
-    add_diff = add_to_final * (pred_pin_final_fmv_land - sum(as.integer(int_fmv))),
-    final_fmv = as.integer(int_fmv) + add_diff
-  ) %>%
-  ungroup()
-
-# Split land classes that have improvements out into their own records, since
-# the improvements weren't valued by the model (they're carried over)
-upload_data_land_impr <- assessment_pin_merged %>%
-  filter(
-    meta_class %in% c("200", "201", "241"),
-    pred_pin_final_fmv_bldg != 0
-  ) %>%
-  left_join(land, by = c("meta_pin"), multiple = "all") %>%
-  group_by(township_code, meta_pin) %>%
-  arrange(meta_line_num) %>%
-  summarise(
-    meta_card_num = as.character(first(meta_line_num)),
-    final_fmv = first(pred_pin_final_fmv_bldg),
-    component = "R"
-  ) %>%
-  ungroup()
-
-# Split improvement values out by card for all non-land classes that WERE valued
-# by the model
-upload_data_bldg <- assessment_pin_merged %>%
-  filter(!meta_class %in% c("200", "201", "241")) %>%
+# Here we want to extract the building value for each card for upload to
+# iasWorld. Land valuation is handled via rates in iasWorld, so no
+# need to include the land portion of each PIN
+upload_data <- assessment_pin %>%
   left_join(
     assessment_card,
     by = c("township_code", "meta_pin"),
@@ -582,39 +538,70 @@ upload_data_bldg <- assessment_pin_merged %>%
   ) %>%
   select(
     township_code, meta_pin, meta_card_num,
-    meta_card_pct_total_fmv, bldg_fmv = pred_pin_final_fmv_bldg
+    meta_card_pct_total_fmv,
+    meta_tieback_proration_rate.x,
+    pred_pin_final_fmv_round,
+    pred_pin_final_fmv_bldg,
+    pred_pin_final_fmv_land
   ) %>%
+  # iasWorld requires both the prorated AND unprorated building value of each
+  # card. To get the prorated value, we simply subtract the land value from the
+  # PIN's final value, then allocate value to each card according to its square
+  # footage
+  # To get the unprorated value of each card, we first unprorate the PIN's final
+  # value by multiplying by the reciprocal of the rate. Then, we subtract the
+  # land value. Finally, we allocate card-level values according to square
+  # footage
   mutate(
-    component = "R",
-    int_fmv = meta_card_pct_total_fmv * bldg_fmv,
-    frac_prop = int_fmv - as.integer(int_fmv),
+    unp_pin_sans_land = 
+      (pred_pin_final_fmv_round * (1 / meta_tieback_proration_rate.x)) -
+        pred_pin_final_fmv_land,
+    unp_int_fmv = unp_pin_sans_land * meta_card_pct_total_fmv,
+    unp_frac_prop = unp_int_fmv - as.integer(unp_int_fmv),
+    p_int_fmv = pred_pin_final_fmv_bldg * meta_card_pct_total_fmv,
+    p_frac_prop = p_int_fmv - as.integer(p_int_fmv),
   ) %>%
   # Add the fractional portion of each value to whichever fraction is largest
   # And randomly assign if the fractions are all identical
   group_by(meta_pin) %>%
-  arrange(desc(frac_prop)) %>%
+  arrange(desc(unp_frac_prop)) %>%
   mutate(
-    add_to_final = as.numeric(
-      n() > 1 & row_number() == 1 & frac_prop > 0.1e-7
+    unp_add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & unp_frac_prop > 0.1e-7
     ),
-    add_diff = add_to_final * (bldg_fmv - sum(as.integer(int_fmv))),
-    card_fmv_sans_land = as.integer(int_fmv) + add_diff 
+    unp_add_diff = unp_add_to_final *
+      (unp_pin_sans_land - sum(as.integer(unp_int_fmv))),
+    unp_card_fmv_sans_land = as.integer(unp_int_fmv) + unp_add_diff
+  ) %>%
+  arrange(desc(p_frac_prop)) %>%
+  mutate(
+    p_add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & p_frac_prop > 0.1e-7
+    ),
+    p_add_diff = p_add_to_final *
+      (pred_pin_final_fmv_bldg - sum(as.integer(p_int_fmv))),
+    p_card_fmv_sans_land = as.integer(p_int_fmv) + p_add_diff
   ) %>%
   ungroup() %>%
   mutate(
-    final_fmv = ifelse(
-      is.nan(card_fmv_sans_land) | is.na(card_fmv_sans_land),
-      bldg_fmv,
-      card_fmv_sans_land
+    unp_final_fmv = ifelse(
+      is.nan(unp_card_fmv_sans_land) | is.na(unp_card_fmv_sans_land),
+      unp_pin_sans_land,
+      unp_card_fmv_sans_land
+    ),
+    p_final_fmv = ifelse(
+      is.nan(p_card_fmv_sans_land) | is.na(p_card_fmv_sans_land),
+      pred_pin_final_fmv_bldg,
+      p_card_fmv_sans_land
     )
+  ) %>%
+  select(
+    township_code,
+    PARID = meta_pin, CARD = meta_card_num,
+    USER37 = unp_final_fmv,
+    USER24 = meta_tieback_proration_rate.x,
+    OVRRCNLD = p_final_fmv
   )
-
-# Combine all records into a single data frame, keeping only the fields needed
-# for upload
-upload_data_merged <- upload_data_bldg %>%
-  bind_rows(upload_data_land, upload_data_land_impr) %>%
-  select(township_code, meta_pin, component, meta_card_num, final_fmv) %>%
-  arrange(township_code, meta_pin, component, meta_card_num)
 
 
 
@@ -624,12 +611,13 @@ upload_data_merged <- upload_data_bldg %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Write each town to a headerless CSV for mass upload
-for (town in unique(assessment_pin_prepped$township_code)) {
+for (town in unique(upload_data$township_code)) {
   message("Now processing: ", town_convert(town))
   
-  upload_data_fil <- upload_data_merged %>%
+  upload_data_fil <- upload_data %>%
     filter(township_code == town) %>%
-    select(-township_code)
+    select(-township_code) %>%
+    arrange(PARID, CARD)
   
   write_csv(
     x = upload_data_fil,
@@ -643,6 +631,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       )
     ),
     na = "",
-    col_names = FALSE
+    col_names = TRUE
   )
 }
