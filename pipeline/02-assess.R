@@ -251,8 +251,10 @@ assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_bldg_frac_prop > 0.1e-7
     ),
+    temp_add_diff = temp_add_to_final *
+      (sum(pred_pin_final_fmv_bldg) - sum(as.integer(pred_pin_final_fmv_bldg))),
     pred_pin_final_fmv_bldg = as.integer(pred_pin_final_fmv_bldg) +
-      temp_add_to_final
+      temp_add_diff
   ) %>%
   ungroup() %>%
   select(-starts_with("temp_")) %>%
