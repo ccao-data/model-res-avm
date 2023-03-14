@@ -200,7 +200,7 @@ vacant_land_merged <- vacant_land_trans %>%
     # Replace missing values for some PINs (very few, usually brand new)
     across(
       c(char_land_sf, prior_near_land, prior_near_bldg, prior_near_tot),
-      replace_na, 10
+      ~ replace_na(.x, 10)
     ),
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_land_pct_total = round(prior_near_land / prior_near_tot, 4),
@@ -283,6 +283,7 @@ message("Preparing data for Desk Review export")
 # Merge vacant land data with data from the residential AVM
 assessment_pin_merged <- assessment_pin %>%
   mutate(
+    meta_complex_id = as.numeric(meta_complex_id),
     across(ends_with("_date"), ymd),
     across(starts_with("flag_"), as.numeric),
     across(where(is.numeric), ~ na_if(.x, Inf))
@@ -536,71 +537,35 @@ upload_data <- assessment_pin %>%
     by = c("township_code", "meta_pin"),
     multiple = "all"
   ) %>%
-  select(
-    township_code, meta_pin, meta_card_num,
-    meta_card_pct_total_fmv,
-    meta_tieback_proration_rate.x,
-    pred_pin_final_fmv_round,
-    pred_pin_final_fmv_bldg,
-    pred_pin_final_fmv_land
-  ) %>%
-  # iasWorld requires both the prorated AND unprorated building value of each
-  # card. To get the prorated value, we simply subtract the land value from the
-  # PIN's final value, then allocate value to each card according to its square
-  # footage
-  # To get the unprorated value of each card, we first unprorate the PIN's final
-  # value by multiplying by the reciprocal of the rate. Then, we subtract the
-  # land value. Finally, we allocate card-level values according to square
-  # footage
+  # Calculate the UNPRORATED building value of each card using the same
+  # distribution method from the assessment stage
   mutate(
-    unp_pin_sans_land = 
-      (pred_pin_final_fmv_round * (1 / meta_tieback_proration_rate.x)) -
-        pred_pin_final_fmv_land,
-    unp_int_fmv = unp_pin_sans_land * meta_card_pct_total_fmv,
-    unp_frac_prop = unp_int_fmv - as.integer(unp_int_fmv),
-    p_int_fmv = pred_pin_final_fmv_bldg * meta_card_pct_total_fmv,
-    p_frac_prop = p_int_fmv - as.integer(p_int_fmv),
+    pred_card_final_fmv_no_prorate = pred_pin_final_fmv_bldg_no_prorate *
+      meta_card_pct_total_fmv,
+    temp_card_frac_prop = pred_card_final_fmv_no_prorate -
+      as.integer(pred_card_final_fmv_no_prorate)
   ) %>%
-  # Add the fractional portion of each value to whichever fraction is largest
-  # And randomly assign if the fractions are all identical
   group_by(meta_pin) %>%
-  arrange(desc(unp_frac_prop)) %>%
+  arrange(desc(temp_card_frac_prop)) %>%
   mutate(
-    unp_add_to_final = as.numeric(
-      n() > 1 & row_number() == 1 & unp_frac_prop > 0.1e-7
+    temp_add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
     ),
-    unp_add_diff = unp_add_to_final *
-      (unp_pin_sans_land - sum(as.integer(unp_int_fmv))),
-    unp_card_fmv_sans_land = as.integer(unp_int_fmv) + unp_add_diff
-  ) %>%
-  arrange(desc(p_frac_prop)) %>%
-  mutate(
-    p_add_to_final = as.numeric(
-      n() > 1 & row_number() == 1 & p_frac_prop > 0.1e-7
+    temp_add_diff = temp_add_to_final * (
+      sum(pred_card_final_fmv_no_prorate) -
+        sum(as.integer(pred_card_final_fmv_no_prorate))
     ),
-    p_add_diff = p_add_to_final *
-      (pred_pin_final_fmv_bldg - sum(as.integer(p_int_fmv))),
-    p_card_fmv_sans_land = as.integer(p_int_fmv) + p_add_diff
-  ) %>%
-  ungroup() %>%
-  mutate(
-    unp_final_fmv = ifelse(
-      is.nan(unp_card_fmv_sans_land) | is.na(unp_card_fmv_sans_land),
-      unp_pin_sans_land,
-      unp_card_fmv_sans_land
-    ),
-    p_final_fmv = ifelse(
-      is.nan(p_card_fmv_sans_land) | is.na(p_card_fmv_sans_land),
-      pred_pin_final_fmv_bldg,
-      p_card_fmv_sans_land
+    pred_card_final_fmv_no_prorate = round(
+      as.integer(pred_card_final_fmv_no_prorate) + temp_add_diff
     )
   ) %>%
+  ungroup() %>%
   select(
     township_code,
     PARID = meta_pin, CARD = meta_card_num,
-    USER37 = unp_final_fmv,
+    USER37 = pred_card_final_fmv_no_prorate,
     USER24 = meta_tieback_proration_rate.x,
-    OVRRCNLD = p_final_fmv
+    OVRRCNLD = pred_card_final_fmv
   )
 
 
