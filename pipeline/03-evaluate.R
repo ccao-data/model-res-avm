@@ -61,6 +61,12 @@ col_rename_dict <- c(
   "geography_id" = "loc_school_unified_district_geoid"
 )
 
+# Get the triad of the run to use for filtering
+run_triad <- tools::toTitleCase(params$assessment$triad)
+run_triad_code <- ccao::town_dict %>%
+  filter(triad_name == run_triad) %>%
+  distinct(triad_code) %>%
+  pull(triad_code)
 
 
 
@@ -79,6 +85,7 @@ test_data_card <- read_parquet(paths$output$test_card$local)
 # aggregated to the PIN-level. Only runs for full runs due to compute cost
 if (run_type == "full") {
   assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
+    filter(meta_triad_code == run_triad_code) %>%
     select(
       meta_pin, meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
       loc_cook_municipality_name, loc_ward_num, loc_census_puma_geoid,
