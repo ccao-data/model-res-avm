@@ -23,18 +23,20 @@ stages:
     deps:
     - input/training_data.parquet
     params:
-    - input.time_split
-    - toggle.cv_enable
     - cv
+    - input.time_split
     - model.engine
+    - model.hyperparameter
     - model.objective
+    - model.parameter
+    - model.predictor
     - model.seed
     - model.verbose
-    - model.predictor
-    - model.parameter
-    - model.hyperparameter
     - ratio_study
+    - toggle.cv_enable
     outs:
+    - output/intermediate/timing/model_timing_train.parquet:
+        cache: false
     - output/parameter_final/model_parameter_final.parquet:
         cache: false
     - output/parameter_range/model_parameter_range.parquet:
@@ -47,9 +49,6 @@ stages:
         cache: false
     - output/workflow/recipe/model_workflow_recipe.rds:
         cache: false
-    - output/intermediate/timing/model_timing_train.parquet:
-        cache: false
-
   assess:
     cmd: Rscript pipeline/02-assess.R
     desc: >

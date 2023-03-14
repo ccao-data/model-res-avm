@@ -12,9 +12,8 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: >
-  Final 2023 res run. Deep tree model similar to inspiring-liz. Re-added
-  neighborhood. Added land unit prices. Fixed complex identification.
-  Re-enabled rounding. Re-enabled proration
+  Rebuilt final 2023 run (relaxed-dan) using updated proration method.
+  Re-running with the same model for posterity of the original results
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -398,4 +397,4 @@ ratio_study:
 # upload
 export:
   triad_code: "3"
-  run_id: "2023-03-06-relaxed-dan"
+  run_id: "2023-03-14-clever-damani"
