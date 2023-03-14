@@ -251,8 +251,10 @@ assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_bldg_frac_prop > 0.1e-7
     ),
-    temp_add_diff = temp_add_to_final *
-      (sum(pred_pin_final_fmv_bldg) - sum(as.integer(pred_pin_final_fmv_bldg))),
+    temp_add_diff = temp_add_to_final * round(
+      sum(pred_pin_final_fmv_bldg, na.rm = TRUE) -
+        sum(as.integer(pred_pin_final_fmv_bldg), na.rm = TRUE)
+      ),
     pred_pin_final_fmv_bldg = as.integer(pred_pin_final_fmv_bldg) +
       temp_add_diff
   ) %>%
@@ -304,8 +306,10 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
     ),
-    temp_add_diff = temp_add_to_final *
-      (sum(pred_card_final_fmv) - sum(as.integer(pred_card_final_fmv))),
+    temp_add_diff = temp_add_to_final * (
+      sum(pred_card_final_fmv, na.rm = TRUE) -
+        sum(as.integer(pred_card_final_fmv), na.rm = TRUE)
+    ),
     pred_card_final_fmv = round(as.integer(pred_card_final_fmv) +
       temp_add_diff)
   ) %>%

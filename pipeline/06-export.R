@@ -551,9 +551,9 @@ upload_data <- assessment_pin %>%
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
     ),
-    temp_add_diff = temp_add_to_final * (
-      sum(pred_card_final_fmv_no_prorate) -
-        sum(as.integer(pred_card_final_fmv_no_prorate))
+    temp_add_diff = temp_add_to_final * round(
+      sum(pred_card_final_fmv_no_prorate, na.rm = TRUE) -
+        sum(as.integer(pred_card_final_fmv_no_prorate), na.rm = TRUE)
     ),
     pred_card_final_fmv_no_prorate = round(
       as.integer(pred_card_final_fmv_no_prorate) + temp_add_diff
@@ -575,7 +575,7 @@ upload_data <- assessment_pin %>%
 # 6. Export iasWorld Upload ----------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Write each town to a headerless CSV for mass upload
+# Write each town to a CSV for mass upload
 for (town in unique(upload_data$township_code)) {
   message("Now processing: ", town_convert(town))
   
