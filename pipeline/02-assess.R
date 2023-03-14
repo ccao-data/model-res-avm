@@ -41,6 +41,16 @@ rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
 sales_data <- read_parquet(paths$input$training$local) %>%
   filter(!sv_is_outlier)
 
+# Load land rates from file
+land_site_rate <- read_parquet(
+  paths$input$land_site_rate$local,
+  c("meta_pin", "land_rate_per_pin")
+)
+land_nbhd_rate <- read_parquet(
+  paths$input$land_nbhd_rate$local
+)
+
+
 
 
 
@@ -56,7 +66,7 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # Load the data for assessment. This is the universe of CARDs (not
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
 # fair-market value for each card
-assessment_data_pred <- read_parquet(paths$input$assessment$local) %>%
+assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
   mutate(
     pred_card_initial_fmv = predict(
@@ -82,14 +92,16 @@ message("Fixing multicard PINs")
 
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is (usually) the sum of all cards
-assessment_data_mc <- assessment_data_pred %>%
+assessment_card_data_mc <- assessment_card_data_pred %>%
   select(
-    meta_pin, meta_class, char_bldg_sf, meta_card_num,
+    meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
+    char_bldg_sf, char_land_sf,
     meta_tieback_key_pin, meta_tieback_proration_rate,
     meta_1yr_pri_board_tot, pred_card_initial_fmv
   ) %>%
-  # For prorated PINs with multiple cards, take the average of the
-  # card (building) across PINs
+  # For prorated PINs with multiple cards, take the average of the card
+  # (building) across PINs. This is because the same prorated building spread
+  # across multiple PINs sometimes receives different values from the model
   group_by(meta_tieback_key_pin, meta_card_num) %>%
   mutate(
     pred_card_intermediate_fmv = ifelse(
@@ -104,7 +116,7 @@ assessment_data_mc <- assessment_data_pred %>%
   # blowing up the PIN-level AV
   group_by(meta_pin) %>%
   mutate(
-    pred_pin_final_fmv = ifelse(
+    pred_pin_card_sum = ifelse(
       sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
         params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
         is.na(meta_1yr_pri_board_tot) |
@@ -112,7 +124,8 @@ assessment_data_mc <- assessment_data_pred %>%
       sum(pred_card_intermediate_fmv),
       max(pred_card_intermediate_fmv)
     )
-  )
+  ) %>%
+  ungroup()
 
 
 ## 3.2. Townhomes --------------------------------------------------------------
@@ -126,77 +139,193 @@ complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
   select(meta_pin, meta_complex_id)
 
 # Join complex IDs to the predictions, then for each complex, set the
-# prediction to the average prediction of the complex. Also, multiply
-# the PIN-level value by the PIN's proration rate
-assessment_data_cid <- assessment_data_mc %>%
+# prediction to the average prediction of the complex
+assessment_card_data_cid <- assessment_card_data_mc %>%
   left_join(complex_id_data, by = "meta_pin") %>%
   group_by(meta_complex_id, meta_tieback_proration_rate) %>%
   mutate(
     pred_pin_final_fmv = ifelse(
       is.na(meta_complex_id),
-      pred_pin_final_fmv * meta_tieback_proration_rate,
-      mean(pred_pin_final_fmv) * meta_tieback_proration_rate
+      pred_pin_card_sum,
+      mean(pred_pin_card_sum)
     )
   ) %>%
   ungroup()
 
 
-## 3.3. Prorate/Round ----------------------------------------------------------
-message("Rounding and prorating predictions")
+## 3.3. Round ------------------------------------------------------------------
+message("Rounding predictions")
 
 # Round PIN-level predictions using the breaks and amounts specified in params
-assessment_data_final <- assessment_data_cid %>%
+assessment_card_data_round <- assessment_card_data_cid %>%
   mutate(
-    pred_pin_final_fmv_round = ccao::val_round_fmv(
+    pred_pin_final_fmv_round_no_prorate = ccao::val_round_fmv(
       pred_pin_final_fmv,
       breaks = params$pv$round_break,
       round_to = params$pv$round_to_nearest,
       type = params$pv$round_type
     )
-  ) %>%
-  # Apportion the final PIN-level value back out to the card-level using
-  # the square footage of each improvement
-  group_by(meta_pin) %>%
-  mutate(
-    meta_card_pct_total_fmv = char_bldg_sf / sum(char_bldg_sf),
-    pred_card_final_fmv = pred_pin_final_fmv_round * meta_card_pct_total_fmv
-  ) %>%
-  ungroup()
-
-# Merge the finalized card-level data back to the main tibble of predictions
-assessment_data_merged <- assessment_data_pred %>%
-  left_join(
-    assessment_data_final %>%
-      select(
-        meta_pin, meta_card_num, meta_card_pct_total_fmv, meta_complex_id,
-        pred_card_final_fmv, pred_pin_final_fmv, pred_pin_final_fmv_round
-      ),
-    by = c("meta_pin", "meta_card_num")
-  ) %>%
-  relocate(
-    c(meta_card_pct_total_fmv, meta_complex_id),
-    .after = "meta_card_num"
-  ) %>%
-  mutate(
-    township_code = meta_township_code,
-    meta_year = as.character(meta_year)
   )
-
-# The test PINs below can be used to ensure that the order of operations
-# for the adjustments above results in a sensible outcome:
-# 17321110470000 05174150240000 05213220250000 08121220400000 06334030310000
 
 
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Card-Level Data -----------------------------------------------------------
+# 4. Value Land ----------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Valuing land")
+
+# Land values are provided by Valuations and are capped at a percentage of the
+# total FMV for the PIN. For 210 and 295s (townhomes), there's sometimes a pre-
+# calculated land total value, for all other classes, there's a $/sqft rate
+assessment_pin_data_w_land <- assessment_card_data_round %>%
+  # Keep only the necessary unique PIN-level values, since land is valued by
+  # PIN rather than card
+  group_by(meta_year, meta_pin) %>%
+  distinct(
+    meta_nbhd_code, meta_complex_id,
+    meta_tieback_key_pin, meta_tieback_proration_rate,
+    char_land_sf, pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate
+  ) %>%
+  ungroup() %>%
+  left_join(land_site_rate, by = "meta_pin") %>%
+  left_join(land_nbhd_rate, by = c("meta_nbhd_code" = "meta_nbhd")) %>%
+  mutate(
+    pred_pin_final_fmv_land = ceiling(case_when(
+      # Use the fixed late value first (unless it exceeds the land % cap)
+      !is.na(land_rate_per_pin) &
+        (land_rate_per_pin > pred_pin_final_fmv_round_no_prorate *
+           params$pv$land_pct_of_total_cap) ~
+        pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
+      !is.na(land_rate_per_pin) ~ land_rate_per_pin,
+      # Otherwise, use the land $/sqft rate (again checking against the cap)
+      char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round_no_prorate *
+        params$pv$land_pct_of_total_cap ~
+        pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
+      TRUE ~ char_land_sf * land_rate_per_sqft
+    )),
+    # Keep the uncapped value for display in desk review
+    pred_pin_uncapped_fmv_land = ceiling(case_when(
+      !is.na(land_rate_per_pin) ~ land_rate_per_pin,
+      TRUE ~ char_land_sf * land_rate_per_sqft
+    ))
+  )
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 5. Prorate and Reapportion ---------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Prorating buildings")
+
+# Prorating is the process of dividing a building's value among multiple PINs.
+# See the steps outlined below for the process to determine a prorated value:
+assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
+  group_by(meta_tieback_key_pin) %>%
+  mutate(
+    tieback_total_land_fmv = ifelse(
+      is.na(meta_tieback_key_pin),
+      pred_pin_final_fmv_land,
+      sum(pred_pin_final_fmv_land)
+    )
+  ) %>%
+  ungroup() %>%
+  mutate(
+    # 1. Subtract the TOTAL value of the land of all linked PINs. This leaves
+    # only the value of the building that spans the PINs
+    pred_pin_final_fmv_bldg_no_prorate =
+      pred_pin_final_fmv_round_no_prorate - tieback_total_land_fmv,
+    # 2. Multiply the building by the proration rate of each PIN/card. This is
+    # the proportion of the building's value held by each PIN
+    pred_pin_final_fmv_bldg =
+      pred_pin_final_fmv_bldg_no_prorate * meta_tieback_proration_rate,
+    temp_bldg_frac_prop = pred_pin_final_fmv_bldg -
+      as.integer(pred_pin_final_fmv_bldg)
+  ) %>%
+  # 3. Assign the fractional portion of a building (cents) to whichever portion
+  # is largest i.e. [1.59, 1.41] becomes [2, 1]
+  group_by(meta_tieback_key_pin) %>%
+  arrange(desc(temp_bldg_frac_prop)) %>%
+  mutate(
+    temp_add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & temp_bldg_frac_prop > 0.1e-7
+    ),
+    pred_pin_final_fmv_bldg = as.integer(pred_pin_final_fmv_bldg) +
+      temp_add_to_final
+  ) %>%
+  ungroup() %>%
+  select(-starts_with("temp_")) %>%
+  mutate(
+    # 4. To get the total value of the individual PINs, add the individual land
+    # value of the PINs back to the prorated building value
+    pred_pin_final_fmv_round =
+      pred_pin_final_fmv_bldg + pred_pin_final_fmv_land
+  )
+
+# Merge the final PIN-level data back to the main tibble of predictions
+assessment_card_data_merged <- assessment_pin_data_prorated %>%
+  select(
+    meta_year, meta_pin, meta_complex_id,
+    pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate,
+    land_rate_per_pin, land_rate_per_sqft, pred_pin_uncapped_fmv_land,
+    pred_pin_final_fmv_land, pred_pin_final_fmv_bldg_no_prorate,
+    pred_pin_final_fmv_bldg, pred_pin_final_fmv_round
+  ) %>%
+  left_join(
+    assessment_card_data_pred,
+    by = c("meta_year", "meta_pin"),
+    multiple = "all"
+  ) %>%
+  mutate(
+    township_code = meta_township_code,
+    meta_year = as.character(meta_year)
+  ) %>%
+  # Apportion the final prorated PIN-level value back out to the card-level
+  # using the square footage of each improvement
+  group_by(meta_year, meta_pin) %>%
+  mutate(
+    meta_card_pct_total_fmv = char_bldg_sf / sum(char_bldg_sf),
+    # In cases where bldg sqft is missing (rare), fill evenly across cards
+    meta_card_pct_total_fmv = ifelse(
+      is.na(meta_card_pct_total_fmv),
+      1 / n(),
+      meta_card_pct_total_fmv
+    ),
+    pred_card_final_fmv = pred_pin_final_fmv_bldg * meta_card_pct_total_fmv,
+    temp_card_frac_prop = pred_card_final_fmv - as.integer(pred_card_final_fmv)
+  ) %>%
+  # More fractional rounding to deal with card values being split into cents
+  group_by(meta_year, meta_pin) %>%
+  arrange(desc(temp_card_frac_prop)) %>%
+  mutate(
+    temp_add_to_final = as.numeric(
+      n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
+    ),
+    temp_add_diff = temp_add_to_final *
+      (sum(pred_card_final_fmv) - sum(as.integer(pred_card_final_fmv))),
+    pred_card_final_fmv = round(as.integer(pred_card_final_fmv) +
+      temp_add_diff)
+  ) %>%
+  ungroup() %>%
+  select(-starts_with("temp_"))
+
+# The test PINs below can be used to ensure that the order of operations
+# for the adjustments above results in a sensible outcome:
+# 17321110470000 05174150240000 05213220250000 08121220400000 06334030310000
+# 16071280240000 17223100350000 30201160060000 16071280240000 25293010470000
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 6. Card-Level Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Saving card-level data")
 
 # Keep only card-level variables of interest, including: ID variables (run_id,
 # pin, card), characteristics, and predictions
-assessment_data_merged %>%
+assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
     meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
@@ -213,13 +342,13 @@ assessment_data_merged %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 5. PIN-Level Data ------------------------------------------------------------
+# 7. PIN-Level Data ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Generate PIN-level stats for each run. These are used for desktop review,
 # looking at YoY changes, comparing to sales, etc.
 
-## 5.1. Load Sales/Land --------------------------------------------------------
+## 7.1. Load Sales/Land --------------------------------------------------------
 message("Attaching recent sales to PIN-level data")
 
 # Load the MOST RECENT sale per PIN from the year prior to the assessment year.
@@ -256,24 +385,21 @@ sales_data_two_most_recent <- sales_data %>%
   select(meta_pin, contains("1"), contains("2")) %>%
   ungroup()
 
-# Load land rates from file
-land_site_rate <- read_parquet(
-  paths$input$land_site_rate$local,
-  c("meta_pin", "land_rate_per_pin")
-)
-land_nbhd_rate <- read_parquet(
-  paths$input$land_nbhd_rate$local
-)
 
-
-## 5.2. Collapse to PIN Level --------------------------------------------------
+## 7.2. Collapse to PIN Level --------------------------------------------------
 message("Collapsing card-level data to PIN level")
 
 # Collapse card-level data to the PIN level, keeping the largest building on
 # each PIN but summing the total square footage of all buildings
-assessment_data_pin <- assessment_data_merged %>%
+assessment_pin_data_base <- assessment_card_data_merged %>%
   group_by(meta_year, meta_pin) %>%
   arrange(desc(char_bldg_sf)) %>%
+  mutate(
+    # Keep the sum of the initial card level values
+    pred_pin_initial_fmv = sum(pred_card_initial_fmv),
+    char_total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)
+  ) %>%
+  filter(row_number() == 1) %>%
   # Rename prior year comparison columns to near/far to maintain consistent
   # column names in Athena
   rename_with(
@@ -284,47 +410,41 @@ assessment_data_pin <- assessment_data_merged %>%
     .fn = ~ gsub(paste0(rsf_prefix, "_"), "prior_far_", .x),
     .cols = starts_with(rsf_prefix)
   ) %>%
-  summarize(
-    across(
-      c(
-        # Keep ID and meta variables
-        meta_triad_code, meta_township_code, meta_nbhd_code, meta_tax_code,
-        meta_class, meta_tieback_key_pin, meta_tieback_proration_rate,
-        meta_cdu, meta_pin_num_cards, meta_pin_num_landlines, meta_complex_id,
-
-        # Keep certain vital characteristics for the largest card on the PIN
-        char_yrblt, char_land_sf, char_ext_wall, char_type_resd,
-
-        # Keep locations, prior year values, and indicators
-        loc_longitude, loc_latitude,
-        starts_with(c(
-          "loc_property_", "loc_cook_", "loc_chicago_", "loc_ward_",
-          "loc_census", "loc_school_", "prior_", "ind_"
-        )),
-
-        # Keep HIE flag
-        hie_num_expired,
-
-        # Keep PIN-level predicted values
-        pred_pin_final_fmv, pred_pin_final_fmv_round, township_code
-      ),
-      first
-    ),
-
-    # Keep the sum of the initial card level values
-    pred_pin_initial_fmv = sum(pred_card_initial_fmv),
-    char_total_bldg_sf = sum(char_bldg_sf)
-  ) %>%
   ungroup() %>%
-  # Overwrite missing land values (only a few PINs)
-  mutate(char_land_sf = replace_na(char_land_sf, 0)) %>%
+  select(
+    # Keep ID and meta variables
+    meta_year, meta_pin, meta_triad_code, meta_township_code, meta_nbhd_code,
+    meta_tax_code, meta_class, meta_tieback_key_pin, meta_tieback_proration_rate,
+    meta_cdu, meta_pin_num_cards, meta_pin_num_landlines, meta_complex_id,
+
+    # Keep certain vital characteristics for the largest card on the PIN
+    char_yrblt, char_land_sf, char_ext_wall, char_type_resd, char_total_bldg_sf,
+
+    # Keep locations, prior year values, and indicators
+    loc_longitude, loc_latitude,
+    starts_with(c(
+      "loc_property_", "loc_cook_", "loc_chicago_", "loc_ward_",
+      "loc_census", "loc_school_", "prior_", "ind_"
+    )),
+
+    # Keep HIE flag
+    hie_num_expired,
+
+    # Keep PIN-level predicted values and land rates
+    land_rate_per_pin, land_rate_per_sqft,
+    pred_pin_initial_fmv,
+    pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate,
+    pred_pin_uncapped_fmv_land, pred_pin_final_fmv_land,
+    pred_pin_final_fmv_bldg_no_prorate, pred_pin_final_fmv_bldg,
+    pred_pin_final_fmv_round, township_code
+  ) %>%
   # Make a flag for any vital missing characteristics
   bind_cols(
-    assessment_data_merged %>%
+    assessment_card_data_merged %>%
       select(
         meta_year, meta_pin,
         char_yrblt, char_bldg_sf, char_land_sf, char_beds,
-        char_fbath, char_bsmt, char_ext_wall, char_apts
+        char_fbath, char_apts
       ) %>%
       mutate(ind_char_missing_critical_value = rowSums(is.na(.))) %>%
       group_by(meta_year, meta_pin) %>%
@@ -337,39 +457,14 @@ assessment_data_pin <- assessment_data_merged %>%
   )
 
 
-## 5.3. Value Land -------------------------------------------------------------
-message("Attaching and parsing land values")
+## 7.3. Attach Sales -----------------------------------------------------------
+message("Attaching and comparing sale values")
 
-# Attach land and sales data to the PIN-level data, then calculate land and
-# building values for each PIN
-assessment_data_pin_2 <- assessment_data_pin %>%
-  left_join(land_site_rate, by = "meta_pin") %>%
-  left_join(land_nbhd_rate, by = c("meta_nbhd_code" = "meta_nbhd")) %>%
+# Attach sales data to the PIN-level data
+assessment_pin_data_sale <- assessment_pin_data_base %>%
   left_join(sales_data_two_most_recent, by = "meta_pin") %>%
   left_join(sales_data_ratio_study, by = c("meta_year", "meta_pin")) %>%
-  # Land values are provided by Valuations and are capped at a percentage of the
-  # total FMV for the PIN. For 210 and 295s (townhomes), there's a pre-
-  # calculated land total value, for all other classes, there's a $/sqft rate
-  mutate(
-    pred_pin_final_fmv_land = ceiling(case_when(
-      !is.na(land_rate_per_pin) &
-        (land_rate_per_pin > pred_pin_final_fmv_round *
-          params$pv$land_pct_of_total_cap) ~
-        pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
-      !is.na(land_rate_per_pin) ~ land_rate_per_pin,
-      char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round *
-        params$pv$land_pct_of_total_cap ~
-        pred_pin_final_fmv_round * params$pv$land_pct_of_total_cap,
-      TRUE ~ char_land_sf * land_rate_per_sqft
-    )),
-    pred_pin_uncapped_fmv_land = case_when(
-      !is.na(land_rate_per_pin) ~ land_rate_per_pin,
-      TRUE ~ char_land_sf * land_rate_per_sqft
-    ),
-    pred_pin_final_fmv_bldg =
-      pred_pin_final_fmv_round - pred_pin_final_fmv_land
-  ) %>%
-  # Calculate effective rates (rate with 50% cap) + the % of the PIN value
+  # Calculate effective land rates (rate with 50% cap) + the % of the PIN value
   # dedicated to the building
   mutate(
     pred_pin_land_rate_effective = pred_pin_final_fmv_land / char_land_sf,
@@ -387,11 +482,11 @@ assessment_data_pin_2 <- assessment_data_pin %>%
   )
 
 
-## 5.4. Add Flags --------------------------------------------------------------
+## 7.4. Add Flags --------------------------------------------------------------
 message("Adding Desk Review flags")
 
 # Flags are used to identify PINs for potential desktop review
-assessment_data_pin_final <- assessment_data_pin_2 %>%
+assessment_pin_data_final <- assessment_pin_data_sale %>%
   # Rename existing indicators to flags
   rename_with(~ gsub("ind_", "flag_", .x), starts_with("ind_")) %>%
   # Add flag for potential proration issues (rates don't sum to 1)
@@ -434,11 +529,11 @@ assessment_data_pin_final <- assessment_data_pin_2 %>%
   )
 
 
-## 5.5. Clean/Reorder/Save -----------------------------------------------------
+## 7.5. Clean/Reorder/Save -----------------------------------------------------
 message("Saving final PIN-level data")
 
 # Recode characteristics from numeric encodings to human-readable strings
-assessment_data_pin_final %>%
+assessment_pin_data_final %>%
   ccao::vars_recode(
     cols = starts_with("char_"),
     type = "short",
@@ -449,8 +544,10 @@ assessment_data_pin_final %>%
     starts_with(c("meta_", "loc_")), char_yrblt, char_total_bldg_sf,
     char_ext_wall, char_type_resd, char_land_sf,
     starts_with(c("land", "prior_far_", "prior_near_")),
-    pred_pin_initial_fmv, pred_pin_final_fmv, pred_pin_final_fmv_bldg,
-    pred_pin_final_fmv_land, pred_pin_final_fmv_round,
+    pred_pin_initial_fmv, pred_pin_final_fmv,
+    pred_pin_final_fmv_round_no_prorate,
+    pred_pin_final_fmv_bldg_no_prorate, pred_pin_final_fmv_land,
+    pred_pin_final_fmv_bldg, pred_pin_final_fmv_round,
     pred_pin_bldg_rate_effective, pred_pin_land_rate_effective,
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
