@@ -13,7 +13,7 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: '2023-03-06-relaxed-dan'
+  run_id: '2023-03-14-clever-damani'
   year: '2023'
   dvc_bucket: 's3://ccao-data-dvc-us-east-1'
 ---
@@ -877,7 +877,7 @@ assessment_card %>%
         `PIN Far` = prior_far_tot,
         `PIN Near` = prior_near_tot,
         `PIN Initial` = pred_pin_initial_fmv,
-        `PIN Final` = pred_pin_final_fmv
+        `PIN Final` = pred_pin_final_fmv_round
       ),
     by = c("PIN")
   ) %>%
