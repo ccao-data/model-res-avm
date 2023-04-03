@@ -545,6 +545,7 @@ assessment_pin_data_final %>%
     type = "short",
     as_factor = FALSE
   ) %>%
+  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
   # Reorder columns into groups by prefix
   select(
     starts_with(c("meta_", "loc_")), char_yrblt, char_total_bldg_sf,

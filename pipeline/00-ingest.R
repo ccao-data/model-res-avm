@@ -496,6 +496,7 @@ complex_id_data <- assessment_data_clean %>%
   mutate(meta_complex_id = cur_group_id()) %>%
   ungroup() %>%
   select(-c(tot_sqft, char_break)) %>%
+  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
   write_parquet(paths$input$complex_id$local)
 
 
