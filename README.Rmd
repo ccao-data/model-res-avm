@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 # Prior Models
 
-This repository contains code, data, and documentation for the Cook County Assessor's 2022 residential reassessment model. Information about prior year models can be found at the following links:
+This repository contains code, data, and documentation for the Cook County Assessor's 2023 residential reassessment model. Information about prior year models can be found at the following links:
 
 | Year(s)     | Triad(s) | Method                                      | Language / Framework       | Link                                                                                                    |
 |-------------|----------|---------------------------------------------|----------------------------|---------------------------------------------------------------------------------------------------------|
@@ -72,7 +72,7 @@ graph LR
     aws --> export
 ```
 
-All inputs and outputs are stored on AWS S3 via a unique run identifier. Each stage in the modeling pipeline corresponds to an individual R script. These scripts can be run independently (as a stand-alone script) or as part of the overall pipeline (with [DVC](#using-dvc)) as long as the dependencies for the stage exist.
+All inputs and outputs are stored on AWS S3 using a unique run identifier. Each stage in the modeling pipeline corresponds to an individual R script. These scripts can be run independently (as a stand-alone script) or as part of the overall pipeline (with [DVC](#using-dvc)) as long as the dependencies for the stage exist.
 
 > :warning: NOTE: For a full technical breakdown of each stage, including dependencies, outputs, parameters, and more, see [dvc.yaml](./dvc.yaml)
 
@@ -84,11 +84,11 @@ All inputs and outputs are stored on AWS S3 via a unique run identifier. Each st
 
 3. **Evaluate**: Measure the performance of the model using the held-out test set and an assessor-specific ratio study method. Performance statistics include standard machine learning metrics (RMSE, MAE, MAPE) as well as assessor-specific metrics (COD, PRD, PRB). This stage calculates metrics for different levels of geography with (and without) property class breakouts. The primary output of this stage is a data frame of aggregate performance statistics.
 
-4. **Interpret**: Calculate SHAP values for all the estimated values from the assess stage. These are the _per feature_ contribution to the predicted value for an _individual observation_ (usually a single PIN). The primary output of this stage is a data frame of the contributions of each feature for each property.
+4. **Interpret**: Calculate SHAP values for all the estimated values from the assess stage. These are the _per feature_ contribution to the predicted value for an _individual observation_ (usually a single PIN). Also calculate the aggregate feature importance for the entire model. The primary output of this stage is a data frame of the contributions of each feature for each property.
 
 5. **Finalize**: Add metadata and then upload all output objects to AWS (S3). All model outputs for every model run are stored in perpetuity in S3. Each run's performance can be visualized using the CCAO's internal Tableau dashboards.
 
-6. **Export**: Export assessed values to Desk Review spreadsheets for Valuations, as well as a delimited text format for upload to iasWorld. NOTE: This stage is only run when a final model is selected. It is not run automatically or as part of the main pipeline.
+6. **Export**: Export assessed values to Desk Review spreadsheets for Valuations, as well as a delimited text format for upload to the system of record (iasWorld). NOTE: This stage is only run when a final model is selected. It is not run automatically or as part of the main pipeline.
 
 ## Choices Made
 
@@ -98,7 +98,7 @@ To counter this, we've listed the major choices we've made about our modeling pr
 
 ### Model Selection
 
-We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It was only recently [released officially for R](https://cran.r-project.org/web/packages/lightgbm/index.html), but has been around since 2016. 
+We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It has [an excellent R API](https://cran.r-project.org/web/packages/lightgbm/index.html) and has been around since 2016. 
 
 We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 
@@ -127,7 +127,7 @@ Additionally, Tidymodels is:
 * [Under very active development](https://github.com/tidymodels). Developers are quick to respond to issues and feature requests.
 * Quick to teach, since a lot of complicated code is abstracted away.
 * [Extensible](https://www.tidymodels.org/learn/develop/models/). The API allows for easy integration of additional model types. See [Lightsnip](#lightsnip).
-* Verbose. It tends to warn you about common machine-learning footguns. It also useful error handling and messages. 
+* Verbose. It tends to warn you about common machine-learning footguns and has excellent error handling and messages.
 
 Some downsides to Tidymodels are that it is:
 
@@ -178,8 +178,8 @@ as_tibble(params$model$hyperparameter$range) %>%
   mutate(
     name = rownames(.),
     log10 = name %in% c("min_gain_to_split", "cat_l2", "lambda_l1", "lambda_l2"),
-    V1 = ifelse(log10, round(10 ^ V1, 3), V1),
-    V2 = ifelse(log10, round(10 ^ V2, 3), V2),
+    V1 = ifelse(log10, round(10 ^ unlist(V1), 3), V1),
+    V2 = ifelse(log10, round(10 ^ unlist(V2), 3), V2),
     range = paste0(V1, " - ", V2)
   ) %>%
   select(name, range) %>%
@@ -204,12 +204,11 @@ as_tibble(params$model$hyperparameter$range) %>%
     `Parameter Description` = desc
   ) %>%
   knitr::kable(format = "markdown", row.names = FALSE)
-
 ```
 
 These parameters are tuned using [Bayesian hyperparameter optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which iteratively searches the parameter space based on the previous parameter tuning results. We use Bayesian tuning instead of grid search or random search because it trains faster and results in nearly identical final parameters.
 
-Model accuracy for each parameter combination is measured on a validation set using [rolling-origin cross-validation](https://www.tmwr.org/resampling.html#rolling). Final model accuracy is measured on a test set of the [most recent 10% of sales](#data-used) in our training sample.
+Model accuracy for each parameter combination is measured on a validation set using [rolling-origin cross-validation](https://www.tmwr.org/resampling.html#rolling). Final model accuracy is measured on a test set of the [most recent 10% of sales](#data-used) in our training sample. For final model candidates, we also measure model accuracy on a random (rather than time-based) test set to ensure the model generalizes well.
 
 ### Features Used
 
@@ -246,7 +245,7 @@ ccao::vars_dict %>%
     meta = "Meta", other = "Other"
   )) %>%
   pivot_wider(
-    `Feature Name`:`Notes`,
+    id_cols = `Feature Name`:`Notes`,
     names_from = row,
     values_from = var_value
   ) %>%
@@ -267,11 +266,11 @@ We rely on numerous third-party sources to add new features to our data. These f
 | Airport noise                                     | Noise monitoring stations via the Chicago Department of Aviation                                                                                                                                                                                                                                         |
 | Road proximity                                    | Buffering [OpenStreetMap](https://www.openstreetmap.org/#map=10/41.8129/-87.6871) motorway, trunk, and primary roads                                                                                                                                                                                     |
 | Flood indicator                                   | [FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/)                                                                                                                                                                                                                            |
-| Flood risk and direction                          | [First Street](https://firststreet.org/flood-factor/) flood data                                                                                                                                                                                                                                         |
+| Flood risk and direction                          | [First Street](https://firststreet.org/risk-factor/flood-factor/) flood data                                                                                                                                                                                                                                         |
 | All Census features                               | [ACS 5-year estimates](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2018/5-year.html) for each respective year                                                                                                                                        |
 | Elementary school district or attendance boundary | [Cook County school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-Elementary-School-Tax-Distric/an6r-bw5a) and [CPS attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-Elementary-School-Attendanc/7edu-z2e8)              |
 | High school district or attendance boundary       | [Cook County high school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-High-School-Tax-Dist-2016/h3xu-azvs) and [CPS high school attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-High-School-Attendance-Boun/y9da-bb2y) |
-| Walkability                                       | The [Chicago Metropolitan Agency for Planning's] ON TO 2050 [Walkability Scores](https://datahub.cmap.illinois.gov/dataset/on-to-2050-layer-walkability#:~:text=While%20several%20measures%20of%20walkability,comfortable%2C%20and%20the%20walk%20is)                                                    |
+| Walkability                                       | The [Chicago Metropolitan Agency for Planning's](https://www.cmap.illinois.gov/) ON TO 2050 [Walkability Scores](https://datahub.cmap.illinois.gov/dataset/on-to-2050-layer-walkability#:~:text=While%20several%20measures%20of%20walkability,comfortable%2C%20and%20the%20walk%20is)                                                    |
 | Subdivision, unincorporated areas, SSAs, etc.     | Cook County GIS                                                                                                                                                                                                                                                                                          |
 | PUMA Housing Index                                | [DePaul Institute for Housing Studies](https://www.housingstudies.org/)                                                                                                                                                                                                                                  |
 | School Ratings                                    | [GreatSchools.org](http://greatschools.org/), aggregated to the district level                                                                                                                                                                                                                           |
@@ -299,7 +298,7 @@ The model uses two primary data sets that are constructed by the [ingest stage](
 * [`training_data`](input/training_data.parquet) - Includes residential sales from ***the 9 years prior to the next assessment date***, which gives us a sufficient amount of data for accurate prediction without including outdated price information. This is the data used to train and evaluate the model. Its approximate size is 400K rows with 100 features.
 * [`assessment_data`](input/assessment_data.parquet) - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 100 features.
 
-These data sets contain only *residential single- and multi-family properties*. Single-family includes property classes 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling, but are typically valued later by hand. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+These data sets contain only *residential single- and multi-family properties*. Single-family includes property [classes](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf) 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling, but are typically valued later by hand. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
 
 ##### Using `training_data`
 
@@ -319,7 +318,7 @@ Out-of-time testing explicitly measures the model's ability to predict recent sa
 
 ###### Figure 2: Rolling-Origin Resampling
 
-The training data is further subdivided using a technique called rolling-origin resampling. For this method, a fixed window of time is used to increment the size of the training set, while the validation set is always the period immediately following the training set. This helps cross-validation determine which hyperparameters will perform best when predicting future sales.
+The training data is further subdivided using a technique called rolling-origin resampling. For this method, a fixed window of time is used to increment the size of the training set, while the validation set is always 10% of sales immediately following the training set. This helps cross-validation determine which hyperparameters will perform best when predicting future sales.
 
 ![](docs/figures/rolling_origin.png)
 
@@ -337,7 +336,7 @@ These sale prices are our initial prediction for what each property is worth. Th
 
 #### Secondary Data
 
-The pipeline also uses a few secondary data sets in the valuation process. These data sets are included in [input/](./input) but are not actually used by the model itself. They include:
+The pipeline also uses a few secondary data sets in the valuation process. These data sets are included in [`input/`](./input) but are not actually used by the model itself. They include:
 
 * [`complex_id_data`](input/complex_id_data.parquet) - Complex identifiers for class 210 and 295 town/rowhomes. Intended to group like units together to ensure that nearly identical units in close proximity receive the same assessed value. This is accomplished with a "fuzzy grouping" strategy that allows slightly dissimilar characteristics.
 * [`land_site_rate_data`](input/land_site_rate_data.parquet) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department. 
@@ -347,18 +346,36 @@ The pipeline also uses a few secondary data sets in the valuation process. These
 
 There's a common saying in the machine learning world: "garbage in, garbage out." This is a succinct way to say that training a predictive model with bad, unrepresentative, or biased data leads to bad results. 
 
-To counter this problem and ensure high-quality prediction, we do our best to ensure that the sales data used to train the model is representative of the actual market. This means dropping non-arms-length sales, removing outliers, and manually reviewing suspect sales. Specifically, we:
+To help mitigate the bad data problem and ensure accurate prediction, we do our best to ensure that the sales data used to train the model is representative of the actual market and universe of properties. We accomplish this in two ways.
 
-* Drop any sales with a sale price of less than $10,000.
-* Drop sales on any properties with more than 40 rooms or 18 bedrooms (these are usually data entry errors).
-* Drop sales whose price is more than 4 standard deviations away from the mean price of sales in the same class and township.
-* Drop sales with a significant amount of missing data.
+##### 1. Sales Validation
+
+We use a heuristics-based approach to drop non-arms-length sales, remove outliers, and manually flag certain suspect sales. The code for this approach can be found in [`flagging.py`](./py/flagging.py) and was developed in partnership with the [Mansueto Institute](https://miurban.uchicago.edu/).
+
+The heuristics classify the following types of outliers using information about each sale:
+
+![](./docs/figures/sales_validation.png)
+
+We also employ a few additional heuristics that combine statistical methods with flags derived from the [PTAX-203 form](https://clintonco.illinois.gov/wp-content/uploads/PTAX-203.pdf). Both the heuristic and PTAX-203 flags can be found in the `sv_outier_type` column of the [training data](#primary-data).
+
+##### 2. Balance Tests
+
+We also perform basic balance tests to determine if the universe of properties sold is analogous to the universe of all properties. The code for these tests can be found under [`reports/`](reports/). The goal of the tests is to see if any characteristics are significantly predictive of sale status, and the tests generally take the form of a logistic regression with the following specification:
+
+```
+sold_in_last_2_years = β₀ + βₙcharacteristics + βₙlocation_fixed_effects + ... + ε
+```
+
+There a few caveats with this approach and with balance testing in general:
+
+1. There could be statistically significant omitted variables that differentiate sold from unsold. Things like `recently_painted` or `full_kitchen_renovation` are good examples. We don't collect these data points, so it could be the case that sold properties are more "sale-ready" in these unknown terms.
+2. There could be significant variation by geography in the representativeness of the sales. In other words, certain areas could have non-representative sales whose predictive effect on `sold_in_last_2_years` is washed out due to mis- or under-specified geographic sampling.
 
 ### Post-Modeling
 
-In addition to the first-pass modeling done by LightGBM, the CCAO also peforms a set of simple adjustments on the predicted values from `assessment_data`. These adjustments are internally called "post-modeling", and are responsible for correcting minor deficiencies in the first model's predictions. Specifically, post-modeling will:
+In addition to the first-pass modeling done by LightGBM, the CCAO also performs a set of simple adjustments on the initial predicted values from the `assess` stage. These adjustments are internally called "post-modeling," and are responsible for correcting minor deficiencies in the first model's predictions. Specifically, post-modeling will:
 
-1. Aggregate values for multi-card properties to the PIN level, then disaggregate them back to the card level. A check is used to ensure that the PIN-level assessed value is not significantly greater than prior year values. This is needed back often back buildings (ADUs, secondary buildings) will receive a much higher initial value than they are actually worth.
+1. Aggregate values for multi-card properties to the PIN level, then disaggregate them back to the card level. A check is used to ensure that the PIN-level assessed value is not significantly greater than the prior year's value. This is needed because often back buildings (ADUs, secondary buildings) will receive a much higher initial value than they are actually worth (since they are not differentiated as ADUs by the model).
 
 2. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
 
@@ -368,14 +385,26 @@ These adjustments have been collectively approved by the senior leadership of th
 
 ## Major Changes from Previous Versions
 
+### Compared to 2022
+
+* Added updated [sales flagging and validation scripts](./py/flagging.py) in partnership with the Mansueto Institute. See [Representativeness](#representativeness).
+* [Rewrote](1932f0ddd577b4c750940c7ed802136b1fabfeb9) the assessment stage for speed and improved accuracy when valuing prorated and multi-card PINs.
+* Added new [feature importance](https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.importance.html) output table, which shows the gain, frequency, and cover for each model run.
+* Added [model QC and balance testing reports](./reports) for ad-hoc analysis of model inputs.
+* Updated multi-card heuristic to only apply to PINs with 2 cards (improvements on the same parcel).
+* Updated [townhome complex valuation method](98283e36c851d14a770ccb33cbe1fec0557451e4) to prevent "chaining" via fuzzy grouping.
+* Updated CV implementation so that [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip) and Tidymodels share the same validation set: Lightsnip for early stopping, Tidymodels for Bayesian optimization.
+* Dropped explicit spatial lag generation in the ingest stage.
+* Lots of other bugfixes and minor improvements.
+
 ### Compared to 2021
 
 * Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/06-export.R](pipeline/06-export.R).
 * Added [DVC](https://dvc.org/) support/integration. This repository uses DVC in 2 ways:
-  1. All input data in [input/](input/) is versioned, tracked, and stored using DVC. Previous input data sets are stored in peretuity on S3.
-  2. [DVC Pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files) are used to sequentially run R pipeline scripts and track/cache inputs and outputs.
+  1. All input data in [`input/`](input/) is versioned, tracked, and stored using DVC. Previous input data sets are stored in perpetuity on S3.
+  2. [DVC pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files) are used to sequentially run R pipeline scripts and track/cache inputs and outputs.
 * All model runs are now saved in perpetuity on S3. Each model's outputs are saved as Parquet files which can be queried using Amazon Athena.
-* Offloaded model reporting entirely to Tableau. This repository no longer produces markdown-based model reports.
+* Offloaded model reporting entirely to Tableau. This repository no longer produces markdown-based model outcome reports.
 * Improved model accuracy significantly while reducing training time. This is largely due to the use of [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip) and the inclusion of many [new features](#features-used).
 * Added per feature, per property contributions via LightGBM's built-in SHAP methods.
 * Reorganized the codebase into explicit pipeline stages, each of which can be run independently or via DVC.
@@ -397,7 +426,7 @@ The CCAO faces a number of ongoing issues which make modeling difficult. Some of
 
 ### Data Quality and Integrity
 
-We face a number of data-related challenges that are specific to our office. These issues are largely the result of legacy data systems, understaffing, and the sheer number of properties in Cook County (over 1 million residential properties). We're actively working to correct or mitigate most of these issues.
+We face a number of data-related challenges that are specific to our office. These issues are largely the result of legacy data systems, under-staffing, and the sheer number of properties in Cook County (over 1 million residential properties). We're actively working to correct or mitigate most of these issues.
 
 ##### Lack of Property Characteristics
 
@@ -419,7 +448,7 @@ This lack of characteristics contributes to larger errors when modeling, as it b
 
 The property characteristics we track can sometimes be incorrect or outdated. The two major sources of characteristic errors are:
 
-1. Data entry or processing errors. Field records from our office need to digitized and mistakes happen. Fortunately, these types of errors are relatively rare.
+1. Data entry or processing errors. Records collected by our office often need to digitized and mistakes happen. Fortunately, these types of errors are relatively rare.
 2. Characteristic update errors. There are a variety of systems that update the characteristics of properties in our system. Some of them can be slow to detect changes or otherwise unreliable.
 
 These errors can cause under- *or* over-assessment. If you believe your property has been misvalued due to a characteristic error or the property characteristics recorded on our website are incorrect. Please [contact our office](https://www.cookcountyassessor.com/contact) to file a property characteristic appeal.
@@ -509,7 +538,7 @@ We're constantly making minor tweaks to improve the model's accuracy, speed, and
 
 # Usage
 
-The code in this repository is written primarily in [R](https://www.r-project.org/about.html). Please install the [latest version of R](https://cloud.r-project.org/) (requires R version >= 4.1.0) and [RStudio](https://rstudio.com/products/rstudio/download/) before proceeding with the steps below.
+The code in this repository is written primarily in [R](https://www.r-project.org/about.html). Please install the [latest version of R](https://cloud.r-project.org/) (requires R version >= 4.2.1) and [RStudio](https://posit.co/download/rstudio-desktop/) before proceeding with the steps below.
 
 If you're on Windows, you'll also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to build the necessary packages. You may also want to (optionally) install [DVC](https://dvc.org/doc/install) to pull data and run pipelines.
 
@@ -626,9 +655,9 @@ For the most recent available data, please visit the [Cook County Data Portal](h
 
 Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html#parallel-processing) and [LightGBM](https://lightgbm.readthedocs.io/en/latest/Parallel-Learning-Guide.html) support parallel processing to speed up model training. However, the current parallel implementation in Tidymodels is extremely memory-intensive, as it needs to carry loaded packages and objects into each worker process. As such, parallel processing in Tidymodels is turned **off**, while parallel processing in LightGBM is turned **on**. This means that models are fit sequentially, but each model fitting is sped up using the parallel processing built-in to LightGBM. Note that:
 
-* The total amount of RAM needed for overall model fitting is around 6GB.
+* The total amount of RAM needed for overall model fitting is around 6GB, though this is ultimately dependent on a number of LightGBM parameters.
 * The number of threads is set via the [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads) parameter, which is passed to the model using the `set_args()` function from `parsnip`. By default, `num_threads` is equal to the full number of physical cores available. More (or faster) cores will decrease total training time.
-* This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
+* This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build) or wait for the [upcoming CUDA release](https://github.com/microsoft/LightGBM/issues/5153).
 
 ## Troubleshooting
 
