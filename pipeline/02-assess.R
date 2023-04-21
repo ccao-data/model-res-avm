@@ -337,6 +337,7 @@ assessment_card_data_merged %>%
     meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
     all_of(params$model$predictor$all), township_code
   ) %>%
+  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
   ccao::vars_recode(
     starts_with("char_"),
     type = "long",
