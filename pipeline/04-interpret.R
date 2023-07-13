@@ -44,11 +44,11 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 
 if (shap_enable) {
   message("Loading assessment data for SHAP calculation")
-  
+
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
-  
+
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
@@ -66,7 +66,7 @@ if (shap_enable) {
 
 if (shap_enable) {
   message("Calculating SHAP values")
-  
+
   # Calculate a SHAP value for each observation for each feature in the
   # assessment data. Uses lightgbm's built-in method (predcontrib = TRUE)
   shap_values <- predict(
@@ -74,7 +74,7 @@ if (shap_enable) {
     data = as.matrix(assessment_data_prepped),
     predcontrib = TRUE
   )
-  
+
   # Convert the SHAP value output from a matrix to a tibble and add column names
   shap_values_tbl <- shap_values %>%
     as_tibble(.name_repair = "unique") %>%
@@ -82,7 +82,7 @@ if (shap_enable) {
       colnames(assessment_data_prepped),
       "pred_card_shap_baseline_fmv"
     ))
-  
+
   # Keep only the SHAP value columns from predictors + any ID and partition
   # columns, then add run ID and write to file
   shap_values_final <- assessment_data %>%

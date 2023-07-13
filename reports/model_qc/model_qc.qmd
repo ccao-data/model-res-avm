@@ -44,14 +44,14 @@ source(here("R", "helpers.R"))
 
 # TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
 # https://github.com/apache/arrow/issues/32026
-cpp11::cpp_source(code = '
+cpp11::cpp_source(code = "
 #include <csignal>
 #include <cpp11.hpp>
 
 [[cpp11::register]] void ignore_sigpipes() {
   signal(SIGPIPE, SIG_IGN);
 }
-')
+")
 
 ignore_sigpipes()
 
@@ -62,7 +62,7 @@ paths <- model_file_dict(params$run_id, params$year)
 metadata <- read_parquet(paths$output$metadata$local)
 if (metadata$run_id != params$run_id) {
   stop(
-    "Local run outputs are NOT equal to the requested run_id. You ", 
+    "Local run outputs are NOT equal to the requested run_id. You ",
     "should run model_fetch_run() to fetch model outputs from S3"
   )
 }
@@ -112,7 +112,7 @@ township <- training_data %>%
   group_by(meta_township_name, meta_year) %>%
   summarise(sales = n()) %>%
   select(Sales = sales, Year = meta_year, Township = meta_township_name) %>%
-ggplot() +
+  ggplot() +
   geom_line(aes(x = Year, y = Sales, color = Township)) +
   scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
   scale_x_continuous(breaks = seq(2014, 2022, 1)) +
@@ -150,7 +150,7 @@ training_data %>%
   summarise(Sales = n()) %>%
   ungroup() %>%
   select(Sales, Bin, Township = meta_township_name, Quarter) %>%
-ggplot(aes(x = Quarter, y = Sales, fill = Bin, group = Bin)) +
+  ggplot(aes(x = Quarter, y = Sales, fill = Bin, group = Bin)) +
   geom_area() +
   scale_color_brewer(palette = "PuOr") +
   theme_minimal() +
@@ -279,12 +279,12 @@ training_data_pred %>%
     `Median Sale Price` = median(meta_sale_price)
   ) %>%
   tidyr::pivot_longer(cols = starts_with("Median")) %>%
-ggplot() +
-  geom_line(aes(x = time_sale_month, y = value, color = name))+
+  ggplot() +
+  geom_line(aes(x = time_sale_month, y = value, color = name)) +
   scale_color_manual(
     name = "",
     values = c("Median Prediction" = "red", "Median Sale Price" = "blue")
-  ) + 
+  ) +
   scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
   facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
   theme_minimal() +
@@ -318,12 +318,12 @@ test_data %>%
     `Median Sale Price` = median(meta_sale_price)
   ) %>%
   tidyr::pivot_longer(cols = starts_with("Median")) %>%
-ggplot() +
-  geom_line(aes(x = time_sale_month, y = value, color = name))+
+  ggplot() +
+  geom_line(aes(x = time_sale_month, y = value, color = name)) +
   scale_color_manual(
     name = "",
     values = c("Median Prediction" = "red", "Median Sale Price" = "blue")
-  ) + 
+  ) +
   scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
   facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
   theme_minimal() +
@@ -398,7 +398,8 @@ shap_predictors <- shap_predictors[
   !shap_predictors %in% c(
     "meta_year", "meta_pin", "meta_card_num",
     "pred_card_shap_baseline_fmv", "township_code", "meta_triad"
-  )]
+  )
+]
 
 assessment_card_filtered <- assessment_card %>%
   mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
@@ -413,7 +414,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
       "pred_card_shap_baseline_fmv", "township_code", "meta_triad"
     )
   ]
-  
+
   shapviz::shapviz(
     object = shap_df %>%
       select(all_of(shap_predictors)) %>%
@@ -491,14 +492,14 @@ qnt_df <- assessment_pin %>%
     PIN = meta_pin, Town, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
     `Sale 1 Date` = sale_recent_2_date, `Sale 1 Price` = sale_recent_2_price,
-    `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price, 
+    `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price,
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   group_by(Town) %>%
   mutate(
     diff = abs(`Sale 2 Price` - `Est. FMV`),
     `Qnt.` = cut(
-      `Sale 2 Price` ,
+      `Sale 2 Price`,
       breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
       labels = c("Q1", "Q2", "Q3", "Q4"),
       include.lowest = TRUE
@@ -538,11 +539,10 @@ mape <- training_data_pred %>%
 
 ggplotly(
   mape %>%
-  ggplot(aes(x = Quintile, y = MAPE, color = Township)) +
-  geom_line() +
-  theme_minimal()
+    ggplot(aes(x = Quintile, y = MAPE, color = Township)) +
+    geom_line() +
+    theme_minimal()
 )
-
 ```
 
 ## Predicted v Actual By Town
@@ -556,7 +556,7 @@ pred_v_actual_town <- test_data %>%
     `Predicted FMV` = pred_card_initial_fmv,
     PIN = meta_pin
   ) %>%
-ggplot() +
+  ggplot() +
   geom_point(aes(
     group = PIN,
     x = `Predicted FMV`,
@@ -568,7 +568,7 @@ ggplot() +
     name = "Predicted FMV",
     labels = scales::label_dollar(
       accuracy = 1,
-      scale = 1/1000,
+      scale = 1 / 1000,
       suffix = "K"
     ),
     n.breaks = 5,
@@ -578,7 +578,7 @@ ggplot() +
     name = "Actual FMV",
     labels = scales::label_dollar(
       accuracy = 1,
-      scale = 1/1000,
+      scale = 1 / 1000,
       suffix = "K"
     ),
     n.breaks = 5,
@@ -601,7 +601,7 @@ pred_v_actual_class <- test_data %>%
     PIN = meta_pin,
     Class = meta_class
   ) %>%
-ggplot() +
+  ggplot() +
   geom_point(aes(
     group = PIN,
     x = `Predicted FMV`,
@@ -613,7 +613,7 @@ ggplot() +
     name = "Predicted FMV",
     labels = scales::label_dollar(
       accuracy = 1,
-      scale = 1/1000,
+      scale = 1 / 1000,
       suffix = "K"
     ),
     n.breaks = 5,
@@ -623,7 +623,7 @@ ggplot() +
     name = "Actual FMV",
     labels = scales::label_dollar(
       accuracy = 1,
-      scale = 1/1000,
+      scale = 1 / 1000,
       suffix = "K"
     ),
     n.breaks = 5,
@@ -789,7 +789,7 @@ hie_data <- DBI::dbGetQuery(
   AND qu_sqft_bld > 0
   AND year >= '2018'
   ",
-  .con = AWS_ATHENA_CONN_NOCTUA
+    .con = AWS_ATHENA_CONN_NOCTUA
   )
 )
 
@@ -800,7 +800,7 @@ chars_data <- DBI::dbGetQuery(
   WHERE pin IN ({hie_pins*})
   AND year = '{as.numeric(params$year) - 1}'
   ",
-  .con = AWS_ATHENA_CONN_NOCTUA
+    .con = AWS_ATHENA_CONN_NOCTUA
   )
 )
 
@@ -808,7 +808,8 @@ chars_data %>%
   inner_join(hie_data %>% select(-year), by = c("pin")) %>%
   left_join(
     training_data %>% select(
-      meta_pin, meta_year, train_sqft = char_bldg_sf,
+      meta_pin, meta_year,
+      train_sqft = char_bldg_sf,
       train_fbath = char_fbath, train_air = char_air
     ),
     by = c("pin" = "meta_pin", "year" = "meta_year")
@@ -817,7 +818,7 @@ chars_data %>%
     pin,
     `OG SQFT` = char_bldg_sf,
     `HIE SQFT` = qu_sqft_bld,
-    `NEW SQFT`= train_sqft,
+    `NEW SQFT` = train_sqft,
     `OG FBATH` = char_fbath,
     `HIE FBATH` = qu_full_bath,
     `NEW FBATH` = train_fbath,
@@ -859,7 +860,8 @@ training_data %>%
 ```{r}
 test_card_pins <- c(
   "17321110470000", "05174150240000",
-  "05213220250000", "08121220400000", "06334030310000")
+  "05213220250000", "08121220400000", "06334030310000"
+)
 
 assessment_card %>%
   filter(meta_pin %in% test_card_pins) %>%
@@ -895,7 +897,7 @@ assessment_pin %>%
     pred_pin_final_fmv_bldg, pred_pin_final_fmv_land,
     pred_pin_final_fmv_round
   ) %>%
-ggplot() +
+  ggplot() +
   geom_histogram(aes(x = land_pct)) +
   scale_x_continuous(
     name = "Land % of Total FMV",

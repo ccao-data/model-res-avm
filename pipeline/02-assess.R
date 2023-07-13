@@ -195,7 +195,7 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
       # Use the fixed late value first (unless it exceeds the land % cap)
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round_no_prorate *
-           params$pv$land_pct_of_total_cap) ~
+          params$pv$land_pct_of_total_cap) ~
         pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
       # Otherwise, use the land $/sqft rate (again checking against the cap)
@@ -254,7 +254,7 @@ assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
     temp_add_diff = temp_add_to_final * round(
       sum(pred_pin_final_fmv_bldg, na.rm = TRUE) -
         sum(as.integer(pred_pin_final_fmv_bldg), na.rm = TRUE)
-      ),
+    ),
     pred_pin_final_fmv_bldg = as.integer(pred_pin_final_fmv_bldg) +
       temp_add_diff
   ) %>%
@@ -421,8 +421,9 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
   select(
     # Keep ID and meta variables
     meta_year, meta_pin, meta_triad_code, meta_township_code, meta_nbhd_code,
-    meta_tax_code, meta_class, meta_tieback_key_pin, meta_tieback_proration_rate,
-    meta_cdu, meta_pin_num_cards, meta_pin_num_landlines, meta_complex_id,
+    meta_tax_code, meta_class, meta_tieback_key_pin,
+    meta_tieback_proration_rate, meta_cdu, meta_pin_num_cards,
+    meta_pin_num_landlines, meta_complex_id,
 
     # Keep certain vital characteristics for the largest card on the PIN
     char_yrblt, char_land_sf, char_ext_wall, char_type_resd, char_total_bldg_sf,

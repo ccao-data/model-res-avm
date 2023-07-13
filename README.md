@@ -36,7 +36,7 @@ Table of Contents
 # Prior Models
 
 This repository contains code, data, and documentation for the Cook
-County Assessor’s 2023 residential reassessment model. Information about
+County Assessor’s residential reassessment model. Information about
 prior year models can be found at the following links:
 
 | Year(s)     | Triad(s) | Method                                      | Language / Framework       | Link                                                                                               |

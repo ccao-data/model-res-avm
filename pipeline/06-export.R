@@ -174,7 +174,7 @@ vacant_land_sales_trans <- vacant_land_sales %>%
 # Load neighborhood level land rates
 land_nbhd_rate <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
-  SELECT 
+  SELECT
       town_nbhd AS meta_nbhd_code,
       land_rate_per_sqft
   FROM ccao.land_nbhd_rate
@@ -219,7 +219,8 @@ vacant_land_merged <- vacant_land_trans %>%
     pred_pin_final_fmv = pred_pin_final_fmv_bldg + pred_pin_final_fmv_land,
     pred_pin_final_fmv_round = pred_pin_final_fmv,
     pred_pin_land_rate_effective = land_rate_per_sqft,
-    pred_pin_land_pct_total = pred_pin_final_fmv_land / pred_pin_final_fmv_round,
+    pred_pin_land_pct_total =
+      pred_pin_final_fmv_land / pred_pin_final_fmv_round,
     prior_near_yoy_change_nom = pred_pin_final_fmv_round - prior_near_tot,
     prior_near_yoy_change_pct = prior_near_yoy_change_nom / prior_near_tot,
     across(
@@ -229,7 +230,8 @@ vacant_land_merged <- vacant_land_trans %>%
     flag_pin_is_prorated = meta_tieback_proration_rate != 1,
     flag_pin_is_multiland,
     flag_land_value_capped = 0,
-    flag_prior_near_to_pred_unchanged = prior_near_tot == pred_pin_final_fmv_round,
+    flag_prior_near_to_pred_unchanged =
+      prior_near_tot == pred_pin_final_fmv_round,
     flag_prior_near_yoy_inc_gt_50_pct = prior_near_yoy_change_pct > 0.5,
     flag_prior_near_yoy_dec_gt_5_pct = prior_near_yoy_change_pct < -0.05,
     across(c(starts_with("flag_"), ends_with("_price")), as.numeric)
@@ -300,8 +302,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
     prior_near_land_pct_total = round(prior_near_land / prior_near_tot, 4),
     property_full_address = paste0(
-      loc_property_address, 
-      ", ", loc_property_city, " ", loc_property_state, 
+      loc_property_address,
+      ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
     )
   ) %>%
@@ -338,7 +340,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     )
   )
 
-# Get all PINs with multiple cards, break out into supplemental data set to 
+# Get all PINs with multiple cards, break out into supplemental data set to
 # attach to each town
 assessment_card_prepped <- assessment_card %>%
   semi_join(
@@ -371,15 +373,15 @@ assessment_card_prepped <- assessment_card %>%
 # Write raw data to sheets for parcel details
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
-  
-  
+
+
   ## 5.1. PIN-Level ------------------------------------------------------------
-  
+
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
     select(-township_code)
-  
+
   # Generate sheet and column headers
   model_header <- str_to_title(paste(
     params$assessment$year, "Model"
@@ -391,53 +393,58 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     comp_header, "Values vs.", model_header, "Values - Parcel-Level Results",
     .sep = " "
   ))
-  
+
   pin_sheet_name <- "PIN Detail"
   class(assessment_pin_filtered$meta_pin) <- c(
     class(assessment_pin_filtered$meta_pin), "formula"
   )
-  
+
   # Get range of rows in the PIN data + number of header rows
   pin_row_range <- 7:(nrow(assessment_pin_filtered) + 9)
-  
-  # Load the excel workbook template from file 
+
+  # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
-  
+
   # Create formatting styles
   style_price <- createStyle(numFmt = "$#,##0")
   style_2digit <- createStyle(numFmt = "$#,##0.00")
   style_pct <- createStyle(numFmt = "PERCENTAGE")
   style_comma <- createStyle(numFmt = "COMMA")
-  
+
   # Add styles to PIN sheet
   addStyle(
-    wb, pin_sheet_name, style = style_price,
+    wb, pin_sheet_name,
+    style = style_price,
     rows = pin_row_range, cols = c(10:12, 16:19, 24, 27, 30), gridExpand = TRUE
   )
   addStyle(
-    wb, pin_sheet_name, style = style_2digit,
+    wb, pin_sheet_name,
+    style = style_2digit,
     rows = pin_row_range, cols = c(13:14, 20:22), gridExpand = TRUE
   )
   addStyle(
-    wb, pin_sheet_name, style = style_pct,
+    wb, pin_sheet_name,
+    style = style_pct,
     rows = pin_row_range, cols = c(9, 15, 23, 25), gridExpand = TRUE
   )
   addStyle(
-    wb, pin_sheet_name, style = style_comma,
+    wb, pin_sheet_name,
+    style = style_comma,
     rows = pin_row_range, cols = c(33, 35), gridExpand = TRUE
   )
   addFilter(wb, pin_sheet_name, 6, 1:48)
-  
+
   # Write PIN-level data to workbook
   writeData(
     wb, pin_sheet_name, assessment_pin_filtered,
     startCol = 1, startRow = 7, colNames = FALSE
   )
-  
+
   # Write formulas and headers to workbook
   writeFormula(
     wb, pin_sheet_name,
-    assessment_pin_filtered$meta_pin, startRow = 7
+    assessment_pin_filtered$meta_pin,
+    startRow = 7
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
@@ -455,57 +462,61 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name, tibble(model_header),
     startCol = 16, startRow = 5, colNames = FALSE
   )
-  
-  
+
+
   # 5.2. Card-Level ------------------------------------------------------------
-  
+
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
     filter(township_code == town) %>%
     select(-township_code)
-  
+
   card_sheet_name <- "Card Detail"
   class(assessment_card_filtered$meta_pin) <- c(
     class(assessment_card_filtered$meta_pin), "formula"
   )
-  
+
   # Get range of rows in the card data + number of header rows
   card_row_range <- 5:(nrow(assessment_card_filtered) + 6)
-  
+
   # Add styles to card sheet
   addStyle(
-    wb, card_sheet_name, style = style_price,
+    wb, card_sheet_name,
+    style = style_price,
     rows = card_row_range, cols = c(6:7), gridExpand = TRUE
   )
   addStyle(
-    wb, card_sheet_name, style = style_pct,
+    wb, card_sheet_name,
+    style = style_pct,
     rows = card_row_range, cols = c(5), gridExpand = TRUE
   )
   addStyle(
-    wb, card_sheet_name, style = style_comma,
+    wb, card_sheet_name,
+    style = style_comma,
     rows = card_row_range, cols = c(12, 14), gridExpand = TRUE
   )
   addFilter(wb, card_sheet_name, 4, 1:14)
-  
+
   # Write card-level data to workbook
   writeData(
     wb, card_sheet_name, assessment_card_filtered,
     startCol = 1, startRow = 5, colNames = FALSE
   )
-  
+
   # Write formulas and headers to workbook
   writeFormula(
     wb, card_sheet_name,
-    assessment_card_filtered$meta_pin, startRow = 5
+    assessment_card_filtered$meta_pin,
+    startRow = 5
   )
   writeData(
     wb, card_sheet_name, tibble(model_header),
     startCol = 5, startRow = 3, colNames = FALSE
   )
-  
+
   # Save workbook to file based on town name
   saveWorkbook(
-    wb, 
+    wb,
     here(
       "output", "desk_review",
       glue(
@@ -578,12 +589,12 @@ upload_data <- assessment_pin %>%
 # Write each town to a CSV for mass upload
 for (town in unique(upload_data$township_code)) {
   message("Now processing: ", town_convert(town))
-  
+
   upload_data_fil <- upload_data %>%
     filter(township_code == town) %>%
     select(-township_code) %>%
     arrange(PARID, CARD)
-  
+
   write_csv(
     x = upload_data_fil,
     file = here(

@@ -175,7 +175,7 @@ message("Adding HIE data to training and assessment sets")
 # HIEs need to be combined with the training data such that the training data
 # uses the characteristics at the time of sale, rather than the un-updated
 # characteristics used for assessment. See GitHub wiki for more information:
-# https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md
+# https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md # nolint
 
 ## 4.1. Training Data ----------------------------------------------------------
 
@@ -419,7 +419,7 @@ message("Creating townhome complex identifiers")
 # To solve this issue and assign each complex an ID, we do some clever "fuzzy"
 # joining and then link each PIN into an undirected graph. See this SO post
 # for more details on the methodology:
-# https://stackoverflow.com/questions/68353869/create-group-based-on-fuzzy-criteria
+# https://stackoverflow.com/questions/68353869/create-group-based-on-fuzzy-criteria # nolint
 complex_id_temp <- assessment_data_clean %>%
   filter(meta_class %in% c("210", "295")) %>%
   # Self-join with attributes that must be exactly matching

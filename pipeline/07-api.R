@@ -96,7 +96,7 @@ for (town in towns) {
     filter(meta_township_code == town) %>%
     mutate(api_prediction = NA, api_prediction_rounded = NA) %>%
     select(
-      meta_pin, meta_card_num, meta_class, pred_card_initial_fmv, 
+      meta_pin, meta_card_num, meta_class, pred_card_initial_fmv,
       api_prediction, api_prediction_rounded,
       all_of(top_predictors),
       meta_modeling_group, meta_tieback_proration_rate,
@@ -121,11 +121,11 @@ for (town in towns) {
   style_price <- createStyle(numFmt = "$#,##0")
   csht <- "Cards"
   dsht <- "Dictionary"
-  
+
   # Write dictionary and data validation
   writeData(wb, dsht, dict, startCol = 1, startRow = 2, colNames = FALSE)
   mappings <- tribble(
-    ~ col, ~ dict,
+    ~col, ~dict,
     "S", c(2, 3),
     "T", c(4, 9),
     "U", c(10, 12),
@@ -145,17 +145,19 @@ for (town in towns) {
     "AM", c(60, 65),
     "Q", c(66, 70)
   )
-  
+
   pwalk(mappings, function(col, dict) {
     dataValidation(
-      wb, csht, col = col2int(col), rows = pin_row_range,
+      wb, csht,
+      col = col2int(col), rows = pin_row_range,
       type = "list", value = glue("'{dsht}'!$B${dict[1]}:$B${dict[2]}")
     )
   })
-  
+
   # Write the cleaned data to workbook
   addStyle(
-    wb, csht, style = style_price,
+    wb, csht,
+    style = style_price,
     rows = pin_row_range, cols = 4:6, gridExpand = TRUE
   )
   writeData(
@@ -166,10 +168,10 @@ for (town in towns) {
     wb, csht, card_data_town,
     startCol = 1, startRow = 6, colNames = FALSE
   )
-  
+
   # Save the file workbook to file
   saveWorkbook(
-    wb, 
+    wb,
     here(
       "output", "api_workbook",
       glue(
@@ -182,11 +184,11 @@ for (town in towns) {
     overwrite = TRUE
   )
   rm(wb)
-  
+
   ### NOTE ###
   # OpenXLSX is not perfect and messes up the macros and formatting on saved
   # workbooks. To finish each workbook, you must manually:
-  
+
   # 1. Hide row 3 (model API variable names)
   # 2. Developer tab > Visual Basic. Under Microsoft Excel Objects in the
   #    explorer panel, copy the code from Sheet1 to Sheet2 (Cards).

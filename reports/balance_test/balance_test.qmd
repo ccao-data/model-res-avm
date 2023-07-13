@@ -14,7 +14,6 @@ editor: source
 ---
 
 ```{r setup}
-
 # This script runs balance tests comparing the universe of residential parcels
 # to the sample of residential parcels with sales in the previous 8 years
 # that are used to train the data department's CAMA.
@@ -41,7 +40,7 @@ library(tidyr)
 library(tools)
 
 options(width = 120)
-options(knitr.kable.NA = '')
+options(knitr.kable.NA = "")
 
 # Connect to Athena
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
@@ -59,19 +58,17 @@ sales <- arrow::read_parquet("~/ccao_res_avm/input/training_data.parquet")
 # All residential parcel characteristics from time frame, with a sale indicator
 
 if (!file.exists(data_path)) {
-  
   dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA,
-  glue("
+    conn = AWS_ATHENA_CONN_NOCTUA,
+    glue("
 
     SELECT * FROM model.vw_card_res_input vcri
     WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
     AND meta_class NOT IN ('211', '212')
 
   ")
-) %>%
-  write_parquet(data_path)
-  
+  ) %>%
+    write_parquet(data_path)
 }
 
 sf_parcels <- read_parquet(data_path) %>%
@@ -80,16 +77,16 @@ sf_parcels <- read_parquet(data_path) %>%
   left_join(
     sales %>%
       filter(
-        dplyr::between(meta_year, time_frame['min'], time_frame['max']) &
+        dplyr::between(meta_year, time_frame["min"], time_frame["max"]) &
           sv_is_outlier == FALSE
-        ) %>%
+      ) %>%
       select(meta_pin, meta_sale_date, meta_year) %>%
       group_by(meta_pin) %>%
       filter(meta_sale_date == max(meta_sale_date, na.rm = TRUE)) %>%
       ungroup()
   ) %>%
   mutate(sale = as.numeric(!is.na(meta_sale_date)))
-  
+
 
 # Vars to test across
 vars <- grep("char_|3435|acs5_median|township_name", names(sf_parcels), value = TRUE) %>%
@@ -100,7 +97,7 @@ sf_parcels <- sf_parcels %>%
     char_recent_renovation = case_when(
       char_recent_renovation == 0 ~ "No",
       TRUE ~ "Yes"
-      )
+    )
   ) %>%
   mutate(
     sale = factor(sale, levels = c(0, 1), labels = c("No Sale", "Sale")),
@@ -117,7 +114,7 @@ sf_parcels <- sf_parcels %>%
     type = "long",
     dict = ccao::vars_dict_legacy
   ) %>%
-  vars_rename(names_from = 'athena', names_to = 'pretty') %>%
+  vars_rename(names_from = "athena", names_to = "pretty") %>%
   rename_with(~ gsub("loc_", "", .x)) %>%
   rename_with(~ gsub("_", " ", .x)) %>%
   rename_with(toTitleCase) %>%
@@ -129,7 +126,6 @@ logit_parcels <- sf_parcels %>%
 
 vars <- names(sf_parcels) %>%
   grep("Sale|Township", ., value = TRUE, invert = TRUE)
-
 ```
 
 ## Logit Regressions
@@ -137,25 +133,23 @@ vars <- names(sf_parcels) %>%
 All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus.  Sample is universe of '21 & '22 single family parcels, excluding some parcels with incomplete characteristics.
 
 ```{r logit}
-
 remove <- names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>% select(where(is.factor))) %>%
   grep("Sale|Township|Apartments|Single|Commercial", ., invert = TRUE, value = TRUE)
 
 fmla <- as.formula(
-        paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
-        )
+  paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
+)
 
 logit <- glm(
-      fmla,
-      data = logit_parcels %>%
-        rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
-      )
+  fmla,
+  data = logit_parcels %>%
+    rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
+)
 
 sample_size <- logit$df.null
 
 county_logit <- logit %>%
   broom::tidy() %>%
-
   mutate(
     p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
     term = gsub("_", " ", gsub(paste(remove, collapse = "|"), "", term))
@@ -170,106 +164,99 @@ county_logit <- logit %>%
   add_footnote(
     "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
     notation = "none"
-    ) %>%
+  ) %>%
   kable_styling(
     "striped",
     fixed_thead = TRUE,
-    html_font = 'Consolas'
-    ) %>%
-pack_rows("Type of Residence", 12, 20) %>%
-pack_rows("Cathedral Ceiling", 21, 22) %>%
-pack_rows("Attic Finish", 23, 25) %>%
-pack_rows("Garage 1 Attached", 26, 27) %>%
-pack_rows("Garage 1 Area Included", 28, 29) %>%
-pack_rows("Garage 1 Size", 30, 37) %>%
-pack_rows("Garage 1 Ext. Wall Material", 38, 41) %>%
-pack_rows("Attic Type", 42, 44) %>%
-pack_rows("Basement Type", 45, 48) %>%
-pack_rows("Exterior Wall Material", 49, 51) %>%
-pack_rows("Central Heating", 52, 55) %>%
-pack_rows("Basement Finish", 56, 58) %>%
-pack_rows("Roof Material", 59, 64) %>%
-pack_rows("Porch", 65, 66) %>%
-pack_rows("Central Air Conditioning", 67, 68) %>%
-pack_rows("Design Plan", 69, 70) %>%
+    html_font = "Consolas"
+  ) %>%
+  pack_rows("Type of Residence", 12, 20) %>%
+  pack_rows("Cathedral Ceiling", 21, 22) %>%
+  pack_rows("Attic Finish", 23, 25) %>%
+  pack_rows("Garage 1 Attached", 26, 27) %>%
+  pack_rows("Garage 1 Area Included", 28, 29) %>%
+  pack_rows("Garage 1 Size", 30, 37) %>%
+  pack_rows("Garage 1 Ext. Wall Material", 38, 41) %>%
+  pack_rows("Attic Type", 42, 44) %>%
+  pack_rows("Basement Type", 45, 48) %>%
+  pack_rows("Exterior Wall Material", 49, 51) %>%
+  pack_rows("Central Heating", 52, 55) %>%
+  pack_rows("Basement Finish", 56, 58) %>%
+  pack_rows("Roof Material", 59, 64) %>%
+  pack_rows("Porch", 65, 66) %>%
+  pack_rows("Central Air Conditioning", 67, 68) %>%
+  pack_rows("Design Plan", 69, 70) %>%
   pack_rows("Recent Renovation", 71, 71)
 
 logits <- logit_parcels %>%
   split(.$`Meta Township Name`) %>%
   sapply(function(x) {
-
     if (nrow(x) < 1000) {
-      
       trim_vars <- grep("Renovation", vars, value = TRUE, invert = TRUE)
-      
+
       fmla <- as.formula(
         paste0("Sale ~ ", paste0(gsub(" |-", "_", trim_vars), collapse = "+"))
-        )
-      
+      )
+
       glm(
-      fmla,
-      data = x %>%
-        rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
+        fmla,
+        data = x %>%
+          rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
       ) %>%
-  broom::tidy() %>%
-  mutate(
-    p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
-    term = gsub("_", " ", term)
-  ) %>%
-  kable(
-    col.names = c("Predictor", "β", "SE", "t", "p"),
-    digits = c(0, 5, 5, 3, 0),
-    align = c("l", "r", "c", "r", "l"),
-    padding = 5L
-  ) %>%
-  add_footnote(
-    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
-    notation = "none"
-    ) %>%
-  kable_styling(
-    "striped",
-    position = "left",
-    fixed_thead = TRUE,
-    html_font = 'Consolas'
-    ) 
-      
+        broom::tidy() %>%
+        mutate(
+          p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
+          term = gsub("_", " ", term)
+        ) %>%
+        kable(
+          col.names = c("Predictor", "β", "SE", "t", "p"),
+          digits = c(0, 5, 5, 3, 0),
+          align = c("l", "r", "c", "r", "l"),
+          padding = 5L
+        ) %>%
+        add_footnote(
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+          notation = "none"
+        ) %>%
+        kable_styling(
+          "striped",
+          position = "left",
+          fixed_thead = TRUE,
+          html_font = "Consolas"
+        )
     } else {
-      
       fmla <- as.formula(
         paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+"))
-        )
-      
+      )
+
       glm(
-      fmla,
-      data = x %>%
-        rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
+        fmla,
+        data = x %>%
+          rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
       ) %>%
-  broom::tidy() %>%
-  mutate(
-    p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
-    term = gsub("_", " ", term)
-  ) %>%
-  kable(
-    col.names = c("Predictor", "β", "SE", "t", "p"),
-    digits = c(0, 5, 5, 3, 0),
-    align = c("l", "r", "c", "r", "l"),
-    padding = 5L
-  ) %>%
-  add_footnote(
-    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
-    notation = "none"
-    ) %>%
-  kable_styling(
-    "striped",
-    position = "left",
-    fixed_thead = TRUE,
-    html_font = 'Consolas'
-    )
-      
+        broom::tidy() %>%
+        mutate(
+          p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
+          term = gsub("_", " ", term)
+        ) %>%
+        kable(
+          col.names = c("Predictor", "β", "SE", "t", "p"),
+          digits = c(0, 5, 5, 3, 0),
+          align = c("l", "r", "c", "r", "l"),
+          padding = 5L
+        ) %>%
+        add_footnote(
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+          notation = "none"
+        ) %>%
+        kable_styling(
+          "striped",
+          position = "left",
+          fixed_thead = TRUE,
+          html_font = "Consolas"
+        )
     }
-    
   }, simplify = FALSE)
-  
 ```
 
 ::: {.panel-tabset}
@@ -444,7 +431,6 @@ $$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard d
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
 ```{r SMDs}
-
 smd_table <- CreateTableOne(
   vars = vars %>% grep("Median", ., invert = TRUE, value = TRUE),
   strata = "Sale",
@@ -454,7 +440,6 @@ smd_table <- CreateTableOne(
 )
 
 print(smd_table, smd = TRUE)
-
 ```
 
 ## Empirical Cumulative Distributions
@@ -464,122 +449,93 @@ Looking for overlap/similar distributions. Numeric variables scaled and centered
 Numeric columns:
 
 ```{r ECDFs1}
-
 grobs <- lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
-
   data <- sf_parcels %>% select(Sale, any_of(x))
-  
-    ggplot(data, aes(
-      scale(sf_parcels %>% pull(x)),
-      color = Sale)
-    ) +
-      stat_ecdf(geom = "step") +
-      labs(x = str_wrap(x, width = 25)) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = "none"
-      )
 
-  })
+  ggplot(data, aes(
+    scale(sf_parcels %>% pull(x)),
+    color = Sale
+  )) +
+    stat_ecdf(geom = "step") +
+    labs(x = str_wrap(x, width = 25)) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.position = "none"
+    )
+})
 
 for (i in seq(1, length(grobs), by = 6)) {
-  
   if (i == 13) {
-    
-      grid.arrange(
-
-  grobs = list(
-    grobs[[i]], grobs[[i + 1]], grobs[[i + 2]], grobs[[i + 3]],
-    rectGrob(gp = gpar(col = "white")),
-    rectGrob(gp = gpar(col = "white"))
-
-    ),
-  ncol = 3,
-  nrow = 2
-
-)
-    
-} else {
-    
-      grid.arrange(
-
-  grobs = list(
-    grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
-    grobs[[i + 3]], grobs[[i + 4]], grobs[[i + 5]]
-    ),
-  ncol = 3,
-  nrow = 2
-
-)
-    
+    grid.arrange(
+      grobs = list(
+        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]], grobs[[i + 3]],
+        rectGrob(gp = gpar(col = "white")),
+        rectGrob(gp = gpar(col = "white"))
+      ),
+      ncol = 3,
+      nrow = 2
+    )
+  } else {
+    grid.arrange(
+      grobs = list(
+        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
+        grobs[[i + 3]], grobs[[i + 4]], grobs[[i + 5]]
+      ),
+      ncol = 3,
+      nrow = 2
+    )
   }
-  
 }
-
 ```
 
 Factor columns:
 
 ```{r ECDFs2}
-
 grobs <- lapply(names(sf_parcels %>% select(where(is.factor) & any_of(vars))), function(x) {
-
-    ggplot(sf_parcels, aes(
-      as.numeric(sf_parcels %>% pull(x)),
-      color = Sale)
-    ) +
-      stat_ecdf(geom = "step") +
-      labs(x = str_wrap(x, width = 25)) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = "none"
-      )
-
-  })
+  ggplot(sf_parcels, aes(
+    as.numeric(sf_parcels %>% pull(x)),
+    color = Sale
+  )) +
+    stat_ecdf(geom = "step") +
+    labs(x = str_wrap(x, width = 25)) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.position = "none"
+    )
+})
 
 for (i in seq(1, length(grobs), by = 6)) {
-
-    if (i == 13) {
-    
-      grid.arrange(
-
-  grobs = list(
-    grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
-    grobs[[i + 3]], grobs[[i + 4]],
-    rectGrob(gp = gpar(col = "white"))
-
-    ),
-  ncol = 3,
-  nrow = 2
-
-)
-    
-} else {  
-      grid.arrange(
-
-  grobs = list(
-    grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
-    grobs[[i + 3]], grobs[[i + 4]], grobs[[i + 5]]
-    ),
-  ncol = 3,
-  nrow = 2
-
-)
-  
+  if (i == 13) {
+    grid.arrange(
+      grobs = list(
+        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
+        grobs[[i + 3]], grobs[[i + 4]],
+        rectGrob(gp = gpar(col = "white"))
+      ),
+      ncol = 3,
+      nrow = 2
+    )
+  } else {
+    grid.arrange(
+      grobs = list(
+        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
+        grobs[[i + 3]], grobs[[i + 4]], grobs[[i + 5]]
+      ),
+      ncol = 3,
+      nrow = 2
+    )
+  }
 }
-
-}
-
 ```
 
 ## Sales Trends
@@ -589,14 +545,13 @@ for (i in seq(1, length(grobs), by = 6)) {
 ## Median Sale Price
 
 ``` {r Price}
-
 ggplot(
   sales %>%
     group_by(meta_year, sv_is_outlier) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     ungroup(),
   aes(x = meta_year, y = median_price, group = sv_is_outlier)
-  ) +
+) +
   geom_line(aes(color = sv_is_outlier)) +
   scale_y_continuous(labels = scales::dollar_format()) +
   labs(y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status") +
@@ -606,82 +561,78 @@ ggplot(
     legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-        )
+  )
 
 temp <- ggplot(
   sales %>%
-    filter(sv_is_outlier == FALSE & meta_year >= '2019') %>%
+    filter(sv_is_outlier == FALSE & meta_year >= "2019") %>%
     group_by(meta_year, meta_township_name, meta_triad_name) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     group_by(meta_township_name, meta_triad_name) %>%
     mutate(median_price_change = (median_price / first(median_price, order_by = meta_year)) - 1),
   aes(x = meta_year, y = median_price_change, group = meta_township_name)
-  ) +
+) +
   geom_line(aes(color = meta_township_name)) +
   scale_y_continuous(labels = scales::percent_format()) +
-  labs(y = "Median Sale Price", x = "Year",
-       title = "Price / 2019 Price, Outliers Excluded", subtitle = "By Tri, Township, and Year") +
+  labs(
+    y = "Median Sale Price", x = "Year",
+    title = "Price / 2019 Price, Outliers Excluded", subtitle = "By Tri, Township, and Year"
+  ) +
   theme_minimal() +
   theme(
     legend.position = "none",
     legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-    ) +
+  ) +
   facet_wrap(vars(meta_triad_name), scales = "free")
 
 ggplotly(temp)
-
 ```
 
 ``` {r}
-
 temp <- sales %>%
   filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
-    group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
+  group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
   summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
   split(.$meta_triad_name)
-  
+
 temp_graph <- function(x, title, limits = NULL) {
-    
-    x %>%
-      ggplot() +
-  geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
-  labs(y = "Median Sale Price", x = "Week", title = paste(title, "Tri, By Year and Week"), subtitle = "Outliers excluded") +
-  theme_minimal() +
-  scale_y_continuous(labels = scales::dollar, limits = limits) +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank()
-        ) +
-  facet_wrap(vars(time_sale_year))
-    
-  }
-  
+  x %>%
+    ggplot() +
+    geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
+    labs(y = "Median Sale Price", x = "Week", title = paste(title, "Tri, By Year and Week"), subtitle = "Outliers excluded") +
+    theme_minimal() +
+    scale_y_continuous(labels = scales::dollar, limits = limits) +
+    theme(
+      legend.position = "bottom",
+      legend.title = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank()
+    ) +
+    facet_wrap(vars(time_sale_year))
+}
+
 temp[["City"]] %>% temp_graph(title = "City")
 
 temp[["North"]] %>% temp_graph(title = "North")
 
 temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
-
 ```
 
 ## Number of Sales
 
 ``` {r Volume1}
-
 ggplot(
   sales,
   aes(x = meta_year, group = sv_is_outlier)
-  ) + 
+) +
   geom_bar(aes(fill = sv_is_outlier)) +
-    geom_text(aes(
-      label = format(after_stat(count), big.mark=",")
-      ), stat = "count", vjust = -1) +
+  geom_text(aes(
+    label = format(after_stat(count), big.mark = ",")
+  ), stat = "count", vjust = -1) +
   labs(y = "Number of Sales", x = "Year", title = "By Year and Outlier Status") +
   theme_minimal() +
   scale_y_continuous(labels = scales::comma, limits = c(0, 60000)) +
@@ -690,12 +641,12 @@ ggplot(
     legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-        )
+  )
 
 ggplot(
   sales,
   aes(x = time_sale_month_of_year, group = sv_is_outlier)
-  ) + 
+) +
   geom_bar(aes(fill = sv_is_outlier)) +
   labs(y = "Number of Sales", x = "Year", title = "By Month and Outlier Status") +
   theme_minimal() +
@@ -706,8 +657,8 @@ ggplot(
     legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust=1)
-        ) +
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
   facet_wrap(vars(meta_year))
 ```
 
@@ -721,7 +672,6 @@ ggplot(
 ## Outlier Types
 
 ``` {r Outlier Types}
-
 ggplot(
   sales %>%
     filter(sv_outlier_type != "Not outlier") %>%
@@ -729,19 +679,19 @@ ggplot(
     summarise(count = n()) %>%
     ungroup(),
   aes(x = reorder(sv_outlier_type, -count), y = count)
-  ) +
+) +
   labs(y = "Number of Sales", x = "Outlier Types", title = "Count", subtitle = "by Type") +
   geom_bar(stat = "identity") +
-    geom_text(aes(
-      label = count
-      ), vjust = -0.5) +
-    ylim(0, 3300) +
+  geom_text(aes(
+    label = count
+  ), vjust = -0.5) +
+  ylim(0, 3300) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 60, hjust=1),
+    axis.text.x = element_text(angle = 60, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-    )
+  )
 
 sales %>%
   group_by(meta_year, sv_outlier_type) %>%
@@ -750,64 +700,58 @@ sales %>%
   pivot_wider(id_cols = Year, names_from = sv_outlier_type, values_from = n) %>%
   kable() %>%
   kable_styling("striped")
-
 ```
 
 ## Class
 
 ``` {r Classes}
-
 ggplot(
   sales %>%
     group_by(meta_class) %>%
-  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+    summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = meta_class, y = percent)
-  ) +
+) +
   labs(title = "Share of Outliers", subtitle = "by Class") +
   geom_bar(stat = "identity") +
-    geom_text(aes(
-      label = scales::percent(percent, accuracy = .1)
-      ), vjust = -0.5) +
+  geom_text(aes(
+    label = scales::percent(percent, accuracy = .1)
+  ), vjust = -0.5) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format()) +
   theme(
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
-    )
-
+  )
 ```
 
 ## Township
 
 ``` {r Townships}
-
 ggplot(
   sales %>%
     group_by(meta_township_name) %>%
-  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+    summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = reorder(meta_township_name, -percent), y = percent)
-  ) +
+) +
   labs(title = "Share of Outliers", subtitle = "by Township") +
   geom_bar(stat = "identity") +
-    geom_text(aes(
-      label = scales::percent(percent, accuracy = .1)
-      ), hjust = -0.1, angle = 90) +
+  geom_text(aes(
+    label = scales::percent(percent, accuracy = .1)
+  ), hjust = -0.1, angle = 90) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.05)) +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
-    )
-
+  )
 ```
 
 ## Price
 
 ``` {r}
-
 sales %>%
   group_by(sv_is_outlier) %>%
   summarise(
@@ -816,36 +760,34 @@ sales %>%
     Mean = mean(meta_sale_price),
     Max = max(meta_sale_price),
     `Std dev` = sd(meta_sale_price)
-    ) %>%
+  ) %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
   kable() %>%
   kable_styling(
     full_width = T
-    )
+  )
 
 ggplot(sales, aes(
-      log(meta_sale_price),
-      fill = sv_is_outlier)
-    ) +
-      geom_density(alpha = 0.5) +
-      labs(title = "Cumulative Distribution") +
-      theme_minimal() +
+  log(meta_sale_price),
+  fill = sv_is_outlier
+)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Cumulative Distribution") +
+  theme_minimal() +
   labs(x = "log(price)") +
   scale_y_continuous(labels = scales::percent_format()) +
-      theme(
-        legend.position="bottom",
-        legend.title = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank()
-      )
-
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank()
+  )
 ```
 
 ``` {r fig.height=6}
-
 ggplot(
   sales %>%
     group_by(sv_is_outlier, meta_township_name) %>%
@@ -855,36 +797,34 @@ ggplot(
       id_cols = meta_township_name,
       names_from = sv_is_outlier,
       values_from = median_sale_price
-      ) %>%
+    ) %>%
     mutate(
       percent = `TRUE` / `FALSE`,
       above_below = ifelse(percent > 1, "Outlier > Not Outlier", "Not Outlier > Outlier"),
       above_below = factor(above_below, levels = c("Outlier > Not Outlier", "Not Outlier > Outlier"))
-      ),
+    ),
   aes(x = reorder(meta_township_name, percent), y = percent)
-  ) +
+) +
   labs(
     title = "Median Outlier Price / Median Not outlier Price",
     subtitle = "by Township",
     fill = "Median Price"
-    ) +
+  ) +
   geom_bar(stat = "identity", aes(fill = above_below)) +
   coord_flip() +
-    geom_text(aes(
-      label = round(percent, 2)
-      ), hjust = -0.2) +
+  geom_text(aes(
+    label = round(percent, 2)
+  ), hjust = -0.2) +
   scale_y_continuous(limits = c(0, 5.5)) +
   theme_minimal() +
   theme(,
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
-    )
-
+  )
 ```
 ## Price Per SQFT
 
 ``` {r ppsft}
-
 sales %>%
   filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
   mutate(ppsf = meta_sale_price / char_bldg_sf) %>%
@@ -895,42 +835,41 @@ sales %>%
     Mean = mean(ppsf),
     Max = max(ppsf),
     `Std dev` = sd(ppsf)
-    ) %>%
+  ) %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
   kable() %>%
   kable_styling(
     full_width = T
-    )
+  )
 
 ggplot(
   sales %>%
-  filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
-  mutate(ppsf = meta_sale_price / char_bldg_sf),
+    filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
+    mutate(ppsf = meta_sale_price / char_bldg_sf),
   aes(
-      log(ppsf),
-      fill = sv_is_outlier)
-    ) +
-      geom_density(alpha = 0.5) +
-      labs(title = "Cumulative Distribution") +
-      theme_minimal() +
+    log(ppsf),
+    fill = sv_is_outlier
+  )
+) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Cumulative Distribution") +
+  theme_minimal() +
   labs(x = "log(price per sqft)") +
   scale_y_continuous(labels = scales::percent_format()) +
-      theme(
-        legend.position="bottom",
-        legend.title = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank()
-      )
-
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank()
+  )
 ```
 
 ## Decile Breakout
 
 ``` {r Upper}
-
 sales %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
@@ -942,59 +881,58 @@ sales %>%
     Mean = mean(meta_sale_price),
     Max = max(meta_sale_price),
     `Std dev` = sd(meta_sale_price)
-    ) %>%
+  ) %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
   kable(caption = "Top Decile") %>%
   kable_styling(
     full_width = T
-    )
+  )
 
 ggplot(
   sales %>%
-  arrange(meta_sale_price) %>%
-  mutate(decile = ntile(meta_sale_price, 10)) %>%
+    arrange(meta_sale_price) %>%
+    mutate(decile = ntile(meta_sale_price, 10)) %>%
     group_by(decile) %>%
-  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+    summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = decile, y = percent)
-  ) +
+) +
   labs(title = "Share of Outliers", x = "Quantile") +
   geom_bar(stat = "identity") +
   geom_bar(stat = "identity") +
-    geom_text(aes(
-      label = scales::percent(percent, accuracy = .1)
-      ), hjust = -0.1, angle = 90) +
+  geom_text(aes(
+    label = scales::percent(percent, accuracy = .1)
+  ), hjust = -0.1, angle = 90) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.09), breaks = seq(0, 0.1, 0.02)) +
   scale_x_continuous(breaks = seq(1, 10, 1)) +
   theme(
     axis.title.y = element_blank()
-    )
+  )
 
 ggplot(
   sales %>%
-  arrange(meta_sale_price) %>%
-  mutate(decile = ntile(meta_sale_price, 10)) %>%
-  filter(decile == 10 & sv_outlier_type != "Not outlier") %>%
+    arrange(meta_sale_price) %>%
+    mutate(decile = ntile(meta_sale_price, 10)) %>%
+    filter(decile == 10 & sv_outlier_type != "Not outlier") %>%
     group_by(sv_outlier_type) %>%
     summarise(count = n()) %>%
     ungroup(),
   aes(x = reorder(sv_outlier_type, -count), y = count)
-  ) +
+) +
   labs(y = "Number of Sales", x = "Outlier Types", title = "Outlier Count", subtitle = "by Type, Top Decile") +
   geom_bar(stat = "identity") +
-    geom_text(aes(
-      label = count
-      ), vjust = -0.5) +
-    ylim(0, 900) +
+  geom_text(aes(
+    label = count
+  ), vjust = -0.5) +
+  ylim(0, 900) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 60, hjust=1),
+    axis.text.x = element_text(angle = 60, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-    )
-
+  )
 ```
 
 :::

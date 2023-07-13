@@ -138,11 +138,15 @@ metadata <- tibble::tibble(
   model_predictor_id_name = list(params$model$predictor$id),
   model_predictor_all_count = length(params$model$predictor$all),
   model_predictor_all_name = list(params$model$predictor$all),
-  model_predictor_categorical_count = length(params$model$predictor$categorical),
+  model_predictor_categorical_count =
+    length(params$model$predictor$categorical),
   model_predictor_categorical_name = list(params$model$predictor$categorical)
 ) %>%
   bind_cols(dvc_md5_df) %>%
-  relocate(starts_with("dvc_id_"), .after = "input_complex_match_fuzzy_value") %>%
+  relocate(
+    starts_with("dvc_id_"),
+    .after = "input_complex_match_fuzzy_value"
+  ) %>%
   arrow::write_parquet(paths$output$metadata$local)
 
 
@@ -252,7 +256,7 @@ if (params$toggle$upload_to_s3) {
   # cleaning since the Tidymodels output is stored as a nested data frame
   if (cv_enable) {
     message("Uploading cross-validation artifacts")
-    
+
     # Upload the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
       paths$output$parameter_raw$local,
@@ -325,7 +329,7 @@ if (params$toggle$upload_to_s3) {
 
 
   # 4.3. Evaluate --------------------------------------------------------------
-  
+
   # Upload test set performance
   message("Uploading test set evaluation")
   read_parquet(paths$output$performance_test$local) %>%
@@ -368,7 +372,7 @@ if (params$toggle$upload_to_s3) {
         compression = "snappy"
       )
   }
-  
+
   # Upload feature importance metrics
   if (run_type == "full") {
     message("Uploading feature importance metrics")
@@ -406,7 +410,7 @@ if (params$toggle$upload_to_s3) {
 # subscribers. Only run when actually uploading
 if (params$toggle$upload_to_s3) {
   message("Sending run email and running model crawler")
-  
+
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
   # any new partitions
   if (run_type == "full") {

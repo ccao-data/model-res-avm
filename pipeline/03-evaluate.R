@@ -111,12 +111,24 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   # Each function is listed on the right while the name of the function is on
   # the left
   rs_fns_list <- list(
-    cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x / .y, na.rm = T), NA),
-    prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = T), NA),
-    prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = T), NA),
-    cod = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_cod(.x / .y, na.rm = T)), NA),
-    prd = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prd(.x, .y, na.rm = T)), NA),
-    prb = ~ ifelse(sum(!is.na(.y)) > 33, list(ccao_prb(.x, .y, na.rm = T)), NA)
+    cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x / .y, na.rm = TRUE), NA),
+    prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = TRUE), NA),
+    prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = TRUE), NA),
+    cod = ~ ifelse(
+      sum(!is.na(.y)) > 33,
+      list(ccao_cod(.x / .y, na.rm = TRUE)),
+      NA
+    ),
+    prd = ~ ifelse(
+      sum(!is.na(.y)) > 33,
+      list(ccao_prd(.x, .y, na.rm = TRUE)),
+      NA
+    ),
+    prb = ~ ifelse(
+      sum(!is.na(.y)) > 33,
+      list(ccao_prb(.x, .y, na.rm = TRUE)),
+      NA
+    )
   )
   ys_fns_list <- list(
     rmse        = rmse_vec,
@@ -126,25 +138,25 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     mape        = mape_vec
   )
   sum_fns_list <- list(
-    min         = ~ min(.x, na.rm = T),
-    q25         = ~ quantile(.x, na.rm = T, probs = 0.25),
-    median      = ~ median(.x, na.rm = T),
-    q75         = ~ quantile(.x, na.rm = T, probs = 0.75),
-    max         = ~ max(.x, na.rm = T)
+    min         = ~ min(.x, na.rm = TRUE),
+    q25         = ~ quantile(.x, na.rm = TRUE, probs = 0.25),
+    median      = ~ median(.x, na.rm = TRUE),
+    q75         = ~ quantile(.x, na.rm = TRUE, probs = 0.75),
+    max         = ~ max(.x, na.rm = TRUE)
   )
   sum_sqft_fns_list <- list(
-    min         = ~ min(.x / .y, na.rm = T),
-    q25         = ~ quantile(.x / .y, na.rm = T, probs = 0.25),
-    median      = ~ median(.x / .y, na.rm = T),
-    q75         = ~ quantile(.x / .y, na.rm = T, probs = 0.75),
-    max         = ~ max(.x / .y, na.rm = T)
+    min         = ~ min(.x / .y, na.rm = TRUE),
+    q25         = ~ quantile(.x / .y, na.rm = TRUE, probs = 0.25),
+    median      = ~ median(.x / .y, na.rm = TRUE),
+    q75         = ~ quantile(.x / .y, na.rm = TRUE, probs = 0.75),
+    max         = ~ max(.x / .y, na.rm = TRUE)
   )
   yoy_fns_list <- list(
-    min         = ~ min((.x - .y) / .y, na.rm = T),
-    q25         = ~ quantile((.x - .y) / .y, na.rm = T, probs = 0.25),
-    median      = ~ median((.x - .y) / .y, na.rm = T),
-    q75         = ~ quantile((.x - .y) / .y, na.rm = T, probs = 0.75),
-    max         = ~ max((.x - .y) / .y, na.rm = T)
+    min         = ~ min((.x - .y) / .y, na.rm = TRUE),
+    q25         = ~ quantile((.x - .y) / .y, na.rm = TRUE, probs = 0.25),
+    median      = ~ median((.x - .y) / .y, na.rm = TRUE),
+    q75         = ~ quantile((.x - .y) / .y, na.rm = TRUE, probs = 0.75),
+    max         = ~ max((.x - .y) / .y, na.rm = TRUE)
   )
 
   # Generate aggregate performance stats by geography
@@ -170,7 +182,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       estimate_total_av = sum({{ estimate }} / 10, na.rm = TRUE),
 
       # Assessment-specific statistics
-      across(.fns = rs_fns_list, {{ estimate }}, {{ truth }}, .names = "{.fn}"),
+      across(
+        .fns = rs_fns_list, {{ estimate }}, {{ truth }},
+        .names = "{.fn}"
+      ),
       median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
 
       # Yardstick (ML-specific) performance stats
@@ -186,7 +201,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       # Summary stats of prior values and value per sqft. Need to multiply
       # by 10 first since PIN history is in AV, not FMV
       prior_far_num_missing = sum(is.na({{ rsf_col }})),
-      across(.fns = sum_fns_list, {{ rsf_col }}, .names = "prior_far_fmv_{.fn}"),
+      across(
+        .fns = sum_fns_list, {{ rsf_col }},
+        .names = "prior_far_fmv_{.fn}"
+      ),
       across(
         .fns = sum_sqft_fns_list, {{ rsf_col }}, {{ bldg_sqft }},
         .names = "prior_far_fmv_per_sqft_{.fn}"
@@ -196,7 +214,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         .names = "prior_far_yoy_pct_chg_{.fn}"
       ),
       prior_near_num_missing = sum(is.na({{ rsn_col }})),
-      across(.fns = sum_fns_list, {{ rsn_col }}, .names = "prior_near_fmv_{.fn}"),
+      across(
+        .fns = sum_fns_list, {{ rsn_col }},
+        .names = "prior_near_fmv_{.fn}"
+      ),
       across(
         .fns = sum_sqft_fns_list, {{ rsn_col }}, {{ bldg_sqft }},
         .names = "prior_near_fmv_per_sqft_{.fn}"
