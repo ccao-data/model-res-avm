@@ -13,8 +13,7 @@ Table of Contents
     - [Post-Modeling](#post-modeling)
   - [Major Changes from Previous
     Versions](#major-changes-from-previous-versions)
-    - [`assessment-year-2021` and
-      prior](#assessment-year-2021-and-prior)
+    - [`assessment-year-2021`](#assessment-year-2021)
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
 - [Ongoing Issues](#ongoing-issues)
@@ -445,10 +444,10 @@ their respective sources includes:
 | All Census features                               | [ACS 5-year estimates](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2018/5-year.html) for each respective year                                                                                                                                        |
 | Elementary school district or attendance boundary | [Cook County school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-Elementary-School-Tax-Distric/an6r-bw5a) and [CPS attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-Elementary-School-Attendanc/7edu-z2e8)              |
 | High school district or attendance boundary       | [Cook County high school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-High-School-Tax-Dist-2016/h3xu-azvs) and [CPS high school attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-High-School-Attendance-Boun/y9da-bb2y) |
-| Walkability                                       | The [Chicago Metropolitan Agency for Planning’s](https://www.cmap.illinois.gov/) ON TO 2050 [Walkability Scores](https://datahub.cmap.illinois.gov/dataset/on-to-2050-layer-walkability#:~:text=While%20several%20measures%20of%20walkability,comfortable%2C%20and%20the%20walk%20is)                    |
+| Walkability                                       | The [Chicago Metropolitan Agency for Planning’s](https://www.cmap.illinois.gov/) ON TO 2050 [Walkability Scores](https://datahub.cmap.illinois.gov/datasets/CMAPGIS::walkability-2018/about)                                                                                                             |
 | Subdivision, unincorporated areas, SSAs, etc.     | Cook County GIS                                                                                                                                                                                                                                                                                          |
 | PUMA Housing Index                                | [DePaul Institute for Housing Studies](https://www.housingstudies.org/)                                                                                                                                                                                                                                  |
-| School Ratings                                    | [GreatSchools.org](http://greatschools.org/), aggregated to the district level                                                                                                                                                                                                                           |
+| School Ratings                                    | [GreatSchools.org](https://greatschools.org/), aggregated to the district level                                                                                                                                                                                                                          |
 | Distance to CTA, PACE, Metra                      | Each agency’s respective [GTFS feed](https://gtfs.org/), which contains the location of stops and lines                                                                                                                                                                                                  |
 
 #### Features Excluded
@@ -477,16 +476,16 @@ directory for the purpose of replication.
 
 #### Primary Data
 
-- [`training_data`](input/training_data.parquet) - Includes residential
-  sales from ***the 9 years prior to the next assessment date***, which
-  gives us a sufficient amount of data for accurate prediction without
-  including outdated price information. This is the data used to train
-  and evaluate the model. Its approximate size is 400K rows with 100
+- [`training_data`](#getting-data) - Includes residential sales from
+  ***the 9 years prior to the next assessment date***, which gives us a
+  sufficient amount of data for accurate prediction without including
+  outdated price information. This is the data used to train and
+  evaluate the model. Its approximate size is 400K rows with 100
   features.
-- [`assessment_data`](input/assessment_data.parquet) - Includes all
-  residential properties (sold and unsold) which need assessed values.
-  This is the data the final model is used on. Its approximate size is
-  1.1 million rows with 100 features.
+- [`assessment_data`](#getting-data) - Includes all residential
+  properties (sold and unsold) which need assessed values. This is the
+  data the final model is used on. Its approximate size is 1.1 million
+  rows with 100 features.
 
 These data sets contain only *residential single- and multi-family
 properties*. Single-family includes property
@@ -561,18 +560,16 @@ The pipeline also uses a few secondary data sets in the valuation
 process. These data sets are included in [`input/`](./input) but are not
 actually used by the model itself. They include:
 
-- [`complex_id_data`](input/complex_id_data.parquet) - Complex
-  identifiers for class 210 and 295 town/rowhomes. Intended to group
-  like units together to ensure that nearly identical units in close
-  proximity receive the same assessed value. This is accomplished with a
-  “fuzzy grouping” strategy that allows slightly dissimilar
-  characteristics.
-- [`land_site_rate_data`](input/land_site_rate_data.parquet) - Fixed,
-  PIN-level land values for class 210 and 295 units. Provided by the
-  Valuations department.
-- [`land_nbhd_rate_data`](input/land_nbhd_rate_data.parquet) - Fixed
-  \$/sqft land rates by assessor neighborhood for residential property
-  classes except 210 and 295. Provided by the Valuations department.
+- [`complex_id_data`](#getting-data) - Complex identifiers for class 210
+  and 295 town/rowhomes. Intended to group like units together to ensure
+  that nearly identical units in close proximity receive the same
+  assessed value. This is accomplished with a “fuzzy grouping” strategy
+  that allows slightly dissimilar characteristics.
+- [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values
+  for class 210 and 295 units. Provided by the Valuations department.
+- [`land_nbhd_rate_data`](#getting-data) - Fixed \$/sqft land rates by
+  assessor neighborhood for residential property classes except 210
+  and 295. Provided by the Valuations department.
 
 #### Representativeness
 
@@ -663,10 +660,10 @@ people with nearly identical properties receive the same value.
 
 ## Major Changes from Previous Versions
 
-### [`assessment-year-2021`](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year) and prior
+### [`assessment-year-2021`](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year)
 
-This repository represents a significant departure from the [residential
-modeling
+This repository represents a significant departure from the old
+[residential modeling
 codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)
 used to create assessed values in 2019 and 2020. As the CCAO’s Data
 department has grown, we’ve been able to dedicate more resources to
@@ -740,9 +737,9 @@ the following major changes to the residential modeling codebase:
 - Added updated [sales flagging and validation
   scripts](./py/flagging.py) in partnership with the Mansueto Institute.
   See [Representativeness](#representativeness).
-- [Rewrote](1932f0ddd577b4c750940c7ed802136b1fabfeb9) the assessment
-  stage for speed and improved accuracy when valuing prorated and
-  multi-card PINs.
+- [Rewrote](https://github.com/ccao-data/model-res-avm/commit/1932f0ddd577b4c750940c7ed802136b1fabfeb9)
+  the assessment stage for speed and improved accuracy when valuing
+  prorated and multi-card PINs.
 - Added new [feature
   importance](https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.importance.html)
   output table, which shows the gain, frequency, and cover for each
@@ -752,8 +749,8 @@ the following major changes to the residential modeling codebase:
 - Updated multi-card heuristic to only apply to PINs with 2 cards
   (improvements on the same parcel).
 - Updated [townhome complex valuation
-  method](98283e36c851d14a770ccb33cbe1fec0557451e4) to prevent
-  “chaining” via fuzzy grouping.
+  method](https://github.com/ccao-data/model-res-avm/commit/98283e36c851d14a770ccb33cbe1fec0557451e4)
+  to prevent “chaining” via fuzzy grouping.
 - Updated CV implementation so that
   [Lightsnip](https://github.com/ccao-data/lightsnip) and Tidymodels
   share the same validation set: Lightsnip for early stopping,
@@ -1030,7 +1027,7 @@ build the necessary packages. You may also want to (optionally) install
 2.  Set your working directory to the local folder containing this
     repository’s files, either using R’s `setwd()` command or
     (preferably) using RStudio’s
-    [projects](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects).
+    [projects](https://support.posit.co/hc/en-us/articles/200526207-Using-Projects).
 3.  Install `renv`, R’s package manager, by running
     `install.packages("renv")`.
 4.  Install all R package dependencies using `renv` by running
@@ -1050,8 +1047,8 @@ directory and run the R scripts in order. Non-CCAO users can skip the
 following stages:
 
 - [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to
-  CCAO internal AWS services to pull data. Use [git LFS](#getting-data)
-  instead.
+  CCAO internal AWS services to pull data. See [Getting
+  Data](#getting-data) if you are a member of the public.
 - [`pipeline/05-finalize.R`](pipeline/05-finalize.R) - Requires access
   to CCAO internal AWS services to upload model results.
 - [`pipeline/06-export.R`](pipeline/06-export.R) - Only required for
@@ -1258,8 +1255,8 @@ the R console) as well as their respective resolutions:
 
 # License
 
-Distributed under the AGPL-3 License. See [LICENSE](./LICENSE.txt) for
-more information.
+Distributed under the AGPL-3 License. See [LICENSE](./LICENSE) for more
+information.
 
 # Contributing
 

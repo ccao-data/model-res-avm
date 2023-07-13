@@ -513,7 +513,7 @@ land_nbhd_rate_data %>%
 
 # Reminder to upload to DVC store
 message(
-  "Be sure to add updated input data to DVC and finalized data to git LFS!\n",
+  "Be sure to add updated input data to DVC and finalized data to S3\n",
   "See https://dvc.org/doc/start/data-management/data-versioning ",
   "for more information"
 )
