@@ -174,8 +174,8 @@ message("Adding HIE data to training and assessment sets")
 
 # HIEs need to be combined with the training data such that the training data
 # uses the characteristics at the time of sale, rather than the un-updated
-# characteristics used for assessment. See GitLab wiki for more information:
-# https://gitlab.com/groups/ccao-data-science---modeling/-/wikis/Residential/Home%20Improvement%20Exemptions
+# characteristics used for assessment. See GitHub wiki for more information:
+# https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md
 
 ## 4.1. Training Data ----------------------------------------------------------
 

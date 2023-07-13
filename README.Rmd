@@ -27,8 +27,9 @@ This repository contains code, data, and documentation for the Cook County Asses
 | 2018        | City     | Linear regression per township              | N/A                        | Not available. Values provided by vendor                                                                |
 | 2019        | North    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
 | 2020        | South    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
-| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year) |
-| 2022        | North     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2022-assessment-year) |
+| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year) |
+| 2022        | North     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year) |
+| 2023        | South     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year) |
 
 # Model Overview
 
@@ -100,7 +101,7 @@ To counter this, we've listed the major choices we've made about our modeling pr
 
 We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It has [an excellent R API](https://cran.r-project.org/web/packages/lightgbm/index.html) and has been around since 2016. 
 
-We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
+We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 
 * [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The docs contain good explanations of LightGBM's features and useful troubleshooting sections.
 * Highly accurate. It consistently beat other methods in accuracy, as [measured by RMSE (root mean squared error) using a test set](#faqs).
@@ -136,7 +137,7 @@ Some downsides to Tidymodels are that it is:
 
 ##### Lightsnip
 
-We've create a custom R package called [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip) to better integrate LightGBM with Tidymodels and unlock some of its more advanced features, including:
+We've create a custom R package called [Lightsnip](https://github.com/ccao-data/lightsnip) to better integrate LightGBM with Tidymodels and unlock some of its more advanced features, including:
 
 - Early stopping, which reduces training time by stopping based on a holdout validation set
 - Additional [hyperparameters](#hyperparameter-selection), particularly those related to categorical features
@@ -189,8 +190,7 @@ as_tibble(params$model$hyperparameter$range) %>%
       name %in% c("stop_iter", "add_to_linked_depth"),
       paste0(
         "[", name, "](",
-        "https://ccao-data-science---modeling.gitlab.io",
-        "/packages/lightsnip/reference/train_lightgbm.html)"
+        "https://ccao-data.github.io/lightsnip/reference/train_lightgbm.html)"
       ),
       paste0(
         "[", name,"](https://lightgbm.readthedocs.io",
@@ -298,7 +298,7 @@ The model uses two primary data sets that are constructed by the [ingest stage](
 * [`training_data`](input/training_data.parquet) - Includes residential sales from ***the 9 years prior to the next assessment date***, which gives us a sufficient amount of data for accurate prediction without including outdated price information. This is the data used to train and evaluate the model. Its approximate size is 400K rows with 100 features.
 * [`assessment_data`](input/assessment_data.parquet) - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 100 features.
 
-These data sets contain only *residential single- and multi-family properties*. Single-family includes property [classes](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf) 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling, but are typically valued later by hand. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+These data sets contain only *residential single- and multi-family properties*. Single-family includes property [classes](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf) 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling, but are typically valued later by hand. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://github.com/ccao-data/model-condo-avm).
 
 ##### Using `training_data`
 
@@ -393,7 +393,7 @@ These adjustments have been collectively approved by the senior leadership of th
 * Added [model QC and balance testing reports](./reports) for ad-hoc analysis of model inputs.
 * Updated multi-card heuristic to only apply to PINs with 2 cards (improvements on the same parcel).
 * Updated [townhome complex valuation method](98283e36c851d14a770ccb33cbe1fec0557451e4) to prevent "chaining" via fuzzy grouping.
-* Updated CV implementation so that [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip) and Tidymodels share the same validation set: Lightsnip for early stopping, Tidymodels for Bayesian optimization.
+* Updated CV implementation so that [Lightsnip](https://github.com/ccao-data/lightsnip) and Tidymodels share the same validation set: Lightsnip for early stopping, Tidymodels for Bayesian optimization.
 * Dropped explicit spatial lag generation in the ingest stage.
 * Lots of other bugfixes and minor improvements.
 
@@ -405,18 +405,18 @@ These adjustments have been collectively approved by the senior leadership of th
   2. [DVC pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files) are used to sequentially run R pipeline scripts and track/cache inputs and outputs.
 * All model runs are now saved in perpetuity on S3. Each model's outputs are saved as Parquet files which can be queried using Amazon Athena.
 * Offloaded model reporting entirely to Tableau. This repository no longer produces markdown-based model outcome reports.
-* Improved model accuracy significantly while reducing training time. This is largely due to the use of [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip) and the inclusion of many [new features](#features-used).
+* Improved model accuracy significantly while reducing training time. This is largely due to the use of [Lightsnip](https://github.com/ccao-data/lightsnip) and the inclusion of many [new features](#features-used).
 * Added per feature, per property contributions via LightGBM's built-in SHAP methods.
 * Reorganized the codebase into explicit pipeline stages, each of which can be run independently or via DVC.
-* Added GitLab [CI integration](./.gitlab-ci.yml), which ensures that any model changes don't result in significant output changes.
+* Added GitHub [CI integration](./.github), which ensures that any model changes don't result in significant output changes.
 
 ### Prior to 2020
 
 This repository represents a significant departure from the [residential modeling codebase](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev) used to create assessed values in 2019 and 2020. As the CCAO's Data department has grown, we've been able to dedicate more resources to building models, applications, and other tools. As a result, we've made the following major changes to the residential modeling codebase:
 
-* Reduced the size of the codebase substantially from around 16,000 lines of R code. This was accomplished by moving complicated data handling to our [internal R package](https://gitlab.com/ccao-data-science---modeling/packages/ccao) and abstracting away machine learning logic to [Tidymodels](https://www.tidymodels.org/).
+* Reduced the size of the codebase substantially from around 16,000 lines of R code. This was accomplished by moving complicated data handling to our [internal R package](https://github.com/ccao-data/ccao) and abstracting away machine learning logic to [Tidymodels](https://www.tidymodels.org/).
 * Unified modeling for the entire county. Prior iterations of the residential model used individual models for each township. This was difficult to implement and track and performed worse than a single large model. The new model can value any residential property in the county, is significantly faster to train, and is much easier to replicate.
-* Split the residential codebase into separate models for [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm) and [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm). Previously, these models were combined in the same scripts, leading to a lot of complications and unnecessary overhead. Separating them makes it much easier to understand and diagnose each model.
+* Split the residential codebase into separate models for [single/multi-family](https://github.com/ccao-data/model-res-avm) and [condominiums](https://github.com/ccao-data/model-condo-avm). Previously, these models were combined in the same scripts, leading to a lot of complications and unnecessary overhead. Separating them makes it much easier to understand and diagnose each model.
 * Switched to using LightGBM as our primary valuation model. LightGBM is essentially the most bleeding-edge machine learning framework widely available that isn't a neural network. Prior to using LightGBM, we used linear models or R's gbm package. Prior to 2018, the CCAO used linear models in SPSS for residential valuations.
 * Improved dependency management via [renv](https://rstudio.github.io/renv/articles/renv.html). Previously, users trying replicate our model needed to manually install a list of needed R packages. By switching to renv, we've vastly reduced the effort needed to replicate our modeling environment, see the [installation section](#installation) below.
 
@@ -526,9 +526,9 @@ We decided that performance was more important than the easy interpretability of
 
 Assessors tend to use [housing and assessment-specific measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf) to gauge the performance of their mass appraisal systems, including:
 
-* [COD (Coefficient of Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
-* [PRD (Price-Related Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
-* [PRB (Price-Related Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
+* [COD (Coefficient of Dispersion)](https://ccao-data.github.io/assessr/reference/cod.html)
+* [PRD (Price-Related Differential)](https://ccao-data.github.io/assessr/reference/prd.html)
+* [PRB (Price-Related Bias)](https://ccao-data.github.io/assessr/reference/prb.html)
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error (RMSE), mean absolute error (MAE), and mean absolute percentage error (MAPE) to gauge overall model performance and fit.
 
@@ -675,4 +675,4 @@ Distributed under the GPL-3 License. See [LICENSE](./LICENSE.txt) for more infor
 
 # Contributing
 
-We welcome pull requests, comments, and other feedback via GitLab. For more involved collaboration or projects, please see the [Developer Engagement Program](https://gitlab.com/groups/ccao-data-science---modeling/-/wikis/People/Contributing) documentation on our group wiki.
+We welcome pull requests, comments, and other feedback via GitHub. For more involved collaboration or projects, please see the [Developer Engagement Program](https://github.com/ccao-data/people#external) documentation on our group wiki.

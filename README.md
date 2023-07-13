@@ -1,43 +1,35 @@
 Table of Contents
 ================
 
-- <a href="#prior-models" id="toc-prior-models">Prior Models</a>
-- <a href="#model-overview" id="toc-model-overview">Model Overview</a>
-  - <a href="#how-it-works" id="toc-how-it-works">How It Works</a>
-  - <a href="#choices-made" id="toc-choices-made">Choices Made</a>
-    - <a href="#model-selection" id="toc-model-selection">Model Selection</a>
-    - <a href="#framework-selection" id="toc-framework-selection">Framework
-      Selection</a>
-    - <a href="#hyperparameter-selection"
-      id="toc-hyperparameter-selection">Hyperparameter Selection</a>
-    - <a href="#features-used" id="toc-features-used">Features Used</a>
-    - <a href="#data-used" id="toc-data-used">Data Used</a>
-    - <a href="#post-modeling" id="toc-post-modeling">Post-Modeling</a>
-  - <a href="#major-changes-from-previous-versions"
-    id="toc-major-changes-from-previous-versions">Major Changes from
-    Previous Versions</a>
-    - <a href="#compared-to-2022" id="toc-compared-to-2022">Compared to
-      2022</a>
-    - <a href="#compared-to-2021" id="toc-compared-to-2021">Compared to
-      2021</a>
-    - <a href="#prior-to-2020" id="toc-prior-to-2020">Prior to 2020</a>
-- <a href="#ongoing-issues" id="toc-ongoing-issues">Ongoing Issues</a>
-  - <a href="#data-quality-and-integrity"
-    id="toc-data-quality-and-integrity">Data Quality and Integrity</a>
-  - <a href="#heterogeneity-and-extremes"
-    id="toc-heterogeneity-and-extremes">Heterogeneity and Extremes</a>
-- <a href="#faqs" id="toc-faqs">FAQs</a>
-- <a href="#usage" id="toc-usage">Usage</a>
-  - <a href="#installation" id="toc-installation">Installation</a>
-  - <a href="#running" id="toc-running">Running</a>
-  - <a href="#parameters" id="toc-parameters">Parameters</a>
-  - <a href="#output" id="toc-output">Output</a>
-  - <a href="#getting-data" id="toc-getting-data">Getting Data</a>
-  - <a href="#system-requirements" id="toc-system-requirements">System
-    Requirements</a>
-  - <a href="#troubleshooting" id="toc-troubleshooting">Troubleshooting</a>
-- <a href="#license" id="toc-license">License</a>
-- <a href="#contributing" id="toc-contributing">Contributing</a>
+- [Prior Models](#prior-models)
+- [Model Overview](#model-overview)
+  - [How It Works](#how-it-works)
+  - [Choices Made](#choices-made)
+    - [Model Selection](#model-selection)
+    - [Framework Selection](#framework-selection)
+    - [Hyperparameter Selection](#hyperparameter-selection)
+    - [Features Used](#features-used)
+    - [Data Used](#data-used)
+    - [Post-Modeling](#post-modeling)
+  - [Major Changes from Previous
+    Versions](#major-changes-from-previous-versions)
+    - [Compared to 2022](#compared-to-2022)
+    - [Compared to 2021](#compared-to-2021)
+    - [Prior to 2020](#prior-to-2020)
+- [Ongoing Issues](#ongoing-issues)
+  - [Data Quality and Integrity](#data-quality-and-integrity)
+  - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
+- [FAQs](#faqs)
+- [Usage](#usage)
+  - [Installation](#installation)
+  - [Running](#running)
+  - [Parameters](#parameters)
+  - [Output](#output)
+  - [Getting Data](#getting-data)
+  - [System Requirements](#system-requirements)
+  - [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Contributing](#contributing)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -47,14 +39,15 @@ This repository contains code, data, and documentation for the Cook
 County Assessor’s 2023 residential reassessment model. Information about
 prior year models can be found at the following links:
 
-| Year(s)     | Triad(s) | Method                                      | Language / Framework       | Link                                                                                                    |
-|-------------|----------|---------------------------------------------|----------------------------|---------------------------------------------------------------------------------------------------------|
-| 2009 - 2017 | All      | Linear regression per township              | SPSS                       | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev/-/tree/master/code.legacy)      |
-| 2018        | City     | Linear regression per township              | N/A                        | Not available. Values provided by vendor                                                                |
-| 2019        | North    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
-| 2020        | South    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
-| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2021-assessment-year) |
-| 2022        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/tree/2022-assessment-year) |
+| Year(s)     | Triad(s) | Method                                      | Language / Framework       | Link                                                                                               |
+|-------------|----------|---------------------------------------------|----------------------------|----------------------------------------------------------------------------------------------------|
+| 2009 - 2017 | All      | Linear regression per township              | SPSS                       | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev/-/tree/master/code.legacy) |
+| 2018        | City     | Linear regression per township              | N/A                        | Not available. Values provided by vendor                                                           |
+| 2019        | North    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                           |
+| 2020        | South    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                           |
+| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year)                       |
+| 2022        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)                       |
+| 2023        | South    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year)                       |
 
 # Model Overview
 
@@ -204,7 +197,7 @@ regularized linear models,
 [CatBoost](https://catboost.ai/), random forest, shallow neural
 networks, and support vector machines. We even tried ensemble methods
 such as [model
-stacking](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/commit/77de50dce86986f8d442f05c161438933c097958).
+stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958).
 We chose LightGBM because it has the right mix of trade-offs for our
 needs. Specifically, LightGBM is:
 
@@ -272,9 +265,9 @@ Some downsides to Tidymodels are that it is:
 ##### Lightsnip
 
 We’ve create a custom R package called
-[Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip)
-to better integrate LightGBM with Tidymodels and unlock some of its more
-advanced features, including:
+[Lightsnip](https://github.com/ccao-data/lightsnip) to better integrate
+LightGBM with Tidymodels and unlock some of its more advanced features,
+including:
 
 - Early stopping, which reduces training time by stopping based on a
   holdout validation set
@@ -296,19 +289,19 @@ well-specified in order for a model to be accurate and useful. LightGBM
 has a large number of tunable parameters, but we tune only a small
 proportion, including:
 
-| LightGBM Parameter                                                                                                     | CV Search Range | Parameter Description                                                              |
-|:-----------------------------------------------------------------------------------------------------------------------|:----------------|:-----------------------------------------------------------------------------------|
-| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                                     | 50 - 2000       | Maximum number of leaves in each tree. Main parameter to control model complexity. |
-| [add_to_linked_depth](https://ccao-data-science---modeling.gitlab.io/packages/lightsnip/reference/train_lightgbm.html) | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.           |
-| [feature_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)                         | 0.3 - 0.7       | The random subset of features selected for a tree, as a percentage.                |
-| [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)                       | 0.001 - 10000   | The minimum gain needed to create a split.                                         |
-| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)                         | 2 - 300         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
-| [max_cat_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)                       | 10 - 250        | Maximum number of split points for categorical features                            |
-| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group)                     | 4 - 300         | Minimum number of observations per categorical group                               |
-| [cat_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                                     | 10 - 200        | Categorical smoothing. Used to reduce noise.                                       |
-| [cat_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                                             | 0.001 - 100     | Categorical-specific L2 regularization                                             |
-| [lambda_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                                       | 0.001 - 100     | L1 regularization                                                                  |
-| [lambda_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l2)                                       | 0.001 - 100     | L2 regularization                                                                  |
+| LightGBM Parameter                                                                                 | CV Search Range | Parameter Description                                                              |
+|:---------------------------------------------------------------------------------------------------|:----------------|:-----------------------------------------------------------------------------------|
+| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | 50 - 2000       | Maximum number of leaves in each tree. Main parameter to control model complexity. |
+| [add_to_linked_depth](https://ccao-data.github.io/lightsnip/reference/train_lightgbm.html)         | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.           |
+| [feature_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)     | 0.3 - 0.7       | The random subset of features selected for a tree, as a percentage.                |
+| [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)   | 0.001 - 10000   | The minimum gain needed to create a split.                                         |
+| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)     | 2 - 300         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
+| [max_cat_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)   | 10 - 250        | Maximum number of split points for categorical features                            |
+| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group) | 4 - 300         | Minimum number of observations per categorical group                               |
+| [cat_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                 | 10 - 200        | Categorical smoothing. Used to reduce noise.                                       |
+| [cat_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                         | 0.001 - 100     | Categorical-specific L2 regularization                                             |
+| [lambda_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                   | 0.001 - 100     | L1 regularization                                                                  |
+| [lambda_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l2)                   | 0.001 - 100     | L2 regularization                                                                  |
 
 These parameters are tuned using [Bayesian hyperparameter
 optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which
@@ -338,7 +331,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-04-06.
+model as of 2023-07-13.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                                                                                                                                                  |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -502,8 +495,7 @@ Multi-family includes property classes 211 and 212. Bed and breakfast
 properties (class 218 and 219) are considered single-family for the sake
 of modeling, but are typically valued later by hand. Other residential
 properties, such as condominiums (class 299 and 399) are valued [using a
-different
-model](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+different model](https://github.com/ccao-data/model-condo-avm).
 
 ##### Using `training_data`
 
@@ -690,9 +682,9 @@ people with nearly identical properties receive the same value.
   method](98283e36c851d14a770ccb33cbe1fec0557451e4) to prevent
   “chaining” via fuzzy grouping.
 - Updated CV implementation so that
-  [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip)
-  and Tidymodels share the same validation set: Lightsnip for early
-  stopping, Tidymodels for Bayesian optimization.
+  [Lightsnip](https://github.com/ccao-data/lightsnip) and Tidymodels
+  share the same validation set: Lightsnip for early stopping,
+  Tidymodels for Bayesian optimization.
 - Dropped explicit spatial lag generation in the ingest stage.
 - Lots of other bugfixes and minor improvements.
 
@@ -720,14 +712,14 @@ people with nearly identical properties receive the same value.
   longer produces markdown-based model outcome reports.
 - Improved model accuracy significantly while reducing training time.
   This is largely due to the use of
-  [Lightsnip](https://gitlab.com/ccao-data-science---modeling/packages/lightsnip)
-  and the inclusion of many [new features](#features-used).
+  [Lightsnip](https://github.com/ccao-data/lightsnip) and the inclusion
+  of many [new features](#features-used).
 - Added per feature, per property contributions via LightGBM’s built-in
   SHAP methods.
 - Reorganized the codebase into explicit pipeline stages, each of which
   can be run independently or via DVC.
-- Added GitLab [CI integration](./.gitlab-ci.yml), which ensures that
-  any model changes don’t result in significant output changes.
+- Added GitHub [CI integration](./.github), which ensures that any model
+  changes don’t result in significant output changes.
 
 ### Prior to 2020
 
@@ -742,9 +734,8 @@ the following major changes to the residential modeling codebase:
 - Reduced the size of the codebase substantially from around 16,000
   lines of R code. This was accomplished by moving complicated data
   handling to our [internal R
-  package](https://gitlab.com/ccao-data-science---modeling/packages/ccao)
-  and abstracting away machine learning logic to
-  [Tidymodels](https://www.tidymodels.org/).
+  package](https://github.com/ccao-data/ccao) and abstracting away
+  machine learning logic to [Tidymodels](https://www.tidymodels.org/).
 - Unified modeling for the entire county. Prior iterations of the
   residential model used individual models for each township. This was
   difficult to implement and track and performed worse than a single
@@ -752,9 +743,8 @@ the following major changes to the residential modeling codebase:
   county, is significantly faster to train, and is much easier to
   replicate.
 - Split the residential codebase into separate models for
-  [single/multi-family](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm)
-  and
-  [condominiums](https://gitlab.com/ccao-data-science---modeling/models/ccao_condo_avm).
+  [single/multi-family](https://github.com/ccao-data/model-res-avm) and
+  [condominiums](https://github.com/ccao-data/model-condo-avm).
   Previously, these models were combined in the same scripts, leading to
   a lot of complications and unnecessary overhead. Separating them makes
   it much easier to understand and diagnose each model.
@@ -1003,11 +993,11 @@ measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf
 to gauge the performance of their mass appraisal systems, including:
 
 - [COD (Coefficient of
-  Dispersion)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/cod.html)
+  Dispersion)](https://ccao-data.github.io/assessr/reference/cod.html)
 - [PRD (Price-Related
-  Differential)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prd.html)
+  Differential)](https://ccao-data.github.io/assessr/reference/prd.html)
 - [PRB (Price-Related
-  Bias)](https://ccao-data-science---modeling.gitlab.io/packages/assessr/reference/prb.html)
+  Bias)](https://ccao-data.github.io/assessr/reference/prb.html)
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
@@ -1258,8 +1248,7 @@ more information.
 
 # Contributing
 
-We welcome pull requests, comments, and other feedback via GitLab. For
+We welcome pull requests, comments, and other feedback via GitHub. For
 more involved collaboration or projects, please see the [Developer
-Engagement
-Program](https://gitlab.com/groups/ccao-data-science---modeling/-/wikis/People/Contributing)
+Engagement Program](https://github.com/ccao-data/people#external)
 documentation on our group wiki.

@@ -35,7 +35,7 @@ paths <- model_file_dict()
 params <- read_yaml("params.yaml")
 
 # Override the default run_type from params.yaml. This is useful for manually
-# running "limited" runs without assessment data (also used for GitLab CI)
+# running "limited" runs without assessment data (also used for GitHub CI)
 run_type <- as.character(
   Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
 )

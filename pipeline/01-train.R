@@ -32,7 +32,7 @@ paths <- model_file_dict()
 params <- read_yaml("params.yaml")
 
 # Override the default CV toggle from params.yaml. This is useful for manually
-# running "limited" runs without CV or assessment data (also used for GitLab CI)
+# running "limited" runs without CV or assessment data (also used for GitHub CI)
 cv_enable <- as.logical(
   Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
 )
@@ -188,7 +188,7 @@ lgbm_wflow <- workflow() %>%
 # of hyperparameters
 if (cv_enable) {
   message("Starting cross-validation")
-  
+
   # Using rolling origin resampling to create a cumulative, sliding time window
   # training set, where the validation set is always the X% of sales following
   # the training set in time. See https://www.tmwr.org/resampling.html#rolling
