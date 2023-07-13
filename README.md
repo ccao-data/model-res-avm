@@ -13,9 +13,10 @@ Table of Contents
     - [Post-Modeling](#post-modeling)
   - [Major Changes from Previous
     Versions](#major-changes-from-previous-versions)
-    - [Compared to 2022](#compared-to-2022)
-    - [Compared to 2021](#compared-to-2021)
-    - [Prior to 2020](#prior-to-2020)
+    - [`assessment-year-2021` and
+      prior](#assessment-year-2021-and-prior)
+    - [`assessment-year-2022`](#assessment-year-2022)
+    - [`assessment-year-2023`](#assessment-year-2023)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -662,66 +663,7 @@ people with nearly identical properties receive the same value.
 
 ## Major Changes from Previous Versions
 
-### Compared to 2022
-
-- Added updated [sales flagging and validation
-  scripts](./py/flagging.py) in partnership with the Mansueto Institute.
-  See [Representativeness](#representativeness).
-- [Rewrote](1932f0ddd577b4c750940c7ed802136b1fabfeb9) the assessment
-  stage for speed and improved accuracy when valuing prorated and
-  multi-card PINs.
-- Added new [feature
-  importance](https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.importance.html)
-  output table, which shows the gain, frequency, and cover for each
-  model run.
-- Added [model QC and balance testing reports](./reports) for ad-hoc
-  analysis of model inputs.
-- Updated multi-card heuristic to only apply to PINs with 2 cards
-  (improvements on the same parcel).
-- Updated [townhome complex valuation
-  method](98283e36c851d14a770ccb33cbe1fec0557451e4) to prevent
-  “chaining” via fuzzy grouping.
-- Updated CV implementation so that
-  [Lightsnip](https://github.com/ccao-data/lightsnip) and Tidymodels
-  share the same validation set: Lightsnip for early stopping,
-  Tidymodels for Bayesian optimization.
-- Dropped explicit spatial lag generation in the ingest stage.
-- Lots of other bugfixes and minor improvements.
-
-### Compared to 2021
-
-- Moved previously separate processes into this repository and improved
-  their integration with the overall modeling process. For example, the
-  [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
-  process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R),
-  while the process to [finalize model
-  values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values)
-  was moved to [pipeline/06-export.R](pipeline/06-export.R).
-- Added [DVC](https://dvc.org/) support/integration. This repository
-  uses DVC in 2 ways:
-  1.  All input data in [`input/`](input/) is versioned, tracked, and
-      stored using DVC. Previous input data sets are stored in
-      perpetuity on S3.
-  2.  [DVC
-      pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files)
-      are used to sequentially run R pipeline scripts and track/cache
-      inputs and outputs.
-- All model runs are now saved in perpetuity on S3. Each model’s outputs
-  are saved as Parquet files which can be queried using Amazon Athena.
-- Offloaded model reporting entirely to Tableau. This repository no
-  longer produces markdown-based model outcome reports.
-- Improved model accuracy significantly while reducing training time.
-  This is largely due to the use of
-  [Lightsnip](https://github.com/ccao-data/lightsnip) and the inclusion
-  of many [new features](#features-used).
-- Added per feature, per property contributions via LightGBM’s built-in
-  SHAP methods.
-- Reorganized the codebase into explicit pipeline stages, each of which
-  can be run independently or via DVC.
-- Added GitHub [CI integration](./.github), which ensures that any model
-  changes don’t result in significant output changes.
-
-### Prior to 2020
+### [`assessment-year-2021`](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year) and prior
 
 This repository represents a significant departure from the [residential
 modeling
@@ -759,6 +701,65 @@ the following major changes to the residential modeling codebase:
   needed R packages. By switching to renv, we’ve vastly reduced the
   effort needed to replicate our modeling environment, see the
   [installation section](#installation) below.
+
+### [`assessment-year-2022`](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)
+
+- Moved previously separate processes into this repository and improved
+  their integration with the overall modeling process. For example, the
+  [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data)
+  process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R),
+  while the process to [finalize model
+  values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values)
+  was moved to [pipeline/06-export.R](pipeline/06-export.R).
+- Added [DVC](https://dvc.org/) support/integration. This repository
+  uses DVC in 2 ways:
+  1.  All input data in [`input/`](input/) is versioned, tracked, and
+      stored using DVC. Previous input data sets are stored in
+      perpetuity on S3.
+  2.  [DVC
+      pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files)
+      are used to sequentially run R pipeline scripts and track/cache
+      inputs and outputs.
+- All model runs are now saved in perpetuity on S3. Each model’s outputs
+  are saved as Parquet files which can be queried using Amazon Athena.
+- Offloaded model reporting entirely to Tableau. This repository no
+  longer produces markdown-based model outcome reports.
+- Improved model accuracy significantly while reducing training time.
+  This is largely due to the use of
+  [Lightsnip](https://github.com/ccao-data/lightsnip) and the inclusion
+  of many [new features](#features-used).
+- Added per feature, per property contributions via LightGBM’s built-in
+  SHAP methods.
+- Reorganized the codebase into explicit pipeline stages, each of which
+  can be run independently or via DVC.
+- Added GitHub [CI integration](./.github), which ensures that any model
+  changes don’t result in significant output changes.
+
+### [`assessment-year-2023`](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year)
+
+- Added updated [sales flagging and validation
+  scripts](./py/flagging.py) in partnership with the Mansueto Institute.
+  See [Representativeness](#representativeness).
+- [Rewrote](1932f0ddd577b4c750940c7ed802136b1fabfeb9) the assessment
+  stage for speed and improved accuracy when valuing prorated and
+  multi-card PINs.
+- Added new [feature
+  importance](https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.importance.html)
+  output table, which shows the gain, frequency, and cover for each
+  model run.
+- Added [model QC and balance testing reports](./reports) for ad-hoc
+  analysis of model inputs.
+- Updated multi-card heuristic to only apply to PINs with 2 cards
+  (improvements on the same parcel).
+- Updated [townhome complex valuation
+  method](98283e36c851d14a770ccb33cbe1fec0557451e4) to prevent
+  “chaining” via fuzzy grouping.
+- Updated CV implementation so that
+  [Lightsnip](https://github.com/ccao-data/lightsnip) and Tidymodels
+  share the same validation set: Lightsnip for early stopping,
+  Tidymodels for Bayesian optimization.
+- Dropped explicit spatial lag generation in the ingest stage.
+- Lots of other bugfixes and minor improvements.
 
 # Ongoing Issues
 
@@ -1169,27 +1170,41 @@ breakdown of what is created for each type:
 
 The [data required](#data-used) to run these scripts is produced by the
 [ingest stage](pipeline/00-ingest.R), which uses SQL pulls from the
-CCAO’s Athena database as a primary data source. CCAO employees can pull
-the latest version of the input data from our internal DVC store using:
+CCAO’s Athena database as a primary data source. CCAO employees can run
+the ingest stage or pull the latest version of the input data from our
+internal DVC store using:
 
 ``` bash
 dvc pull
 ```
 
-Additionally, sample data sets are provided in the [`input/`](input/)
-directory for the purpose of replication and experimentation. Note that
-these data sets may not be the *exact* data used to produce assessments,
-but they’ll be very close.
+Public users can download data for each assessment year using the links
+below. Each file should be placed in the `input/` directory prior to
+running the model pipeline.
 
-For the most recent available data, please visit the [Cook County Data
+#### 2021
+
+- [assmntdata.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2021/assmntdata.parquet)
+- [modeldata.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2021/modeldata.parquet)
+
+#### 2022
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2022/assessment_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2022/complex_id_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2022/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2022/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2022/training_data.parquet)
+
+#### 2023
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/assessment_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/complex_id_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/training_data.parquet)
+
+For other data from the CCAO, please visit the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/).
-
-> :warning: **NOTE** :warning:
->
-> The Parquet files in this repository are stored using [Git
-> LFS](https://docs.gitlab.com/ee/topics/git/lfs/). You will need to
-> install Git LFS in order to properly clone the files (or manually
-> download them via GitLab’s web UI).
 
 ## System Requirements
 
