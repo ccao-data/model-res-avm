@@ -671,7 +671,7 @@ The dependencies for this repository are numerous and not all of them may instal
 
 # License
 
-Distributed under the GPL-3 License. See [LICENSE](./LICENSE.txt) for more information.
+Distributed under the AGPL-3 License. See [LICENSE](./LICENSE.txt) for more information.
 
 # Contributing
 

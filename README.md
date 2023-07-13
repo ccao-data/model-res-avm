@@ -1243,7 +1243,7 @@ the R console) as well as their respective resolutions:
 
 # License
 
-Distributed under the GPL-3 License. See [LICENSE](./LICENSE.txt) for
+Distributed under the AGPL-3 License. See [LICENSE](./LICENSE.txt) for
 more information.
 
 # Contributing
