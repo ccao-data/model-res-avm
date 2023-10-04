@@ -237,10 +237,9 @@ hardcoded_descriptions <- tribble(
   "sale_day_of_year", "Numeric encoding of day of year (1 - 365)",
   "sale_day_of_month", "Numeric encoding of day of month (1 - 31)",
   "sale_day_of_week", "Numeric encoding of day of week (1 - 7)",
-  "sale_post_covid", cat(
-    "Indicator for whether sale occurred after COVID-19 was widely publicized
-    (around March 15, 2020)"
-  )
+  # nolint start: line_length_linter
+  "sale_post_covid", "Indicator for whether sale occurred after COVID-19 was widely publicized (around March 15, 2020)"
+  # nolint end
 )
 
 # Load the dbt DAG from our prod docs site
