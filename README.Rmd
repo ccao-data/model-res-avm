@@ -233,7 +233,7 @@ hardcoded_descriptions <- tribble(
   "sale_day", "Sale day calculated as the number of days since January 1st, 1997",
   "sale_quarter_of_year", "Character encoding of quarter of year (Q1 - Q4)",
   "sale_month_of_year", "Character encoding of month of year (Jan - Dec)",
-  "sale_day_of_year",  "Numeric encoding of day of year (1 - 365)",
+  "sale_day_of_year", "Numeric encoding of day of year (1 - 365)",
   "sale_day_of_month", "Numeric encoding of day of month (1 - 31)",
   "sale_day_of_week", "Numeric encoding of day of week (1 - 7)",
   "sale_post_covid", "Indicator for whether sale occurred after COVID-19 was widely publicized (around March 15, 2020)"
@@ -281,10 +281,10 @@ param_tbl <- as_tibble(params$model$predictor$all)
 param_notes <- param_tbl$value %>%
   ccao::vars_rename(names_from = "model", names_to = "athena") %>%
   map(\(x) get_column_description(x, dbt_manifest$nodes, hardcoded_descriptions)) %>%
-  unlist
+  unlist()
 
 param_tbl %>%
-  add_column(description=param_notes) %>%
+  add_column(description = param_notes) %>%
   inner_join(
     ccao::vars_dict,
     by = c("value" = "var_name_model")
