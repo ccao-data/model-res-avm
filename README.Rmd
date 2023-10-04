@@ -230,18 +230,25 @@ library(tibble)
 hardcoded_descriptions <- tribble(
   ~"column", ~"description",
   "sale_year", "Sale year calculated as the number of years since 0 B.C.E",
-  "sale_day", "Sale day calculated as the number of days since January 1st, 1997",
+  "sale_day",
+  "Sale day calculated as the number of days since January 1st, 1997",
   "sale_quarter_of_year", "Character encoding of quarter of year (Q1 - Q4)",
   "sale_month_of_year", "Character encoding of month of year (Jan - Dec)",
   "sale_day_of_year", "Numeric encoding of day of year (1 - 365)",
   "sale_day_of_month", "Numeric encoding of day of month (1 - 31)",
   "sale_day_of_week", "Numeric encoding of day of week (1 - 7)",
-  "sale_post_covid", "Indicator for whether sale occurred after COVID-19 was widely publicized (around March 15, 2020)"
+  "sale_post_covid", cat(
+    "Indicator for whether sale occurred after COVID-19 was widely publicized
+    (around March 15, 2020)"
+  )
 )
 
 # Load the dbt DAG from our prod docs site
-dbt_manifest <- fromJSON("https://ccao-data.github.io/data-architecture/manifest.json")
+dbt_manifest <- fromJSON(
+  "https://ccao-data.github.io/data-architecture/manifest.json"
+)
 
+# nolint start: cyclomp_linter
 get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
   # Retrieve the description for a column `colname` either from a set of
   # dbt DAG nodes (`dag_nodes`) or a set of hardcoded descriptions
@@ -271,6 +278,7 @@ get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
   # back to an empty string
   return("")
 }
+# nolint end
 
 params <- read_yaml("params.yaml")
 
@@ -280,7 +288,9 @@ param_tbl <- as_tibble(params$model$predictor$all)
 # as a new column
 param_notes <- param_tbl$value %>%
   ccao::vars_rename(names_from = "model", names_to = "athena") %>%
-  map(\(x) get_column_description(x, dbt_manifest$nodes, hardcoded_descriptions)) %>%
+  map(\(x) get_column_description(
+    x, dbt_manifest$nodes, hardcoded_descriptions
+  )) %>%
   unlist()
 
 param_tbl %>%
