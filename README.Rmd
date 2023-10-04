@@ -217,7 +217,6 @@ Model accuracy for each parameter combination is measured on a validation set us
 
 The residential model uses a variety of individual and aggregate features to determine a property's assessed value. We've tested a long list of possible features over time, including [walk score](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_walkscore.html), [crime rate](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/chicago_crimerate.html), [school districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_school_boundaries_mean_encoded.html), and many others. The features in the table below are the ones that made the cut. They're the right combination of easy to understand and impute, powerfully predictive, and well-behaved. Most of them are in use in the model as of `r Sys.Date()`.
 
-
 ```{r feature_guide, message=FALSE, results='asis', echo=FALSE}
 library(dplyr)
 library(tidyr)
@@ -311,7 +310,7 @@ param_tbl %>%
     values_from = var_value
   ) %>%
   unite("Possible Values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
-  mutate(Notes = replace_na(Notes, list(""))) %>%
+  mutate(Notes = replace_na(Notes, "")) %>%
   arrange(Category) %>%
   relocate(Notes, .after = everything()) %>%
   knitr::kable(format = "markdown")
