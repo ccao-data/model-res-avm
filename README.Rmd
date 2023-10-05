@@ -223,7 +223,6 @@ library(tidyr)
 library(yaml)
 library(jsonlite)
 library(purrr)
-library(tibble)
 
 # Some values are derived in the model itself, so they are not documented
 # in the dbt DAG and need to be documented here
