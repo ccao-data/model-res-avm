@@ -221,15 +221,79 @@ The residential model uses a variety of individual and aggregate features to det
 library(dplyr)
 library(tidyr)
 library(yaml)
+library(jsonlite)
+library(purrr)
+
+# Some values are derived in the model itself, so they are not documented
+# in the dbt DAG and need to be documented here
+# nolint start
+hardcoded_descriptions <- tribble(
+  ~"column", ~"description",
+  "sale_year", "Sale year calculated as the number of years since 0 B.C.E",
+  "sale_day",
+  "Sale day calculated as the number of days since January 1st, 1997",
+  "sale_quarter_of_year", "Character encoding of quarter of year (Q1 - Q4)",
+  "sale_month_of_year", "Character encoding of month of year (Jan - Dec)",
+  "sale_day_of_year", "Numeric encoding of day of year (1 - 365)",
+  "sale_day_of_month", "Numeric encoding of day of month (1 - 31)",
+  "sale_day_of_week", "Numeric encoding of day of week (1 - 7)",
+  "sale_post_covid", "Indicator for whether sale occurred after COVID-19 was widely publicized (around March 15, 2020)"
+  # nolint end
+)
+
+# Load the dbt DAG from our prod docs site
+dbt_manifest <- fromJSON(
+  "https://ccao-data.github.io/data-architecture/manifest.json"
+)
+
+# nolint start: cyclomp_linter
+get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
+  # Retrieve the description for a column `colname` either from a set of
+  # dbt DAG nodes (`dag_nodes`) or a set of hardcoded descriptions
+  # (`hardcoded_descriptions`)
+  #
+  # Prefer the hardcoded descriptions, if they exist
+  if (colname %in% hardcoded_descriptions$column) {
+    return(
+      hardcoded_descriptions[
+        match(colname, hardcoded_descriptions$column),
+      ]$description
+    )
+  }
+  # If no hardcoded description exists, fall back to checking the dbt DAG
+  for (node_name in ls(dag_nodes)) {
+    node <- dag_nodes[[node_name]]
+    for (column_name in ls(node$columns)) {
+      if (column_name == colname) {
+        description <- node$columns[[column_name]]$description
+        if (!is.null(description) && trimws(description) != "") {
+          return(gsub("\n", " ", description))
+        }
+      }
+    }
+  }
+  # No match in either the hardcoded descriptions or the dbt DAG, so fall
+  # back to an empty string
+  return("")
+}
+# nolint end
+
 params <- read_yaml("params.yaml")
+
+param_tbl <- as_tibble(params$model$predictor$all)
+
+# Make a vector of column descriptions that we can add to the param tibble
+# as a new column
+param_notes <- param_tbl$value %>%
+  ccao::vars_rename(names_from = "model", names_to = "athena") %>%
+  map(\(x) get_column_description(
+    x, dbt_manifest$nodes, hardcoded_descriptions
+  )) %>%
+  unlist()
+
 ccao::vars_dict %>%
-  filter(
-    var_is_predictor,
-    var_name_model != "meta_sale_price",
-    var_model_type %in% c("all", "res")
-  ) %>%
   inner_join(
-    as_tibble(params$model$predictor$all),
+    param_tbl %>% mutate(description = param_notes),
     by = c("var_name_model" = "value")
   ) %>%
   group_by(var_name_pretty) %>%
@@ -238,7 +302,7 @@ ccao::vars_dict %>%
     `Feature Name` = var_name_pretty,
     Category = var_type,
     Type = var_data_type,
-    Notes = var_notes,
+    Notes = description,
     var_value, row
   ) %>%
   mutate(Category = recode(
