@@ -46,10 +46,12 @@ Here is a rough sketch of a new model deployment pipeline:
 * Use the AWS CLI to [submit a job](https://docs.aws.amazon.com/cli/latest/reference/batch/submit-job.html) to the Batch queue
 * Use the AWS CLI to [poll the job status](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/batch/describe-jobs.html) until it has a terminal status (`SUCCEEDED` or `FAILED`)
   * Once the job has at least a `RUNNING` status, use the `jobStreamName` parameter to print a link to its logs
-* _TK: Output?_
+* _TK: How should we format output for pushing back to the PR? Is it enough to push the results doc to S3 and print a link in the workflow output, or do we need an integration that can actually post a comment on the PR, à la Codecov?_
 
 ## Tasks
 
+We will create GitHub issues for the following tasks:
+
 * Add Docker image definition for the model
 * Add GitHub workflow to deploy and run an AWS Batch job on commits to PRs
-* _TK: Show better output?_
+* _TK: Output reporting improvements?_
