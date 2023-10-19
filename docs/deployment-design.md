@@ -7,8 +7,9 @@ This doc represents a proposal for a simple CI/CD pipeline that we can use to de
 At a high level, our **existing process** for experimenting with changes to our models looks like this:
 
 * Models run on an on-prem server
-* Data scientists trigger model runs by SSHing into the server and running shell commands from cloned copies of this repo
-* Model artifacts are saved using DVC
+* Data scientists trigger model runs by SSHing into the server and running R scripts from cloned copies of this repo
+* Model inputs and parameters are hashed for reproducibility using DVC for [data versioning](https://dvc.org/doc/start/data-management/data-versioning)
+* R scripts are run in the correct sequence using DBC for [data pipelines](https://dvc.org/doc/start/data-management/data-pipelines)
 * Data scientists commit corresponding changes to model code after their experiment runs prove successful  
 
 This process has the advantage of being simple, easy to maintain, and cheap; as a result it has been useful to our team during the recent past when we only had a few data scientists on staff and they needed to focus most of their effort on building a new model from the ground up. However, some of its **limitations** are becoming apparent as our team scales up and begins to expand our focus:
@@ -16,7 +17,8 @@ This process has the advantage of being simple, easy to maintain, and cheap; as 
 * Our on-prem server only has enough resources to run one model at a time, so only one data scientist may be running modeling experiments at a given time
   * Further, our server has no notion of a job queue, so a data scientist who is waiting to run a model must notice that a previous run has completed and initiate their run manually 
 * Our on-prem server does not have a GPU, so it can't make use of GPU-accelerated libraries like XGBoost
-* Model runs are decoupled from version control changes, so data scientists have to remember to commit their changes correctly
+* Our DVC configuration has disabled caching of intermediate outputs, so model runs must always begin from the start of the pipeline, saving on storage but increasing execution time as a result
+* Model runs are decoupled from changes to code and data in version control, so data scientists have to remember to commit their changes correctly
 * Results of model runs are not easily accessible to PR reviewers
 
 The design described below aims to remove these limitations while retaining as much simplicity, maintainability, and affordability as possible.
@@ -34,24 +36,62 @@ At a high level, a model deployment pipeline should:
 
 ## Design
 
+### Running the model
+
 Here is a rough sketch of a new model deployment pipeline:
 
 * Define a new workflow, `run-model.yaml`, that runs on:
-  * Every commit to every pull request against the main branch
+  * Every commit to every pull request
   * The `workflow_dispatch` event
 * Set up the workflow so that it deploys to the `staging` environment and requires [manual approval](https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#using-environments-to-manually-trigger-workflow-jobs)
-* Use the [`configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) action to authenticate with AWS
+* Define a job, `build-docker-image`, to build and push a new Docker image for the model code to GitHub Container Registry
+  * Cache the build using `renv.lock` as the key
+* Define a job to run the model (implementation details in the following sections)
+* Print a link to S3 model evaluation outputs that will be visible in the GitHub Actions UI
+ 
+See the following sections for two options for how we can run the model itself.
+
+#### Option 1: Use CML self-hosted runners
+
+CML's [self-hosted runners](https://cml.dev/doc/self-hosted-runners#allocating-cloud-compute-resources-with-cml) claim to provide an abstraction layer on top of GitHub Actions and AWS EC2 that would allow us to launch a spot EC2 instance and use it as a GitHub Actions runner. If it works as advertised and is easy to debug, it would allow us to spin up infrastructure for running the model with very little custom code.
+
+The steps involved here include:
+
+* Define a job, `launch-runner`, to start an AWS spot EC2 instance using [`cml runner`](https://cml.dev/doc/self-hosted-runners#allocating-cloud-compute-resources-with-cml)
+  * Set sensible defaults for the [instance options](https://cml.dev/doc/ref/runner#options), but allow them to be overridden via workflow inputs
+* Define a job, `run-model`, to run the model on the EC2 instance created by CML
+  * Set the `runs-on` key for the job to point at the runner
+    * This will cause steps defined in the job to run on the remote runner
+  * Run the model using `dvc pull` and `dvc repro`
+
+#### Option 2: Write custom code to run model jobs on AWS Batch
+
+If CML does not work as advertised, we can always implement our own version of its functionality. Define the following steps in a `run-model` job:
+
 * Run Terraform to make sure an AWS Batch job queue and job definition exist for the PR
-* Build and push a new Docker image to ECR
+   * The job definition should define the code that will be used to run the model itself, e.g. `dvc pull` and `dvc repro`
 * Use the AWS CLI to [submit a job](https://docs.aws.amazon.com/cli/latest/reference/batch/submit-job.html) to the Batch queue
 * Use the AWS CLI to [poll the job status](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/batch/describe-jobs.html) until it has a terminal status (`SUCCEEDED` or `FAILED`)
   * Once the job has at least a `RUNNING` status, use the `jobStreamName` parameter to print a link to its logs
-* _TK: How should we format output for pushing back to the PR? Is it enough to push the results doc to S3 and print a link in the workflow output, or do we need an integration that can actually post a comment on the PR, à la Codecov?_
+
+### Caching intermediate data
+
+Caching intermediate data would allow us to only run model stages whose code, data, or dependencies have changed since the last model run. This has the potential to reduce the amount of compute we use and speed up experimentation.
+
+Remote caching is currently [not natively supported by DVC](https://github.com/iterative/dvc/issues/5665#issuecomment-811087810), but it should be possible if we pull the [cache directory](https://dvc.org/doc/user-guide/project-structure/internal-files#structure-of-the-cache-directory) from S3 storage before each run and push it after successful runs. All branches should have their own cache, but PR branches should inherit the main branch cache before their first successful run. Note that to enable this caching, we would also need to remove the `cache: false` attribute that is currently set on all of our intermediate outputs. We would also need to start saving `.dvc` metadata files under version control so that model runs know which version of the data to pull.
+
+We should consider this step to be an iterative improvement on the pipeline MVP, since it's not required to run the model and it may introduce more complexity than the reduction in runtime is worth.
+
+### Metrics and experiments
+
+While DVC now offers built-in tools for [metrics](https://dvc.org/doc/start/data-management/metrics-parameters-plots) and [experiments](https://dvc.org/doc/start/experiments), these features do not yet seem to offer any functionality above and beyond what we have already built into the modeling scripts, so we should wait to switch to them until we can identify a limitation of our current scripts that would be resolved faster by switching to DVC for metrics or experimentation.  
 
 ## Tasks
 
 We will create GitHub issues for the following tasks:
 
 * Add Docker image definition for the model
-* Add GitHub workflow to deploy and run an AWS Batch job on commits to PRs
-* _TK: Output reporting improvements?_
+* Add GitHub workflow to deploy and run the model on commits to PRs
+   * Note that there is a prototype of a similar workflow [on GitLab](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/master/.gitlab-ci.yml?ref_type=heads) that may be useful
+   * Spike the CML self-hosted runner solution first, and move on to the custom solution if CML runners don't work as advertised
+* Time permitting: Add workflow cache for intermediate data
