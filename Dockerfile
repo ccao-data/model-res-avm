@@ -31,7 +31,7 @@ COPY Pipfile.lock .
 COPY renv.lock .
 
 # Install R dependencies
-RUN --mount=type=cache,target=/root/.cache/R,from=renv_cache Rscript -e 'renv::install("ccao")'
+RUN --mount=type=cache,target=/root/.cache/R,from=renv_cache Rscript -e 'renv::install("dplyr")'
 
 # Copy the directory into the container
 ADD ./ model-res-avm/
