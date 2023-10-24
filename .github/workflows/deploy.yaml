@@ -8,6 +8,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  RENV_CACHE_DIR: /root/.cache/renv
+  PIP_CACHE_DIR: /root/.cache/pip
 
 jobs:
   publish-docker-image:
@@ -44,10 +46,25 @@ jobs:
             type=ref,event=pr
             type=sha
 
+      - name: Cache R packages
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.RENV_CACHE_DIR }}
+          key: deploy-R-${{ hashFiles('renv.lock') }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: deploy-pip-${{ hashFiles('Pipfile.lock') }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          build-contexts: |
+            r_cache=${{ env.RENV_CACHE_DIR }}
+            pip_cache=${{ env.PIP_CACHE_DIR }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
