@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libudunits2-dev python3-dev python3-pip
 
 # Install pipenv for Python dependencies
-RUN pip install pipenv
+RUN --mount=type=cache,target=/root/.cache/pip,from=pip_cache pip install pipenv
 
 # Install renv for R dependencies
 RUN Rscript -e "install.packages('renv')"
@@ -26,14 +26,11 @@ RUN Rscript -e "install.packages('renv')"
 COPY Pipfile .
 COPY Pipfile.lock .
 
-# Install Python dependencies
-RUN --mount=type=cache,target=/root/.cache/pip,from=pip_cache pipenv install --deploy --system
-
 # Copy R lockfile
 COPY renv.lock .
 
 # Install R dependencies
-RUN --mount=type=cache,target=/root/.cache/R,from=r_cache Rscript -e 'renv::restore()'
+RUN --mount=type=cache,target=/root/.cache/R,from=r_cache Rscript -e 'renv::install("ccao")'
 
 # Copy the directory into the container
 ADD ./ model-res-avm/
