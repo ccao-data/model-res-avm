@@ -1,12 +1,7 @@
 FROM rocker/r-ver:4.3.1
 
 ENV RENV_CONFIG_REPOS_OVERRIDE "https://cloud.r-project.org/"
-
-# Configure renv and pip for caching
-ENV RENV_PATHS_CACHE ~/.cache/renv
 ENV RENV_PATHS_LIBRARY renv/library
-ENV PIP_CACHE_DIR ~/.cache/pip
-ENV PIPENV_CACHE_DIR ${PIP_CACHE_DIR}
 
 # Install system dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -14,12 +9,12 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libudunits2-dev python3-dev python3-pip
 
 # Install pipenv for Python dependencies
-RUN --mount=type=cache,target=$PIP_CACHE_DIR,from=pip_cache pip install pipenv
+RUN pip install pipenv
 
 # Install renv for R dependencies
 RUN Rscript -e "install.packages('renv')"
 
-# Copy pipenv files into the container. The reason this is a separate step from
+# Copy pipenv files into the image. The reason this is a separate step from
 # the later step that adds files from the working directory is because we want
 # to avoid having to reinstall dependencies every time a file in the directory
 # changes, as Docker will bust the cache of every layer following a layer that
@@ -27,11 +22,14 @@ RUN Rscript -e "install.packages('renv')"
 COPY Pipfile .
 COPY Pipfile.lock .
 
-# Copy R lockfile
+# Install Python dependencies
+RUN pipenv install --system --deploy
+
+# Copy R lockfile into the image
 COPY renv.lock .
 
 # Install R dependencies
-RUN --mount=type=cache,target=$RENV_PATHS_CACHE,from=renv_cache Rscript -e 'renv::install("dplyr")'
+RUN Rscript -e 'renv::restore()'
 
 # Copy the directory into the container
 ADD ./ model-res-avm/
