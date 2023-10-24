@@ -8,8 +8,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  RENV_CACHE_DIR: /root/.cache/renv
-  PIP_CACHE_DIR: /root/.cache/pip
+  RENV_CACHE_DIR: ~/.cache/renv
+  PIP_CACHE_DIR: ~/.cache/pip
 
 jobs:
   publish-docker-image:
@@ -46,6 +46,12 @@ jobs:
             type=ref,event=pr
             type=sha
 
+      - name: Prepare directories for caching
+        run: |
+          mkdir -p "$RENV_CACHE_DIR"
+          mkdir -p "$PIP_CACHE_DIR"
+        shell: bash
+
       - name: Cache R packages
         uses: actions/cache@v3
         with:
@@ -63,7 +69,7 @@ jobs:
         with:
           context: .
           build-contexts: |
-            r_cache=${{ env.RENV_CACHE_DIR }}
+            renv_cache=${{ env.RENV_CACHE_DIR }}
             pip_cache=${{ env.PIP_CACHE_DIR }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

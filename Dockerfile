@@ -3,9 +3,10 @@ FROM rocker/r-ver:4.3.1
 ENV RENV_CONFIG_REPOS_OVERRIDE "https://cloud.r-project.org/"
 
 # Configure renv and pip for caching
-ENV RENV_PATHS_CACHE /root/.cache/R
+ENV RENV_PATHS_CACHE ~/.cache/renv
 ENV RENV_PATHS_LIBRARY renv/library
-ENV PIPENV_CACHE_DIR /root/.cache/pip
+ENV PIP_CACHE_DIR ~/.cache/pip
+ENV PIPENV_CACHE_DIR ${PIP_CACHE_DIR}
 
 # Install system dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -30,7 +31,7 @@ COPY Pipfile.lock .
 COPY renv.lock .
 
 # Install R dependencies
-RUN --mount=type=cache,target=/root/.cache/R,from=r_cache Rscript -e 'renv::install("ccao")'
+RUN --mount=type=cache,target=/root/.cache/R,from=renv_cache Rscript -e 'renv::install("ccao")'
 
 # Copy the directory into the container
 ADD ./ model-res-avm/
