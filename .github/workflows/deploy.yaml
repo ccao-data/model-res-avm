@@ -12,10 +12,6 @@ env:
 jobs:
   publish-docker-image:
     runs-on: ubuntu-latest
-    # Set token permissions so that we can publish to GitHub Container Registry
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
