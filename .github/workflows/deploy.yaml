@@ -4,6 +4,18 @@ on:
   pull_request:
   push:
     branches: [main, '*-assessment-year']
+  workflow_dispatch:
+    inputs:
+      instance_type:
+        description: Type of the EC2 instance to provision
+        required: false
+        type: string
+        default: t2.micro
+      enable_gpu:
+        description: Whether to provision a GPU-enabled instance
+        required: false
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -81,21 +93,22 @@ jobs:
         #   * Add cloud-permission-set
         #   * Add cloud-aws-security-group
         #   * Potentially add cloud-aws-subnet?
-        #   * Add cloud-spot-price
-        #   * Switch to real GPU size after testing
-        #   * Make these attributes configurable
+        #   * Add cloud-spot and cloud-spot-price
+        #   * Switch to real instance size after testing and enable GPU
         run: |
           cml runner launch \
             --cloud aws \
             --cloud-region us-east-1 \
-            --cloud-type t2.micro \
-            --cloud-gpu nogpu \
-            --cloud-spot \
+            --cloud-type "$CLOUD_TYPE" \
+            --cloud-gpu "$CLOUD_GPU" \
             --name cml-runner \
             --labels=cml-runner \
             --no-retry \
             --single
         shell: bash
+        env:
+          CLOUD_TYPE: ${{ inputs.instance_type }}
+          CLOUD_GPU: ${{ inputs.enable_gpu }}
 
   run-model:
     needs: [publish-docker-image, launch-runner]
