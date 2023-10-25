@@ -20,6 +20,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  INSTANCE_TYPE: ${{ inputs.instance_type || 't2.micro' }}
+  ENABLE_GPU: ${{ inputs.enable_gpu || false }}
 
 jobs:
   publish-docker-image:
@@ -99,16 +101,13 @@ jobs:
           cml runner launch \
             --cloud aws \
             --cloud-region us-east-1 \
-            --cloud-type "$CLOUD_TYPE" \
-            --cloud-gpu "$CLOUD_GPU" \
+            --cloud-type "$INSTANCE_TYPE" \
+            --cloud-gpu "$ENABLE_GPU" \
             --name cml-runner \
             --labels=cml-runner \
             --no-retry \
             --single
         shell: bash
-        env:
-          CLOUD_TYPE: ${{ inputs.instance_type }}
-          CLOUD_GPU: ${{ inputs.enable_gpu }}
 
   run-model:
     needs: [publish-docker-image, launch-runner]
