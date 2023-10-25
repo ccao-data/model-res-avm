@@ -24,7 +24,6 @@ env:
 jobs:
   publish-docker-image:
     runs-on: ubuntu-latest
-    environment: deploy
     outputs:
       imageid: ${{ steps.build-and-push.outputs.imageid }}
     steps:
