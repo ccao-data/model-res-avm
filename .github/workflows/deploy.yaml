@@ -15,10 +15,6 @@ jobs:
     environment: deploy
     outputs:
       imageid: ${{ steps.build-and-push.outputs.imageid }}
-    # Set token permissions so that we can publish to GitHub Container Registry
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,7 +41,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha
+            type=ref,event=tag
 
       - name: Build and push Docker image
         id: build-and-push
