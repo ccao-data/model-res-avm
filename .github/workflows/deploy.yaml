@@ -12,6 +12,9 @@ env:
 jobs:
   publish-docker-image:
     runs-on: ubuntu-latest
+    environment: deploy
+    outputs:
+      imageid: ${{ steps.build-and-push.outputs.imageid }}
     # Set token permissions so that we can publish to GitHub Container Registry
     permissions:
       contents: read
@@ -45,6 +48,7 @@ jobs:
             type=sha
 
       - name: Build and push Docker image
+        id: build-and-push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -53,3 +57,62 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  launch-runner:
+    needs: [publish-docker-image]
+    runs-on: ubuntu-latest
+    environment: deploy
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint
+    # so that we can authenticate with AWS
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy runner on EC2
+        # TODO:
+        #   * Add cloud-permission-set
+        #   * Add cloud-aws-security-group
+        #   * Potentially add cloud-aws-subnet?
+        #   * Add cloud-spot-price
+        #   * Switch to real GPU size after testing
+        #   * Make these attributes configurable
+        run: |
+          cml runner launch \
+            --cloud aws \
+            --cloud-region us-east-1 \
+            --cloud-type t2.micro \
+            --cloud-gpu nogpu \
+            --cloud-spot \
+            --name cml-runner \
+            --labels=cml-runner \
+            --no-retry \
+            --single
+        shell: bash
+
+  run-model:
+    needs: [publish-docker-image, launch-runner]
+    runs-on: [self-hosted, cml-runner]
+    container:
+      image: ${{ needs.publish-docker-image.outputs.imageid }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull input data
+        run: dvc pull
+        shell: bash
+
+      - name: Run the model
+        run: dvc repro
