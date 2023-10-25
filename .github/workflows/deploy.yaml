@@ -100,11 +100,11 @@ jobs:
         #   * Switch to real instance size after testing and enable GPU
         run: |
           cml runner launch \
-            --cloud aws \
-            --cloud-region us-east-1 \
-            --cloud-type "$INSTANCE_TYPE" \
-            --cloud-gpu "$GPU_TYPE" \
-            --name cml-runner \
+            --cloud=aws \
+            --cloud-region=us-east-1 \
+            --cloud-type="$INSTANCE_TYPE" \
+            --cloud-gpu="$GPU_TYPE" \
+            --name=cml-runner \
             --labels=cml-runner \
             --no-retry \
             --single
