@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 # Install pipenv for Python dependencies
 RUN pip install pipenv
 
-# Install renv for R dependencies
-RUN Rscript -e "install.packages('renv')"
-
 # Copy pipenv files into the image. The reason this is a separate step from
 # the later step that adds files from the working directory is because we want
 # to avoid having to reinstall dependencies every time a file in the directory
@@ -27,12 +24,17 @@ COPY Pipfile.lock .
 # Install Python dependencies
 RUN pipenv install --system --deploy
 
-# Copy R lockfile into the image
+# Copy R bootstrap files into the image
 COPY renv.lock .
+COPY .Rprofile .
+COPY renv/ .
 
 # Install R dependencies
 RUN Rscript -e 'renv::restore()'
 
 # Copy the directory into the container
 ADD ./ model-res-avm/
+
+# Copy R dependencies into the app directory
+RUN mv renv model-res-avm/renv
 WORKDIR model-res-avm/
