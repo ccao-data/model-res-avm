@@ -1,6 +1,7 @@
 FROM rocker/r-ver:4.3.1
 
-ENV RENV_CONFIG_REPOS_OVERRIDE "https://cloud.r-project.org/"
+# Use PPM for binary installs
+ENV RENV_CONFIG_REPOS_OVERRIDE "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
 ENV RENV_PATHS_LIBRARY renv/library
 
 # Install system dependencies
