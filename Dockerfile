@@ -27,7 +27,7 @@ RUN pipenv install --system --deploy
 # Copy R bootstrap files into the image
 COPY renv.lock .
 COPY .Rprofile .
-COPY renv/ .
+COPY renv/ renv/
 
 # Install R dependencies
 RUN Rscript -e 'renv::restore()'
