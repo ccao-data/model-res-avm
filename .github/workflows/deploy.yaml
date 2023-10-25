@@ -106,7 +106,7 @@ jobs:
             --cloud-gpu="$GPU_TYPE" \
             --name=cml-runner \
             --labels=cml-runner \
-            --no-retry \
+            --noRetry \
             --single
         shell: bash
 
