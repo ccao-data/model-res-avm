@@ -11,17 +11,18 @@ on:
         required: false
         type: string
         default: t2.micro
-      enable_gpu:
-        description: Whether to provision a GPU-enabled instance
+      gpu_type:
+        description: >
+          Specify the type of GPU for the instance. Set to nogpu to disable GPU
         required: false
         type: boolean
-        default: false
+        default: nogpu
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   INSTANCE_TYPE: ${{ inputs.instance_type || 't2.micro' }}
-  ENABLE_GPU: ${{ inputs.enable_gpu || false }}
+  ENABLE_GPU: ${{ inputs.enable_gpu || 'nogpu' }}
 
 jobs:
   publish-docker-image:
@@ -102,7 +103,7 @@ jobs:
             --cloud aws \
             --cloud-region us-east-1 \
             --cloud-type "$INSTANCE_TYPE" \
-            --cloud-gpu "$ENABLE_GPU" \
+            --cloud-gpu "$GPU_TYPE" \
             --name cml-runner \
             --labels=cml-runner \
             --no-retry \
