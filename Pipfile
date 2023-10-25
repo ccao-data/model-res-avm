@@ -4,11 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-numpy = "*"
-pandas = "*"
-scipy = "*"
-scikit-learn = "*"
-dvc = "*"
+"dvc[s3]" = "*"
 
 [dev-packages]
 
