@@ -3,7 +3,6 @@ name: deploy
 on:
   pull_request:
   push:
-    branches: [main, '*-assessment-year']
   workflow_dispatch:
     inputs:
       instance_type:
@@ -17,6 +16,7 @@ on:
         required: false
         type: boolean
         default: nogpu
+    branches: [master, '*-assessment-year']
 
 env:
   REGISTRY: ghcr.io
