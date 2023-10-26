@@ -3,26 +3,11 @@ name: deploy
 on:
   pull_request:
   push:
-  workflow_dispatch:
-    inputs:
-      instance_type:
-        description: Type of the EC2 instance to provision
-        required: false
-        type: string
-        default: t2.micro
-      gpu_type:
-        description: >
-          Specify the type of GPU for the instance. Set to nogpu to disable GPU
-        required: false
-        type: boolean
-        default: nogpu
     branches: [master, '*-assessment-year']
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  INSTANCE_TYPE: ${{ inputs.instance_type || 't2.micro' }}
-  ENABLE_GPU: ${{ inputs.enable_gpu || 'nogpu' }}
 
 jobs:
   publish-docker-image:
@@ -68,60 +53,3 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
-
-  launch-runner:
-    needs: [publish-docker-image]
-    runs-on: ubuntu-latest
-    environment: deploy
-    # These permissions are needed to interact with GitHub's OIDC Token endpoint
-    # so that we can authenticate with AWS
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup CML
-        uses: iterative/setup-cml@v2
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
-          aws-region: us-east-1
-
-      - name: Deploy runner on EC2
-        # TODO:
-        #   * Add cloud-permission-set
-        #   * Add cloud-aws-security-group
-        #   * Potentially add cloud-aws-subnet?
-        #   * Add cloud-spot and cloud-spot-price
-        #   * Switch to real instance size after testing and enable GPU
-        run: |
-          cml runner launch \
-            --cloud=aws \
-            --cloud-region=us-east-1 \
-            --cloud-type="$INSTANCE_TYPE" \
-            --cloud-gpu="$GPU_TYPE" \
-            --name=cml-runner \
-            --labels=cml-runner \
-            --noRetry \
-            --single
-        shell: bash
-
-  run-model:
-    needs: [publish-docker-image, launch-runner]
-    runs-on: [self-hosted, cml-runner]
-    container:
-      image: ${{ needs.publish-docker-image.outputs.imageid }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Pull input data
-        run: dvc pull
-        shell: bash
-
-      - name: Run the model
-        run: dvc repro
