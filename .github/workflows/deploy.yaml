@@ -1,13 +1,32 @@
+# Workflow that builds a Docker image containing the model code,
+# pushes it to the GitHub Container Registry, and then optionally uses
+# that container image to run the model using an AWS Batch job.
+#
+# Images are built on every commit to a PR or main branch in order to ensure
+# that the build continues to work properly, but Batch jobs are gated behind
+# a `deploy` environment that requires manual approval from a codeowner.
+
 name: deploy
 
 on:
   pull_request:
   push:
+    # "*-assessment-year" are long-lived branches containing the most up-to-date
+    # models for a given assessment cycle, and hence we consider them to be
+    # main branches
     branches: [master, '*-assessment-year']
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_REGISTRY: ghcr.io
+  DOCKER_IMAGE_NAME: ${{ github.repository }}
+  # How long to wait between queries when polling for the status of an
+  # AWS Batch job when it's running or starting up
+  BATCH_JOB_POLL_INTERVAL_SECONDS: 10
+  # How many times to poll AWS Batch job status while it's starting up before
+  # deciding to raise an error. Multiply by BATCH_JOB_POLL_INTERVAL_SECONDS to
+  # derive a timeout in second units
+  BATCH_JOB_POLL_STARTUP_MAX_RETRIES: 60
+  BATCH_JOB_LOG_URL_PREFIX: "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/%2Faws%2Fbatch%2Fjob/log-events/getting-started-wizard-job-definition%2Fdefault%2F"
 
 jobs:
   publish-docker-image:
@@ -24,7 +43,7 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -32,11 +51,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}
           # Tag the following types of images:
           #   * On a branch, tag with the branch name (e.g. `master`)
           #   * On a PR, tag with the PR number (e.g. `pr-12`)
-          #   * On all events, tag with the short git SHA (e.g. `e956384`)
+          #   * On a tagged commit, tag with the git tag (e.g. `2023`)
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -52,4 +71,162 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Fix incorrect container type sidebar display in GitHub Container
+          # Registry
           provenance: false
+
+  run-model:
+    needs: [publish-docker-image]
+    runs-on: ubuntu-latest
+    # Require manual approval to run this job
+    environment: deploy
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint
+    # so that we can authenticate with AWS
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 14400  # Worst-case time for a full model run
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Initialize Terraform
+        run: terraform init
+        shell: bash
+        working-directory: terraform
+
+      - name: Set Terraform variables
+        id: set-vars
+        run: |
+          # # GITHUB_HEAD_REF is only set on pull_request events, so if it's
+          # present, we must be in a PR context
+          if [ -n "$GITHUB_HEAD_REF" ]; then
+            echo "On pull request branch, setting terraform workspace to CI"
+            # Replace slashes and underscores with hyphens in the workspace name
+            # and force it to lowercase, since we use it to name resources and
+            # we want to follow a consistent naming scheme
+            WORKSPACE="$(echo $GITHUB_HEAD_REF | \
+                        sed -e 's/\//-/g' -e 's/_/-/g' | \
+                        tr '[:upper:]' '[:lower:]')"
+            BATCH_JOB_NAME="ci_${WORKSPACE}_${GITHUB_REPOSITORY//\//-}"
+
+          elif [[ $GITHUB_REF_NAME == 'master' ]]; then
+            echo "On master branch, setting terraform workspace to prod"
+            WORKSPACE="prod"
+            BATCH_JOB_NAME="${GITHUB_REPOSITORY//\//-}"
+
+          else
+            echo "CI context did not match any of the expected environments"
+            exit 1
+          fi
+
+          echo {
+            "batch_job_name = \"$BATCH_JOB_NAME\"";
+            "batch_container_image_id = \"$BATCH_CONTAINER_IMAGE_ID\"";
+          } > "$TFVARS_FILE"
+          echo "batch-job-name=$BATCH_JOB_NAME" >> "$GITHUB_OUTPUT"
+        shell: bash
+        env:
+          BATCH_CONTAINER_IMAGE_ID: ${{ needs.publish-docker-image.outputs.imageid }}
+
+      - name: Select Terraform workspace
+        run: terraform workspace select -or-create "$WORKSPACE"
+        shell: bash
+        working-directory: terraform
+        env:
+          WORKSPACE: ${{ steps.set-vars.outputs.workspace }}
+
+      - name: Validate Terraform config
+        run: terraform validate
+        working-directory: terraform
+        shell: bash
+
+      - name: Apply Terraform changes
+        run: terraform apply -auto-approve
+        working-directory: terraform
+        shell: bash
+
+      - name: Submit new Batch job
+        id: submit-job
+        run: |
+          BATCH_JOB_ID=$(\
+            aws batch submit-job \
+              --job-name "$BATCH_JOB_NAME" \
+              --job-definition "$(terraform output batch_job_definition_arn)" \
+              --job-queue "$(terraform output batch_job_queue_arn)" \
+            | jq -r ".jobId"
+          echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
+        shell: bash
+        env:
+          BATCH_JOB_NAME: ${{ steps.set-vars.outputs.batch-job-name }}
+
+      - name: Wait for Batch job to complete
+        run: |
+          LOOP_COUNTER=0
+          while true; do
+            JOB_DESCRIPTIONS=$(aws batch describe-jobs --job-id "$BATCH_JOB_ID")
+
+            JOB_LIST=$(echo "$JOB_DESCRIPTIONS" | jq -r '.jobs')
+            if [[ "$JOB_LIST" == "[]" ]]; then
+              echo "Unexpected empty response from aws batch describe-jobs"
+              exit 1
+            fi
+
+            JOB_STATUS=$(echo "$JOB_DESCRIPTIONS" | jq -r '.jobs[0].status')
+            echo "Job status is $JOB_STATUS"
+
+            JOB_LOG_STREAM_NAME=$(\
+              echo "$JOB_DESCRIPTIONS" | \
+              jq -r '.jobs[0].container.logStreamName' \
+            )
+
+            case "$JOB_STATUS" in
+              "RUNNING")
+                if [[ "$LOOP_COUNTER" == "0" ]]; then
+                  # Only print the logs on the first loop, to keep output clean
+                  echo "See logs: ${BATCH_JOB_LOG_URL_PREFIX}${JOB_LOG_STREAM_NAME}"
+                fi
+                echo "Sleeping ${BATCH_JOB_POLL_INTERVAL_SECONDS}s until next status check"
+                sleep 10
+                ;;
+
+              "SUCCEEDED")
+                echo "Job succeeded!"
+                exit 0
+                ;;
+
+              "FAILED")
+                echo "Job failed :( See logs: ${BATCH_JOB_LOG_URL_PREFIX}${JOB_LOG_STREAM_NAME}"
+                exit 1
+                ;;
+
+              *)
+                if [[ "$LOOP_COUNTER" == "$BATCH_JOB_POLL_STARTUP_MAX_RETRIES" ]]; then
+                  echo "Failing workflow due to job startup timeout. This means "
+                  echo "that the job did not enter a RUNNING state within a "
+                  echo "reasonable amount of time. This usually indicates a "
+                  echo "problem in the underlying ECS or EC2 backend that can "
+                  echo "be debugged by checking cluster/instance logs in the "
+                  echo "AWS console."
+                  exit 1
+                fi
+                echo "Sleeping ${BATCH_JOB_POLL_INTERVAL_SECONDS}s until next status check"
+                sleep 10
+                ;;
+            esac
+
+            echo "Starting status check #$((LOOP_COUNTER++))"
+
+          done
+        shell: bash
+        env:
+          BATCH_JOB_ID: ${{ steps.submit-job.outputs.batch-job-id }}

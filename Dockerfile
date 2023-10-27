@@ -41,3 +41,6 @@ RUN mv renv model-res-avm/
 
 # Set the working directory to the app dir
 WORKDIR model-res-avm/
+
+# TODO: Set this to the full pipeline once testing is complete
+CMD "dvc pull & dvc repro train"
