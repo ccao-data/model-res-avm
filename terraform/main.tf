@@ -41,11 +41,11 @@ variable "batch_job_name" {
   type = string
 }
 
-# Set the ID of the container image that the Batch job should pull to use as
+# Set the name of the container image that the Batch job should pull to use as
 # its execution environment, e.g. "ghcr.io/ccao-data/model-res-avm:master".
 # This is defined as a variable so that CI environments can point Batch
 # job definitions to freshly built images
-variable "batch_container_image_id" {
+variable "batch_container_image_name" {
   type = string
 }
 
@@ -149,7 +149,7 @@ resource "aws_batch_job_definition" "main" {
     fargatePlatformConfiguration = {
       platformVersion = "LATEST"
     }
-    image = var.batch_container_image_id
+    image = var.batch_container_image_name
     jobRoleArn = data.aws_iam_role.ecs_job_role.arn
     logConfiguration = {
       logDriver = "awslogs"

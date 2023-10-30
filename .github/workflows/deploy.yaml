@@ -32,7 +32,7 @@ jobs:
   publish-docker-image:
     runs-on: ubuntu-latest
     outputs:
-      imageid: ${{ steps.build-and-push.outputs.imageid }}
+      image-name: ${{ steps.save-image-name.outputs.image-name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,8 +76,10 @@ jobs:
           provenance: false
 
       - name: Save image name to output
+        id: save-image-name
         run: |
-          echo "$METADATA" | jq -r '."image.name"'
+          IMAGE_NAME=$(echo "$METADATA" | jq -r '."image.name"')
+          echo "image-name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
         shell: bash
         env:
           METADATA: ${{ steps.build-and-push.outputs.metadata }}
@@ -144,7 +146,7 @@ jobs:
 
           {
             echo "batch_job_name = \"$BATCH_JOB_NAME\"";
-            echo "batch_container_image_id = \"$BATCH_CONTAINER_IMAGE_ID\"";
+            echo "batch_container_image_name = \"$BATCH_CONTAINER_IMAGE_NAME\"";
           } > terraform.tfvars
 
           echo "batch-job-name=$BATCH_JOB_NAME" >> "$GITHUB_OUTPUT"
@@ -152,7 +154,7 @@ jobs:
         shell: bash
         working-directory: terraform
         env:
-          BATCH_CONTAINER_IMAGE_ID: ${{ needs.publish-docker-image.outputs.imageid }}
+          BATCH_CONTAINER_IMAGE_NAME: ${{ needs.publish-docker-image.outputs.image-name }}
 
       - name: Select Terraform workspace
         run: terraform workspace select -or-create "$WORKSPACE"
