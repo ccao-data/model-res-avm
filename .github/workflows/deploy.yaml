@@ -242,7 +242,8 @@ jobs:
                 ;;
             esac
 
-            echo "Starting status check #$((LOOP_COUNTER++))"
+            ((LOOP_COUNTER++))
+            echo "Starting status check #$LOOP_COUNTER"
 
           done
         shell: bash
