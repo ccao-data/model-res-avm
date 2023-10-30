@@ -172,7 +172,7 @@ jobs:
               --job-name "$BATCH_JOB_NAME" \
               --job-definition "$(terraform output batch_job_definition_arn)" \
               --job-queue "$(terraform output batch_job_queue_arn)" \
-            | jq -r ".jobId"
+            ) | jq -r ".jobId"
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
         env:
