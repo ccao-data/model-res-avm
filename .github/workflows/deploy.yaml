@@ -133,7 +133,9 @@ jobs:
             echo "batch_job_name = \"$BATCH_JOB_NAME\"";
             echo "batch_container_image_id = \"$BATCH_CONTAINER_IMAGE_ID\"";
           } > terraform.tfvars
+
           echo "batch-job-name=$BATCH_JOB_NAME" >> "$GITHUB_OUTPUT"
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
         shell: bash
         working-directory: terraform
         env:
