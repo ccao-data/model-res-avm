@@ -75,15 +75,11 @@ jobs:
           # Registry
           provenance: false
 
-      - name: Print image output
+      - name: Save image name to output
         run: |
-          echo "imageid: $IMAGEID"
-          echo "digest: $DIGEST"
-          echo "metadata: $METADATA"
+          echo "$METADATA" | jq -r '."image.name"'
         shell: bash
         env:
-          IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
           METADATA: ${{ steps.build-and-push.outputs.metadata }}
 
   run-model:
