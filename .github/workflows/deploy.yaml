@@ -167,10 +167,11 @@ jobs:
       - name: Submit new Batch job
         id: submit-job
         run: |
-          BATCH_JOB_DEFINITION="$(terraform output -raw batch_job_definition_arn)"
-          BATCH_JOB_QUEUE="$(terraform output -raw batch_job_queue_arn)"
-          echo "BATCH_JOB_DEFINITION: $BATCH_JOB_DEFINITION"
-          echo "BATCH_JOB_QUEUE: $BATCH_JOB_QUEUE"
+          # Use terraform-bin to disable the wrapper script installed by
+          # the setup-terraform action, which adds extra context to
+          # `terraform output` calls
+          BATCH_JOB_DEFINITION="$(terraform-bin output -raw batch_job_definition_arn)"
+          BATCH_JOB_QUEUE="$(terraform-bin output -raw batch_job_queue_arn)"
           BATCH_JOB_ID=$(\
             aws batch submit-job \
               --job-name "$BATCH_JOB_NAME" \
