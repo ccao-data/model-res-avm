@@ -175,6 +175,7 @@ jobs:
             ) | jq -r ".jobId"
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
+        working-directory: terraform
         env:
           BATCH_JOB_NAME: ${{ steps.set-vars.outputs.batch-job-name }}
 
