@@ -167,11 +167,13 @@ jobs:
       - name: Submit new Batch job
         id: submit-job
         run: |
+          BATCH_JOB_DEFINITION="$(terraform output -raw batch_job_definition_arn)"
+          BATCH_JOB_QUEUE="$(terraform output -raw batch_job_queue_arn)"
           BATCH_JOB_ID=$(\
             aws batch submit-job \
               --job-name "$BATCH_JOB_NAME" \
-              --job-definition "$(terraform output batch_job_definition_arn)" \
-              --job-queue "$(terraform output batch_job_queue_arn)" \
+              --job-definition "$BATCH_JOB_DEFINITION" \
+              --job-queue "$BATCH_JOB_QUEUE" \
             ) | jq -r ".jobId"
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
