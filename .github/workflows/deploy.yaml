@@ -172,12 +172,14 @@ jobs:
           # `terraform output` calls
           BATCH_JOB_DEFINITION="$(terraform-bin output -raw batch_job_definition_arn)"
           BATCH_JOB_QUEUE="$(terraform-bin output -raw batch_job_queue_arn)"
-          BATCH_JOB_ID=$(\
+
+          BATCH_JOB_DETAILS=$(\
             aws batch submit-job \
               --job-name "$BATCH_JOB_NAME" \
               --job-definition "$BATCH_JOB_DEFINITION" \
               --job-queue "$BATCH_JOB_QUEUE" \
-            ) | jq -r ".jobId"
+          )
+          BATCH_JOB_ID=$(echo $BATCH_JOB_DETAILS | jq -r ".jobId")
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
         working-directory: terraform
@@ -188,7 +190,8 @@ jobs:
         run: |
           LOOP_COUNTER=0
           while true; do
-            JOB_DESCRIPTIONS=$(aws batch describe-jobs --job-id "$BATCH_JOB_ID")
+            echo "Getting status of job $BATCH_JOB_ID"
+            JOB_DESCRIPTIONS=$(aws batch describe-jobs --jobs "$BATCH_JOB_ID")
 
             JOB_LIST=$(echo "$JOB_DESCRIPTIONS" | jq -r '.jobs')
             if [[ "$JOB_LIST" == "[]" ]]; then
