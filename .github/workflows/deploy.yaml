@@ -75,6 +75,17 @@ jobs:
           # Registry
           provenance: false
 
+      - name: Print image output
+        run: |
+          echo "imageid: $IMAGEID"
+          echo "digest: $DIGEST"
+          echo "metadata: $METADATA"
+        shell: bash
+        env:
+          IMAGEID: ${{ steps.build-and-push.outputs.imageid }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          METADATA: ${{ steps.build-and-push.outputs.metadata }}
+
   run-model:
     needs: [publish-docker-image]
     runs-on: ubuntu-latest
