@@ -89,6 +89,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Mask sensitive AWS IDs from Terraform logs
+        run: |
+          echo "::add-mask::${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}"
+          echo "::add-mask::${{ secrets.AWS_ACCOUNT_ID }}"
+        shell: bash
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
