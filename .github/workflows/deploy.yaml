@@ -129,9 +129,9 @@ jobs:
             exit 1
           fi
 
-          echo {
-            "batch_job_name = \"$BATCH_JOB_NAME\"";
-            "batch_container_image_id = \"$BATCH_CONTAINER_IMAGE_ID\"";
+          {
+            echo "batch_job_name = \"$BATCH_JOB_NAME\"";
+            echo "batch_container_image_id = \"$BATCH_CONTAINER_IMAGE_ID\"";
           } > "$TFVARS_FILE"
           echo "batch-job-name=$BATCH_JOB_NAME" >> "$GITHUB_OUTPUT"
         shell: bash
