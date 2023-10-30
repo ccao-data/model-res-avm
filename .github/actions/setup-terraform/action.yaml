@@ -1,0 +1,73 @@
+name: Setup Terraform
+description: Install and configure Terraform and AWS for the correct environment
+inputs:
+  role-to-assume:
+    description: AWS IAM role to assume when running Terraform operations.
+    required: true
+  aws-account-id:
+    description: AWS account ID to use to create resources.
+    required: true
+  role-duration-seconds:
+    description: Expiration time for AWS OIDC token. Default is one hour.
+    required: false
+    default: 3600
+  tfvars-file:
+    description: File to store Terraform variables.
+    required: false
+    default: terraform.tfvars
+runs:
+  using: composite
+  steps:
+    - name: Mask sensitive AWS IDs from Terraform logs
+      run: |
+        echo "::add-mask::${{ inputs.role-to-assume }}"
+        echo "::add-mask::${{ inputs.aws-account-id }}"
+      shell: bash
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: us-east-1
+        role-duration-seconds: ${{ inputs.role-duration-seconds }}
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Initialize Terraform
+      run: terraform init
+      working-directory: terraform
+      shell: bash
+
+    - name: Set Terraform variables
+      run: |
+        {
+          echo "iam_role_arn = \"$IAM_ROLE_ARN\"";
+          echo "commit_sha = \"$GITHUB_SHA\"";
+        } > "$TFVARS_FILE"
+      shell: bash
+      env:
+        IAM_ROLE_ARN: ${{ inputs.terraform-iam-role-arn }}
+        TFVARS_FILE: ${{ inputs.tfvars-file }}
+
+    - name: Select Terraform workspace
+      run: |
+        # # GITHUB_HEAD_REF is only set on pull_request events, so if it's
+        # present, we must be in a PR context
+        if [ -n "$GITHUB_HEAD_REF" ]; then
+          echo "On pull request branch, setting terraform workspace to CI"
+          # Replace slashes and underscores with hyphens in the workspace name
+          # and force it to lowercase, since we need to use it to name S3
+          # buckets.
+          WORKSPACE="$(echo $GITHUB_HEAD_REF | \
+                      sed -e 's/\//-/g' -e 's/_/-/g' | \
+                      tr '[:upper:]' '[:lower:]')"
+        elif [[ $GITHUB_REF_NAME == 'main' ]]; then
+          echo "On master branch, setting terraform workspace to prod"
+          WORKSPACE="prod"
+        else
+          echo "CI context did not match any of the expected environments"
+          exit 1
+        fi
+        terraform workspace select -or-create "$WORKSPACE"
+      shell: bash
