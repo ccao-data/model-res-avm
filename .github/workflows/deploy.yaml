@@ -26,7 +26,7 @@ env:
   # deciding to raise an error. Multiply by BATCH_JOB_POLL_INTERVAL_SECONDS to
   # derive a timeout in second units
   BATCH_JOB_POLL_STARTUP_MAX_RETRIES: 60
-  BATCH_JOB_LOG_URL_PREFIX: "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/%2Faws%2Fbatch%2Fjob/log-events/getting-started-wizard-job-definition%2Fdefault%2F"
+  BATCH_JOB_LOG_URL_PREFIX: "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/%2Faws%2Fbatch%2Fjob/log-events"
 
 jobs:
   publish-docker-image:
@@ -215,12 +215,14 @@ jobs:
               echo "$JOB_DESCRIPTIONS" | \
               jq -r '.jobs[0].container.logStreamName' \
             )
+            # Any slashes in the log stream name need to be urlencoded
+            JOB_LOG_URL="${BATCH_JOB_LOG_URL_PREFIX}/${JOB_LOG_STREAM_NAME//\//%2F}"
 
             case "$JOB_STATUS" in
               "RUNNING")
                 if [[ "$LOOP_COUNTER" == "0" ]]; then
                   # Only print the logs on the first loop, to keep output clean
-                  echo "See logs: ${BATCH_JOB_LOG_URL_PREFIX}${JOB_LOG_STREAM_NAME}"
+                  echo "See logs: $JOB_LOG_URL"
                 fi
                 echo "Sleeping ${BATCH_JOB_POLL_INTERVAL_SECONDS}s until next status check"
                 sleep 10
@@ -232,7 +234,7 @@ jobs:
                 ;;
 
               "FAILED")
-                echo "Job failed :( See logs: ${BATCH_JOB_LOG_URL_PREFIX}${JOB_LOG_STREAM_NAME}"
+                echo "Job failed :( See logs: $JOB_LOG_URL"
                 exit 1
                 ;;
 
