@@ -20,11 +20,16 @@ env:
   DOCKER_REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
   # How long to wait between queries when polling for the status of an
-  # AWS Batch job when it's running or starting up
-  BATCH_JOB_POLL_INTERVAL_SECONDS: 10
+  # AWS Batch job that is starting up
+  BATCH_JOB_POLL_STARTUP_INTERVAL_SECONDS: 10
+  # How long to wait between queries for a job that is running
+  BATCH_JOB_POLL_RUNNING_INTERVAL_SECONDS: 60
   # How many times to poll AWS Batch job status while it's starting up before
-  # deciding to raise an error. Multiply by BATCH_JOB_POLL_INTERVAL_SECONDS to
-  # derive a timeout in second units
+  # deciding to raise an error. Multiply by
+  # BATCH_JOB_POLL_STARTUP_INTERVAL_SECONDS to derive a timeout in second units.
+  # There is no equivalent timeout for running jobs, because those timeouts
+  # can be set on the Batch level, whereas startup timeouts are not
+  # controllable
   BATCH_JOB_POLL_STARTUP_MAX_RETRIES: 60
   BATCH_JOB_LOG_URL_PREFIX: "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/%2Faws%2Fbatch%2Fjob/log-events"
 
@@ -198,6 +203,7 @@ jobs:
       - name: Wait for Batch job to complete
         run: |
           LOOP_COUNTER=0
+          JOB_IS_RUNNING=0
           while true; do
             echo "Getting status of job $BATCH_JOB_ID"
             JOB_DESCRIPTIONS=$(aws batch describe-jobs --jobs "$BATCH_JOB_ID")
@@ -220,12 +226,13 @@ jobs:
 
             case "$JOB_STATUS" in
               "RUNNING")
-                if [[ "$LOOP_COUNTER" == "0" ]]; then
+                if [[ "$JOB_IS_RUNNING" == "0" ]]; then
                   # Only print the logs on the first loop, to keep output clean
                   echo "See logs: $JOB_LOG_URL"
+                  JOB_IS_RUNNING=1
                 fi
-                echo "Sleeping ${BATCH_JOB_POLL_INTERVAL_SECONDS}s until next status check"
-                sleep 10
+                echo "Sleeping ${BATCH_JOB_POLL_RUNNING_INTERVAL_SECONDS}s until next status check"
+                sleep $BATCH_JOB_POLL_RUNNING_INTERVAL_SECONDS
                 ;;
 
               "SUCCEEDED")
@@ -235,6 +242,8 @@ jobs:
 
               "FAILED")
                 echo "Job failed :( See logs: $JOB_LOG_URL"
+                echo "More logs and container metrics can also be found on the "
+                echo "job detail page in the AWS Batch console"
                 exit 1
                 ;;
 
@@ -248,8 +257,8 @@ jobs:
                   echo "AWS console."
                   exit 1
                 fi
-                echo "Sleeping ${BATCH_JOB_POLL_INTERVAL_SECONDS}s until next status check"
-                sleep 10
+                echo "Sleeping ${BATCH_JOB_POLL_STARTUP_INTERVAL_SECONDS}s until next status check"
+                sleep $BATCH_JOB_POLL_STARTUP_INTERVAL_SECONDS
                 ;;
             esac
 
