@@ -9,6 +9,7 @@
 name: deploy
 
 on:
+  pull_request:
   push:
     # "*-assessment-year" are long-lived branches containing the most up-to-date
     # models for a given assessment cycle, and hence we consider them to be
