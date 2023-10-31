@@ -12,3 +12,8 @@ output "batch_job_name" {
   description = "Name of the Batch job"
   value       = var.batch_job_name
 }
+
+output "batch_container_image_name" {
+  description = "Name of the container image to use for the Batch job"
+  value       = var.batch_container_image_name
+}

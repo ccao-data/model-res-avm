@@ -1,0 +1,33 @@
+# Workflow that runs whenever a PR is closed or merged and deletes any
+# AWS resources created by the `deploy` workflow.
+name: cleanup-terraform
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-terraform:
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint
+    # so that we can authenticate with AWS
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          # This value can be anything, since Terraform doesn't need correct
+          # values for variables in order to destroy resources
+          batch-container-image-name: foobar
+
+      - name: Delete resources using Terraform
+        run: terraform destroy -auto-approve
+        working-directory: terraform
+        shell: bash
