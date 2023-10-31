@@ -43,4 +43,4 @@ RUN mv renv model-res-avm/
 WORKDIR model-res-avm/
 
 # TODO: Set this to the full pipeline once testing is complete
-CMD "dvc pull & dvc repro train"
+CMD dvc pull && dvc repro train
