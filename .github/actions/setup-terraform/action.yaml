@@ -1,0 +1,87 @@
+name: Setup Terraform
+description: Install and configure Terraform and AWS for the correct environment
+inputs:
+  role-to-assume:
+    description: AWS IAM role to assume when running Terraform operations.
+    required: true
+  aws-account-id:
+    description: AWS account ID to use to create resources.
+    required: true
+  batch-container-image-name:
+    description: The name of the container image to use for the Batch job.
+    required: true
+  role-duration-seconds:
+    description: How long the role specified by role-to-assume should be valid.
+    required: false
+    default: 3600
+  tfvars-file:
+    description: File to store Terraform variables.
+    required: false
+    default: terraform.tfvars
+runs:
+  using: composite
+  steps:
+    - name: Mask sensitive AWS IDs from Terraform logs
+      run: |
+        echo "::add-mask::${{ inputs.role-to-assume }}"
+        echo "::add-mask::${{ inputs.aws-account-id }}"
+      shell: bash
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: us-east-1
+        role-duration-seconds: ${{ inputs.role-duration-seconds }}
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Initialize Terraform
+      run: terraform init
+      shell: bash
+      working-directory: terraform
+
+    - name: Set Terraform variables
+      id: set-vars
+      run: |
+        # # GITHUB_HEAD_REF is only set on pull_request events, so if it's
+        # present, we must be in a PR context
+        if [ -n "$GITHUB_HEAD_REF" ]; then
+          echo "On pull request branch, setting terraform workspace to CI"
+          # Replace slashes and underscores with hyphens in the workspace name
+          # and force it to lowercase, since we use it to name resources and
+          # we want to follow a consistent naming scheme
+          WORKSPACE="$(echo $GITHUB_HEAD_REF | \
+                      sed -e 's/\//-/g' -e 's/_/-/g' | \
+                      tr '[:upper:]' '[:lower:]')"
+          BATCH_JOB_NAME="ci_${WORKSPACE}_${GITHUB_REPOSITORY//\//-}"
+
+        elif [[ $GITHUB_REF_NAME == 'master' ]]; then
+          echo "On master branch, setting terraform workspace to prod"
+          WORKSPACE="prod"
+          BATCH_JOB_NAME="${GITHUB_REPOSITORY//\//-}"
+
+        else
+          echo "CI context did not match any of the expected environments"
+          exit 1
+        fi
+
+        {
+          echo "batch_job_name = \"$BATCH_JOB_NAME\"";
+          echo "batch_container_image_name = \"$BATCH_CONTAINER_IMAGE_NAME\"";
+        } > "$TFVARS_FILE"
+
+        echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+      shell: bash
+      working-directory: terraform
+      env:
+        TFVARS_FILE: ${{ inputs.tfvars-file }}
+        BATCH_CONTAINER_IMAGE_NAME: ${{ inputs.batch-container-image-name }}
+
+    - name: Select Terraform workspace
+      run: terraform workspace select -or-create "$WORKSPACE"
+      shell: bash
+      working-directory: terraform
+      env:
+        WORKSPACE: ${{ steps.set-vars.outputs.workspace }}

@@ -103,70 +103,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Mask sensitive AWS IDs from Terraform logs
-        run: |
-          echo "::add-mask::${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}"
-          echo "::add-mask::${{ secrets.AWS_ACCOUNT_ID }}"
-        shell: bash
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
-          aws-region: us-east-1
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          batch-container-image-name: ${{ needs.publish-docker-image.outputs.image-name }}
           role-duration-seconds: 14400  # Worst-case time for a full model run
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-
-      - name: Initialize Terraform
-        run: terraform init
-        shell: bash
-        working-directory: terraform
-
-      - name: Set Terraform variables
-        id: set-vars
-        run: |
-          # # GITHUB_HEAD_REF is only set on pull_request events, so if it's
-          # present, we must be in a PR context
-          if [ -n "$GITHUB_HEAD_REF" ]; then
-            echo "On pull request branch, setting terraform workspace to CI"
-            # Replace slashes and underscores with hyphens in the workspace name
-            # and force it to lowercase, since we use it to name resources and
-            # we want to follow a consistent naming scheme
-            WORKSPACE="$(echo $GITHUB_HEAD_REF | \
-                        sed -e 's/\//-/g' -e 's/_/-/g' | \
-                        tr '[:upper:]' '[:lower:]')"
-            BATCH_JOB_NAME="ci_${WORKSPACE}_${GITHUB_REPOSITORY//\//-}"
-
-          elif [[ $GITHUB_REF_NAME == 'master' ]]; then
-            echo "On master branch, setting terraform workspace to prod"
-            WORKSPACE="prod"
-            BATCH_JOB_NAME="${GITHUB_REPOSITORY//\//-}"
-
-          else
-            echo "CI context did not match any of the expected environments"
-            exit 1
-          fi
-
-          {
-            echo "batch_job_name = \"$BATCH_JOB_NAME\"";
-            echo "batch_container_image_name = \"$BATCH_CONTAINER_IMAGE_NAME\"";
-          } > terraform.tfvars
-
-          echo "batch-job-name=$BATCH_JOB_NAME" >> "$GITHUB_OUTPUT"
-          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
-        shell: bash
-        working-directory: terraform
-        env:
-          BATCH_CONTAINER_IMAGE_NAME: ${{ needs.publish-docker-image.outputs.image-name }}
-
-      - name: Select Terraform workspace
-        run: terraform workspace select -or-create "$WORKSPACE"
-        shell: bash
-        working-directory: terraform
-        env:
-          WORKSPACE: ${{ steps.set-vars.outputs.workspace }}
 
       - name: Validate Terraform config
         run: terraform validate
@@ -184,6 +127,7 @@ jobs:
           # Use terraform-bin to disable the wrapper script installed by
           # the setup-terraform action, which adds extra context to
           # `terraform output` calls
+          BATCH_JOB_NAME="$(terraform-bin output -raw batch_job_name)"
           BATCH_JOB_DEFINITION="$(terraform-bin output -raw batch_job_definition_arn)"
           BATCH_JOB_QUEUE="$(terraform-bin output -raw batch_job_queue_arn)"
 
@@ -197,8 +141,6 @@ jobs:
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
         working-directory: terraform
-        env:
-          BATCH_JOB_NAME: ${{ steps.set-vars.outputs.batch-job-name }}
 
       - name: Wait for Batch job to complete
         run: |
