@@ -45,7 +45,7 @@ runs:
     - name: Set Terraform variables
       id: set-vars
       run: |
-        # # GITHUB_HEAD_REF is only set on pull_request events, so if it's
+        # GITHUB_HEAD_REF is only set on pull_request events, so if it's
         # present, we must be in a PR context
         if [ -n "$GITHUB_HEAD_REF" ]; then
           echo "On pull request branch, setting terraform workspace to CI"
