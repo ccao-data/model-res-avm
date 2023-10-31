@@ -4,7 +4,6 @@ name: cleanup-terraform
 
 on:
   pull_request:
-    types: [closed]
 
 jobs:
   cleanup-terraform:
