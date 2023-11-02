@@ -160,11 +160,11 @@ resource "aws_batch_job_definition" "main" {
     resourceRequirements = [
       {
         type = "VCPU"
-        value = "16.0"
+        value = "1.0"
       },
       {
         type = "MEMORY"
-        value = "65536"
+        value = "4096"
       }
     ]
     runtimePlatform = {
