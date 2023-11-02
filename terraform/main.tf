@@ -97,7 +97,7 @@ data "aws_iam_role" "ecs_task_execution_role" {
 # Retrieve the IAM role that the Batch job passes on to the containers, allowing
 # those containers to access AWS resources like data stored in S3
 data "aws_iam_role" "ecs_job_role" {
-  name = "ccao-ecs-dvc-full-access"
+  name = "ccao-ecs-model-runner"
 }
 
 # Create a Batch compute environment to run containers. Compute environments
