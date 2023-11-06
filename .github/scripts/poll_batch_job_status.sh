@@ -24,7 +24,7 @@ BATCH_JOB_LOG_URL_PREFIX="https://us-east-1.console.aws.amazon.com/cloudwatch/ho
 # timeouts are not controllable by Batch
 BATCH_JOB_POLL_STARTUP_MAX_RETRIES=60
 
-if [ -z "$1" ]; then
+if [ -z ${1+x} ]; then
     echo "Missing Batch job ID"
     exit 1
 fi
@@ -35,7 +35,7 @@ POLL_TYPE="completion"
   # How long to wait between queries when polling
 BATCH_JOB_POLL_INTERVAL_SECONDS=300  # 5 minutes
 
-if [ -n "$2" ]; then
+if [[ -n ${2+x} ]]; then
     case "$2" in
         "startup")
             POLL_TYPE="startup"
