@@ -36,5 +36,10 @@ RUN Rscript -e 'renv::restore()'
 ADD ./ model-res-avm/
 
 # Copy R dependencies into the app directory
-RUN mv renv model-res-avm/renv
+RUN rm -Rf model-res-avm/renv
+RUN mv renv model-res-avm/
+
+# Set the working directory to the app dir
 WORKDIR model-res-avm/
+
+CMD dvc pull && dvc repro

@@ -1,17 +1,29 @@
+# Workflow that builds a Docker image containing the model code,
+# pushes it to the GitHub Container Registry, and then optionally uses
+# that container image to run the model using an AWS Batch job.
+#
+# Images are built on every commit to a PR or main branch in order to ensure
+# that the build continues to work properly, but Batch jobs are gated behind
+# a `deploy` environment that requires manual approval from a
+# @ccao-data/core-team member.
+
 name: deploy
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
-    branches: [main, '*-assessment-year']
+    branches: [master]
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_REGISTRY: ghcr.io
+  DOCKER_IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   publish-docker-image:
     runs-on: ubuntu-latest
+    outputs:
+      image-name: ${{ steps.save-image-name.outputs.image-name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,7 +34,7 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -30,17 +42,18 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}
           # Tag the following types of images:
           #   * On a branch, tag with the branch name (e.g. `master`)
           #   * On a PR, tag with the PR number (e.g. `pr-12`)
-          #   * On all events, tag with the short git SHA (e.g. `e956384`)
+          #   * On a tagged commit, tag with the git tag (e.g. `2023`)
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=ref,event=tag
 
       - name: Build and push Docker image
+        id: build-and-push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -49,4 +62,83 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Fix incorrect container type sidebar display in GitHub Container
+          # Registry
           provenance: false
+
+      - name: Save image name to output
+        id: save-image-name
+        run: |
+          IMAGE_NAME=$(echo "$METADATA" | jq -r '."image.name"')
+          echo "image-name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
+        shell: bash
+        env:
+          METADATA: ${{ steps.build-and-push.outputs.metadata }}
+
+  run-model:
+    # Don't automatically run the model on push, since we prefer to use workflow
+    # dispatch for prod runs instead
+    if: github.event_name != 'push'
+    needs: [publish-docker-image]
+    runs-on: ubuntu-latest
+    # Require manual approval to run this job
+    environment: deploy
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint
+    # so that we can authenticate with AWS
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          batch-container-image-name: ${{ needs.publish-docker-image.outputs.image-name }}
+          role-duration-seconds: 14400  # Worst-case time for a full model run
+
+      - name: Validate Terraform config
+        run: terraform validate
+        working-directory: terraform
+        shell: bash
+
+      - name: Apply Terraform changes
+        run: terraform apply -auto-approve
+        working-directory: terraform
+        shell: bash
+
+      - name: Submit new Batch job
+        id: submit-job
+        run: |
+          # Use terraform-bin to disable the wrapper script installed by
+          # the setup-terraform action, which adds extra context to
+          # `terraform output` calls
+          BATCH_JOB_NAME="$(terraform-bin output -raw batch_job_name)"
+          BATCH_JOB_DEFINITION="$(terraform-bin output -raw batch_job_definition_arn)"
+          BATCH_JOB_QUEUE="$(terraform-bin output -raw batch_job_queue_arn)"
+
+          BATCH_JOB_DETAILS=$(\
+            aws batch submit-job \
+              --job-name "$BATCH_JOB_NAME" \
+              --job-definition "$BATCH_JOB_DEFINITION" \
+              --job-queue "$BATCH_JOB_QUEUE" \
+          )
+          BATCH_JOB_ID=$(echo $BATCH_JOB_DETAILS | jq -r ".jobId")
+          echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
+        shell: bash
+        working-directory: terraform
+
+      - name: Wait for Batch job to start and print link to AWS logs
+        run: ./.github/scripts/poll_batch_job_status.sh "$BATCH_JOB_ID" startup
+        shell: bash
+        env:
+          BATCH_JOB_ID: ${{ steps.submit-job.outputs.batch-job-id }}
+
+      - name: Wait for Batch job to complete
+        run: ./.github/scripts/poll_batch_job_status.sh "$BATCH_JOB_ID"
+        shell: bash
+        env:
+          BATCH_JOB_ID: ${{ steps.submit-job.outputs.batch-job-id }}

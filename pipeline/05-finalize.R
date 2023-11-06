@@ -9,6 +9,7 @@
 suppressPackageStartupMessages({
   library(arrow)
   library(aws.s3)
+  library(aws.ec2metadata)
   library(ccao)
   library(dplyr)
   library(here)
