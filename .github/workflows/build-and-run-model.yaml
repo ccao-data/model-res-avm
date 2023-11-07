@@ -13,6 +13,7 @@ jobs:
       # so that we can authenticate with AWS
       contents: read
       id-token: write
+      packages: write
     uses: ./.github/workflows/deploy.yaml
     with:
       role-duration-seconds: 14400  # Worst-case time for a full model run
