@@ -26,7 +26,7 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ./.github/workflows/deploy.yaml
+    uses: ./.github/workflows/build-and-run-batch-job.yaml
     with:
       role-duration-seconds: 14400  # Worst-case time for a full model run
     secrets:

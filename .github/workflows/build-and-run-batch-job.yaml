@@ -17,7 +17,7 @@
 #   * Various required inputs and secrets, documented below, must be passed in
 #     by the calling workflow.
 
-name: deploy
+name: build-and-run-batch-job
 
 on:
   workflow_call:
