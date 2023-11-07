@@ -44,6 +44,16 @@ variable "batch_container_image_name" {
   type = string
 }
 
+# How many vCPUs should be provisioned for Batch jobs
+variable "batch_job_definition_vcpu" {
+  type = string
+}
+
+# How much memory should be provisioned for Batch jobs
+variable "batch_job_definition_memory" {
+  type = string
+}
+
 # Retrieve the default VPC for this region, which is builtin to AWS.
 # Containers in the Batch compute environment will be deployed into this VPC
 data "aws_vpc" "default" {
@@ -155,11 +165,11 @@ resource "aws_batch_job_definition" "main" {
     resourceRequirements = [
       {
         type = "VCPU"
-        value = "16.0"
+        value = var.batch_job_definition_vcpu
       },
       {
         type = "MEMORY"
-        value = "65536"
+        value = var.batch_job_definition_memory
       }
     ]
     runtimePlatform = {
