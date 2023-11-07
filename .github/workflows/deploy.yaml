@@ -27,7 +27,7 @@ env:
   DOCKER_IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  publish-docker-image:
+  build:
     runs-on: ubuntu-latest
     outputs:
       image-name: ${{ steps.save-image-name.outputs.image-name }}
@@ -82,11 +82,11 @@ jobs:
         env:
           METADATA: ${{ steps.build-and-push.outputs.metadata }}
 
-  run-model:
+  run:
     # Don't automatically run the model on push, since we prefer to use workflow
     # dispatch for prod runs instead
     if: github.event_name != 'push'
-    needs: [publish-docker-image]
+    needs: [build]
     runs-on: ubuntu-latest
     # Require manual approval to run this job
     environment: deploy
@@ -99,7 +99,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
-          batch-container-image-name: ${{ needs.publish-docker-image.outputs.image-name }}
+          batch-container-image-name: ${{ needs.build.outputs.image-name }}
           repo: ${{ github.event.repository.name }}
           role-duration-seconds: ${{ inputs.role-duration-seconds}}
 
