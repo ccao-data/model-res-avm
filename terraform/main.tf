@@ -20,12 +20,7 @@ terraform {
 
   required_version = ">= 1.5.7"
 
-  backend "s3" {
-    bucket = "ccao-terraform-state-us-east-1"
-    key    = "terraform.tfstate"
-    region = "us-east-1"
-    workspace_key_prefix = "model-res-avm/workspaces"
-  }
+  backend "s3" {}
 }
 
 provider "aws" {

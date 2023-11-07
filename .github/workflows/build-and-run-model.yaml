@@ -1,0 +1,21 @@
+name: build-and-run-model
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+jobs:
+  build-and-run-model:
+    permissions:
+      # These permissions are needed to interact with GitHub's OIDC Token endpoint
+      # so that we can authenticate with AWS
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      role-duration-seconds: 14400  # Worst-case time for a full model run
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}

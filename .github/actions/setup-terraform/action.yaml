@@ -10,6 +10,9 @@ inputs:
   batch-container-image-name:
     description: The name of the container image to use for the Batch job.
     required: true
+  repo:
+    description: The name of the repo, to use for namespacing Terraform configs.
+    required: true
   role-duration-seconds:
     description: How long the role specified by role-to-assume should be valid.
     required: false
@@ -38,9 +41,16 @@ runs:
       uses: hashicorp/setup-terraform@v2
 
     - name: Initialize Terraform
-      run: terraform init
+      run: |
+        terraform init \
+          -backend-config "bucket=ccao-terraform-state-us-east-1" \
+          -backend-config "key=terraform.tfstate" \
+          -backend-config "region=us-east-1" \
+          -backend-config "workspace_key_prefix=$REPO/workspaces"
       shell: bash
       working-directory: terraform
+      env:
+        REPO: ${{ inputs.repo }}
 
     - name: Set Terraform variables
       id: set-vars
