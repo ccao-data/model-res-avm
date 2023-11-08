@@ -14,9 +14,7 @@ jobs:
       # so that we can authenticate with AWS
       id-token: write
       contents: read
-    uses: ./.github/workflows/cleanup-terraform.yaml
-    with:
-      terraform-working-directory: terraform
+    uses: ccao-data/actions/.github/workflows/batch-job-cleanup.yaml@jeancochrane/add-batch-and-terraform-workflows-and-actions
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
