@@ -5,6 +5,7 @@ name: cleanup-model
 
 on:
   pull_request:
+    types: [closed]
 
 jobs:
   cleanup-model:
