@@ -10,8 +10,8 @@ on:
 jobs:
   cleanup-model:
     permissions:
-    # These permissions are needed to interact with GitHub's OIDC Token endpoint
-    # so that we can authenticate with AWS
+      # These permissions are needed to interact with GitHub's OIDC Token endpoint
+      # so that we can authenticate with AWS
       id-token: write
       contents: read
     uses: ./.github/workflows/cleanup-terraform.yaml
