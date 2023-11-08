@@ -6,11 +6,12 @@
 # that the build continues to work properly, but Batch jobs are gated behind
 # a `deploy` environment that requires manual approval from a
 # @ccao-data/core-team member.
-#
+
 name: build-and-run-model
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, closed]
   workflow_dispatch:
   push:
     branches: [master]
