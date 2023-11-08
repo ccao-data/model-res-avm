@@ -10,7 +10,6 @@
 name: build-and-run-model
 
 on:
-  pull_request:
   workflow_dispatch:
   push:
     branches: [master]
