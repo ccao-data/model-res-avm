@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: "4096"
+      terraform-working-directory:
+        description: Directory where the Terraform configuration is stored.
+        required: false
+        type: string
+        default: .
 
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN:
@@ -129,15 +134,16 @@ jobs:
           batch-job-definition-memory: ${{ inputs.memory }}
           repo: ${{ github.event.repository.name }}
           role-duration-seconds: ${{ inputs.role-duration-seconds}}
+          working-directory: ${{ inputs.terraform-working-directory }}
 
       - name: Validate Terraform config
         run: terraform validate
-        working-directory: terraform
+        working-directory: ${{ inputs.terraform-working-directory }}
         shell: bash
 
       - name: Apply Terraform changes
         run: terraform apply -auto-approve
-        working-directory: terraform
+        working-directory: ${{ inputs.terraform-working-directory }}
         shell: bash
 
       - name: Submit new Batch job
@@ -159,7 +165,7 @@ jobs:
           BATCH_JOB_ID=$(echo $BATCH_JOB_DETAILS | jq -r ".jobId")
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
-        working-directory: terraform
+        working-directory: ${{ inputs.terraform-working-directory }}
 
       - name: Wait for Batch job to start and print link to AWS logs
         run: ./.github/scripts/poll_batch_job_status.sh "$BATCH_JOB_ID" startup

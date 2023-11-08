@@ -30,6 +30,10 @@ inputs:
     description: File to store Terraform variables.
     required: false
     default: terraform.tfvars
+  working-directory:
+    description: Directory where the Terraform configuration is stored.
+    required: false
+    default: .
 runs:
   using: composite
   steps:
@@ -57,7 +61,7 @@ runs:
           -backend-config "region=us-east-1" \
           -backend-config "workspace_key_prefix=$REPO/workspaces"
       shell: bash
-      working-directory: terraform
+      working-directory: ${{ inputs.working-directory }}
       env:
         REPO: ${{ inputs.repo }}
 
@@ -95,7 +99,7 @@ runs:
 
         echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
       shell: bash
-      working-directory: terraform
+      working-directory: ${{ inputs.working-directory }}
       env:
         TFVARS_FILE: ${{ inputs.tfvars-file }}
         BATCH_CONTAINER_IMAGE_NAME: ${{ inputs.batch-container-image-name }}
@@ -105,6 +109,6 @@ runs:
     - name: Select Terraform workspace
       run: terraform workspace select -or-create "$WORKSPACE"
       shell: bash
-      working-directory: terraform
+      working-directory: ${{ inputs.working-directory }}
       env:
         WORKSPACE: ${{ steps.set-vars.outputs.workspace }}

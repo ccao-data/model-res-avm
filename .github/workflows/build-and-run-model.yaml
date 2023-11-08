@@ -31,6 +31,7 @@ jobs:
       vcpu: "16.0"
       memory: "65536"
       role-duration-seconds: 14400  # Worst-case time for a full model run
+      terraform-working-directory: terraform
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
