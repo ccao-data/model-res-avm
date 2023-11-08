@@ -20,6 +20,9 @@ terraform {
 
   required_version = ">= 1.5.7"
 
+  # Backend configs change based on the calling repo, so we leave it empty here
+  # and then leave it up to the caller of `terraform init` to pass the required
+  # S3 backend config attributes in via `-backend-config` flags.
   backend "s3" {}
 }
 
