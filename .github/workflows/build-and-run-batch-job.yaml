@@ -132,7 +132,6 @@ jobs:
           batch-container-image-name: ${{ needs.build.outputs.image-name }}
           batch-job-definition-vcpu: ${{ inputs.vcpu }}
           batch-job-definition-memory: ${{ inputs.memory }}
-          repo: ${{ github.event.repository.name }}
           role-duration-seconds: ${{ inputs.role-duration-seconds}}
           working-directory: ${{ inputs.terraform-working-directory }}
 

@@ -19,9 +19,6 @@ inputs:
   batch-job-definition-memory:
     description: Count of megabytes of RAM to provision for the container.
     required: true
-  repo:
-    description: The name of the repo, to use for namespacing Terraform configs.
-    required: true
   role-duration-seconds:
     description: How long the role specified by role-to-assume should be valid.
     required: false
@@ -63,7 +60,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        REPO: ${{ inputs.repo }}
+        REPO: ${{ github.event.repository.name }}
 
     - name: Set Terraform variables
       id: set-vars

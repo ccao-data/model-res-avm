@@ -32,7 +32,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
           working-directory: ${{ inputs.terraform-working-directory }}
-          repo: ${{ github.event.repository.name }}
           # These values can be anything, since Terraform doesn't need correct
           # values for variables in order to destroy resources
           batch-container-image-name: foo
