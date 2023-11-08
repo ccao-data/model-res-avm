@@ -1,0 +1,37 @@
+# Workflow that builds a Docker image containing the model code,
+# pushes it to the GitHub Container Registry, and then optionally uses
+# that container image to run the model using an AWS Batch job.
+#
+# Images are built on every commit to a PR or main branch in order to ensure
+# that the build continues to work properly, but Batch jobs are gated behind
+# a `deploy` environment that requires manual approval from a
+# @ccao-data/core-team member.
+#
+name: build-and-run-model
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+jobs:
+  build-and-run-model:
+    permissions:
+      # contents:read and id-token:write permissions are needed to interact
+      # with GitHub's OIDC Token endpoint so that we can authenticate with AWS
+      contents: read
+      id-token: write
+      # While packages:write is usually not required for workflows, it is
+      # required in order to allow the reusable called workflow to push to
+      # GitHub Container Registry
+      packages: write
+    uses: ./.github/workflows/build-and-run-batch-job.yaml
+    with:
+      vcpu: "16.0"
+      memory: "65536"
+      role-duration-seconds: 14400  # Worst-case time for a full model run
+      terraform-working-directory: terraform
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}

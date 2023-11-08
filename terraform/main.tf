@@ -20,12 +20,10 @@ terraform {
 
   required_version = ">= 1.5.7"
 
-  backend "s3" {
-    bucket = "ccao-terraform-state-us-east-1"
-    key    = "terraform.tfstate"
-    region = "us-east-1"
-    workspace_key_prefix = "model-res-avm/workspaces"
-  }
+  # Backend configs change based on the calling repo, so we leave it empty here
+  # and then leave it up to the caller of `terraform init` to pass the required
+  # S3 backend config attributes in via `-backend-config` flags.
+  backend "s3" {}
 }
 
 provider "aws" {
@@ -46,6 +44,16 @@ variable "batch_job_name" {
 # This is defined as a variable so that CI environments can point Batch
 # job definitions to freshly built images
 variable "batch_container_image_name" {
+  type = string
+}
+
+# How many vCPUs should be provisioned for Batch jobs
+variable "batch_job_definition_vcpu" {
+  type = string
+}
+
+# How much memory should be provisioned for Batch jobs
+variable "batch_job_definition_memory" {
   type = string
 }
 
@@ -160,11 +168,11 @@ resource "aws_batch_job_definition" "main" {
     resourceRequirements = [
       {
         type = "VCPU"
-        value = "16.0"
+        value = var.batch_job_definition_vcpu
       },
       {
         type = "MEMORY"
-        value = "65536"
+        value = var.batch_job_definition_memory
       }
     ]
     runtimePlatform = {

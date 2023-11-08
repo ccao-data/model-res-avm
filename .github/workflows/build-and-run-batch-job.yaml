@@ -1,26 +1,63 @@
-# Workflow that builds a Docker image containing the model code,
-# pushes it to the GitHub Container Registry, and then optionally uses
-# that container image to run the model using an AWS Batch job.
+# Reusable workflow that builds a Docker image, pushes it to the GitHub
+# Container Registry, and then optionally uses that container image to run
+# an AWS Batch job.
 #
-# Images are built on every commit to a PR or main branch in order to ensure
-# that the build continues to work properly, but Batch jobs are gated behind
-# a `deploy` environment that requires manual approval from a
-# @ccao-data/core-team member.
+# Requirements:
+#
+#   * A Dockerfile must be defined in the root of the repo whose workflow is
+#     calling this one.
+#   * A `deploy` environment must be configured in the calling repo. This
+#     environment is used to protect the `run` job, which must be approved by
+#     a core team member before it will run.
+#   * The calling workflow must grant the following permissions to the job
+#     that calls this workflow:
+#       * contents: read
+#       * id-token: write
+#       * packages: write
+#   * Various required inputs and secrets, documented below, must be passed in
+#     by the calling workflow.
 
-name: deploy
+name: build-and-run-batch-job
 
 on:
-  pull_request:
-  workflow_dispatch:
-  push:
-    branches: [master]
+  workflow_call:
+    inputs:
+      role-duration-seconds:
+        description: How long IAM role used to auth with AWS can be valid.
+        required: false
+        type: string
+        default: 3600
+      vcpu:
+        description: >
+          Count of cVPUs to provision for the container. Per AWS requirements,
+          must be formatted as a float, e.g. 1.0 for 1 vCPU. The minimum
+          is 1 vCPU and values must be specified in increments of 0.25.
+        required: false
+        type: string
+        default: "1.0"
+      memory:
+        description: Count of megabytes of RAM to provision for the container.
+        required: false
+        type: string
+        default: "4096"
+      terraform-working-directory:
+        description: Directory where the Terraform configuration is stored.
+        required: false
+        type: string
+        default: .
+
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN:
+        required: true
+      AWS_ACCOUNT_ID:
+        required: true
 
 env:
   DOCKER_REGISTRY: ghcr.io
   DOCKER_IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  publish-docker-image:
+  build:
     runs-on: ubuntu-latest
     outputs:
       image-name: ${{ steps.save-image-name.outputs.image-name }}
@@ -75,19 +112,14 @@ jobs:
         env:
           METADATA: ${{ steps.build-and-push.outputs.metadata }}
 
-  run-model:
+  run:
     # Don't automatically run the model on push, since we prefer to use workflow
     # dispatch for prod runs instead
     if: github.event_name != 'push'
-    needs: [publish-docker-image]
+    needs: [build]
     runs-on: ubuntu-latest
     # Require manual approval to run this job
     environment: deploy
-    # These permissions are needed to interact with GitHub's OIDC Token endpoint
-    # so that we can authenticate with AWS
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -97,17 +129,20 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
-          batch-container-image-name: ${{ needs.publish-docker-image.outputs.image-name }}
-          role-duration-seconds: 14400  # Worst-case time for a full model run
+          batch-container-image-name: ${{ needs.build.outputs.image-name }}
+          batch-job-definition-vcpu: ${{ inputs.vcpu }}
+          batch-job-definition-memory: ${{ inputs.memory }}
+          role-duration-seconds: ${{ inputs.role-duration-seconds}}
+          working-directory: ${{ inputs.terraform-working-directory }}
 
       - name: Validate Terraform config
         run: terraform validate
-        working-directory: terraform
+        working-directory: ${{ inputs.terraform-working-directory }}
         shell: bash
 
       - name: Apply Terraform changes
         run: terraform apply -auto-approve
-        working-directory: terraform
+        working-directory: ${{ inputs.terraform-working-directory }}
         shell: bash
 
       - name: Submit new Batch job
@@ -129,7 +164,7 @@ jobs:
           BATCH_JOB_ID=$(echo $BATCH_JOB_DETAILS | jq -r ".jobId")
           echo "batch-job-id=$BATCH_JOB_ID" >> "$GITHUB_OUTPUT"
         shell: bash
-        working-directory: terraform
+        working-directory: ${{ inputs.terraform-working-directory }}
 
       - name: Wait for Batch job to start and print link to AWS logs
         run: ./.github/scripts/poll_batch_job_status.sh "$BATCH_JOB_ID" startup

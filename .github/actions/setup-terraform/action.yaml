@@ -10,6 +10,15 @@ inputs:
   batch-container-image-name:
     description: The name of the container image to use for the Batch job.
     required: true
+  batch-job-definition-vcpu:
+    description: >
+      Count of cVPUs to provision for the container. Per AWS requirements,
+      must be formatted as a float, e.g. 1.0 for 1 vCPU. The minimum
+      is 1 vCPU and values must be specified in increments of 0.25.
+    required: true
+  batch-job-definition-memory:
+    description: Count of megabytes of RAM to provision for the container.
+    required: true
   role-duration-seconds:
     description: How long the role specified by role-to-assume should be valid.
     required: false
@@ -18,6 +27,10 @@ inputs:
     description: File to store Terraform variables.
     required: false
     default: terraform.tfvars
+  working-directory:
+    description: Directory where the Terraform configuration is stored.
+    required: false
+    default: .
 runs:
   using: composite
   steps:
@@ -38,9 +51,16 @@ runs:
       uses: hashicorp/setup-terraform@v2
 
     - name: Initialize Terraform
-      run: terraform init
+      run: |
+        terraform init \
+          -backend-config "bucket=ccao-terraform-state-us-east-1" \
+          -backend-config "key=terraform.tfstate" \
+          -backend-config "region=us-east-1" \
+          -backend-config "workspace_key_prefix=$REPO/workspaces"
       shell: bash
-      working-directory: terraform
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        REPO: ${{ github.event.repository.name }}
 
     - name: Set Terraform variables
       id: set-vars
@@ -70,18 +90,22 @@ runs:
         {
           echo "batch_job_name = \"$BATCH_JOB_NAME\"";
           echo "batch_container_image_name = \"$BATCH_CONTAINER_IMAGE_NAME\"";
+          echo "batch_job_definition_vcpu = \"$BATCH_JOB_DEFINITION_VCPU\"";
+          echo "batch_job_definition_memory = \"$BATCH_JOB_DEFINITION_MEMORY\"";
         } > "$TFVARS_FILE"
 
         echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
       shell: bash
-      working-directory: terraform
+      working-directory: ${{ inputs.working-directory }}
       env:
         TFVARS_FILE: ${{ inputs.tfvars-file }}
         BATCH_CONTAINER_IMAGE_NAME: ${{ inputs.batch-container-image-name }}
+        BATCH_JOB_DEFINITION_VCPU: ${{ inputs.batch-job-definition-vcpu }}
+        BATCH_JOB_DEFINITION_MEMORY: ${{ inputs.batch-job-definition-memory }}
 
     - name: Select Terraform workspace
       run: terraform workspace select -or-create "$WORKSPACE"
       shell: bash
-      working-directory: terraform
+      working-directory: ${{ inputs.working-directory }}
       env:
         WORKSPACE: ${{ steps.set-vars.outputs.workspace }}
