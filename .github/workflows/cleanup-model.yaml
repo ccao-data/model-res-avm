@@ -1,0 +1,22 @@
+# Workflow that runs whenever a PR is closed or merged and deletes any
+# AWS resources created for the pull request.
+
+name: cleanup-model
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-model:
+    permissions:
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint
+    # so that we can authenticate with AWS
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/cleanup-terraform.yaml
+    with:
+      terraform-working-directory: terraform
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
