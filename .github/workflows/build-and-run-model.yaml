@@ -27,7 +27,7 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
       vcpu: "16.0"
       memory: "65536"
