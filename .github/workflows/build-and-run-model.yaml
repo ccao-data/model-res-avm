@@ -6,11 +6,12 @@
 # that the build continues to work properly, but Batch jobs are gated behind
 # a `deploy` environment that requires manual approval from a
 # @ccao-data/core-team member.
-#
+
 name: build-and-run-model
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, closed]
   workflow_dispatch:
   push:
     branches: [master]
@@ -26,12 +27,11 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ./.github/workflows/build-and-run-batch-job.yaml
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
       vcpu: "16.0"
       memory: "65536"
       role-duration-seconds: 14400  # Worst-case time for a full model run
-      terraform-working-directory: terraform
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
