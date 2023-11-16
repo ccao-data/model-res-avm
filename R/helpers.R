@@ -59,8 +59,14 @@ model_delete_run <- function(run_id, year) {
   ))
 
   # Delete current version of objects
-  purrr::walk(s3_objs_limited, aws.s3::delete_object)
-  purrr::walk(s3_objs_w_run_id, aws.s3::delete_object, bucket = bucket)
+  del_objs_limited <- purrr::walk(s3_objs_limited, aws.s3::delete_object)
+  del_objs_w_run_id <- purrr::walk(
+    s3_objs_w_run_id,
+    aws.s3::delete_object,
+    bucket = bucket
+  )
+
+  return(c(del_objs_limited, del_objs_w_run_id))
 }
 
 

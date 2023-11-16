@@ -2,10 +2,25 @@
 #
 # Assumes that model runs are restricted to the current assessment cycle, where
 # each assessment cycle starts in April.
+#
+# Raises an error if no objects matching the given ID were deleted.
 
+library(glue)
 library(here)
 library(magrittr)
 source(here("R", "helpers.R"))
+
+# Slightly altered version of model_delete_run from helpers.R that raises an
+# error if no objects were deleted
+delete_run <- function(run_id, year) {
+  deleted_objs <- model_delete_run(run_id, year)
+  if (length(deleted_objs) == 0) {
+    error_msg <- "No objects match the run ID '{run_id}' for year {year}"
+    error_msg %>%
+      glue::glue() %>%
+      stop()
+  }
+}
 
 current_date <- as.POSIXct(Sys.Date())
 current_month <- current_date %>% format("%m")
@@ -23,6 +38,9 @@ year <- if (current_month < "03") {
 
 run_ids <- commandArgs(trailingOnly = TRUE)
 
-sprintf("Deleting run IDs for year %s: %s", year, run_ids)
+log_msg <- "Deleting run IDs for year {year}: {run_ids}"
+log_msg %>%
+  glue::glue() %>%
+  print()
 
-run_ids %>% sapply(model_delete_run, year = year)
+run_ids %>% sapply(delete_run, year = year)
