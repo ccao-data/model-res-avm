@@ -15,7 +15,7 @@ current_year <- current_date %>% format("%Y")
 #
 #   * From March to December (post assessment), `year` = next year
 #   * From January to March (during assessment), `year` = current year
-year <- if(current_month < "03") current_year else as.character(as.numeric(current_year) + 1)
+year <- if (current_month < "03") current_year else as.character(as.numeric(current_year) + 1)
 
 run_ids <- commandArgs(trailingOnly = TRUE)
 
