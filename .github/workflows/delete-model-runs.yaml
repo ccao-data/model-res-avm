@@ -1,8 +1,8 @@
 # Workflow that can be manually dispatched to delete test model runs that
 # do not need to be persisted indefinitely.
 #
-# Gated such that it's impossible to delete runs older than the current upcoming
-# assessment cycle.
+# Gated such that it's impossible to delete runs older than the current
+# assessment cycle, where each assessment cycle starts in April.
 
 name: delete-model-runs
 
@@ -26,8 +26,8 @@ jobs:
           use-public-rspm: true
 
       - name: Install system dependencies
-        # TODO: Cache this step
         run: sudo apt-get install libgit2-dev
+        shell: bash
 
       - name: Setup renv
         uses: r-lib/actions/setup-renv@v2
@@ -35,8 +35,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # TODO: Create a new role and add it to repo secrets
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_DELETION_ARN }}
           aws-region: us-east-1
 
       - name: Delete model runs
@@ -46,4 +45,4 @@ jobs:
           done
         shell: bash
         env:
-          RUN_IDS: 1,2,3,4,5
+          RUN_IDS: 2023-11-14-frosty-jacob
