@@ -28,10 +28,6 @@ suppressPackageStartupMessages({
 })
 source(here("R", "helpers.R"))
 
-# Load Python packages and functions with reticulate
-use_virtualenv("pipenv/")
-source_python("py/flagging.py")
-
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
 
@@ -74,16 +70,20 @@ training_data <- dbGetQuery(
       sale.deed_type AS meta_sale_deed_type,
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
-      sale.sale_filter_is_outlier AS sv_is_ptax203_outlier,
+      sale.sv_is_outlier,
+      sale.sv_outlier_type,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.meta_year
-  WHERE (res.meta_year
+  WHERE res.meta_year
       BETWEEN '{params$input$min_sale_year}'
-      AND '{params$input$max_sale_year}')
+      AND '{params$input$max_sale_year}'
   AND NOT sale.is_multisale
+  AND NOT sale.sale_filter_same_sale_within_365
+  AND NOT sale.sale_filter_less_than_10k
+  AND NOT sale.sale_filter_deed_type
   AND Year(sale.sale_date) >= {params$input$min_sale_year}
   ")
 )
@@ -267,71 +267,15 @@ assessment_data_w_hie <- assessment_data %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 5. Validate Sales ------------------------------------------------------------
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-message("Validating training data sales")
-
-# Create an outlier sale flag using a variety of heuristics. See flagging.py for
-# the full list. Also exclude any sales that have a flag on Q10 of the PTAX-203
-# form AND are large statistical outliers
-training_data_w_sv <- training_data_w_hie %>%
-  mutate(
-    meta_sale_price = as.numeric(meta_sale_price),
-    sv_is_ptax203_outlier = as.logical(as.numeric(sv_is_ptax203_outlier))
-  ) %>%
-  # Run Python-based automatic sales validation to identify outliers
-  create_stats(as.list(params$input$sale_validation$stat_groups)) %>%
-  string_processing() %>%
-  iso_forest(
-    as.list(params$input$sale_validation$stat_groups),
-    params$input$sale_validation$iso_forest
-  ) %>%
-  outlier_taxonomy(
-    as.list(params$input$sale_validation$dev_bounds),
-    as.list(params$input$sale_validation$stat_groups)
-  ) %>%
-  # Combine outliers identified via PTAX-203 with the heuristic-based outliers
-  rename(sv_is_autoval_outlier = sv_is_outlier) %>%
-  mutate(
-    sv_is_autoval_outlier = sv_is_autoval_outlier == "Outlier",
-    sv_is_autoval_outlier = replace_na(sv_is_autoval_outlier, FALSE),
-    sv_is_outlier = sv_is_autoval_outlier | sv_is_ptax203_outlier,
-    sv_outlier_type = ifelse(
-      sv_outlier_type == "Not outlier" & sv_is_ptax203_outlier,
-      "PTAX-203 flag",
-      sv_outlier_type
-    ),
-    sv_outlier_type = replace_na(sv_outlier_type, "Not outlier"),
-    sv_is_outlier = sv_outlier_type != "Not outlier"
-  ) %>%
-  select(
-    meta_pin, meta_card_num, meta_sale_date, meta_sale_document_num,
-    sv_is_ptax203_outlier, sv_is_autoval_outlier, sv_is_outlier, sv_outlier_type
-  ) %>%
-  # Rejoin validation output to the original training data. CAUTION: converting
-  # data to pandas and back WILL alter certain R data types. For example,
-  # missing character values are replaced with "NA"
-  right_join(
-    training_data_w_hie %>% select(-sv_is_ptax203_outlier),
-    by = c(
-      "meta_pin", "meta_card_num",
-      "meta_sale_date", "meta_sale_document_num"
-    )
-  )
-
-
-
-
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 6. Add Features and Clean ----------------------------------------------------
+# 5. Add Features and Clean ----------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Adding time features and cleaning")
 
-## 6.1. Training Data ----------------------------------------------------------
+## 5.1. Training Data ----------------------------------------------------------
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, missingness, etc. is handled via Tidymodels recipes
-training_data_clean <- training_data_w_sv %>%
+training_data_clean <- training_data_w_hie %>%
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)
@@ -340,7 +284,7 @@ training_data_clean <- training_data_w_sv %>%
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
   mutate(across(
-    !starts_with("sv_"),
+    !starts_with(c("sv_", "hie_")),
     ~ recode_column_type(.x, cur_column())
   )) %>%
   # Create time/date features using lubridate
@@ -378,14 +322,14 @@ training_data_clean <- training_data_w_sv %>%
   write_parquet(paths$input$training$local)
 
 
-## 6.2. Assessment Data --------------------------------------------------------
+## 5.2. Assessment Data --------------------------------------------------------
 
 # Clean the assessment data. This is the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
 # time variables and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
-  mutate(across(everything(), ~ recode_column_type(.x, cur_column()))) %>%
+  mutate(across(!starts_with("hie_"), ~ recode_column_type(.x, cur_column()))) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
@@ -407,7 +351,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
   write_parquet(paths$input$assessment$local)
 
 
-## 6.3. Complex IDs ------------------------------------------------------------
+## 5.3. Complex IDs ------------------------------------------------------------
 message("Creating townhome complex identifiers")
 
 # Townhomes and rowhomes within the same "complex" or building should
@@ -432,7 +376,8 @@ complex_id_temp <- assessment_data_clean %>%
   full_join(
     eval(.),
     by = params$input$complex$match_exact,
-    multiple = "all"
+    multiple = "all",
+    relationship = "many-to-many"
   ) %>%
   # Filter with attributes that can be "fuzzy" matched
   filter(
@@ -500,7 +445,7 @@ complex_id_data <- assessment_data_clean %>%
   write_parquet(paths$input$complex_id$local)
 
 
-## 6.4. Land Rates -------------------------------------------------------------
+## 5.4. Land Rates -------------------------------------------------------------
 message("Saving land rates")
 
 # Write land data directly to file, since it's already mostly clean
