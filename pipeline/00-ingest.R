@@ -331,7 +331,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
   mutate(
     across(!starts_with("hie_"), ~ recode_column_type(.x, cur_column()))
-    ) %>%
+  ) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
