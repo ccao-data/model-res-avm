@@ -21,4 +21,4 @@ run_ids <- commandArgs(trailingOnly = TRUE)
 
 sprintf("Deleting run IDs for year %s: %s", year, run_ids)
 
-run_ids %>% sapply(model_delete_run, year = year)
+# run_ids %>% sapply(model_delete_run, year = year)

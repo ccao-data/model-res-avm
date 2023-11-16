@@ -7,16 +7,7 @@
 name: delete-model-runs
 
 on:
-  workflow_dispatch:
-    inputs:
-      run-ids:
-        description: >
-          Comma-delimited list of IDs of model runs to delete. Note that the
-          workflow assumes these IDs correspond to model runs for the current
-          upcoming assessment cycle, and if that's not the case the deletion
-          script will raise an error.
-        required: true
-        type: string
+  pull_request:
 
 jobs:
   delete-model-runs:
@@ -41,7 +32,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # TODO: Create a new role and add it to repo secrets
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_DELETION_ARN }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
           aws-region: us-east-1
 
       - name: Delete model runs
@@ -51,4 +42,4 @@ jobs:
           done
         shell: bash
         env:
-          RUN_IDS: ${{ inputs.run-ids }}
+          RUN_IDS: 1,2,3,4,5
