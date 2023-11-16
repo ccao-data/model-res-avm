@@ -25,6 +25,10 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Install system dependencies
+        # TODO: Cache this step
+        run: sudo apt-get install libgit2-dev
+
       - name: Setup renv
         uses: r-lib/actions/setup-renv@v2
 
