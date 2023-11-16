@@ -40,7 +40,7 @@ jobs:
 
       - name: Delete model runs
         run: |
-          for run_id in ${RUN_IDS//,/}; do
+          for run_id in ${RUN_IDS//,/ }; do
             Rscript ./R/delete_current_year_model_runs.R "$run_id"
           done
         shell: bash
