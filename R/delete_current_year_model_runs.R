@@ -18,28 +18,6 @@ library(here)
 library(magrittr)
 source(here("R", "helpers.R"))
 
-# Function to check whether S3 artifacts exist for a given model run.
-# Defining this as a separate check from the deletion operation is helpful for
-# two reasons:
-#
-#   1. The aws.s3::delete_object API does not raise an error if an object does
-#      not exist, so a delete operation alone won't alert us for an incorrect
-#      ID
-#   2. Even if aws.s3::delete_object could raise an error for missing objects,
-#      we want to alert the caller that one or more of the IDs were incorrect
-#      before deleting any objects so that this script is nondestructive
-#      in the case of a malformed ID
-raise_if_run_id_is_invalid <- function(run_id, year) {
-  artifacts_exist <- model_get_s3_artifacts_for_run(run_id, year) %>%
-    sapply(aws.s3::object_exists)
-
-  if (!any(artifacts_exist)) {
-    "Model run {run_id} for year {year} is missing all S3 artifacts" %>%
-      glue::glue() %>%
-      stop()
-  }
-}
-
 current_date <- as.POSIXct(Sys.Date())
 current_month <- current_date %>% format("%m")
 current_year <- current_date %>% format("%Y")
@@ -60,10 +38,35 @@ run_ids <- commandArgs(trailingOnly = TRUE)
   glue::glue() %>%
   print()
 
-# For a future improvement, it would probably be more user friendly to catch
-# the missing artifact errors raised by raise_if_run_id_is_invalid and compile
-# a list of all invalid run IDs before raising
-run_ids %>% sapply(raise_if_run_id_is_invalid, year = year)
+# We consider a run ID to be valid if it has any matching data in S3 for
+# the current year
+run_id_is_valid <- function(run_id, year) {
+  return(
+    model_get_s3_artifacts_for_run(run_id, year) %>%
+      sapply(aws.s3::object_exists) %>%
+      any()
+  )
+}
+
+# We check for validity separate from the deletion operation for two reasons:
+#
+#   1. The aws.s3::delete_object API does not raise an error if an object does
+#      not exist, so a delete operation alone won't alert us for an incorrect
+#      ID
+#   2. Even if aws.s3::delete_object could raise an error for missing objects,
+#      we want to alert the caller that one or more of the IDs were incorrect
+#      before deleting any objects so that this script is nondestructive
+#      in the case of a malformed ID
+valid_run_ids <- run_ids %>% sapply(run_id_is_valid, year = year)
+
+if (!all(valid_run_ids)) {
+  invalid_run_ids <- run_ids[which(valid_run_ids == FALSE)] %>%
+    paste(collapse = ", ")
+
+  "Some run IDs are missing all S3 artifacts for {year}: {invalid_run_ids}" %>%
+    glue::glue() %>%
+    stop()
+}
 
 "Deleting S3 artifacts run IDs in year {year}: {run_ids}" %>%
   glue::glue() %>%
