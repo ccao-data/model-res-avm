@@ -29,6 +29,10 @@ jobs:
         run: sudo apt-get install libgit2-dev
         shell: bash
 
+      - name: Disable renv sandbox to speed up install time
+        run: echo "RENV_CONFIG_SANDBOX_ENABLED=FALSE" >> .Renviron
+        shell: bash
+
       - name: Setup renv
         uses: r-lib/actions/setup-renv@v2
 
