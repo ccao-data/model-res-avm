@@ -43,10 +43,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Delete model runs
-        run: |
-          for run_id in ${RUN_IDS//,/ }; do
-            Rscript ./R/delete_current_year_model_runs.R "$run_id"
-          done
+        run: Rscript ./R/delete_current_year_model_runs.R "$RUN_IDS"
         shell: bash
         env:
           RUN_IDS: 2024-11-14-foo-bar
