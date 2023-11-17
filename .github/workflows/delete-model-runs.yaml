@@ -46,4 +46,4 @@ jobs:
         run: Rscript ./R/delete_current_year_model_runs.R "$RUN_IDS"
         shell: bash
         env:
-          RUN_IDS: 2024-11-14-foo-bar,2024-11-15-baz
+          RUN_IDS: 2023-11-14-frosty-jacob,2024-11-15-baz

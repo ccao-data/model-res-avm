@@ -37,11 +37,12 @@ year <- if (current_month < "03") {
 # intended to be called from a dispatched GitHub workflow, it's easier to parse
 # one comma-delimited string than split a space-separated string passed as a
 # workflow input
-run_ids <- commandArgs(trailingOnly = TRUE) %>%
+raw_run_ids <- commandArgs(trailingOnly = TRUE)
+run_ids <- raw_run_ids %>%
   strsplit(split = ",", fixed = TRUE) %>%
   unlist()
 
-"Confirming artifacts exist for run IDs in year {year}: {run_ids}" %>%
+"Confirming artifacts exist for run IDs in year {year}: {raw_run_ids}" %>%
   glue::glue() %>%
   print()
 
@@ -65,6 +66,9 @@ run_id_is_valid <- function(run_id, year) {
 #      before deleting any objects so that this script is nondestructive
 #      in the case of a malformed ID
 valid_run_ids <- run_ids %>% sapply(run_id_is_valid, year = year)
+"Valid run IDs: {paste(valid_run_ids, collapse = ', ')}" %>%
+  glue::glue() %>%
+  print()
 
 if (!all(valid_run_ids)) {
   invalid_run_ids <- run_ids[which(valid_run_ids == FALSE)] %>%
