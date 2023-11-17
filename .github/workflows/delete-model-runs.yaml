@@ -7,7 +7,16 @@
 name: delete-model-runs
 
 on:
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      run-ids:
+        description: >
+          Comma-delimited list of IDs of model runs to delete (no spaces). Note
+          that the workflow assumes these IDs correspond to model runs for the
+          current upcoming assessment cycle, and if that's not the case the
+          deletion script will raise an error.
+        required: true
+        type: string
 
 jobs:
   delete-model-runs:
@@ -46,4 +55,4 @@ jobs:
         run: Rscript ./R/delete_current_year_model_runs.R "$RUN_IDS"
         shell: bash
         env:
-          RUN_IDS: 2023-11-14-frosty-jacob,2023-11-13-stupefied-liz
+          RUN_IDS: ${{ inputs.run-ids }}
