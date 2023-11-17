@@ -1,7 +1,7 @@
 # Script to delete a list of model runs by ID from AWS.
 #
-# Accepts an arbitrary number of arguments, each of which should be the run ID
-# of a model run whose artifacts should be deleted.
+# Accepts one argument, a comma-delimited list of run IDs for model runs
+# whose artifacts should be deleted.
 #
 # Assumes that model runs are restricted to the current assessment cycle, where
 # each assessment cycle starts in April. Raises an error if no objects matching
@@ -9,9 +9,9 @@
 # raised before any deletion occurs, so if one or more IDs are invalid then
 # no objects will be deleted.
 #
-# Example usage:
+# Example usage (delete the runs 123, 456, and 789 in the current year):
 #
-#   delete_current_year_model_runs.R 123 456 789
+#   delete_current_year_model_runs.R 123,456,789
 
 library(glue)
 library(here)
@@ -32,7 +32,14 @@ year <- if (current_month < "03") {
   as.character(as.numeric(current_year) + 1)
 }
 
-run_ids <- commandArgs(trailingOnly = TRUE)
+# Convert the comma-delimited input to a vector of run IDs. Accepting one or
+# more positional arguments would be a cleaner UX, but since this script is
+# intended to be called from a dispatched GitHub workflow, it's easier to parse
+# one comma-delimited string than split a space-separated string passed as a
+# workflow input
+run_ids <- commandArgs(trailingOnly = TRUE) %>%
+  strsplit(split = ",", fixed = TRUE) %>%
+  unlist()
 
 "Confirming artifacts exist for run IDs in year {year}: {run_ids}" %>%
   glue::glue() %>%
