@@ -66,9 +66,6 @@ run_id_is_valid <- function(run_id, year) {
 #      before deleting any objects so that this script is nondestructive
 #      in the case of a malformed ID
 valid_run_ids <- run_ids %>% sapply(run_id_is_valid, year = year)
-"Valid run IDs: {paste(valid_run_ids, collapse = ', ')}" %>%
-  glue::glue() %>%
-  print()
 
 if (!all(valid_run_ids)) {
   invalid_run_ids <- run_ids[which(valid_run_ids == FALSE)] %>%
