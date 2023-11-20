@@ -11,12 +11,13 @@ on:
     inputs:
       run-ids:
         description: >
-          Comma-delimited list of IDs of model runs to delete (no spaces). Note
+          Run IDs: Space-delimited list of IDs of model runs to delete. Note
           that the workflow assumes these IDs correspond to model runs for the
-          current upcoming assessment cycle, and if that's not the case the
-          deletion script will raise an error.
+          current assessment cycle, and if that's not the case the deletion
+          script will raise an error.
         required: true
         type: string
+        default: 2024-01-01-foo-bar 2024-01-02-bar-baz
 
 jobs:
   delete-model-runs:
@@ -52,7 +53,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Delete model runs
-        run: Rscript ./R/delete_current_year_model_runs.R "$RUN_IDS"
+        run: Rscript ./R/delete_current_year_model_runs.R "${RUN_IDS// /,}"
         shell: bash
         env:
           RUN_IDS: ${{ inputs.run-ids }}

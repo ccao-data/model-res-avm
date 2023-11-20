@@ -4,7 +4,7 @@
 # whose artifacts should be deleted.
 #
 # Assumes that model runs are restricted to the current assessment cycle, where
-# each assessment cycle starts in April. Raises an error if no objects matching
+# each assessment cycle starts in May. Raises an error if no objects matching
 # a given ID for the current year could be located in S3. This error will get
 # raised before any deletion occurs, so if one or more IDs are invalid then
 # no objects will be deleted.
@@ -24,9 +24,9 @@ current_year <- current_date %>% format("%Y")
 
 # The following heuristic determines the current upcoming assessment cycle year:
 #
-#   * From April to December (post assessment), `year` = next year
-#   * From January to March (during assessment), `year` = current year
-year <- if (current_month < "03") {
+#   * From May to December (post assessment), `year` = next year
+#   * From January to April (during assessment), `year` = current year
+year <- if (current_month < "05") {
   current_year
 } else {
   as.character(as.numeric(current_year) + 1)
@@ -35,8 +35,8 @@ year <- if (current_month < "03") {
 # Convert the comma-delimited input to a vector of run IDs. Accepting one or
 # more positional arguments would be a cleaner UX, but since this script is
 # intended to be called from a dispatched GitHub workflow, it's easier to parse
-# one comma-delimited string than split a space-separated string passed as a
-# workflow input
+# one comma-delimited string than convert a space-separated string passed as a
+# workflow input to an array of function arguments
 raw_run_ids <- commandArgs(trailingOnly = TRUE)
 run_ids <- raw_run_ids %>%
   strsplit(split = ",", fixed = TRUE) %>%
