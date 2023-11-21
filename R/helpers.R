@@ -28,18 +28,16 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   return(dict)
 }
 
-
-# Used to delete erroneous, incomplete, or otherwise unwanted runs
-# Use with caution! Deleted models are retained for a period of time before
-# being permanently deleted
-model_delete_run <- function(run_id, year) {
+# Get a vector of S3 paths to the artifacts for a given model run
+model_get_s3_artifacts_for_run <- function(run_id, year) {
   # Get paths of all run objects based on the file dictionary
   paths <- model_file_dict(run_id, year)
   s3_objs <- grep("s3://", unlist(paths), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
   # First get anything partitioned only by year
-  s3_objs_limited <- grep(".parquet$|.zip$|.rds$", s3_objs, value = TRUE)
+  s3_objs_limited <- grep(".parquet$|.zip$|.rds$", s3_objs, value = TRUE) %>%
+    unname()
 
   # Next get the prefix of anything partitioned by year and run_id
   s3_objs_dir_path <- file.path(
@@ -53,16 +51,21 @@ model_delete_run <- function(run_id, year) {
   )
   s3_objs_dir_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_dir_path)
   s3_objs_dir_path <- gsub("//", "/", s3_objs_dir_path)
-  s3_objs_w_run_id <- unlist(purrr::map(
-    s3_objs_dir_path,
-    ~ aws.s3::get_bucket_df(bucket, .x)$Key
-  ))
+  s3_objs_w_run_id <- s3_objs_dir_path %>%
+    purrr::map(~ aws.s3::get_bucket_df(bucket, .x)$Key) %>%
+    unlist() %>%
+    purrr::map_chr(~ glue::glue("s3://{bucket}/{.x}"))
 
-  # Delete current version of objects
-  purrr::walk(s3_objs_limited, aws.s3::delete_object)
-  purrr::walk(s3_objs_w_run_id, aws.s3::delete_object, bucket = bucket)
+  return(c(s3_objs_limited, s3_objs_w_run_id))
 }
 
+# Used to delete erroneous, incomplete, or otherwise unwanted runs
+# Use with caution! Deleted models are retained for a period of time before
+# being permanently deleted
+model_delete_run <- function(run_id, year) {
+  model_get_s3_artifacts_for_run(run_id, year) %>%
+    purrr::walk(aws.s3::delete_object)
+}
 
 # Used to fetch a run's output from S3 and populate it locally. Useful for
 # running reports and performing local troubleshooting
