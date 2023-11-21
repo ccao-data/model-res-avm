@@ -12,10 +12,12 @@ suppressPackageStartupMessages({
   library(aws.ec2metadata)
   library(ccao)
   library(dplyr)
+  library(glue)
   library(here)
   library(lubridate)
   library(paws.application.integration)
   library(purrr)
+  library(quarto)
   library(tidyr)
   library(tune)
   library(yaml)
@@ -203,7 +205,23 @@ tictoc::tic.clearlog()
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Upload --------------------------------------------------------------------
+# 4. Generate performance report -----------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Generating performance report")
+
+here("../reports/performance/performance.qmd") %>%
+  quarto_render(
+    execute_params = list(
+      run_id = run_id,
+      year = params$assessment$year
+    )
+  )
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 5. Upload --------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Uploading run artifacts")
 
@@ -216,7 +234,7 @@ if (params$toggle$upload_to_s3) {
   )
 
 
-  ## 4.1. Train ----------------------------------------------------------------
+  ## 5.1. Train ----------------------------------------------------------------
 
   # Upload lightgbm fit
   aws.s3::put_object(
@@ -301,7 +319,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 4.2. Assess ----------------------------------------------------------------
+  # 5.2. Assess ----------------------------------------------------------------
   message("Uploading final assessment results")
 
   # Upload PIN and card-level values for full runs. These outputs are very
@@ -329,7 +347,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 4.3. Evaluate --------------------------------------------------------------
+  # 5.3. Evaluate --------------------------------------------------------------
 
   # Upload test set performance
   message("Uploading test set evaluation")
@@ -356,7 +374,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 4.4. Interpret -------------------------------------------------------------
+  # 5.4. Interpret -------------------------------------------------------------
 
   # Upload SHAP values if a full run. SHAP values are one row per card and one
   # column per feature, so the output is very large. Therefore, we partition
@@ -384,8 +402,8 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 4.5. Finalize --------------------------------------------------------------
-  message("Uploading run metadata and timings")
+  # 5.5. Finalize --------------------------------------------------------------
+  message("Uploading run metadata, timings, and performance report")
 
   # Upload metadata
   aws.s3::put_object(
@@ -398,13 +416,19 @@ if (params$toggle$upload_to_s3) {
     paths$output$timing$local,
     paths$output$timing$s3
   )
+
+  # Upload performance report
+  aws.s3::put_object(
+    paths$output$report$local,
+    paths$output$report$s3
+  )
 }
 
 
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 5. Wrap-Up -------------------------------------------------------------------
+# 6. Wrap-Up -------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This will run a Glue crawler to update schemas and send an email to any SNS
@@ -450,12 +474,26 @@ if (params$toggle$upload_to_s3) {
       .[!grepl("=", .)] %>%
       paste0(collapse = "\n")
 
+    # Get a link to the uploaded Quarto report
+    report_path_parts <- strsplit(paths$output$report$s3[1], "/")[[1]]
+    report_bucket <- report_path_parts[3]
+    report_path <- report_path_parts[4:length(report_path_parts)] %>%
+      paste(collapse = "/")
+    # Use direct link to the console instead of to the object so that we don't
+    # have to bother with signed URLs
+    report_url <- paste0(
+      "https://s3.console.aws.amazon.com/s3/object/",
+      "{report_bucket}/{report_path}?region=us-east-1&tab=overview"
+    ) %>%
+      glue::glue()
+
     # Publish to SNS
     pipeline_sns$publish(
       Subject = paste("Model Run Complete:", run_id),
       Message = paste0(
         "Model run: ", run_id, " complete\n",
         "Finished in: ", pipeline_sns_total_time, "\n\n",
+        "Report link: ", report_url, "\n\n",
         pipeline_sns_results
       ),
       TopicArn = Sys.getenv("AWS_SNS_ARN_MODEL_STATUS")
