@@ -17,3 +17,11 @@ params:
 ---
 
 This document is a stub.
+
+```{r setup}
+library(plotly)
+library(leaflet)
+library(sf)
+
+print("All packages loaded!")
+```

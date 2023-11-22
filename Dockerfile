@@ -26,11 +26,13 @@ RUN pipenv install --system --deploy
 
 # Copy R bootstrap files into the image
 COPY renv.lock .
+COPY reports/renv.lock reports/renv.lock
 COPY .Rprofile .
 COPY renv/ renv/
 
 # Install R dependencies
 RUN Rscript -e 'renv::restore()'
+RUN Rscript -e 'renv::restore(lockfile = "reports/renv.lock")'
 
 # Copy the directory into the container
 ADD ./ model-res-avm/
