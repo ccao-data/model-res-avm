@@ -609,12 +609,15 @@ The code in this repository is written primarily in [R](https://www.r-project.or
 
 If you're on Windows, you'll also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to build the necessary packages. You may also want to (optionally) install [DVC](https://dvc.org/doc/install) to pull data and run pipelines.
 
+We also publish a Docker image containing model code and all of the dependencies necessary to run it. If you're comfortable using Docker, you can skip the installation steps below and instead pull the image from `ghcr.io/ccao-data/model-res-avm:master` to run the model.
+
 ## Installation
 
 1. Clone this repository using git, or simply download it using the button at the top of the page.
 2. Set your working directory to the local folder containing this repository's files, either using R's `setwd()` command or (preferably) using RStudio's [projects](https://support.posit.co/hc/en-us/articles/200526207-Using-Projects).
 3. Install `renv`, R's package manager, by running `install.packages("renv")`.
 4. Install all R package dependencies using `renv` by running `renv::restore()`. This step may take awhile. Linux users will likely need to install dependencies (via apt, yum, etc.) to build from source.
+   1. The `finalize` step of the model pipeline requires some additional dependencies for generating a model performance report. These dependencies must be installed in addition to the core dependnecies installed in step 4. If you would like to run this step, make sure to install its additional dependencies by running `renv::restore(lockfile = "reports/renv.lock")`.
 
 For installation issues, particularly related to package installation and dependencies, see [Troubleshooting](#troubleshooting).
 
@@ -742,6 +745,25 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 * The total amount of RAM needed for overall model fitting is around 6GB, though this is ultimately dependent on a number of LightGBM parameters.
 * The number of threads is set via the [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads) parameter, which is passed to the model using the `set_args()` function from `parsnip`. By default, `num_threads` is equal to the full number of physical cores available. More (or faster) cores will decrease total training time.
 * This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build) or wait for the [upcoming CUDA release](https://github.com/microsoft/LightGBM/issues/5153).
+
+## Updating R dependencies
+
+There are two lockfiles that we use with renv to manage R dependencies:
+
+1. **`renv.lock`** is the canonical list of dependencies that are used by the **core model pipeline**. Any dependencies that are required to run the model itself should be defined in this lockfile.
+2. **`reports/renv.lock`** is the canonical list of dependencies that are used to **generate a model performance report** in the `finalize` step of the pipeline. Any dependencies that are required to generate that report or others like it should be defined in this lockfile.
+
+Our goal in maintaining multiple lockfiles is to keep the list of dependencies that are required to run the model as short as possibile. This choice adds overhead to the process of updating R dependencies, but incurs the benefit of a more maintainable model over the long term.
+
+The process for **updating core model pipeline dependencies** is straightforward: Running `renv::install("<dependency_name>")` and `renv::snapshot()` will ensure that the dependency gets added or updated in `renv.lock`, as long is it is imported somewhere in the model pipeline via a `library(<dependency_name>)` call.
+
+The process for updating **model report dependencies** is more complex, since it requires the use of a separate `reporting` profile:
+
+1. Run `Sys.setenv(RENV_PROFILE = "reporting")` to set the renv profile to `reporting`
+2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/reporting/dependencies` key
+3. Run `renv::install("<dependency_name>")` to add or update the dependency as necessary
+4. Run `renv::snapshot(lockfile = "reports/renv.lock", type = "explicit")` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
+5. Run `Sys.unsetenv("RENV_PROFILE")` to switch the renv profile back to the default
 
 ## Troubleshooting
 
