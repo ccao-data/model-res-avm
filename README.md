@@ -1046,7 +1046,8 @@ from `ghcr.io/ccao-data/model-res-avm:master` to run the model.
         report. These dependencies must be installed in addition to the
         core dependnecies installed in step 4. If you would like to run
         this step, make sure to install its additional dependencies by
-        running `renv::restore(lockfile = "reports/renv.lock")`.
+        running
+        `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
 
 For installation issues, particularly related to package installation
 and dependencies, see [Troubleshooting](#troubleshooting).
@@ -1254,11 +1255,11 @@ There are two lockfiles that we use with renv to manage R dependencies:
 1.  **`renv.lock`** is the canonical list of dependencies that are used
     by the **core model pipeline**. Any dependencies that are required
     to run the model itself should be defined in this lockfile.
-2.  **`reports/renv.lock`** is the canonical list of dependencies that
-    are used to **generate a model performance report** in the
-    `finalize` step of the pipeline. Any dependencies that are required
-    to generate that report or others like it should be defined in this
-    lockfile.
+2.  **`renv/profiles/reporting/renv.lock`** is the canonical list of
+    dependencies that are used to **generate a model performance
+    report** in the `finalize` step of the pipeline. Any dependencies
+    that are required to generate that report or others like it should
+    be defined in this lockfile.
 
 Our goal in maintaining multiple lockfiles is to keep the list of
 dependencies that are required to run the model as short as possibile.
@@ -1280,10 +1281,8 @@ since it requires the use of a separate `reporting` profile:
     under the `Config/renv/profiles/reporting/dependencies` key
 3.  Run `renv::install("<dependency_name>")` to add or update the
     dependency as necessary
-4.  Run
-    `renv::snapshot(lockfile = "reports/renv.lock", type = "explicit")`
-    to update the reporting lockfile with the dependencies defined in
-    the `DESCRIPTION` file
+4.  Run `renv::snapshot(type = "explicit")` to update the reporting
+    lockfile with the dependencies defined in the `DESCRIPTION` file
 5.  Run `Sys.unsetenv("RENV_PROFILE")` to switch the renv profile back
     to the default
 
