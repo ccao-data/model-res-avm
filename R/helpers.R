@@ -37,7 +37,8 @@ model_get_s3_artifacts_for_run <- function(run_id, year) {
 
   # First get anything partitioned only by year
   s3_objs_limited <- grep(
-    ".parquet$|.zip$|.rds|.html$", s3_objs, value = TRUE
+    ".parquet$|.zip$|.rds|.html$", s3_objs,
+    value = TRUE
   ) %>%
     unname()
 
