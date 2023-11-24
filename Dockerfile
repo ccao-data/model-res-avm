@@ -8,7 +8,13 @@ ENV RENV_PATHS_LIBRARY renv/library
 RUN apt-get update && apt-get install --no-install-recommends -y \
     libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev git \
     libudunits2-dev python3-dev python3-pip libgdal-dev libgeos-dev \
-    libproj-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev pandoc
+    libproj-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev pandoc \
+    curl gdebi-core
+
+# Install Quarto
+RUN curl -o quarto-linux-amd64.deb -L \
+    https://github.com/quarto-dev/quarto-cli/releases/download/v1.3.450/quarto-1.3.450-linux-amd64.deb
+RUN gdebi -n quarto-linux-amd64.deb
 
 # Install pipenv for Python dependencies
 RUN pip install pipenv
