@@ -16,6 +16,7 @@ suppressPackageStartupMessages({
   library(here)
   library(lubridate)
   library(paws.application.integration)
+  library(paws.storage)
   library(purrr)
   library(tidyr)
   library(tune)
@@ -457,18 +458,21 @@ if (params$toggle$upload_to_s3) {
       .[!grepl("=", .)] %>%
       paste0(collapse = "\n")
 
-    # Get a link to the uploaded Quarto report
+    # Extract the path to the generated Quarto report so we can send a
+    # link to SNS topic consumers
     report_path_parts <- strsplit(paths$output$report$s3[1], "/")[[1]]
     report_bucket <- report_path_parts[3]
-    report_path <- report_path_parts[4:length(report_path_parts)] %>%
+    report_key <- report_path_parts[4:length(report_path_parts)] %>%
       paste(collapse = "/")
-    # Use direct link to the console instead of to the object so that we don't
-    # have to bother with signed URLs
-    report_url <- paste0(
-      "https://s3.console.aws.amazon.com/s3/object/",
-      "{report_bucket}/{report_path}?region=us-east-1&tab=overview"
-    ) %>%
-      glue::glue()
+
+    # Presign the URL to the generated report so that consumers of the
+    # SNS email notification can click the link to download the file
+    report_url <- paws.storage::s3()$generate_presigned_url(
+      client_method = "get_object",
+      params = list(Bucket = report_bucket, Key = report_key),
+      expires_in = 3600
+    )
+    glue::glue("Report link: {report_url}") %>% message()
 
     # Publish to SNS
     pipeline_sns$publish(
