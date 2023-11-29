@@ -160,7 +160,7 @@ stages:
         cache: false
     - output/metadata/model_metadata.parquet:
         cache: false
-    - reports/performance/performance.html:
+    - reports/performance.html:
         cache: false
 
   export:

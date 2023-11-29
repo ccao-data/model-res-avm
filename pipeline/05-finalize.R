@@ -209,7 +209,7 @@ tictoc::tic.clearlog()
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Generating performance report")
 
-here("reports/performance/performance.qmd") %>%
+here("reports", "performance.qmd") %>%
   quarto_render(
     execute_params = list(
       run_id = run_id,
