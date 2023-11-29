@@ -50,4 +50,4 @@ RUN mv renv model-res-avm/
 # Set the working directory to the app dir
 WORKDIR model-res-avm/
 
-CMD dvc pull && dvc repro
+CMD Rscript R/test_paws.R
