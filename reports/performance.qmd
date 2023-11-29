@@ -1,5 +1,5 @@
 ---
-title: "Model performance: `r params$run_id`"
+title: "Model performance for `r params$year`"
 execute:
   echo: false
   warning: false
@@ -12,7 +12,6 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: '2023-03-14-clever-damani'
   year: '2023'
 ---
 

@@ -121,12 +121,21 @@ stages:
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
 
+  report:
+    cmd: Rscript pipeline/05-report.R
+    desc: Render a performance report using Quarto.
+    deps:
+    - output/shap/model_shap.parquet
+    outs:
+    - reports/performance.html:
+        cache: false
+
   finalize:
-    cmd: Rscript pipeline/05-finalize.R
+    cmd: Rscript pipeline/06-finalize.R
     desc: >
-      Save run timings, generate a report, upload pipeline run results to S3,
-      and send an SNS notification. Will also clean some of the generated
-      outputs prior to upload and attach a unique run ID
+      Save run timings, upload pipeline run results to S3, and send an SNS
+      notification. Will also clean some of the generated outputs prior to
+      upload and attach a unique run ID
     deps:
     - output/parameter_final/model_parameter_final.parquet
     - output/parameter_range/model_parameter_range.parquet
@@ -146,6 +155,7 @@ stages:
     - output/intermediate/timing/model_timing_assess.parquet
     - output/intermediate/timing/model_timing_evaluate.parquet
     - output/intermediate/timing/model_timing_interpret.parquet
+    - reports/performance.html
     params:
     - run_note
     - run_type
@@ -160,11 +170,9 @@ stages:
         cache: false
     - output/metadata/model_metadata.parquet:
         cache: false
-    - reports/performance.html:
-        cache: false
 
   export:
-    cmd: Rscript pipeline/06-export.R
+    cmd: Rscript pipeline/07-export.R
     desc: >
       Generate Desk Review spreadsheets and iasWorld upload CSVs from a finished
       run. NOT automatically run since it is typically only run once. Manually

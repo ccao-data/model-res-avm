@@ -17,7 +17,6 @@ suppressPackageStartupMessages({
   library(lubridate)
   library(paws.application.integration)
   library(purrr)
-  library(quarto)
   library(tidyr)
   library(tune)
   library(yaml)
@@ -205,23 +204,7 @@ tictoc::tic.clearlog()
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Generate performance report -----------------------------------------------
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-message("Generating performance report")
-
-here("reports", "performance.qmd") %>%
-  quarto_render(
-    execute_params = list(
-      run_id = run_id,
-      year = params$assessment$year
-    )
-  )
-
-
-
-
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 5. Upload --------------------------------------------------------------------
+# 4. Upload --------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Uploading run artifacts")
 
@@ -234,7 +217,7 @@ if (params$toggle$upload_to_s3) {
   )
 
 
-  ## 5.1. Train ----------------------------------------------------------------
+  ## 4.1. Train ----------------------------------------------------------------
 
   # Upload lightgbm fit
   aws.s3::put_object(
@@ -319,7 +302,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 5.2. Assess ----------------------------------------------------------------
+  # 4.2. Assess ----------------------------------------------------------------
   message("Uploading final assessment results")
 
   # Upload PIN and card-level values for full runs. These outputs are very
@@ -347,7 +330,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 5.3. Evaluate --------------------------------------------------------------
+  # 4.3. Evaluate --------------------------------------------------------------
 
   # Upload test set performance
   message("Uploading test set evaluation")
@@ -374,7 +357,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 5.4. Interpret -------------------------------------------------------------
+  # 4.4. Interpret -------------------------------------------------------------
 
   # Upload SHAP values if a full run. SHAP values are one row per card and one
   # column per feature, so the output is very large. Therefore, we partition
@@ -402,7 +385,7 @@ if (params$toggle$upload_to_s3) {
   }
 
 
-  # 5.5. Finalize --------------------------------------------------------------
+  # 4.5. Finalize --------------------------------------------------------------
   message("Uploading run metadata, timings, and performance report")
 
   # Upload metadata
@@ -428,7 +411,7 @@ if (params$toggle$upload_to_s3) {
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 6. Wrap-Up -------------------------------------------------------------------
+# 5. Wrap-Up -------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # This will run a Glue crawler to update schemas and send an email to any SNS

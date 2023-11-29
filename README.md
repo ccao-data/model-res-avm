@@ -16,6 +16,7 @@ Table of Contents
     - [`assessment-year-2021`](#assessment-year-2021)
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
+    - [Upcoming](#upcoming)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -100,6 +101,7 @@ graph LR
     assess("Assess")
     evaluate("Evaluate")
     interpret("Interpret")
+    report("Report")
     finalize("Finalize")
     export("Export")
 
@@ -108,7 +110,8 @@ graph LR
     train --> interpret
     assess --> evaluate
     evaluate --> finalize
-    interpret --> finalize
+    interpret --> report
+    report --> finalize
     finalize --> aws
     finalize --> export
     aws --> ingest
@@ -157,12 +160,15 @@ stand-alone script) or as part of the overall pipeline (with
     entire model. The primary output of this stage is a data frame of
     the contributions of each feature for each property.
 
-5.  **Finalize**: Add metadata and then upload all output objects to AWS
+5.  **Report**: Render a Quarto document containing a model performance
+    report to `reports/performance.html`.
+
+6.  **Finalize**: Add metadata and then upload all output objects to AWS
     (S3). All model outputs for every model run are stored in perpetuity
     in S3. Each run’s performance can be visualized using the CCAO’s
     internal Tableau dashboards.
 
-6.  **Export**: Export assessed values to Desk Review spreadsheets for
+7.  **Export**: Export assessed values to Desk Review spreadsheets for
     Valuations, as well as a delimited text format for upload to the
     system of record (iasWorld). NOTE: This stage is only run when a
     final model is selected. It is not run automatically or as part of
@@ -332,7 +338,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-11-24.
+model as of 2023-11-29.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -709,7 +715,7 @@ the following major changes to the residential modeling codebase:
   process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R),
   while the process to [finalize model
   values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values)
-  was moved to [pipeline/06-export.R](pipeline/06-export.R).
+  was moved to [pipeline/06-export.R](pipeline/07-export.R).
 - Added [DVC](https://dvc.org/) support/integration. This repository
   uses DVC in 2 ways:
   1.  All input data in [`input/`](input/) is versioned, tracked, and
@@ -759,6 +765,18 @@ the following major changes to the residential modeling codebase:
   Tidymodels for Bayesian optimization.
 - Dropped explicit spatial lag generation in the ingest stage.
 - Lots of other bugfixes and minor improvements.
+
+### Upcoming
+
+- Infrastructure improvements
+  - Added
+    [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml)
+    workflow to run the model using GitHub Actions and AWS Batch.
+  - Added
+    [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml)
+    workflow to delete test run artifacts in S3 using GitHub Actions.
+  - Added [pipeline/05-report.R](pipeline/05-report.R) step to render a
+    performance report using Quarto.
 
 # Ongoing Issues
 
@@ -1025,7 +1043,8 @@ build the necessary packages. You may also want to (optionally) install
 We also publish a Docker image containing model code and all of the
 dependencies necessary to run it. If you’re comfortable using Docker,
 you can skip the installation steps below and instead pull the image
-from `ghcr.io/ccao-data/model-res-avm:master` to run the model.
+from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version
+of the model.
 
 ## Installation
 
@@ -1041,13 +1060,12 @@ from `ghcr.io/ccao-data/model-res-avm:master` to run the model.
     `renv::restore()`. This step may take awhile. Linux users will
     likely need to install dependencies (via apt, yum, etc.) to build
     from source.
-    1.  The `finalize` step of the model pipeline requires some
-        additional dependencies for generating a model performance
-        report. These dependencies must be installed in addition to the
-        core dependnecies installed in step 4. If you would like to run
-        this step, make sure to install its additional dependencies by
-        running
-        `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
+5.  The `report` step of the model pipeline requires some additional
+    dependencies for generating a model performance report. Install
+    these additional dependencies by running
+    `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
+    These dependencies must be installed in addition to the core
+    dependencies installed in step 4.
 
 For installation issues, particularly related to package installation
 and dependencies, see [Troubleshooting](#troubleshooting).
@@ -1063,9 +1081,9 @@ following stages:
 - [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to
   CCAO internal AWS services to pull data. See [Getting
   Data](#getting-data) if you are a member of the public.
-- [`pipeline/05-finalize.R`](pipeline/05-finalize.R) - Requires access
+- [`pipeline/06-finalize.R`](pipeline/06-finalize.R) - Requires access
   to CCAO internal AWS services to upload model results.
-- [`pipeline/06-export.R`](pipeline/06-export.R) - Only required for
+- [`pipeline/07-export.R`](pipeline/07-export.R) - Only required for
   CCAO internal processes.
 
 #### Using DVC
@@ -1129,7 +1147,7 @@ of these outputs and their purpose can be found in
 outputs are saved in the [`output/`](output/) directory, where they can
 be further used/examined after a model run. For CCAO employees, all
 outputs are uploaded to S3 via the [finalize
-stage](pipeline/05-finalize.R). Uploaded Parquet files are converted
+stage](pipeline/06-finalize.R). Uploaded Parquet files are converted
 into the following Athena tables:
 
 #### Athena Tables
@@ -1257,9 +1275,9 @@ There are two lockfiles that we use with renv to manage R dependencies:
     to run the model itself should be defined in this lockfile.
 2.  **`renv/profiles/reporting/renv.lock`** is the canonical list of
     dependencies that are used to **generate a model performance
-    report** in the `finalize` step of the pipeline. Any dependencies
-    that are required to generate that report or others like it should
-    be defined in this lockfile.
+    report** in the `report` step of the pipeline. Any dependencies that
+    are required to generate that report or others like it should be
+    defined in this lockfile.
 
 Our goal in maintaining multiple lockfiles is to keep the list of
 dependencies that are required to run the model as short as possibile.

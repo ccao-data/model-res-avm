@@ -58,6 +58,7 @@ graph LR
     assess("Assess")
     evaluate("Evaluate")
     interpret("Interpret")
+    report("Report")
     finalize("Finalize")
     export("Export")
 
@@ -66,7 +67,8 @@ graph LR
     train --> interpret
     assess --> evaluate
     evaluate --> finalize
-    interpret --> finalize
+    interpret --> report
+    report --> finalize
     finalize --> aws
     finalize --> export
     aws --> ingest
@@ -87,9 +89,11 @@ All inputs and outputs are stored on AWS S3 using a unique run identifier. Each 
 
 4. **Interpret**: Calculate SHAP values for all the estimated values from the assess stage. These are the _per feature_ contribution to the predicted value for an _individual observation_ (usually a single PIN). Also calculate the aggregate feature importance for the entire model. The primary output of this stage is a data frame of the contributions of each feature for each property.
 
-5. **Finalize**: Add metadata and then upload all output objects to AWS (S3). All model outputs for every model run are stored in perpetuity in S3. Each run's performance can be visualized using the CCAO's internal Tableau dashboards.
+5. **Report**: Render a Quarto document containing a model performance report to `reports/performance.html`.
 
-6. **Export**: Export assessed values to Desk Review spreadsheets for Valuations, as well as a delimited text format for upload to the system of record (iasWorld). NOTE: This stage is only run when a final model is selected. It is not run automatically or as part of the main pipeline.
+6. **Finalize**: Add metadata and then upload all output objects to AWS (S3). All model outputs for every model run are stored in perpetuity in S3. Each run's performance can be visualized using the CCAO's internal Tableau dashboards.
+
+7. **Export**: Export assessed values to Desk Review spreadsheets for Valuations, as well as a delimited text format for upload to the system of record (iasWorld). NOTE: This stage is only run when a final model is selected. It is not run automatically or as part of the main pipeline.
 
 ## Choices Made
 
@@ -464,7 +468,7 @@ This repository represents a significant departure from the old [residential mod
 
 ### [`assessment-year-2022`](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)
 
-* Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/06-export.R](pipeline/06-export.R).
+* Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/06-export.R](pipeline/07-export.R).
 * Added [DVC](https://dvc.org/) support/integration. This repository uses DVC in 2 ways:
   1. All input data in [`input/`](input/) is versioned, tracked, and stored using DVC. Previous input data sets are stored in perpetuity on S3.
   2. [DVC pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files) are used to sequentially run R pipeline scripts and track/cache inputs and outputs.
@@ -486,6 +490,13 @@ This repository represents a significant departure from the old [residential mod
 * Updated CV implementation so that [Lightsnip](https://github.com/ccao-data/lightsnip) and Tidymodels share the same validation set: Lightsnip for early stopping, Tidymodels for Bayesian optimization.
 * Dropped explicit spatial lag generation in the ingest stage.
 * Lots of other bugfixes and minor improvements.
+
+### Upcoming
+
+* Infrastructure improvements
+  * Added [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml) workflow to run the model using GitHub Actions and AWS Batch.
+  * Added [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml) workflow to delete test run artifacts in S3 using GitHub Actions.
+  * Added [pipeline/05-report.R](pipeline/05-report.R) step to render a performance report using Quarto.
 
 # Ongoing Issues
 
@@ -609,7 +620,7 @@ The code in this repository is written primarily in [R](https://www.r-project.or
 
 If you're on Windows, you'll also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to build the necessary packages. You may also want to (optionally) install [DVC](https://dvc.org/doc/install) to pull data and run pipelines.
 
-We also publish a Docker image containing model code and all of the dependencies necessary to run it. If you're comfortable using Docker, you can skip the installation steps below and instead pull the image from `ghcr.io/ccao-data/model-res-avm:master` to run the model.
+We also publish a Docker image containing model code and all of the dependencies necessary to run it. If you're comfortable using Docker, you can skip the installation steps below and instead pull the image from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version of the model.
 
 ## Installation
 
@@ -617,7 +628,7 @@ We also publish a Docker image containing model code and all of the dependencies
 2. Set your working directory to the local folder containing this repository's files, either using R's `setwd()` command or (preferably) using RStudio's [projects](https://support.posit.co/hc/en-us/articles/200526207-Using-Projects).
 3. Install `renv`, R's package manager, by running `install.packages("renv")`.
 4. Install all R package dependencies using `renv` by running `renv::restore()`. This step may take awhile. Linux users will likely need to install dependencies (via apt, yum, etc.) to build from source.
-   1. The `finalize` step of the model pipeline requires some additional dependencies for generating a model performance report. These dependencies must be installed in addition to the core dependnecies installed in step 4. If you would like to run this step, make sure to install its additional dependencies by running `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
+5. The `report` step of the model pipeline requires some additional dependencies for generating a model performance report. Install these additional dependencies by running `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`. These dependencies must be installed in addition to the core dependencies installed in step 4.
 
 For installation issues, particularly related to package installation and dependencies, see [Troubleshooting](#troubleshooting).
 
@@ -628,8 +639,8 @@ For installation issues, particularly related to package installation and depend
 To use this repository, simply open the [pipeline/](./pipeline) directory and run the R scripts in order. Non-CCAO users can skip the following stages:
 
 * [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to CCAO internal AWS services to pull data. See [Getting Data](#getting-data) if you are a member of the public.
-* [`pipeline/05-finalize.R`](pipeline/05-finalize.R) - Requires access to CCAO internal AWS services to upload model results.
-* [`pipeline/06-export.R`](pipeline/06-export.R) - Only required for CCAO internal processes. 
+* [`pipeline/06-finalize.R`](pipeline/06-finalize.R) - Requires access to CCAO internal AWS services to upload model results.
+* [`pipeline/07-export.R`](pipeline/07-export.R) - Only required for CCAO internal processes. 
 
 #### Using DVC
 
@@ -670,7 +681,7 @@ Each R script has a set of associated parameters (tracked via `dvc.yaml`). DVC w
 
 ## Output
 
-The full model pipeline produces a large number of outputs. A full list of these outputs and their purpose can be found in [`misc/file_dict.csv`](misc/file_dict.csv). For public users, all outputs are saved in the [`output/`](output/) directory, where they can be further used/examined after a model run. For CCAO employees, all outputs are uploaded to S3 via the [finalize stage](pipeline/05-finalize.R). Uploaded Parquet files are converted into the following Athena tables:
+The full model pipeline produces a large number of outputs. A full list of these outputs and their purpose can be found in [`misc/file_dict.csv`](misc/file_dict.csv). For public users, all outputs are saved in the [`output/`](output/) directory, where they can be further used/examined after a model run. For CCAO employees, all outputs are uploaded to S3 via the [finalize stage](pipeline/06-finalize.R). Uploaded Parquet files are converted into the following Athena tables:
 
 #### Athena Tables
 
@@ -751,7 +762,7 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 There are two lockfiles that we use with renv to manage R dependencies:
 
 1. **`renv.lock`** is the canonical list of dependencies that are used by the **core model pipeline**. Any dependencies that are required to run the model itself should be defined in this lockfile.
-2. **`renv/profiles/reporting/renv.lock`** is the canonical list of dependencies that are used to **generate a model performance report** in the `finalize` step of the pipeline. Any dependencies that are required to generate that report or others like it should be defined in this lockfile.
+2. **`renv/profiles/reporting/renv.lock`** is the canonical list of dependencies that are used to **generate a model performance report** in the `report` step of the pipeline. Any dependencies that are required to generate that report or others like it should be defined in this lockfile.
 
 Our goal in maintaining multiple lockfiles is to keep the list of dependencies that are required to run the model as short as possibile. This choice adds overhead to the process of updating R dependencies, but incurs the benefit of a more maintainable model over the long term.
 
