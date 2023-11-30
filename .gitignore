@@ -21,11 +21,3 @@
 *.xlsx
 *.xlsm
 *.html
-
-# Ignore python environment
-pipenv/
-pipenv
-
-# Reporting files
-*.html
-
