@@ -33,6 +33,8 @@ jobs:
       vcpu: "16.0"
       memory: "65536"
       role-duration-seconds: 14400  # Worst-case time for a full model run
+      container-env-vars:
+        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
