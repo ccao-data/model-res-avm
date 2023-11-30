@@ -101,8 +101,8 @@ graph LR
     assess("Assess")
     evaluate("Evaluate")
     interpret("Interpret")
-    report("Report")
     finalize("Finalize")
+    upload("Upload")
     export("Export")
 
     ingest --> train
@@ -110,10 +110,10 @@ graph LR
     train --> interpret
     assess --> evaluate
     evaluate --> finalize
-    interpret --> report
-    report --> finalize
-    finalize --> aws
+    interpret --> finalize
+    finalize --> upload
     finalize --> export
+    upload --> aws
     aws --> ingest
     aws --> export
 ```
@@ -160,13 +160,15 @@ stand-alone script) or as part of the overall pipeline (with
     entire model. The primary output of this stage is a data frame of
     the contributions of each feature for each property.
 
-5.  **Report**: Render a Quarto document containing a model performance
-    report to `reports/performance.html`.
+5.  **Finalize**: Save run timings and metadata and render a Quarto
+    document containing a model performance report to
+    `reports/performance.html`.
 
-6.  **Finalize**: Add metadata and then upload all output objects to AWS
-    (S3). All model outputs for every model run are stored in perpetuity
-    in S3. Each run’s performance can be visualized using the CCAO’s
-    internal Tableau dashboards.
+6.  **Upload**: Upload all output objects to AWS (S3). All model outputs
+    for every model run are stored in perpetuity in S3. Each run’s
+    performance can be visualized using the CCAO’s internal Tableau
+    dashboards. NOTE: This stage is only run internally, since it
+    requires access to the CCAO Data AWS account.
 
 7.  **Export**: Export assessed values to Desk Review spreadsheets for
     Valuations, as well as a delimited text format for upload to the
@@ -338,7 +340,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-11-29.
+model as of 2023-11-30.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -775,8 +777,9 @@ the following major changes to the residential modeling codebase:
   - Added
     [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml)
     workflow to delete test run artifacts in S3 using GitHub Actions.
-  - Added [pipeline/05-report.R](pipeline/05-report.R) step to render a
-    performance report using Quarto.
+  - Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to
+    render a performance report using Quarto and factored S3/SNS
+    operations out into \[pipeline/06-upload.R\].
 
 # Ongoing Issues
 
@@ -1060,12 +1063,15 @@ of the model.
     `renv::restore()`. This step may take awhile. Linux users will
     likely need to install dependencies (via apt, yum, etc.) to build
     from source.
-5.  The `report` step of the model pipeline requires some additional
+5.  The `finalize` step of the model pipeline requires some additional
     dependencies for generating a model performance report. Install
     these additional dependencies by running
     `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
     These dependencies must be installed in addition to the core
-    dependencies installed in step 4.
+    dependencies installed in step 4. If dependencies are not installed,
+    the report will fail to generate and the pipeline stage will print
+    the error message to the report file at `reports/performance.html`;
+    the pipeline will continue to execute in spite of the failure.
 
 For installation issues, particularly related to package installation
 and dependencies, see [Troubleshooting](#troubleshooting).
@@ -1081,8 +1087,8 @@ following stages:
 - [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to
   CCAO internal AWS services to pull data. See [Getting
   Data](#getting-data) if you are a member of the public.
-- [`pipeline/06-finalize.R`](pipeline/06-finalize.R) - Requires access
-  to CCAO internal AWS services to upload model results.
+- [`pipeline/06-upload.R`](pipeline/06-upload.R) - Requires access to
+  CCAO internal AWS services to upload model results.
 - [`pipeline/07-export.R`](pipeline/07-export.R) - Only required for
   CCAO internal processes.
 
@@ -1146,9 +1152,8 @@ of these outputs and their purpose can be found in
 [`misc/file_dict.csv`](misc/file_dict.csv). For public users, all
 outputs are saved in the [`output/`](output/) directory, where they can
 be further used/examined after a model run. For CCAO employees, all
-outputs are uploaded to S3 via the [finalize
-stage](pipeline/06-finalize.R). Uploaded Parquet files are converted
-into the following Athena tables:
+outputs are uploaded to S3 via the [upload stage](pipeline/06-upload).
+Uploaded Parquet files are converted into the following Athena tables:
 
 #### Athena Tables
 
@@ -1275,9 +1280,9 @@ There are two lockfiles that we use with renv to manage R dependencies:
     to run the model itself should be defined in this lockfile.
 2.  **`renv/profiles/reporting/renv.lock`** is the canonical list of
     dependencies that are used to **generate a model performance
-    report** in the `report` step of the pipeline. Any dependencies that
-    are required to generate that report or others like it should be
-    defined in this lockfile.
+    report** in the `finalize` step of the pipeline. Any dependencies
+    that are required to generate that report or others like it should
+    be defined in this lockfile.
 
 Our goal in maintaining multiple lockfiles is to keep the list of
 dependencies that are required to run the model as short as possibile.
