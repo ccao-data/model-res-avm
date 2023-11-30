@@ -1215,27 +1215,27 @@
     },
     "paws.analytics": {
       "Package": "paws.analytics",
-      "Version": "0.4.0",
+      "Version": "0.3.0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "0690ad4abdce9d81f1df66a4dcc98d6e"
+      "Hash": "f3a27b0314926120e8c333db7645351a"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
-      "Version": "0.4.0",
+      "Version": "0.3.1",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "31228082fcbb37d21007efa46f890d63"
+      "Hash": "bd24295846d31fbfba786d9560b34c6d"
     },
     "paws.common": {
       "Package": "paws.common",
-      "Version": "0.6.4",
+      "Version": "0.5.8",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1246,21 +1246,10 @@
         "httr",
         "jsonlite",
         "methods",
-        "stats",
         "utils",
         "xml2"
       ],
-      "Hash": "fcc0e7509d0c9da0874b5d3a7d8ea904"
-    },
-    "paws.storage": {
-      "Package": "paws.storage",
-      "Version": "0.4.0",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "8aea3bee1ea38991f23aea27583b93ef"
+      "Hash": "35039630a878ed95aa7780ebe8f7e0bf"
     },
     "pillar": {
       "Package": "pillar",
