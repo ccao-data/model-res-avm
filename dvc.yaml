@@ -121,21 +121,11 @@ stages:
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
 
-  report:
-    cmd: Rscript pipeline/05-report.R
-    desc: Render a performance report using Quarto.
-    deps:
-    - output/shap/model_shap.parquet
-    outs:
-    - reports/performance.html:
-        cache: false
-
   finalize:
-    cmd: Rscript pipeline/06-finalize.R
+    cmd: Rscript pipeline/05-finalize.R
     desc: >
-      Save run timings, upload pipeline run results to S3, and send an SNS
-      notification. Will also clean some of the generated outputs prior to
-      upload and attach a unique run ID
+      Save run timings and run metadata to disk and render a performance report
+      using Quarto.
     deps:
     - output/parameter_final/model_parameter_final.parquet
     - output/parameter_range/model_parameter_range.parquet
@@ -170,6 +160,16 @@ stages:
         cache: false
     - output/metadata/model_metadata.parquet:
         cache: false
+
+  upload:
+    cmd: Rscript pipeline/06-upload.R
+    desc: >
+      Upload performance stats and report to S3, trigger Glue crawlers, and
+      publish to a model run SNS topic. Will also clean some of the generated
+      outputs prior to upload and attach a unique run ID. This step requires
+      access to the CCAO Data AWS account, and so is assumed to be internal-only
+    deps:
+    - output/metadata/model_metadata.parquet
 
   export:
     cmd: Rscript pipeline/07-export.R
