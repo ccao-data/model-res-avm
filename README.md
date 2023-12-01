@@ -28,6 +28,7 @@ Table of Contents
   - [Output](#output)
   - [Getting Data](#getting-data)
   - [System Requirements](#system-requirements)
+  - [Updating R dependencies](#updating-r-dependencies)
   - [Troubleshooting](#troubleshooting)
 - [License](#license)
 - [Contributing](#contributing)
@@ -101,6 +102,7 @@ graph LR
     evaluate("Evaluate")
     interpret("Interpret")
     finalize("Finalize")
+    upload("Upload")
     export("Export")
 
     ingest --> train
@@ -109,8 +111,9 @@ graph LR
     assess --> evaluate
     evaluate --> finalize
     interpret --> finalize
-    finalize --> aws
+    finalize --> upload
     finalize --> export
+    upload --> aws
     aws --> ingest
     aws --> export
 ```
@@ -157,12 +160,17 @@ stand-alone script) or as part of the overall pipeline (with
     entire model. The primary output of this stage is a data frame of
     the contributions of each feature for each property.
 
-5.  **Finalize**: Add metadata and then upload all output objects to AWS
-    (S3). All model outputs for every model run are stored in perpetuity
-    in S3. Each run’s performance can be visualized using the CCAO’s
-    internal Tableau dashboards.
+5.  **Finalize**: Save run timings and metadata and render a Quarto
+    document containing a model performance report to
+    `reports/performance.html`.
 
-6.  **Export**: Export assessed values to Desk Review spreadsheets for
+6.  **Upload**: Upload all output objects to AWS (S3). All model outputs
+    for every model run are stored in perpetuity in S3. Each run’s
+    performance can be visualized using the CCAO’s internal Tableau
+    dashboards. NOTE: This stage is only run internally, since it
+    requires access to the CCAO Data AWS account.
+
+7.  **Export**: Export assessed values to Desk Review spreadsheets for
     Valuations, as well as a delimited text format for upload to the
     system of record (iasWorld). NOTE: This stage is only run when a
     final model is selected. It is not run automatically or as part of
@@ -700,7 +708,7 @@ the following major changes to the residential modeling codebase:
   process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R),
   while the process to [finalize model
   values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values)
-  was moved to [pipeline/06-export.R](pipeline/06-export.R).
+  was moved to [pipeline/06-export.R](pipeline/07-export.R).
 - Added [DVC](https://dvc.org/) support/integration. This repository
   uses DVC in 2 ways:
   1.  All input data in [`input/`](input/) is versioned, tracked, and
@@ -755,6 +763,16 @@ the following major changes to the residential modeling codebase:
 
 - Moved sales validation to a dedicated repository located at
   [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
+- Infrastructure improvements
+  - Added
+    [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml)
+    workflow to run the model using GitHub Actions and AWS Batch.
+  - Added
+    [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml)
+    workflow to delete test run artifacts in S3 using GitHub Actions.
+  - Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to
+    render a performance report using Quarto and factored S3/SNS
+    operations out into \[pipeline/06-upload.R\].
 
 # Ongoing Issues
 
@@ -1018,6 +1036,12 @@ If you’re on Windows, you’ll also need to install
 build the necessary packages. You may also want to (optionally) install
 [DVC](https://dvc.org/doc/install) to pull data and run pipelines.
 
+We also publish a Docker image containing model code and all of the
+dependencies necessary to run it. If you’re comfortable using Docker,
+you can skip the installation steps below and instead pull the image
+from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version
+of the model.
+
 ## Installation
 
 1.  Clone this repository using git, or simply download it using the
@@ -1032,6 +1056,15 @@ build the necessary packages. You may also want to (optionally) install
     `renv::restore()`. This step may take awhile. Linux users will
     likely need to install dependencies (via apt, yum, etc.) to build
     from source.
+5.  The `finalize` step of the model pipeline requires some additional
+    dependencies for generating a model performance report. Install
+    these additional dependencies by running
+    `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
+    These dependencies must be installed in addition to the core
+    dependencies installed in step 4. If dependencies are not installed,
+    the report will fail to generate and the pipeline stage will print
+    the error message to the report file at `reports/performance.html`;
+    the pipeline will continue to execute in spite of the failure.
 
 For installation issues, particularly related to package installation
 and dependencies, see [Troubleshooting](#troubleshooting).
@@ -1047,9 +1080,9 @@ following stages:
 - [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to
   CCAO internal AWS services to pull data. See [Getting
   Data](#getting-data) if you are a member of the public.
-- [`pipeline/05-finalize.R`](pipeline/05-finalize.R) - Requires access
-  to CCAO internal AWS services to upload model results.
-- [`pipeline/06-export.R`](pipeline/06-export.R) - Only required for
+- [`pipeline/06-upload.R`](pipeline/06-upload.R) - Requires access to
+  CCAO internal AWS services to upload model results.
+- [`pipeline/07-export.R`](pipeline/07-export.R) - Only required for
   CCAO internal processes.
 
 #### Using DVC
@@ -1112,9 +1145,8 @@ of these outputs and their purpose can be found in
 [`misc/file_dict.csv`](misc/file_dict.csv). For public users, all
 outputs are saved in the [`output/`](output/) directory, where they can
 be further used/examined after a model run. For CCAO employees, all
-outputs are uploaded to S3 via the [finalize
-stage](pipeline/05-finalize.R). Uploaded Parquet files are converted
-into the following Athena tables:
+outputs are uploaded to S3 via the [upload stage](pipeline/06-upload).
+Uploaded Parquet files are converted into the following Athena tables:
 
 #### Athena Tables
 
@@ -1231,6 +1263,44 @@ sped up using the parallel processing built-in to LightGBM. Note that:
   yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build)
   or wait for the [upcoming CUDA
   release](https://github.com/microsoft/LightGBM/issues/5153).
+
+## Updating R dependencies
+
+There are two lockfiles that we use with renv to manage R dependencies:
+
+1.  **`renv.lock`** is the canonical list of dependencies that are used
+    by the **core model pipeline**. Any dependencies that are required
+    to run the model itself should be defined in this lockfile.
+2.  **`renv/profiles/reporting/renv.lock`** is the canonical list of
+    dependencies that are used to **generate a model performance
+    report** in the `finalize` step of the pipeline. Any dependencies
+    that are required to generate that report or others like it should
+    be defined in this lockfile.
+
+Our goal in maintaining multiple lockfiles is to keep the list of
+dependencies that are required to run the model as short as possibile.
+This choice adds overhead to the process of updating R dependencies, but
+incurs the benefit of a more maintainable model over the long term.
+
+The process for **updating core model pipeline dependencies** is
+straightforward: Running `renv::install("<dependency_name>")` and
+`renv::snapshot()` will ensure that the dependency gets added or updated
+in `renv.lock`, as long is it is imported somewhere in the model
+pipeline via a `library(<dependency_name>)` call.
+
+The process for updating **model report dependencies** is more complex,
+since it requires the use of a separate `reporting` profile:
+
+1.  Run `Sys.setenv(RENV_PROFILE = "reporting")` to set the renv profile
+    to `reporting`
+2.  Make sure that the dependency is defined in the `DESCRIPTION` file
+    under the `Config/renv/profiles/reporting/dependencies` key
+3.  Run `renv::install("<dependency_name>")` to add or update the
+    dependency as necessary
+4.  Run `renv::snapshot(type = "explicit")` to update the reporting
+    lockfile with the dependencies defined in the `DESCRIPTION` file
+5.  Run `Sys.unsetenv("RENV_PROFILE")` to switch the renv profile back
+    to the default
 
 ## Troubleshooting
 

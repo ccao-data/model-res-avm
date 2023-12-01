@@ -124,24 +124,9 @@ stages:
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     desc: >
-      Save run timings, upload pipeline run results to S3, and send an SNS
-      notification. Will also clean some of the generated outputs prior to
-      upload and attach a unique run ID
+      Save run timings and run metadata to disk and render a performance report
+      using Quarto.
     deps:
-    - output/parameter_final/model_parameter_final.parquet
-    - output/parameter_range/model_parameter_range.parquet
-    - output/parameter_search/model_parameter_search.parquet
-    - output/workflow/fit/model_workflow_fit.zip
-    - output/workflow/recipe/model_workflow_recipe.rds
-    - output/test_card/model_test_card.parquet
-    - output/assessment_card/model_assessment_card.parquet
-    - output/assessment_pin/model_assessment_pin.parquet
-    - output/performance/model_performance_test.parquet
-    - output/performance_quantile/model_performance_quantile_test.parquet
-    - output/performance/model_performance_assessment.parquet
-    - output/performance_quantile/model_performance_quantile_assessment.parquet
-    - output/shap/model_shap.parquet
-    - output/feature_importance/model_feature_importance.parquet
     - output/intermediate/timing/model_timing_train.parquet
     - output/intermediate/timing/model_timing_assess.parquet
     - output/intermediate/timing/model_timing_evaluate.parquet
@@ -160,9 +145,37 @@ stages:
         cache: false
     - output/metadata/model_metadata.parquet:
         cache: false
+    - reports/performance.html:
+        cache: false
+
+  upload:
+    cmd: Rscript pipeline/06-upload.R
+    desc: >
+      Upload performance stats and report to S3, trigger Glue crawlers, and
+      publish to a model run SNS topic. Will also clean some of the generated
+      outputs prior to upload and attach a unique run ID. This step requires
+      access to the CCAO Data AWS account, and so is assumed to be internal-only
+    deps:
+    - output/parameter_final/model_parameter_final.parquet
+    - output/parameter_range/model_parameter_range.parquet
+    - output/parameter_search/model_parameter_search.parquet
+    - output/workflow/fit/model_workflow_fit.zip
+    - output/workflow/recipe/model_workflow_recipe.rds
+    - output/test_card/model_test_card.parquet
+    - output/assessment_card/model_assessment_card.parquet
+    - output/assessment_pin/model_assessment_pin.parquet
+    - output/performance/model_performance_test.parquet
+    - output/performance_quantile/model_performance_quantile_test.parquet
+    - output/performance/model_performance_assessment.parquet
+    - output/performance_quantile/model_performance_quantile_assessment.parquet
+    - output/shap/model_shap.parquet
+    - output/feature_importance/model_feature_importance.parquet
+    - output/metadata/model_metadata.parquet
+    - output/timing/model_timing.parquet
+    - reports/performance.html
 
   export:
-    cmd: Rscript pipeline/06-export.R
+    cmd: Rscript pipeline/07-export.R
     desc: >
       Generate Desk Review spreadsheets and iasWorld upload CSVs from a finished
       run. NOT automatically run since it is typically only run once. Manually

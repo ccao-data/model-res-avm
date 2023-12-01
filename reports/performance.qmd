@@ -1,0 +1,27 @@
+---
+title: "Model performance for `r params$run_id`"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+editor: source
+params:
+  run_id: 2023-03-14-clever-damani
+  year: '2023'
+---
+
+This document is a stub.
+
+```{r setup}
+library(plotly)
+library(leaflet)
+library(sf)
+
+print("All packages loaded!")
+```
