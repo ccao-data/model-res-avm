@@ -27,9 +27,8 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/support-container-env-vars-in-batch-jobs
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
-      ref: jeancochrane/support-container-env-vars-in-batch-jobs
       vcpu: "16.0"
       memory: "65536"
       role-duration-seconds: 14400  # Worst-case time for a full model run
