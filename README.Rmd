@@ -254,7 +254,10 @@ dbt_manifest <- fromJSON(
 get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
   # Retrieve the description for a column `colname` either from a set of
   # dbt DAG nodes (`dag_nodes`) or a set of hardcoded descriptions
-  # (`hardcoded_descriptions`)
+  # (`hardcoded_descriptions`). Column descriptions that come from dbt DAG nodes
+  # will be truncated starting from the first period to reflect the fact that
+  # we use periods in our dbt documentation to separate high-level column
+  # summaries from their detailed notes
   #
   # Prefer the hardcoded descriptions, if they exist
   if (colname %in% hardcoded_descriptions$column) {
@@ -271,7 +274,11 @@ get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
       if (column_name == colname) {
         description <- node$columns[[column_name]]$description
         if (!is.null(description) && trimws(description) != "") {
-          return(gsub("\n", " ", description))
+          # Strip everything after the first period, since we use the first
+          # period as a delimiter separating a column's high-level summary from
+          # its detailed notes in our dbt docs
+          summary_description <- strplit(description, ".", fixed = TRUE)[[1]][1]
+          return(gsub("\n", " ", summary_description))
         }
       }
     }
