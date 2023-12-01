@@ -254,7 +254,10 @@ dbt_manifest <- fromJSON(
 get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
   # Retrieve the description for a column `colname` either from a set of
   # dbt DAG nodes (`dag_nodes`) or a set of hardcoded descriptions
-  # (`hardcoded_descriptions`)
+  # (`hardcoded_descriptions`). Column descriptions that come from dbt DAG nodes
+  # will be truncated starting from the first period to reflect the fact that
+  # we use periods in our dbt documentation to separate high-level column
+  # summaries from their detailed notes
   #
   # Prefer the hardcoded descriptions, if they exist
   if (colname %in% hardcoded_descriptions$column) {
@@ -271,7 +274,11 @@ get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
       if (column_name == colname) {
         description <- node$columns[[column_name]]$description
         if (!is.null(description) && trimws(description) != "") {
-          return(gsub("\n", " ", description))
+          # Strip everything after the first period, since we use the first
+          # period as a delimiter separating a column's high-level summary from
+          # its detailed notes in our dbt docs
+          summary_description <- strsplit(description, ".", fixed = TRUE)[[1]][1]
+          return(gsub("\n", " ", summary_description))
         }
       }
     }
@@ -462,7 +469,7 @@ This repository represents a significant departure from the old [residential mod
 
 ### [`assessment-year-2022`](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)
 
-* Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/06-export.R](pipeline/07-export.R).
+* Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/07-export.R](pipeline/07-export.R).
 * Added [DVC](https://dvc.org/) support/integration. This repository uses DVC in 2 ways:
   1. All input data in [`input/`](input/) is versioned, tracked, and stored using DVC. Previous input data sets are stored in perpetuity on S3.
   2. [DVC pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files) are used to sequentially run R pipeline scripts and track/cache inputs and outputs.
@@ -491,7 +498,7 @@ This repository represents a significant departure from the old [residential mod
 * Infrastructure improvements
   * Added [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml) workflow to run the model using GitHub Actions and AWS Batch.
   * Added [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml) workflow to delete test run artifacts in S3 using GitHub Actions.
-  * Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to render a performance report using Quarto and factored S3/SNS operations out into [pipeline/06-upload.R].
+  * Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to render a performance report using Quarto and factored S3/SNS operations out into [pipeline/06-upload.R](pipeline/06-upload.R).
 
 # Ongoing Issues
 
@@ -754,7 +761,7 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 
 ## Updating R dependencies
 
-There are two lockfiles that we use with renv to manage R dependencies:
+We use multiple renv lockfiles in order to manage R dependencies:
 
 1. **`renv.lock`** is the canonical list of dependencies that are used by the **core model pipeline**. Any dependencies that are required to run the model itself should be defined in this lockfile.
 2. **`renv/profiles/reporting/renv.lock`** is the canonical list of dependencies that are used to **generate a model performance report** in the `finalize` step of the pipeline. Any dependencies that are required to generate that report or others like it should be defined in this lockfile.
@@ -763,13 +770,13 @@ Our goal in maintaining multiple lockfiles is to keep the list of dependencies t
 
 The process for **updating core model pipeline dependencies** is straightforward: Running `renv::install("<dependency_name>")` and `renv::snapshot()` will ensure that the dependency gets added or updated in `renv.lock`, as long is it is imported somewhere in the model pipeline via a `library(<dependency_name>)` call.
 
-The process for updating **model report dependencies** is more complex, since it requires the use of a separate `reporting` profile:
+The process for updating *dependencies for other lockfiles** is more complex, since it requires the use of a separate profile when running renv commands. Determine the name of the profile you'd like to update (`<profile_name>` in the code that follows) and run the following commands:
 
-1. Run `Sys.setenv(RENV_PROFILE = "reporting")` to set the renv profile to `reporting`
-2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/reporting/dependencies` key
+1. Run `renv::activate(profile = "<profile_name>")` to set the renv profile to `<profile_name>`
+2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/<profile_name>/dependencies` key
 3. Run `renv::install("<dependency_name>")` to add or update the dependency as necessary
 4. Run `renv::snapshot(type = "explicit")` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
-5. Run `Sys.unsetenv("RENV_PROFILE")` to switch the renv profile back to the default
+5. Run `renv::activate()` if you would like to switch back to the default renv profile
 
 ## Troubleshooting
 

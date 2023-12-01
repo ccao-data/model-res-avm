@@ -2,6 +2,10 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# Start the stage timer and clear logs from prior stage
+tictoc::tic.clearlog()
+tictoc::tic("Finalize")
+
 # Load libraries and scripts
 suppressPackageStartupMessages({
   library(arrow)
@@ -11,6 +15,7 @@ suppressPackageStartupMessages({
   library(lubridate)
   library(purrr)
   library(tidyr)
+  library(tictoc)
   library(tune)
   library(yaml)
 })
@@ -148,62 +153,12 @@ metadata <- tibble::tibble(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Save Timings --------------------------------------------------------------
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-message("Saving run timings")
-
-# Filter ensure we only get timing files for stages that actually ran
-if (run_type == "full") {
-  timings <- list.files(
-    paste0(paths$intermediate$timing, "/"),
-    full.names = TRUE
-  )
-} else {
-  timings <- list.files(
-    paste0(paths$intermediate$timing, "/"),
-    pattern = "train|evaluate",
-    full.names = TRUE
-  )
-}
-
-# Convert the intermediate timing logs to a wide data frame, then save to file
-timings_df <- purrr::map_dfr(timings, read_parquet) %>%
-  mutate(
-    run_id = run_id,
-    run_end_timestamp = run_end_timestamp,
-    elapsed = round(toc - tic, 2),
-    stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed"),
-    order = recode(
-      msg,
-      "Train" = "01", "Assess" = "02",
-      "Evaluate" = "03", "Interpret" = "04"
-    )
-  ) %>%
-  arrange(order) %>%
-  select(-c(tic:toc, msg)) %>%
-  tidyr::pivot_wider(
-    id_cols = c(run_id, run_end_timestamp),
-    names_from = stage,
-    values_from = elapsed
-  ) %>%
-  mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) %>%
-  mutate(across(ends_with("_sec_elapsed"), function(x) round(x, 2))) %>%
-  write_parquet(paths$output$timing$local)
-
-# Clear any remaining logs from tictoc
-tictoc::tic.clearlog()
-
-
-
-
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Generate performance report -----------------------------------------------
+# 3. Generate performance report -----------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Wrap this block in an error handler so that the pipeline continues execution
 # even if report generation fails. This is important because the report file is
-# defined separately, so this script can't be sure that it is error-free, and
-#
+# defined separately, so this script can't be sure that it is error-free
 tryCatch(
   {
     suppressPackageStartupMessages({
@@ -233,3 +188,61 @@ tryCatch(
     sink()
   }
 )
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Save Timings --------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Saving run timings")
+
+# End the stage timer and write the time elapsed to a temporary file
+tictoc::toc(log = TRUE)
+bind_rows(tictoc::tic.log(format = FALSE)) %>%
+  arrow::write_parquet(gsub("//*", "/", file.path(
+    paths$intermediate$timing$local,
+    "model_timing_finalize.parquet"
+  )))
+
+# Filter ensure we only get timing files for stages that actually ran
+if (run_type == "full") {
+  timings <- list.files(
+    paste0(paths$intermediate$timing, "/"),
+    full.names = TRUE
+  )
+} else {
+  timings <- list.files(
+    paste0(paths$intermediate$timing, "/"),
+    pattern = "train|evaluate|finalize",
+    full.names = TRUE
+  )
+}
+
+# Convert the intermediate timing logs to a wide data frame, then save to file
+timings_df <- purrr::map_dfr(timings, read_parquet) %>%
+  mutate(
+    run_id = run_id,
+    run_end_timestamp = run_end_timestamp,
+    elapsed = round(toc - tic, 2),
+    stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed"),
+    order = recode(
+      msg,
+      "Train" = "01", "Assess" = "02",
+      "Evaluate" = "03", "Interpret" = "04",
+      "Finalize" = "05"
+    )
+  ) %>%
+  arrange(order) %>%
+  select(-c(tic:toc, msg)) %>%
+  tidyr::pivot_wider(
+    id_cols = c(run_id, run_end_timestamp),
+    names_from = stage,
+    values_from = elapsed
+  ) %>%
+  mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) %>%
+  mutate(across(ends_with("_sec_elapsed"), function(x) round(x, 2))) %>%
+  write_parquet(paths$output$timing$local)
+
+# Clear any remaining logs from tictoc
+tictoc::tic.clearlog()

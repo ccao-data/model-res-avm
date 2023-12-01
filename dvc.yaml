@@ -141,6 +141,8 @@ stages:
     - pv
     - ratio_study
     outs:
+    - output/intermediate/timing/model_timing_finalize.parquet:
+        cache: false
     - output/timing/model_timing.parquet:
         cache: false
     - output/metadata/model_metadata.parquet:
