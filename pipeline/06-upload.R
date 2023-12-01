@@ -28,10 +28,11 @@ paths <- model_file_dict()
 # Load the parameters file containing the run settings
 params <- read_yaml("params.yaml")
 
-# Load CV toggle, SHAP toggle, and run_type as defined in the `finalize` step
+# Load various overridden parameters as defined in the `finalize` step
 metadata <- read_parquet(paths$output$metadata$local)
 cv_enable <- metadata$cv_enable
 shap_enable <- metadata$shap_enable
+run_id <- metadata$run_id
 run_type <- metadata$run_type
 
 
