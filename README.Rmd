@@ -766,7 +766,7 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 
 ## Updating R dependencies
 
-There are two lockfiles that we use with renv to manage R dependencies:
+We use multiple renv lockfiles in order to manage R dependencies:
 
 1. **`renv.lock`** is the canonical list of dependencies that are used by the **core model pipeline**. Any dependencies that are required to run the model itself should be defined in this lockfile.
 2. **`renv/profiles/reporting/renv.lock`** is the canonical list of dependencies that are used to **generate a model performance report** in the `finalize` step of the pipeline. Any dependencies that are required to generate that report or others like it should be defined in this lockfile.
@@ -775,13 +775,13 @@ Our goal in maintaining multiple lockfiles is to keep the list of dependencies t
 
 The process for **updating core model pipeline dependencies** is straightforward: Running `renv::install("<dependency_name>")` and `renv::snapshot()` will ensure that the dependency gets added or updated in `renv.lock`, as long is it is imported somewhere in the model pipeline via a `library(<dependency_name>)` call.
 
-The process for updating **model report dependencies** is more complex, since it requires the use of a separate `reporting` profile:
+The process for updating *dependencies for other lockfiles** is more complex, since it requires the use of a separate profile when running renv commands. Determine the name of the profile you'd like to update (`<profile_name>` in the code that follows) and run the following commands:
 
-1. Run `Sys.setenv(RENV_PROFILE = "reporting")` to set the renv profile to `reporting`
-2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/reporting/dependencies` key
+1. Run `renv::activate(profile = "<profile_name>")` to set the renv profile to `<profile_name>`
+2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/<profile_name>/dependencies` key
 3. Run `renv::install("<dependency_name>")` to add or update the dependency as necessary
 4. Run `renv::snapshot(type = "explicit")` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
-5. Run `Sys.unsetenv("RENV_PROFILE")` to switch the renv profile back to the default
+5. Run `renv::activate()` if you would like to switch back to the default renv profile
 
 ## Troubleshooting
 
