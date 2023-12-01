@@ -37,5 +37,4 @@ jobs:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       CONTAINER_ENV_VARS: |
-        FOO=foo
-        BAR=bar
+        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
