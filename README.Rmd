@@ -277,7 +277,7 @@ get_column_description <- function(colname, dag_nodes, hardcoded_descriptions) {
           # Strip everything after the first period, since we use the first
           # period as a delimiter separating a column's high-level summary from
           # its detailed notes in our dbt docs
-          summary_description <- strplit(description, ".", fixed = TRUE)[[1]][1]
+          summary_description <- strsplit(description, ".", fixed = TRUE)[[1]][1]
           return(gsub("\n", " ", summary_description))
         }
       }
