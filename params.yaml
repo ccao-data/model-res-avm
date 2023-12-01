@@ -62,31 +62,6 @@ input:
   # Time window (in months) used for rolling origin cross-validation
   time_split: 15
 
-  # Parameters used to trim the training data (sales) of outliers
-  sale_validation:
-
-    # Summary statistics grouping for detecting outlier sales i.e. an outlier
-    # might be 3 standard deviations from the mean of township and class
-    stat_groups: [
-      "meta_year",
-      "meta_township_code",
-      "meta_class"
-    ]
-
-    # Predictor variables to use in the isolation forest classifier
-    iso_forest: [
-      "meta_sale_price",
-      "sv_price_per_sqft",
-      "sv_days_since_last_transaction",
-      "sv_cgdr",
-      "sv_sale_dup_counts"
-    ]
-
-    # Left and right boundaries (in standard deviations) used to trim the
-    # training sample e.g. any sales more than 3 standard deviations from the
-    # mean will be dropped
-    dev_bounds: [2, 3]
-
   # Parameters used to generate townhome complex identifiers
   complex:
     # Townhomes (class 210/295) should match exactly on these variables to be
