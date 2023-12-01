@@ -7,6 +7,7 @@ WORKDIR /setup
 # Use PPM for binary installs
 ENV RENV_CONFIG_REPOS_OVERRIDE "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
 ENV RENV_CONFIG_SANDBOX_ENABLED FALSE
+ENV RENV_PATHS_LIBRARY renv/library
 ENV RENV_PATHS_CACHE /setup/cache
 
 # Install system dependencies
@@ -27,14 +28,14 @@ RUN gdebi -n quarto-linux-amd64.deb
 RUN pip install --no-cache-dir dvc[s3]
 
 # Copy R bootstrap files into the image
-COPY renv.lock .Rprofile .gitignore .renvignore ./
+COPY renv.lock .Rprofile ./
 COPY renv/profiles/reporting/renv.lock reporting-renv.lock
 COPY renv/ renv/
 
 # Install R dependencies. Restoring renv first ensures that it's
 # using the same version as recorded in the lockfile
-RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore(clean = FALSE)'
-RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock", clean = FALSE)'
+RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
+RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 
 # Set the working directory to the app dir
 WORKDIR /model-res-avm/
