@@ -1,11 +1,14 @@
 FROM rocker/r-ver:4.3.1
 
-# Set the working directory to root
-WORKDIR /
+# Set the working directory to setup. Uses a dedicated directory instead of
+# root since otherwise renv will try to scan every subdirectory
+WORKDIR /setup
 
 # Use PPM for binary installs
 ENV RENV_CONFIG_REPOS_OVERRIDE "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
+ENV RENV_CONFIG_SANDBOX_ENABLED FALSE
 ENV RENV_PATHS_LIBRARY renv/library
+ENV RENV_PATHS_CACHE cache
 
 # Install system dependencies
 RUN apt-get update && \
@@ -24,13 +27,13 @@ RUN curl -o quarto-linux-amd64.deb -L \
 RUN pip install --no-cache-dir aiobotocore[boto3] boto3 dvc[s3]
 
 # Copy R bootstrap files into the image
-COPY renv.lock .
+COPY renv.lock .Rprofile .gitignore .renvignore ./
 COPY renv/profiles/reporting/renv.lock reporting-renv.lock
-COPY .Rprofile .
 COPY renv/ renv/
 
-# Install R dependencies
-RUN Rscript -e 'renv::restore()'
+# Install R dependencies. Restoring renv first ensures that it's
+# using the same version as recorded in the lockfile
+RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
 RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 
 # Set the working directory to the app dir
@@ -40,7 +43,7 @@ WORKDIR /model-res-avm/
 COPY ./ .
 
 # Copy R dependencies into the app directory
-RUN rm -Rf model-res-avm/renv && \
-    mv renv model-res-avm/
+RUN rm -Rf /model-res-avm/renv && \
+    mv /setup/renv /model-res-avm/renv
 
 CMD dvc pull && dvc repro
