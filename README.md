@@ -16,6 +16,7 @@ Table of Contents
     - [`assessment-year-2021`](#assessment-year-2021)
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
+    - [`assessment-year-2024` (WIP)](#assessment-year-2024-wip)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -749,6 +750,11 @@ the following major changes to the residential modeling codebase:
   Tidymodels for Bayesian optimization.
 - Dropped explicit spatial lag generation in the ingest stage.
 - Lots of other bugfixes and minor improvements.
+
+### `assessment-year-2024` (WIP)
+
+- Moved sales validation to a dedicated repository located at
+  [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
 
 # Ongoing Issues
 

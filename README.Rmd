@@ -481,6 +481,10 @@ This repository represents a significant departure from the old [residential mod
 * Dropped explicit spatial lag generation in the ingest stage.
 * Lots of other bugfixes and minor improvements.
 
+### `assessment-year-2024` (WIP)
+
+* Moved sales validation to a dedicated repository located at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
+
 # Ongoing Issues
 
 The CCAO faces a number of ongoing issues which make modeling difficult. Some of these issues are in the process of being solved; others are less tractable. We list them here for the sake of transparency and to provide a sense of the challenges we face.
