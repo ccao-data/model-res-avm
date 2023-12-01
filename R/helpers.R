@@ -36,7 +36,10 @@ model_get_s3_artifacts_for_run <- function(run_id, year) {
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
   # First get anything partitioned only by year
-  s3_objs_limited <- grep(".parquet$|.zip$|.rds$", s3_objs, value = TRUE) %>%
+  s3_objs_limited <- grep(
+    ".parquet$|.zip$|.rds|.html$", s3_objs,
+    value = TRUE
+  ) %>%
     unname()
 
   # Next get the prefix of anything partitioned by year and run_id
