@@ -20,7 +20,6 @@ suppressPackageStartupMessages({
   library(igraph)
   library(lubridate)
   library(purrr)
-  library(reticulate)
   library(RJDBC)
   library(tictoc)
   library(tidyr)
@@ -147,7 +146,8 @@ rm(AWS_ATHENA_CONN_JDBC, aws_athena_jdbc_driver)
 
 # Create a dictionary of column types, as specified in ccao::vars_dict
 col_type_dict <- ccao::vars_dict %>%
-  distinct(var_name = var_name_model, var_type = var_data_type)
+  distinct(var_name = var_name_model, var_type = var_data_type) %>%
+  drop_na(var_name)
 
 # Mini-function to ensure that columns are the correct type
 recode_column_type <- function(col, col_name, dict = col_type_dict) {
@@ -284,7 +284,7 @@ training_data_clean <- training_data_w_hie %>%
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
   mutate(across(
-    !starts_with(c("sv_", "hie_")),
+    any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
   )) %>%
   # Create time/date features using lubridate
@@ -329,9 +329,10 @@ training_data_clean <- training_data_w_hie %>%
 # time variables and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
-  mutate(
-    across(!starts_with("hie_"), ~ recode_column_type(.x, cur_column()))
-  ) %>%
+  mutate(across(
+    any_of(col_type_dict$var_name),
+    ~ recode_column_type(.x, cur_column())
+  )) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
