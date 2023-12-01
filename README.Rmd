@@ -475,7 +475,7 @@ This repository represents a significant departure from the old [residential mod
 
 ### [`assessment-year-2022`](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)
 
-* Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/06-export.R](pipeline/07-export.R).
+* Moved previously separate processes into this repository and improved their integration with the overall modeling process. For example, the [etl_res_data](https://gitlab.com/ccao-data-science---modeling/processes/etl_res_data) process was moved to [pipeline/00-ingest.R](pipeline/00-ingest.R), while the process to [finalize model values](https://gitlab.com/ccao-data-science---modeling/processes/finalize_model_values) was moved to [pipeline/07-export.R](pipeline/07-export.R).
 * Added [DVC](https://dvc.org/) support/integration. This repository uses DVC in 2 ways:
   1. All input data in [`input/`](input/) is versioned, tracked, and stored using DVC. Previous input data sets are stored in perpetuity on S3.
   2. [DVC pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files) are used to sequentially run R pipeline scripts and track/cache inputs and outputs.
@@ -503,7 +503,7 @@ This repository represents a significant departure from the old [residential mod
 * Infrastructure improvements
   * Added [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml) workflow to run the model using GitHub Actions and AWS Batch.
   * Added [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml) workflow to delete test run artifacts in S3 using GitHub Actions.
-  * Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to render a performance report using Quarto and factored S3/SNS operations out into [pipeline/06-upload.R].
+  * Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to render a performance report using Quarto and factored S3/SNS operations out into [pipeline/06-upload.R](pipeline/06-upload.R).
 
 # Ongoing Issues
 
