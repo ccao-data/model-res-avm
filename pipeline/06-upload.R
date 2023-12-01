@@ -11,6 +11,7 @@ suppressPackageStartupMessages({
   library(aws.s3)
   library(aws.ec2metadata)
   library(dplyr)
+  library(git2r)
   library(glue)
   library(here)
   library(knitr)

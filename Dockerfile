@@ -1,4 +1,4 @@
-FROM rocker/r-ver:4.3.1
+FROM rocker/r-ver:4.3.2
 
 # Set the working directory to setup. Uses a dedicated directory instead of
 # root since otherwise renv will try to scan every subdirectory
@@ -7,8 +7,7 @@ WORKDIR /setup
 # Use PPM for binary installs
 ENV RENV_CONFIG_REPOS_OVERRIDE "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
 ENV RENV_CONFIG_SANDBOX_ENABLED FALSE
-ENV RENV_PATHS_LIBRARY renv/library
-ENV RENV_PATHS_CACHE cache
+ENV RENV_PATHS_CACHE /setup/cache
 
 # Install system dependencies
 RUN apt-get update && \
@@ -34,8 +33,8 @@ COPY renv/ renv/
 
 # Install R dependencies. Restoring renv first ensures that it's
 # using the same version as recorded in the lockfile
-RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
-RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
+RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore(clean = FALSE)'
+RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock", clean = FALSE)'
 
 # Set the working directory to the app dir
 WORKDIR /model-res-avm/
