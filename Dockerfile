@@ -25,7 +25,7 @@ RUN curl -o quarto-linux-amd64.deb -L \
 RUN gdebi -n quarto-linux-amd64.deb
 
 # Install pipeline Python dependencies globally
-RUN pip install --no-cache-dir aiobotocore[boto3] boto3 dvc[s3]
+RUN pip install --no-cache-dir dvc[s3]
 
 # Copy R bootstrap files into the image
 COPY renv.lock .Rprofile .gitignore .renvignore ./
