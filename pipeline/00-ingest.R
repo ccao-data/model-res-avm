@@ -388,19 +388,18 @@ complex_id_temp <- assessment_data_clean %>%
     char_rooms.x <= char_rooms.y + params$input$complex$match_fuzzy$rooms,
     char_bldg_sf.x >= char_bldg_sf.y - params$input$complex$match_fuzzy$bldg_sf,
     char_bldg_sf.x <= char_bldg_sf.y + params$input$complex$match_fuzzy$bldg_sf,
-    ((char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
+    # nolint start
+    (char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
-      is.na(char_yrblt.x)
-    ),
+      is.na(char_yrblt.x),
     # Units must be within 250 feet of other units
-    ((loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
+    (loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
       loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
-      is.na(loc_x_3435.x)
-    ),
-    ((loc_y_3435.x >= loc_y_3435.y - params$input$complex$match_fuzzy$dist_ft &
+      is.na(loc_x_3435.x),
+    (loc_y_3435.x >= loc_y_3435.y - params$input$complex$match_fuzzy$dist_ft &
       loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_y_3435.x)
-    )
+    # nolint end
   ) %>%
   # Combine PINs into a graph
   select(meta_pin.x, meta_pin.y) %>%

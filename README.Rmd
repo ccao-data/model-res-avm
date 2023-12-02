@@ -297,8 +297,8 @@ param_tbl <- as_tibble(params$model$predictor$all)
 # as a new column
 param_notes <- param_tbl$value %>%
   ccao::vars_rename(names_from = "model", names_to = "athena") %>%
-  map(\(x) get_column_description(
-    x, dbt_manifest$nodes, hardcoded_descriptions
+  map(~ get_column_description(
+    .x, dbt_manifest$nodes, hardcoded_descriptions
   )) %>%
   unlist()
 
