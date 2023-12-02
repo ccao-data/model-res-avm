@@ -13,9 +13,11 @@
 #
 #   delete_current_year_model_runs.R 123,456,789
 
-library(glue)
-library(here)
-library(magrittr)
+suppressPackageStartupMessages({
+  library(glue)
+  library(here)
+  library(magrittr)
+})
 source(here("R", "helpers.R"))
 
 current_date <- as.POSIXct(Sys.Date())
