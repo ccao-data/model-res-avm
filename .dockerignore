@@ -1,7 +1,5 @@
 README.Rmd
 README.md
-.dvc/
-.git/
 docs/
 input/
 renv/library/
