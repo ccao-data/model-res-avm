@@ -11,9 +11,9 @@
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: >
-  Rebuilt final 2023 run (relaxed-dan) using updated proration method.
-  Re-running with the same model for posterity of the original results
+run_note: |
+  Test run for updated 2024 model pipeline. Uses 2022 data to assess 2023
+  since full 2023 data isn't available yet
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -40,10 +40,10 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to partition results and pull data
-  year: "2024"
+  year: "2023"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2024-01-01"
+  date: "2023-01-01"
 
   # Added context for model artifacts stored in s3. Does not change behavior
   triad: "south"
@@ -51,7 +51,7 @@ assessment:
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2023"
+  data_year: "2022"
 
 # Parameters used to define the input/training data
 input:
