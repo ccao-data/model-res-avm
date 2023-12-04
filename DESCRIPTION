@@ -1,1 +1,13 @@
-Config/renv/profiles/reporting/dependencies: quarto, leaflet, plotly, sf
+Config/renv/profiles/dev/dependencies:
+    DBI,
+    igraph,
+    lubridate,
+    openxlsx,
+    readr,
+    RJDBC
+Config/renv/profiles/reporting/dependencies:
+    leaflet,
+    plotly,
+    quarto,
+    rmarkdown,
+    sf
