@@ -1,18 +1,16 @@
 {
   "bioconductor.version": null,
   "external.libraries": [],
-  "ignored.packages": [
-    "quarto"
-  ],
+  "ignored.packages": [],
   "package.dependency.fields": [
     "Imports",
     "Depends",
     "LinkingTo"
   ],
-  "ppm.enabled": true,
+  "ppm.enabled": null,
   "ppm.ignored.urls": [],
   "r.version": [],
-  "snapshot.type": "implicit",
+  "snapshot.type": "explicit",
   "use.cache": true,
   "vcs.ignore.cellar": true,
   "vcs.ignore.library": true,
