@@ -57,7 +57,7 @@ assessment:
 input:
   # The min and max year of sales to use for the training data sample
   min_sale_year: "2014"
-  max_sale_year: "2023"
+  max_sale_year: "2022"
 
   # Time window (in months) used for rolling origin cross-validation
   time_split: 15
@@ -123,7 +123,7 @@ model:
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
-  seed: 2024
+  seed: 2023
   deterministic: TRUE
   force_row_wise: TRUE
 
@@ -354,10 +354,10 @@ pv:
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
 ratio_study:
-  far_year: "2021"
+  far_year: "2020"
   far_stage: "board"
   far_column: "meta_2yr_pri_board_tot"
-  near_year: "2023"
+  near_year: "2022"
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
