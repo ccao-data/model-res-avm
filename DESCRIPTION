@@ -1,7 +1,6 @@
 Config/renv/profiles/dev/dependencies:
     DBI,
     igraph,
-    lubridate,
     openxlsx,
     readr,
     rmarkdown,
