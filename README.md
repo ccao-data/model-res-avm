@@ -16,7 +16,7 @@ Table of Contents
     - [`assessment-year-2021`](#assessment-year-2021)
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
-    - [Upcoming](#upcoming)
+    - [`assessment-year-2024` (WIP)](#assessment-year-2024-wip)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -340,7 +340,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-01.
+model as of 2023-12-02.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -595,21 +595,12 @@ accomplish this in two ways.
 ##### 1. Sales Validation
 
 We use a heuristics-based approach to drop non-arms-length sales, remove
-outliers, and manually flag certain suspect sales. The code for this
-approach can be found in [`flagging.py`](./py/flagging.py) and was
+outliers, and manually flag certain suspect sales. This approach was
 developed in partnership with the [Mansueto
-Institute](https://miurban.uchicago.edu/).
-
-The heuristics classify the following types of outliers using
-information about each sale:
-
-![](./docs/figures/sales_validation.png)
-
-We also employ a few additional heuristics that combine statistical
-methods with flags derived from the [PTAX-203
-form](https://clintonco.illinois.gov/wp-content/uploads/PTAX-203.pdf).
-Both the heuristic and PTAX-203 flags can be found in the
-`sv_outier_type` column of the [training data](#primary-data).
+Institute](https://miurban.uchicago.edu/). As of 2023, the sales
+validation code can be found in a dedicated repository at
+[ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
+Please visit that repository for more information.
 
 ##### 2. Balance Tests
 
@@ -768,8 +759,10 @@ the following major changes to the residential modeling codebase:
 - Dropped explicit spatial lag generation in the ingest stage.
 - Lots of other bugfixes and minor improvements.
 
-### Upcoming
+### `assessment-year-2024` (WIP)
 
+- Moved sales validation to a dedicated repository located at
+  [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
 - Infrastructure improvements
   - Added
     [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml)

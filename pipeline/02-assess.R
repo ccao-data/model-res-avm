@@ -192,12 +192,14 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
   left_join(land_nbhd_rate, by = c("meta_nbhd_code" = "meta_nbhd")) %>%
   mutate(
     pred_pin_final_fmv_land = ceiling(case_when(
+      # nolint start
       # Use the fixed late value first (unless it exceeds the land % cap)
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round_no_prorate *
           params$pv$land_pct_of_total_cap) ~
         pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
+      # nolint end
       # Otherwise, use the land $/sqft rate (again checking against the cap)
       char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round_no_prorate *
         params$pv$land_pct_of_total_cap ~
@@ -240,8 +242,8 @@ assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
     # the proportion of the building's value held by each PIN
     pred_pin_final_fmv_bldg =
       pred_pin_final_fmv_bldg_no_prorate * meta_tieback_proration_rate,
-    temp_bldg_frac_prop = pred_pin_final_fmv_bldg -
-      as.integer(pred_pin_final_fmv_bldg)
+    temp_bldg_frac_prop =
+      pred_pin_final_fmv_bldg - as.integer(pred_pin_final_fmv_bldg)
   ) %>%
   # 3. Assign the fractional portion of a building (cents) to whichever portion
   # is largest i.e. [1.59, 1.41] becomes [2, 1]
@@ -310,8 +312,7 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
       sum(pred_card_final_fmv, na.rm = TRUE) -
         sum(as.integer(pred_card_final_fmv), na.rm = TRUE)
     ),
-    pred_card_final_fmv = round(as.integer(pred_card_final_fmv) +
-      temp_add_diff)
+    pred_card_final_fmv = round(as.integer(pred_card_final_fmv) + temp_add_diff)
   ) %>%
   ungroup() %>%
   select(-starts_with("temp_"))
@@ -514,7 +515,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
   mutate(
     flag_prior_near_to_pred_unchanged =
       prior_near_tot >= pred_pin_final_fmv_round - 100 &
-        prior_near_tot <= pred_pin_final_fmv_round + 100,
+        prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
     flag_pred_initial_to_final_changed = ccao::val_round_fmv(
       pred_pin_initial_fmv,
       breaks = params$pv$round_break,

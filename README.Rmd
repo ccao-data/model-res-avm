@@ -1,6 +1,6 @@
 ---
 title: "Table of Contents"
-output: 
+output:
   github_document:
     toc: true
     toc_depth: 3
@@ -103,7 +103,7 @@ To counter this, we've listed the major choices we've made about our modeling pr
 
 ### Model Selection
 
-We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It has [an excellent R API](https://cran.r-project.org/web/packages/lightgbm/index.html) and has been around since 2016. 
+We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It has [an excellent R API](https://cran.r-project.org/web/packages/lightgbm/index.html) and has been around since 2016.
 
 We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 
@@ -124,7 +124,7 @@ The downsides of LightGBM are that it is:
 
 ### Framework Selection
 
-We use [Tidymodels](https://www.tidymodels.org/) as our primary machine-learning framework. Tidymodels is a set of R packages that work well together and with the [Tidyverse](https://www.tidyverse.org/). These packages abstract away complicated machine-learning logic and allow us to focus on improving our data and models. 
+We use [Tidymodels](https://www.tidymodels.org/) as our primary machine-learning framework. Tidymodels is a set of R packages that work well together and with the [Tidyverse](https://www.tidyverse.org/). These packages abstract away complicated machine-learning logic and allow us to focus on improving our data and models.
 
 Additionally, Tidymodels is:
 
@@ -297,8 +297,8 @@ param_tbl <- as_tibble(params$model$predictor$all)
 # as a new column
 param_notes <- param_tbl$value %>%
   ccao::vars_rename(names_from = "model", names_to = "athena") %>%
-  map(\(x) get_column_description(
-    x, dbt_manifest$nodes, hardcoded_descriptions
+  map(~ get_column_description(
+    .x, dbt_manifest$nodes, hardcoded_descriptions
   )) %>%
   unlist()
 
@@ -417,24 +417,18 @@ These sale prices are our initial prediction for what each property is worth. Th
 The pipeline also uses a few secondary data sets in the valuation process. These data sets are included in [`input/`](./input) but are not actually used by the model itself. They include:
 
 * [`complex_id_data`](#getting-data) - Complex identifiers for class 210 and 295 town/rowhomes. Intended to group like units together to ensure that nearly identical units in close proximity receive the same assessed value. This is accomplished with a "fuzzy grouping" strategy that allows slightly dissimilar characteristics.
-* [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department. 
-* [`land_nbhd_rate_data`](#getting-data) - Fixed $/sqft land rates by assessor neighborhood for residential property classes except 210 and 295. Provided by the Valuations department. 
+* [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department.
+* [`land_nbhd_rate_data`](#getting-data) - Fixed $/sqft land rates by assessor neighborhood for residential property classes except 210 and 295. Provided by the Valuations department.
 
 #### Representativeness
 
-There's a common saying in the machine learning world: "garbage in, garbage out." This is a succinct way to say that training a predictive model with bad, unrepresentative, or biased data leads to bad results. 
+There's a common saying in the machine learning world: "garbage in, garbage out." This is a succinct way to say that training a predictive model with bad, unrepresentative, or biased data leads to bad results.
 
 To help mitigate the bad data problem and ensure accurate prediction, we do our best to ensure that the sales data used to train the model is representative of the actual market and universe of properties. We accomplish this in two ways.
 
 ##### 1. Sales Validation
 
-We use a heuristics-based approach to drop non-arms-length sales, remove outliers, and manually flag certain suspect sales. The code for this approach can be found in [`flagging.py`](./py/flagging.py) and was developed in partnership with the [Mansueto Institute](https://miurban.uchicago.edu/).
-
-The heuristics classify the following types of outliers using information about each sale:
-
-![](./docs/figures/sales_validation.png)
-
-We also employ a few additional heuristics that combine statistical methods with flags derived from the [PTAX-203 form](https://clintonco.illinois.gov/wp-content/uploads/PTAX-203.pdf). Both the heuristic and PTAX-203 flags can be found in the `sv_outier_type` column of the [training data](#primary-data).
+We use a heuristics-based approach to drop non-arms-length sales, remove outliers, and manually flag certain suspect sales. This approach was developed in partnership with the [Mansueto Institute](https://miurban.uchicago.edu/). As of 2023, the sales validation code can be found in a dedicated repository at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val). Please visit that repository for more information.
 
 ##### 2. Balance Tests
 
@@ -498,8 +492,9 @@ This repository represents a significant departure from the old [residential mod
 * Dropped explicit spatial lag generation in the ingest stage.
 * Lots of other bugfixes and minor improvements.
 
-### Upcoming
+### `assessment-year-2024` (WIP)
 
+* Moved sales validation to a dedicated repository located at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
 * Infrastructure improvements
   * Added [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml) workflow to run the model using GitHub Actions and AWS Batch.
   * Added [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml) workflow to delete test run artifacts in S3 using GitHub Actions.
@@ -544,7 +539,7 @@ It is difficult for our office to determine whether or not any given property sa
 
 ##### Incentives Not to Disclose Accurate Information
 
-The Cook County property tax system is complex and can sometimes create perverse incentives. 
+The Cook County property tax system is complex and can sometimes create perverse incentives.
 
 For example, most property owners want their property taxes to be as low as possible, and are thus disincentivized from reporting characteristic errors which could raise their assessed value. Conversely, if a property owner plans to sell their home on a listing website, then they have a strong incentive (the highest possible sale price) to ensure the website accurately reflects their property's characteristics. Listing websites know this and offer easy ways to self-update property attributes.
 
@@ -554,12 +549,12 @@ Falsely altering or not reporting property characteristics may change an assesse
 
 ### Heterogeneity and Extremes
 
-In addition to the data challenges that are specific to our office, we also face the same modeling issues as most assessors and machine learning practitioners. 
+In addition to the data challenges that are specific to our office, we also face the same modeling issues as most assessors and machine learning practitioners.
 
 ##### Housing Heterogeneity
 
-Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. In some regions of the county, sales are common; in other 
-regions, sales are sparse. Accurately estimating the price of such different properties and regions is a complicated, challenging task. 
+Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. In some regions of the county, sales are common; in other
+regions, sales are sparse. Accurately estimating the price of such different properties and regions is a complicated, challenging task.
 
 This challenge is especially acute in areas with high housing characteristic and price heterogeneity. For example, the Hyde Park neighborhood in Chicago is home to the University of Chicago and has large, multi-million-dollar houses near campus. However, sale prices drop precipitously just a few blocks away, as one passes south of 63rd street or west of I-90. This sort of sharp price discontinuity makes it difficult to accurately assess properties, as models tend to "smooth" such hard breaks unless geographic boundaries are explicitly defined.
 
@@ -599,7 +594,7 @@ The importance of individual features in the model varies from place to place. S
 
 **Q: How much will one additional bedroom add to my assessed value?**
 
-Our model is non-linear, meaning it's difficult to say things like, "Each additional square foot will increase this property's value by $50," as the relationship between price and individual features varies from property to property. 
+Our model is non-linear, meaning it's difficult to say things like, "Each additional square foot will increase this property's value by $50," as the relationship between price and individual features varies from property to property.
 
 We do calculate the contribution of each feature to each property's final value. For example, we can say things like, "Your close proximity to Lake Michigan added $5,000 to your home's value." We're currently working on a way to share those feature-level results with property owners.
 
@@ -647,7 +642,7 @@ To use this repository, simply open the [pipeline/](./pipeline) directory and ru
 
 * [`pipeline/00-ingest.R`](pipeline/00-ingest.R) - Requires access to CCAO internal AWS services to pull data. See [Getting Data](#getting-data) if you are a member of the public.
 * [`pipeline/06-upload.R`](pipeline/06-upload.R) - Requires access to CCAO internal AWS services to upload model results.
-* [`pipeline/07-export.R`](pipeline/07-export.R) - Only required for CCAO internal processes. 
+* [`pipeline/07-export.R`](pipeline/07-export.R) - Only required for CCAO internal processes.
 
 #### Using DVC
 

@@ -11,9 +11,9 @@
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: >
-  Rebuilt final 2023 run (relaxed-dan) using updated proration method.
-  Re-running with the same model for posterity of the original results
+run_note: |
+  Test run for updated 2024 model pipeline. Uses 2022 data to assess 2023
+  since full 2023 data isn't available yet
 
 # Determines what stages and outputs are produced. See misc/file_dict.csv for
 # details. Note, DVC does not support "conditional" stages, so changing this to
@@ -41,14 +41,14 @@ toggle:
 assessment:
   # Year of assessment. Used to partition results and pull data
   year: "2023"
-  
+
   # The statutorily set "sale date" for the purpose of prediction
   date: "2023-01-01"
-  
+
   # Added context for model artifacts stored in s3. Does not change behavior
   triad: "south"
   group: "residential"
-  
+
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
   data_year: "2022"
@@ -58,34 +58,9 @@ input:
   # The min and max year of sales to use for the training data sample
   min_sale_year: "2014"
   max_sale_year: "2022"
-  
+
   # Time window (in months) used for rolling origin cross-validation
   time_split: 15
-  
-  # Parameters used to trim the training data (sales) of outliers
-  sale_validation:
-  
-    # Summary statistics grouping for detecting outlier sales i.e. an outlier
-    # might be 3 standard deviations from the mean of township and class
-    stat_groups: [
-      "meta_year",
-      "meta_township_code",
-      "meta_class"
-    ]
-    
-    # Predictor variables to use in the isolation forest classifier
-    iso_forest: [
-      "meta_sale_price",
-      "sv_price_per_sqft",
-      "sv_days_since_last_transaction",
-      "sv_cgdr",
-      "sv_sale_dup_counts"
-    ]
-    
-    # Left and right boundaries (in standard deviations) used to trim the
-    # training sample e.g. any sales more than 3 standard deviations from the
-    # mean will be dropped
-    dev_bounds: [2, 3]
 
   # Parameters used to generate townhome complex identifiers
   complex:
@@ -101,7 +76,7 @@ input:
       "meta_pin_num_cards",
       "meta_tieback_proration_rate"
     ]
-    
+
     # Townhomes should match fuzzily on these variables to be in the same
     # complex e.g. a PIN with 2000 and a PIN with 2020 square feet will match
     match_fuzzy:
@@ -123,13 +98,13 @@ cv:
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
   initial_set: 25
-  
+
   # Max number of total search iterations
   max_iterations: 70
-  
+
   # Max number of search iterations without improvement before stopping search
   no_improve: 30
-  
+
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
   best_metric: "rmse"
@@ -141,20 +116,20 @@ cv:
 # model itself
 model:
   engine: "lightgbm"
-  
+
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
   objective: "rmse"
-  
-  # Parameters related to model determinism. Current settings should force 
+
+  # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
   seed: 2023
   deterministic: TRUE
   force_row_wise: TRUE
-  
+
   # Model verbosity: < 0: Fatal, = 0: Error (Warning), = 1: Info, > 1: Debug
   verbose: -1
-  
+
   predictor:
     # Vector of predictors from the training data included in the model. Edit
     # this list to add or remove variables from the model
@@ -252,7 +227,7 @@ model:
       "time_sale_day_of_week",
       "time_sale_post_covid"
     ]
-    
+
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
     # else LightGBM will treat them as numeric
@@ -282,7 +257,7 @@ model:
       "loc_school_secondary_district_geoid",
       "time_sale_quarter_of_year"
     ]
-    
+
     # List of identifiers for each observation, can be ignored
     id: [
       "meta_year",
@@ -299,24 +274,24 @@ model:
     # number of iterations
     num_iterations: 2000
     learning_rate: 0.025
-    
-    # For CV only, proportion of the training data to hold out for use in 
+
+    # For CV only, proportion of the training data to hold out for use in
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
     validation_type: "recent"
     validation_metric: "rmse"
-    
+
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
     # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
     # This is to prevent tune_bayes from exploring useless parameter space
     link_max_depth: TRUE
-    
+
     # Maximum number of bins for discretizing continuous features. Lower uses
     # less memory and speeds up training
     max_bin: 512
-    
+
     # During CV, the number of iterations to go without improvement before
     # stopping training
     stop_iter: 40
@@ -336,7 +311,7 @@ model:
       cat_l2: 1.00
       lambda_l1: 0.124
       lambda_l2: 1.655
- 
+
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
       num_leaves: [50, 2000]
@@ -359,12 +334,12 @@ pv:
   # For multi-card PINs (rare), implement a heuristic that caps the potential
   # change in value. See assess stage code for details
   multicard_yoy_cap: 2.2
-  
+
   # Cap the proportion of the PIN's total value dedicated to land. This is
   # necessary since sometimes the model provides low predictions relative to the
   # land rates created by Valuations
   land_pct_of_total_cap: 0.5
-  
+
   # Rounding settings to apply to initial predictions. Rounding is done to
   # indicate to property owners that model values are estimates, not exact
   round_break: [1000, 10000, 100000]
@@ -385,7 +360,7 @@ ratio_study:
   near_year: "2022"
   near_stage: "certified"
   near_column: "meta_certified_tot"
-  
+
   # Quantile breakouts to use in the evaluate stage. For example, 3 will split
   # each geography in evaluate into terciles
   num_quantile: [3, 5, 10]

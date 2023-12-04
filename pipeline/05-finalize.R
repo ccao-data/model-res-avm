@@ -11,6 +11,7 @@ suppressPackageStartupMessages({
   library(arrow)
   library(ccao)
   library(dplyr)
+  library(git2r)
   library(here)
   library(lubridate)
   library(purrr)
