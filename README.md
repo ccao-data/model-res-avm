@@ -128,8 +128,8 @@ individual R script. These scripts can be run independently (as a
 stand-alone script) or as part of the overall pipeline (with
 [DVC](#using-dvc)) as long as the dependencies for the stage exist.
 
-> \[!NOTE\] For a full technical breakdown of each stage, including
-> dependencies, outputs, parameters, and more, see
+> :warning: NOTE: For a full technical breakdown of each stage,
+> including dependencies, outputs, parameters, and more, see
 > [dvc.yaml](./dvc.yaml)
 
 0.  **Ingest**: Pull prepared data from the CCAO’s Athena database. This
@@ -1304,7 +1304,7 @@ all its dependencies, start with the main profile (run
 `renv::activate()`), then install the `dev` profile dependencies on top
 of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
 
-> \[!WARNING\] Installing dependencies from a dev lockfile will
+> :warning: WARNING: Installing dependencies from a dev lockfile will
 > **overwrite** any existing version installed by the core one. For
 > example, if `ggplot2@3.3.0` is installed by the core lockfile, and
 > `ggplot2@3.2.1` is installed by the dev lockfile, renv will

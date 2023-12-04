@@ -77,8 +77,7 @@ graph LR
 
 All inputs and outputs are stored on AWS S3 using a unique run identifier. Each stage in the modeling pipeline corresponds to an individual R script. These scripts can be run independently (as a stand-alone script) or as part of the overall pipeline (with [DVC](#using-dvc)) as long as the dependencies for the stage exist.
 
-> [!NOTE]
-For a full technical breakdown of each stage, including dependencies, outputs, parameters, and more, see [dvc.yaml](./dvc.yaml)
+> :warning: NOTE: For a full technical breakdown of each stage, including dependencies, outputs, parameters, and more, see [dvc.yaml](./dvc.yaml)
 
 0. **Ingest**: Pull prepared data from the CCAO's Athena database. This data is divided into [2 primary datasets](#data-used), one for training and one for assessment. NOTE: This stage is only run as-needed, since the input data does not change for each model run.
 
@@ -778,8 +777,7 @@ When working on the model locally, you'll typically want to install non-core dep
 
 For example, if you're working on the `ingest` stage and want to install all its dependencies, start with the main profile (run `renv::activate()`), then install the `dev` profile dependencies on top of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
 
-> [!WARNING]
-Installing dependencies from a dev lockfile will **overwrite** any existing version installed by the core one. For example, if `ggplot2@3.3.0` is installed by the core lockfile, and `ggplot2@3.2.1` is installed by the dev lockfile, renv will **overwrite** `ggplot2@3.3.0` with `ggplot2@3.2.1`.
+> :warning: WARNING: Installing dependencies from a dev lockfile will **overwrite** any existing version installed by the core one. For example, if `ggplot2@3.3.0` is installed by the core lockfile, and `ggplot2@3.2.1` is installed by the dev lockfile, renv will **overwrite** `ggplot2@3.3.0` with `ggplot2@3.2.1`.
 
 ### Updating Lockfiles
 
