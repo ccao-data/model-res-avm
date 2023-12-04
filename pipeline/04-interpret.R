@@ -2,34 +2,15 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See R/setup.R for libraries and variables used in this project
+
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Interpret")
 
-# Load libraries and scripts
-options(scipen = 99)
-suppressPackageStartupMessages({
-  library(arrow)
-  library(dplyr)
-  library(here)
-  library(recipes)
-  library(tidyr)
-  library(tictoc)
-  library(yaml)
-  source(here("R", "helpers.R"))
-})
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
-
-# Override the default SHAP toggle from params.yaml. This is useful for manually
-# running "limited" runs without creating SHAP data
-shap_enable <- as.logical(
-  Sys.getenv("SHAP_ENABLE_OVERRIDE", unset = params$toggle$shap_enable)
-)
 
 
 

@@ -2,36 +2,21 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See R/dependencies.R for libraries used in this project
+
 # Start the stage timer
 tictoc::tic.clearlog()
 tictoc::tic("Ingest")
 
-# Pre-allocate memory for java JDBC driver
-options(java.parameters = "-Xmx10g")
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Load R libraries
+# Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
-  library(arrow)
-  library(ccao)
   library(DBI)
-  library(dplyr)
-  library(glue)
-  library(here)
   library(igraph)
-  library(lubridate)
-  library(purrr)
   library(RJDBC)
-  library(tictoc)
-  library(tidyr)
-  library(yaml)
 })
-source(here("R", "helpers.R"))
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
 
 # Setup the Athena JDBC driver
 aws_athena_jdbc_driver <- RJDBC::JDBC(

@@ -2,42 +2,14 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See R/setup.R for libraries and variables used in this project
+
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Finalize")
 
-# Load libraries and scripts
-suppressPackageStartupMessages({
-  library(arrow)
-  library(ccao)
-  library(dplyr)
-  library(git2r)
-  library(here)
-  library(lubridate)
-  library(purrr)
-  library(tidyr)
-  library(tictoc)
-  library(tune)
-  library(yaml)
-})
-source(here("R", "helpers.R"))
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
-
-# Override CV toggle, SHAP toggle, and run_type, used for CI or limited runs
-cv_enable <- as.logical(
-  Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
-)
-shap_enable <- as.logical(
-  Sys.getenv("SHAP_ENABLE_OVERRIDE", unset = params$toggle$shap_enable)
-)
-run_type <- as.character(
-  Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
-)
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
 
@@ -229,9 +201,8 @@ timings_df <- purrr::map_dfr(timings, read_parquet) %>%
     stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed"),
     order = recode(
       msg,
-      "Train" = "01", "Assess" = "02",
-      "Evaluate" = "03", "Interpret" = "04",
-      "Finalize" = "05"
+      "Train" = "01", "Assess" = "02", "Evaluate" = "03",
+      "Interpret" = "04", "Finalize" = "05"
     )
   ) %>%
   arrange(order) %>%

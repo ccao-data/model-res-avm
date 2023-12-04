@@ -2,32 +2,12 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See R/setup.R for libraries and variables used in this project
 # NOTE: This script requires CCAO employee access. See wiki for S3 credentials
 # setup and multi-factor authentication help
 
-# Load libraries and scripts
-suppressPackageStartupMessages({
-  library(arrow)
-  library(aws.s3)
-  library(aws.ec2metadata)
-  library(ccao)
-  library(dplyr)
-  library(glue)
-  library(here)
-  library(knitr)
-  library(lubridate)
-  library(paws.analytics)
-  library(paws.application.integration)
-  library(tidyr)
-  library(yaml)
-})
-source(here("R", "helpers.R"))
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Load various overridden parameters as defined in the `finalize` step
 metadata <- read_parquet(paths$output$metadata$local)
