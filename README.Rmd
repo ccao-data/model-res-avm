@@ -77,7 +77,8 @@ graph LR
 
 All inputs and outputs are stored on AWS S3 using a unique run identifier. Each stage in the modeling pipeline corresponds to an individual R script. These scripts can be run independently (as a stand-alone script) or as part of the overall pipeline (with [DVC](#using-dvc)) as long as the dependencies for the stage exist.
 
-> :warning: NOTE: For a full technical breakdown of each stage, including dependencies, outputs, parameters, and more, see [dvc.yaml](./dvc.yaml)
+> [!NOTE]
+For a full technical breakdown of each stage, including dependencies, outputs, parameters, and more, see [dvc.yaml](./dvc.yaml)
 
 0. **Ingest**: Pull prepared data from the CCAO's Athena database. This data is divided into [2 primary datasets](#data-used), one for training and one for assessment. NOTE: This stage is only run as-needed, since the input data does not change for each model run.
 
@@ -759,14 +760,28 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 * The number of threads is set via the [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads) parameter, which is passed to the model using the `set_args()` function from `parsnip`. By default, `num_threads` is equal to the full number of physical cores available. More (or faster) cores will decrease total training time.
 * This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build) or wait for the [upcoming CUDA release](https://github.com/microsoft/LightGBM/issues/5153).
 
-## Updating R dependencies
+## Managing R dependencies
 
-We use multiple renv lockfiles in order to manage R dependencies:
+### Profiles and Lockfiles
+
+We use multiple renv lockfiles to manage R dependencies:
 
 1. **`renv.lock`** is the canonical list of dependencies that are used by the **core model pipeline**. Any dependencies that are required to run the model itself should be defined in this lockfile.
-2. **`renv/profiles/reporting/renv.lock`** is the canonical list of dependencies that are used to **generate a model performance report** in the `finalize` step of the pipeline. Any dependencies that are required to generate that report or others like it should be defined in this lockfile.
+2. **`renv/profiles/reporting/renv.lock`** is the canonical list of dependencies that are used to **generate model reports** in the `finalize` step of the pipeline. Any dependencies that are required to generate reports should be defined in this lockfile.
+3. **`renv/profiles/dev/renv.lock`** is the canonical list of dependencies that are used  **for local development**, running the `ingest`, `export`, and `api` steps of the pipeline, and building the README. These dependencies are required only by CCAO staff and are not required to run the model itself.
 
-Our goal in maintaining multiple lockfiles is to keep the list of dependencies that are required to run the model as short as possibile. This choice adds overhead to the process of updating R dependencies, but incurs the benefit of a more maintainable model over the long term.
+Our goal in maintaining multiple lockfiles is to keep the list of dependencies required to run the model as short as possible. This choice adds overhead to the process of updating R dependencies, but incurs the benefit of a more maintainable model over the long term.
+
+### Using Lockfiles for Local Development
+
+When working on the model locally, you'll typically want to install non-core dependencies _on top of_ the core dependencies. To do this, simply run `renv::restore("<path_to_lockfile")` to install all dependencies from the lockfile.
+
+For example, if you're working on the `ingest` stage and want to install all its dependencies, start with the main profile (run `renv::activate()`), then install the `dev` profile dependencies on top of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
+
+> [!WARNING]
+Installing dependencies from a dev lockfile will **overwrite** any existing version installed by the core one. For example, if `ggplot2@3.3.0` is installed by the core lockfile, and `ggplot2@3.2.1` is installed by the dev lockfile, renv will **overwrite** `ggplot2@3.3.0` with `ggplot2@3.2.1`.
+
+### Updating Lockfiles
 
 The process for **updating core model pipeline dependencies** is straightforward: Running `renv::install("<dependency_name>")` and `renv::snapshot()` will ensure that the dependency gets added or updated in `renv.lock`, as long is it is imported somewhere in the model pipeline via a `library(<dependency_name>)` call.
 

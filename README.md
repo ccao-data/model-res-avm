@@ -28,7 +28,11 @@ Table of Contents
   - [Output](#output)
   - [Getting Data](#getting-data)
   - [System Requirements](#system-requirements)
-  - [Updating R dependencies](#updating-r-dependencies)
+  - [Managing R dependencies](#managing-r-dependencies)
+    - [Profiles and Lockfiles](#profiles-and-lockfiles)
+    - [Using Lockfiles for Local
+      Development](#using-lockfiles-for-local-development)
+    - [Updating Lockfiles](#updating-lockfiles)
   - [Troubleshooting](#troubleshooting)
 - [License](#license)
 - [Contributing](#contributing)
@@ -124,8 +128,8 @@ individual R script. These scripts can be run independently (as a
 stand-alone script) or as part of the overall pipeline (with
 [DVC](#using-dvc)) as long as the dependencies for the stage exist.
 
-> :warning: NOTE: For a full technical breakdown of each stage,
-> including dependencies, outputs, parameters, and more, see
+> \[!NOTE\] For a full technical breakdown of each stage, including
+> dependencies, outputs, parameters, and more, see
 > [dvc.yaml](./dvc.yaml)
 
 0.  **Ingest**: Pull prepared data from the CCAO’s Athena database. This
@@ -340,7 +344,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-02.
+model as of 2023-12-04.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -1264,23 +1268,49 @@ sped up using the parallel processing built-in to LightGBM. Note that:
   or wait for the [upcoming CUDA
   release](https://github.com/microsoft/LightGBM/issues/5153).
 
-## Updating R dependencies
+## Managing R dependencies
 
-We use multiple renv lockfiles in order to manage R dependencies:
+### Profiles and Lockfiles
+
+We use multiple renv lockfiles to manage R dependencies:
 
 1.  **`renv.lock`** is the canonical list of dependencies that are used
     by the **core model pipeline**. Any dependencies that are required
     to run the model itself should be defined in this lockfile.
 2.  **`renv/profiles/reporting/renv.lock`** is the canonical list of
-    dependencies that are used to **generate a model performance
-    report** in the `finalize` step of the pipeline. Any dependencies
-    that are required to generate that report or others like it should
-    be defined in this lockfile.
+    dependencies that are used to **generate model reports** in the
+    `finalize` step of the pipeline. Any dependencies that are required
+    to generate reports should be defined in this lockfile.
+3.  **`renv/profiles/dev/renv.lock`** is the canonical list of
+    dependencies that are used **for local development**, running the
+    `ingest`, `export`, and `api` steps of the pipeline, and building
+    the README. These dependencies are required only by CCAO staff and
+    are not required to run the model itself.
 
 Our goal in maintaining multiple lockfiles is to keep the list of
-dependencies that are required to run the model as short as possibile.
-This choice adds overhead to the process of updating R dependencies, but
-incurs the benefit of a more maintainable model over the long term.
+dependencies required to run the model as short as possible. This choice
+adds overhead to the process of updating R dependencies, but incurs the
+benefit of a more maintainable model over the long term.
+
+### Using Lockfiles for Local Development
+
+When working on the model locally, you’ll typically want to install
+non-core dependencies *on top of* the core dependencies. To do this,
+simply run `renv::restore("<path_to_lockfile")` to install all
+dependencies from the lockfile.
+
+For example, if you’re working on the `ingest` stage and want to install
+all its dependencies, start with the main profile (run
+`renv::activate()`), then install the `dev` profile dependencies on top
+of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
+
+> \[!WARNING\] Installing dependencies from a dev lockfile will
+> **overwrite** any existing version installed by the core one. For
+> example, if `ggplot2@3.3.0` is installed by the core lockfile, and
+> `ggplot2@3.2.1` is installed by the dev lockfile, renv will
+> **overwrite** `ggplot2@3.3.0` with `ggplot2@3.2.1`.
+
+### Updating Lockfiles
 
 The process for **updating core model pipeline dependencies** is
 straightforward: Running `renv::install("<dependency_name>")` and
