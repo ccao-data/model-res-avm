@@ -21,6 +21,7 @@ suppressPackageStartupMessages({
   library(furrr)
   library(git2r)
   library(glue)
+  library(hardhat)
   library(here)
   library(knitr)
   library(parsnip)
