@@ -4,10 +4,10 @@ Config/renv/profiles/dev/dependencies:
     lubridate,
     openxlsx,
     readr,
+    rmarkdown,
     RJDBC
 Config/renv/profiles/reporting/dependencies:
     leaflet,
     plotly,
     quarto,
-    rmarkdown,
     sf
