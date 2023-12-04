@@ -1,6 +1,5 @@
 README.Rmd
 pipeline/00-ingest.R
-pipeline/05-finalize.R
 pipeline/07-export.R
 pipeline/08-api.R
 reports/*
