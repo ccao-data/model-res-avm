@@ -8,7 +8,8 @@ options(
 )
 
 # Load R pipeline dependencies quietly (no startup messages). This gets called
-# by purrr::walk for each pipeline stage
+# by purrr::walk for each pipeline stage. This block of dependencies mirrors
+# the Depends: key in the DESCRIPTION file
 suppressPackageStartupMessages({
   library(arrow)
   library(assessr)
