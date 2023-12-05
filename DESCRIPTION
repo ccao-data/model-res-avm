@@ -32,6 +32,10 @@ Depends:
     workflows,
     yaml,
     yardstick
+Remotes:
+    ccao-data/assessr,
+    ccao-data/ccao,
+    ccao-data/lightsnip
 Config/renv/profiles/dev/dependencies:
     DBI,
     igraph,
