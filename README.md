@@ -344,7 +344,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-04.
+model as of 2023-12-05.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -1060,9 +1060,9 @@ of the model.
     `renv::restore()`. This step may take awhile. Linux users will
     likely need to install dependencies (via apt, yum, etc.) to build
     from source.
-5.  The `finalize` step of the model pipeline requires some additional
-    dependencies for generating a model performance report. Install
-    these additional dependencies by running
+5.  (Optional) The `finalize` step of the model pipeline requires some
+    additional dependencies for generating a model performance report.
+    Install these additional dependencies by running
     `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
     These dependencies must be installed in addition to the core
     dependencies installed in step 4. If dependencies are not installed,
@@ -1071,7 +1071,9 @@ of the model.
     the pipeline will continue to execute in spite of the failure.
 
 For installation issues, particularly related to package installation
-and dependencies, see [Troubleshooting](#troubleshooting).
+and dependencies, see [Managing R
+dependencies](#managing-r-dependencies) and
+[Troubleshooting](#troubleshooting).
 
 ## Running
 
@@ -1270,6 +1272,11 @@ sped up using the parallel processing built-in to LightGBM. Note that:
 
 ## Managing R dependencies
 
+We use [renv](https://rstudio.github.io/renv/index.html) to manage R
+dependencies. The main model dependencies are listed explicitly in the
+`DESCRIPTION` file under the `Depends:` key. These dependencies are
+installed automatically when you run `renv::restore()`.
+
 ### Profiles and Lockfiles
 
 We use multiple renv lockfiles to manage R dependencies:
@@ -1313,10 +1320,13 @@ of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
 ### Updating Lockfiles
 
 The process for **updating core model pipeline dependencies** is
-straightforward: Running `renv::install("<dependency_name>")` and
-`renv::snapshot()` will ensure that the dependency gets added or updated
-in `renv.lock`, as long is it is imported somewhere in the model
-pipeline via a `library(<dependency_name>)` call.
+straightforward:
+
+1.  Add the dependency to the list of explicit dependencies under the
+    `Depends:` key of the `DESCRIPTION` file
+2.  Run `renv::install("<dependency_name>")`
+3.  Run `renv::snapshot()` to update the core lockfile (the root
+    `renv.lock`)
 
 The process for updating \*dependencies for other lockfiles\*\* is more
 complex, since it requires the use of a separate profile when running
