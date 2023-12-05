@@ -2,7 +2,8 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# NOTE: See R/dependencies.R for libraries used in this project
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
 
 # Start the stage timer
 tictoc::tic.clearlog()

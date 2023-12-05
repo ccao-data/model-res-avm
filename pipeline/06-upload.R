@@ -2,7 +2,9 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# NOTE: See R/setup.R for libraries and variables used in this project
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
+
 # NOTE: This script requires CCAO employee access. See wiki for S3 credentials
 # setup and multi-factor authentication help
 

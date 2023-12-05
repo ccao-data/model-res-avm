@@ -7,41 +7,14 @@ options(
   java.parameters = "-Xmx10g" # Pre-allocate memory for Java JDBC driver
 )
 
-# Load R pipeline dependencies quietly (no startup messages). This gets called
-# by purrr::walk for each pipeline stage. This block of dependencies mirrors
-# the Depends: key in the DESCRIPTION file
+# Load R pipeline dependencies from the Depends: key in the DESCRIPTION file.
+# Any new pipeline dependencies should be added there
 suppressPackageStartupMessages({
-  library(arrow)
-  library(assessr)
-  library(aws.s3)
-  library(aws.ec2metadata)
-  library(butcher)
-  library(ccao)
-  library(conflicted)
-  library(dplyr)
-  library(furrr)
-  library(git2r)
-  library(glue)
-  library(hardhat)
-  library(here)
-  library(knitr)
-  library(parsnip)
-  library(purrr)
-  library(lightgbm)
-  library(lightsnip)
-  library(lubridate)
-  library(paws.analytics)
-  library(paws.application.integration)
-  library(recipes)
-  library(rlang)
-  library(rsample)
-  library(stringr)
-  library(tictoc)
-  library(tidyr)
-  library(tune)
-  library(workflows)
-  library(yaml)
-  library(yardstick)
+  purrr::walk(
+    strsplit(yaml::read_yaml("DESCRIPTION")$Depends, ", ")[[1]],
+    library,
+    character.only = TRUE
+  )
 })
 
 # Resolve package namespace conflicts, preferring the library::function pair
