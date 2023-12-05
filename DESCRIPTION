@@ -37,8 +37,10 @@ Remotes:
     ccao-data/ccao,
     ccao-data/lightsnip
 Config/renv/profiles/dev/dependencies:
+    commonmark,
     DBI,
     igraph,
+    markdown,
     openxlsx,
     readr,
     rmarkdown,
