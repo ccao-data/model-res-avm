@@ -2,29 +2,18 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Pre-allocate memory for java JDBC driver
-options(java.parameters = "-Xmx10g")
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
 
-# Load R libraries
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
+
+# Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
-  library(arrow)
-  library(ccao)
   library(DBI)
-  library(dplyr)
-  library(glue)
-  library(here)
   library(openxlsx)
-  library(purrr)
   library(RJDBC)
-  library(stringr)
-  library(yaml)
 })
-
-# Load helpers and recipes from files
-walk(list.files("R/", "\\.R$", full.names = TRUE), source)
-
-# Load the parameters file containing the export settings
-params <- read_yaml("params.yaml")
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 run_id <- params$export$run_id

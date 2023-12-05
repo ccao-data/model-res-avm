@@ -630,9 +630,9 @@ We also publish a Docker image containing model code and all of the dependencies
 2. Set your working directory to the local folder containing this repository's files, either using R's `setwd()` command or (preferably) using RStudio's [projects](https://support.posit.co/hc/en-us/articles/200526207-Using-Projects).
 3. Install `renv`, R's package manager, by running `install.packages("renv")`.
 4. Install all R package dependencies using `renv` by running `renv::restore()`. This step may take awhile. Linux users will likely need to install dependencies (via apt, yum, etc.) to build from source.
-5. The `finalize` step of the model pipeline requires some additional dependencies for generating a model performance report. Install these additional dependencies by running `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`. These dependencies must be installed in addition to the core dependencies installed in step 4. If dependencies are not installed, the report will fail to generate and the pipeline stage will print the error message to the report file at `reports/performance.html`; the pipeline will continue to execute in spite of the failure.
+5. (Optional) The `finalize` step of the model pipeline requires some additional dependencies for generating a model performance report. Install these additional dependencies by running `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`. These dependencies must be installed in addition to the core dependencies installed in step 4. If dependencies are not installed, the report will fail to generate and the pipeline stage will print the error message to the report file at `reports/performance.html`; the pipeline will continue to execute in spite of the failure.
 
-For installation issues, particularly related to package installation and dependencies, see [Troubleshooting](#troubleshooting).
+For installation issues, particularly related to package installation and dependencies, see [Managing R dependencies](#managing-r-dependencies) and [Troubleshooting](#troubleshooting).
 
 ## Running
 
@@ -761,6 +761,8 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 
 ## Managing R dependencies
 
+We use [renv](https://rstudio.github.io/renv/index.html) to manage R dependencies. The main model dependencies are listed explicitly in the `DESCRIPTION` file under the `Depends:` key. These dependencies are installed automatically when you run `renv::restore()`.
+
 ### Profiles and Lockfiles
 
 We use multiple renv lockfiles to manage R dependencies:
@@ -781,14 +783,18 @@ For example, if you're working on the `ingest` stage and want to install all its
 
 ### Updating Lockfiles
 
-The process for **updating core model pipeline dependencies** is straightforward: Running `renv::install("<dependency_name>")` and `renv::snapshot()` will ensure that the dependency gets added or updated in `renv.lock`, as long is it is imported somewhere in the model pipeline via a `library(<dependency_name>)` call.
+The process for **updating core model pipeline dependencies** is straightforward:
+
+1. Add the dependency to the list of explicit dependencies under the `Depends:` key of the `DESCRIPTION` file
+2. Run `renv::install("<dependency_name>")`
+3. Run `renv::snapshot()` to update the core lockfile (the root `renv.lock`)
 
 The process for updating *dependencies for other lockfiles** is more complex, since it requires the use of a separate profile when running renv commands. Determine the name of the profile you'd like to update (`<profile_name>` in the code that follows) and run the following commands:
 
 1. Run `renv::activate(profile = "<profile_name>")` to set the renv profile to `<profile_name>`
 2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/<profile_name>/dependencies` key
 3. Run `renv::install("<dependency_name>")` to add or update the dependency as necessary
-4. Run `renv::snapshot(type = "explicit")` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
+4. Run `renv::snapshot()` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
 5. Run `renv::activate()` if you would like to switch back to the default renv profile
 
 ## Troubleshooting

@@ -2,46 +2,17 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
+
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Evaluate")
 
-# Load libraries and scripts
-options(dplyr.summarise.inform = FALSE)
-suppressPackageStartupMessages({
-  library(arrow)
-  library(assessr)
-  library(ccao)
-  library(dplyr)
-  library(here)
-  library(furrr)
-  library(lightsnip)
-  library(purrr)
-  library(rlang)
-  library(recipes)
-  library(tictoc)
-  library(tidyr)
-  library(yaml)
-  library(yardstick)
-})
-
-# Load helpers and recipes from files
-walk(list.files("R/", "\\.R$", full.names = TRUE), source)
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
-
-# Override the default run_type from params.yaml. This is useful for manually
-# running "limited" runs without assessment data (also used for GitHub CI)
-run_type <- as.character(
-  Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
-)
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Enable parallel backend for generating stats more quickly
-num_threads <- parallel::detectCores(logical = FALSE)
 plan(multisession, workers = num_threads)
 
 # Renaming dictionary for input columns. We want the actual value of the column
@@ -67,6 +38,7 @@ run_triad_code <- ccao::town_dict %>%
   filter(triad_name == run_triad) %>%
   distinct(triad_code) %>%
   pull(triad_code)
+
 
 
 

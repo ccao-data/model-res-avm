@@ -53,7 +53,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Delete model runs
-        run: Rscript ./R/delete_current_year_model_runs.R "${RUN_IDS// /,}"
+        run: Rscript ./.github/scripts/delete_current_year_model_runs.R "${RUN_IDS// /,}"
         shell: bash
         env:
           RUN_IDS: ${{ inputs.run-ids }}

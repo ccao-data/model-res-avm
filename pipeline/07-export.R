@@ -2,24 +2,17 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Pre-allocate memory for java JDBC driver
-options(java.parameters = "-Xmx10g")
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
 
-# Load R libraries
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
+
+# Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
-  library(aws.s3)
-  library(ccao)
   library(DBI)
-  library(dplyr)
-  library(glue)
-  library(here)
-  library(lubridate)
   library(openxlsx)
-  library(readr)
   library(RJDBC)
-  library(stringr)
-  library(tidyr)
-  library(yaml)
 })
 
 # Setup the Athena JDBC driver
@@ -37,9 +30,6 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
   Schema = "Default",
   WorkGroup = "read-only-with-scan-limit"
 )
-
-# Load the parameters file containing the export settings
-params <- read_yaml("params.yaml")
 
 
 

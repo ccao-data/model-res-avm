@@ -2,34 +2,15 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
+
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Assess")
 
-# Load libraries and scripts
-options(dplyr.summarise.inform = FALSE)
-suppressPackageStartupMessages({
-  library(arrow)
-  library(assessr)
-  library(ccao)
-  library(dplyr)
-  library(here)
-  library(lightsnip)
-  library(purrr)
-  library(recipes)
-  library(tictoc)
-  library(tidyr)
-  library(yaml)
-})
-
-# Load helpers and recipes from files
-walk(list.files("R/", "\\.R$", full.names = TRUE), source)
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Columns to use for ratio study comparison (by prefix)
 rsf_prefix <- gsub("_tot", "", params$ratio_study$far_column)
@@ -49,7 +30,6 @@ land_site_rate <- read_parquet(
 land_nbhd_rate <- read_parquet(
   paths$input$land_nbhd_rate$local
 )
-
 
 
 

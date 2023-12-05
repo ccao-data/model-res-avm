@@ -2,48 +2,15 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
+# variables used in each pipeline stage
+
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
 tictoc::tic("Train")
 
-# Load libraries and scripts
-options(tidymodels.dark = TRUE)
-suppressPackageStartupMessages({
-  library(arrow)
-  library(butcher)
-  library(ccao)
-  library(dplyr)
-  library(here)
-  library(lightgbm)
-  library(lightsnip)
-  library(tictoc)
-  library(tidymodels)
-  library(vctrs)
-  library(yaml)
-})
-
-# Load helpers and recipes from files
-walk(list.files("R/", "\\.R$", full.names = TRUE), source)
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict()
-
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
-
-# Override the default CV toggle from params.yaml. This is useful for manually
-# running "limited" runs without CV or assessment data (also used for GitHub CI)
-cv_enable <- as.logical(
-  Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
-)
-
-# Get the number of available physical cores to use for lightgbm multi-threading
-# Lightgbm docs recommend using only real cores, not logical
-# https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
-num_threads <- parallel::detectCores(logical = FALSE)
-
-# Set the overall stage seed
-set.seed(params$model$seed)
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
 
