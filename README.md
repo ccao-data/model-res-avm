@@ -1340,8 +1340,8 @@ commands:
     under the `Config/renv/profiles/<profile_name>/dependencies` key
 3.  Run `renv::install("<dependency_name>")` to add or update the
     dependency as necessary
-4.  Run `renv::snapshot(type = "explicit")` to update the reporting
-    lockfile with the dependencies defined in the `DESCRIPTION` file
+4.  Run `renv::snapshot()` to update the reporting lockfile with the
+    dependencies defined in the `DESCRIPTION` file
 5.  Run `renv::activate()` if you would like to switch back to the
     default renv profile
 
