@@ -6,9 +6,10 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   suppressPackageStartupMessages(library(magrittr))
 
   # Convert flat dictionary file to nested list
-  dict <- readr::read_csv(
+  dict <- read.csv(
     here::here("misc", "file_dict.csv"),
-    col_types = readr::cols()
+    colClasses = c("character", "character", "numeric", rep("character", 11)),
+    na.strings = ""
   ) %>%
     dplyr::mutate(
       s3 = as.character(purrr::map_if(
