@@ -946,32 +946,29 @@ ggplot(
 ``` {r}
 temp_sales <- sales %>%
   left_join(
-    ccao::town_dict %>% select(township_code, township_name, triad_name)
+    ccao::town_dict %>% select(township_code, township_name, triad_name),
+    by = c("meta_township_code" = "township_code")
   ) %>%
-  filter(class != "200" & triad_name == "South")
+  filter(meta_class != "200" & triad_name == "South")
+
 
 temp_sales %>%
-  filter(sale_filter_is_outlier) %>%
-  mutate(`Outlier Type` = case_when(
-    sale_price_log10 > sale_filter_upper_limit ~ "High",
-    sale_price_log10 < sale_filter_lower_limit ~ "Low",
-    TRUE ~ NA_character_
-  )) %>%
-  group_by(class, `Outlier Type`, township_name) %>%
+  filter(sv_is_outlier == TRUE) %>%
+  group_by(meta_class, sv_outlier_type, township_name) %>%
   summarise(
-    `Min Sale Price` = min(sale_price, na.rm = TRUE),
-    `Median Sale Price` = median(sale_price, na.rm = TRUE),
-    `Max Sale Price` = max(sale_price, na.rm = TRUE),
+    `Min Sale Price` = min(meta_sale_price, na.rm = TRUE),
+    `Median Sale Price` = median(meta_sale_price, na.rm = TRUE),
+    `Max Sale Price` = max(meta_sale_price, na.rm = TRUE),
     n = n()
   ) %>%
   left_join(
     temp_sales %>%
-      filter(!sale_filter_is_outlier) %>%
-      group_by(class, township_name) %>%
+      filter(!sv_is_outlier) %>%
+      group_by(meta_class, township_name) %>%
       summarise(`Median Non-outlier Sale Price` = median(sale_price, na.rm = TRUE))
   ) %>%
   mutate(across(contains("Sale"), dollar)) %>%
-  dplyr::rename(Class = class, "Township Name" = township_name) %>%
+  dplyr::rename(Class = meta_class, "Township Name" = township_name) %>%
   datatable(
     rownames = FALSE,
     height = "500px",
