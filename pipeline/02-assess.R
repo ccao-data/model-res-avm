@@ -72,7 +72,8 @@ message("Fixing multicard PINs")
 
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is (usually) the sum of all cards
-assessment_card_data_mc <- assessment_card_data_pred %>%
+tictoc::tic()
+assessment_card_data_mc <- lazy_dt(assessment_card_data_pred) %>%
   select(
     meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
     char_bldg_sf, char_land_sf,
@@ -84,29 +85,97 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # across multiple PINs sometimes receives different values from the model
   group_by(meta_tieback_key_pin, meta_card_num) %>%
   mutate(
+    mean_pred_card_initial_fmv = mean(pred_card_initial_fmv),
+    missing_val = is.na(meta_tieback_key_pin)
+  ) %>%
+  ungroup() %>%
+  mutate(
     pred_card_intermediate_fmv = ifelse(
-      is.na(meta_tieback_key_pin),
+      missing_val,
       pred_card_initial_fmv,
-      mean(pred_card_initial_fmv)
+      mean_pred_card_initial_fmv
     )
   ) %>%
+  select(-c(mean_pred_card_initial_fmv, missing_val)) %>%
   # Aggregate multi-cards to the PIN-level by summing the predictions
   # of all cards. We use a heuristic here to limit the PIN-level total
   # value, this is to prevent super-high-value back-buildings/ADUs from
   # blowing up the PIN-level AV
   group_by(meta_pin) %>%
   mutate(
+    sum_pred_card_intermediate_fmv = sum(pred_card_intermediate_fmv),
+    max_pred_card_intermediate_fmv = max(pred_card_intermediate_fmv),
+    first_meta_1yr_pri_board_tot_fmv = first(meta_1yr_pri_board_tot * 10),
+    missing_val = is.na(meta_1yr_pri_board_tot),
+    pin_count = n()
+  ) %>%
+  ungroup() %>%
+  mutate(
     pred_pin_card_sum = ifelse(
-      sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
-        params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
-        is.na(meta_1yr_pri_board_tot) |
-        n() != 2,
-      sum(pred_card_intermediate_fmv),
-      max(pred_card_intermediate_fmv)
+      sum_pred_card_intermediate_fmv * meta_tieback_proration_rate <=
+        params$pv$multicard_yoy_cap * first_meta_1yr_pri_board_tot_fmv |
+        missing_val |
+        pin_count != 2,
+      sum_pred_card_intermediate_fmv,
+      max_pred_card_intermediate_fmv
     )
   ) %>%
-  ungroup()
+  select(-c(
+    sum_pred_card_intermediate_fmv, max_pred_card_intermediate_fmv,
+    first_meta_1yr_pri_board_tot_fmv, missing_val, pin_count
+  )) %>%
+  collect()
+tictoc::toc()
 
+library(data.table)
+setDT(assessment_card_data_pred)
+
+tictoc::tic()
+assessment_card_data_mc <- assessment_card_data_pred[, .(
+  meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
+  char_bldg_sf, char_land_sf,
+  meta_tieback_key_pin, meta_tieback_proration_rate,
+  meta_1yr_pri_board_tot, pred_card_initial_fmv
+)][
+  ,
+  mean_pred_card_initial_fmv := mean(pred_card_initial_fmv),
+  by = .(meta_tieback_key_pin, meta_card_num)
+][
+  ,
+  missing_val := is.na(meta_tieback_key_pin)
+][
+  ,
+  pred_card_intermediate_fmv := fifelse(
+    missing_val,
+    pred_card_initial_fmv,
+    mean_pred_card_initial_fmv
+  )
+][
+  ,
+  `:=`(
+    pred_card_intermediate_fmv = sum(pred_card_intermediate_fmv),
+    max_pred_card_intermediate_fmv = max(pred_card_intermediate_fmv),
+    first_meta_1yr_pri_board_tot_fmv =
+      data.table::first(meta_1yr_pri_board_tot * 10),
+    missing_val = data.table::first(missing_val),
+    pin_count = .N
+  ),
+  by = .(meta_pin)
+][
+  ,
+  pred_pin_card_sum := fifelse(
+    pred_card_intermediate_fmv * meta_tieback_proration_rate <=
+      params$pv$multicard_yoy_cap * first_meta_1yr_pri_board_tot_fmv |
+      missing_val |
+      pin_count != 2,
+    pred_card_intermediate_fmv,
+    max_pred_card_intermediate_fmv
+  )
+]
+tictoc::toc()
+
+
+conflicts_prefer(data.table::`:=`)
 
 ## 3.2. Townhomes --------------------------------------------------------------
 message("Averaging townhome complex predictions")
@@ -123,14 +192,16 @@ complex_id_data <- read_parquet(paths$input$complex_id$local) %>%
 assessment_card_data_cid <- assessment_card_data_mc %>%
   left_join(complex_id_data, by = "meta_pin") %>%
   group_by(meta_complex_id, meta_tieback_proration_rate) %>%
+  mutate(mean_pred_pin_card_sum = mean(pred_pin_card_sum)) %>%
+  ungroup() %>%
   mutate(
     pred_pin_final_fmv = ifelse(
       is.na(meta_complex_id),
       pred_pin_card_sum,
-      mean(pred_pin_card_sum)
+      mean_pred_pin_card_sum
     )
   ) %>%
-  ungroup()
+  select(-mean_pred_pin_card_sum)
 
 
 ## 3.3. Round ------------------------------------------------------------------
@@ -205,14 +276,16 @@ message("Prorating buildings")
 # See the steps outlined below for the process to determine a prorated value:
 assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
   group_by(meta_tieback_key_pin) %>%
+  mutate(sum_pred_pin_final_fmv_land = sum(pred_pin_final_fmv_land)) %>%
+  ungroup() %>%
   mutate(
     tieback_total_land_fmv = ifelse(
       is.na(meta_tieback_key_pin),
       pred_pin_final_fmv_land,
-      sum(pred_pin_final_fmv_land)
+      sum_pred_pin_final_fmv_land
     )
   ) %>%
-  ungroup() %>%
+  select(-sum_pred_pin_final_fmv_land) %>%
   mutate(
     # 1. Subtract the TOTAL value of the land of all linked PINs. This leaves
     # only the value of the building that spans the PINs
@@ -271,11 +344,16 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
   # using the square footage of each improvement
   group_by(meta_year, meta_pin) %>%
   mutate(
-    meta_card_pct_total_fmv = char_bldg_sf / sum(char_bldg_sf),
+    sum_char_bldg_sf = sum(char_bldg_sf),
+    pin_year_count = n()
+  ) %>%
+  ungroup() %>%
+  mutate(
+    meta_card_pct_total_fmv = char_bldg_sf / sum_char_bldg_sf,
     # In cases where bldg sqft is missing (rare), fill evenly across cards
     meta_card_pct_total_fmv = ifelse(
       is.na(meta_card_pct_total_fmv),
-      1 / n(),
+      1 / pin_year_count,
       meta_card_pct_total_fmv
     ),
     pred_card_final_fmv = pred_pin_final_fmv_bldg * meta_card_pct_total_fmv,
