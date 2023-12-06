@@ -49,7 +49,7 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 time_frame <- c("min" = "2021", "max" = "2022")
 
 # Data path
-data_path <- "~/data/res_parcels.parquet"
+data_path <- "~/model-res-avm-move-existing-reports/data/res_parcels.parquet"
 
 # GATHER DATA ----
 
@@ -103,7 +103,7 @@ sf_parcels <- sf_parcels %>%
     sale = factor(sale, levels = c(0, 1), labels = c("No Sale", "Sale")),
     across(starts_with("char_") & where(is.character), ~ as.factor(.x)),
     across(c(
-      loc_cook_municipality_name,
+      loc_tax_municipality_name,
       loc_ward_num,
       char_recent_renovation,
       char_type_resd
