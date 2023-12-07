@@ -22,8 +22,14 @@ Table of Contents
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
 - [FAQs](#faqs)
 - [Usage](#usage)
-  - [Installation](#installation)
-  - [Running](#running)
+  - [Running the model locally (all
+    users)](#running-the-model-locally-all-users)
+    - [Installation](#installation)
+    - [Running](#running)
+  - [Running the model on AWS Batch (CCAO staff
+    only)](#running-the-model-on-aws-batch-ccao-staff-only)
+    - [Executing a run](#executing-a-run)
+    - [Deleting test runs](#deleting-test-runs)
   - [Parameters](#parameters)
   - [Output](#output)
   - [Getting Data](#getting-data)
@@ -344,7 +350,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-05.
+model as of 2023-12-07.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -1029,6 +1035,16 @@ place during the downtime between reassessments, so about once per year.
 
 # Usage
 
+There are two ways of running the model:
+
+- [On a local machine](#running-the-model-locally-all-users) (available
+  to all users)
+- [In the cloud via AWS
+  Batch](#running-the-model-on-aws-batch-ccao-staff-only) (only
+  available to CCAO staff)
+
+## Running the model locally (all users)
+
 The code in this repository is written primarily in
 [R](https://www.r-project.org/about.html). Please install the [latest
 version of R](https://cloud.r-project.org/) (requires R version \>=
@@ -1046,7 +1062,7 @@ you can skip the installation steps below and instead pull the image
 from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version
 of the model.
 
-## Installation
+### Installation
 
 1.  Clone this repository using git, or simply download it using the
     button at the top of the page.
@@ -1075,7 +1091,7 @@ and dependencies, see [Managing R
 dependencies](#managing-r-dependencies) and
 [Troubleshooting](#troubleshooting).
 
-## Running
+### Running
 
 #### Manually
 
@@ -1130,6 +1146,60 @@ The web of dependencies, outputs, parameters, and intermediate files is
 defined via the [`dvc.yaml`](./dvc.yaml) file. See that file for more
 information about each stage’s outputs, inputs/dependencies, and related
 parameters (defined in [`params.yaml`](./params.yaml)).
+
+## Running the model on AWS Batch (CCAO staff only)
+
+If you have write permissions for this repository (i.e. you are a member
+of the CCAO Data team), you can run the model in the cloud on AWS Batch
+using GitHub Actions workflow runs.
+
+### Executing a run
+
+#### Initialization
+
+Model runs are initiated by the
+[`build-and-run-model`](./.github/workflows/build-and-run-model.yaml)
+workflow when one of the following events is triggered:
+
+- A pull request is opened, or a commit is pushed to an open pull
+  request
+- The workflow is [manually
+  dispatched](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow)
+
+In both cases, runs are gated behind a [deploy
+environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)
+that requires codeowner approval before the model will run. The `build`
+job to rebuild a Docker image for the model will always run, but the
+subsequent `run` job will not run unless a codeowner approves it.
+
+#### Monitoring
+
+Runs can be monitored on AWS via CloudWatch as they execute in a Batch
+job. Navigate to the run logs in the GitHub Actions console and look for
+the `build-and-run-model / run` job. Find the
+`Wait for Batch job to start and print link to AWS logs` step and expand
+it to reveal a link to the CloudWatch logs for the run.
+
+### Deleting test runs
+
+Test runs of the model can be deleted using the
+[`delete-model-runs`](./.github/workflows/build-and-run-model.yaml)
+workflow. This workflow will delete all of the associated run artifacts
+from S3. To delete one or more runs, copy their unique IDs
+(e.g. `2024-01-01-foo-bar`) and paste them in the workflow dispatch
+input box, with each run ID separated by a space
+(e.g. `2024-01-01-foo-bar 2024-02-02-bar-baz`).
+
+> \[!NOTE\] In order to protect production model run artifacts, the
+> `delete-model-runs` workflow can only delete model runs for the
+> upcoming assessment cycle (the current year from January-April, or the
+> next year from May-December). The workflow will raise an error if you
+> attempt to delete a model run outside the upcoming assessment cycle.
+> In the off chance that you do in fact need to delete a test run from a
+> previous assessment cycle, you can work around this limitation by
+> moving model run artifacts to bucket prefixes representing the
+> partition for the upcoming assessment year (e.g. `year=2024/`) and
+> then proceed to delete the model run.
 
 ## Parameters
 
