@@ -1190,8 +1190,8 @@ from S3. To delete one or more runs, copy their unique IDs
 input box, with each run ID separated by a space
 (e.g. `2024-01-01-foo-bar 2024-02-02-bar-baz`).
 
-> \[!NOTE\] In order to protect production model run artifacts, the
-> `delete-model-runs` workflow can only delete model runs for the
+> :warning: NOTE: In order to protect production model run artifacts,
+> the `delete-model-runs` workflow can only delete model runs for the
 > upcoming assessment cycle (the current year from January-April, or the
 > next year from May-December). The workflow will raise an error if you
 > attempt to delete a model run outside the upcoming assessment cycle.
