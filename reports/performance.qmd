@@ -41,36 +41,11 @@ library(stringr)
 library(tableone)
 library(tidyr)
 source(here("R", "helpers.R"))
-
-
-options(knitr.kable.NA = "", scipen = 99, width = 150)
-
-# Load necessary libraries
-library(arrow)
 library(ccao)
 library(DBI)
-library(dplyr)
-library(ggplot2)
-library(glue)
 library(grid)
 library(gridExtra)
-library(gtools)
-library(kableExtra)
-library(noctua)
-library(plotly)
-library(purrr)
-library(scales)
-library(sf)
-library(stringr)
-library(tableone)
-library(tidyr)
 library(tools)
-library(DT)
-library(here)
-library(htmltools)
-library(leaflet)
-library(recipes)
-library(skimr)
 
 
 # TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
