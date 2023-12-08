@@ -370,16 +370,12 @@ test_data %>%
 ```
 :::
 
+## SHAP Values
 ::: {.panel-tabset}
 
-```{r, results='asis', eval=shap_exists}
-cat("## SHAP Values")
-cat("::: {.panel-tabset}")
-```
-
-```{r, results='asis', eval=shap_exists}
-cat("## SHAP Summary")
-```
+## SHAP Summary
+SHAP values are a way to explain the importance of specific features within the model.
+They represent both the direction and magnitude of a feature's impact on the prediciton.
 
 ```{r, eval=shap_exists}
 shap_df_filtered <- shap_df %>%
@@ -723,6 +719,8 @@ assessment_pin %>%
 
 ## Large Sqft. 211s and 212s
 
+This creates a subset of 211s and 212s which are three standard deviations above the norm in terms of square footage. 
+
 ```{r}
 training_data %>%
   filter(
@@ -759,7 +757,7 @@ training_data %>%
 
 ## 210s/295s
 
-How far apart are the initial predicted values for townhomes? Is the average they get assigned reasonable?
+This takes a sample of 20 observations to see how far apart the initial predicted values are for townhomes. Is the average they get assigned reasonable?
 
 ```{r}
 assessment_pin %>%
@@ -802,7 +800,7 @@ assessment_pin %>%
 ::: panel-tabset
 ## Home Improvement Exemption Spot Check
 
-Are Home Improvement Exemption characteristics getting accurately updated?
+This tests if our Home Improvement Exemption characteristics are getting accurately updated.
 
 ```{r}
 AWS_ATHENA_CONN_NOCTUA <- DBI::dbConnect(noctua::athena())
@@ -868,7 +866,7 @@ chars_data %>%
 
 ## Characteristic Filling
 
-Is time filling working as expected?
+This tests if our time filling techniques are working as expected.
 
 ```{r}
 training_data %>%
@@ -1444,6 +1442,7 @@ The standardized (mean) difference is a measure of distance between two group me
 
 $$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
 
+
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
 ```{r SMDs}
@@ -1460,7 +1459,9 @@ print(smd_table, smd = TRUE)
 
 ## Empirical Cumulative Distributions
 
-Looking for overlap/similar distributions. Numeric variables scaled and centered.
+::: panel-tabset
+
+For the empirical cumulative distributions, we are looking for overlap/similar distributions. Numeric variables scaled and centered.
 
 Numeric columns:
 
@@ -1556,6 +1557,8 @@ for (i in seq(1, length(grobs), by = 6)) {
   }
 }
 ```
+
+:::
 
 ## Sales Trends
 
@@ -1988,9 +1991,9 @@ ggplot(
 ::: panel-tabset
 ## Sales View
 
+These are the counts of flagged sales by township and flag type, as derived by the Sale Validation script.
+
 ```{r}
-
-
 temp_sales <- sales %>%
   left_join(
     ccao::town_dict %>% select(township_code, township_name, triad_name),
