@@ -123,11 +123,12 @@ township <- training_data %>%
   ggplot() +
   geom_line(aes(x = Year, y = Sales, color = Township)) +
   scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
-  scale_x_continuous(breaks = seq(2014, 2022, 1)) +
+  scale_x_continuous(breaks = seq((as.numeric(params$year) - 9), as.numeric(params$year), 1)) +
   theme_minimal() +
   theme(axis.title.x = element_blank())
 
 ggplotly(township)
+
 ```
 
 ## By Quarter
@@ -495,7 +496,7 @@ qnt_df <- assessment_pin %>%
   filter(
     Town %in% c("Calumet", "Thornton", "Bloom"),
     !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(2022)
+    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
   ) %>%
   mutate(pred_pin_final_fmv_round) %>%
   select(
@@ -652,7 +653,7 @@ ggplotly(pred_v_actual_class)
 
 ## YoY Changes
 
-Where are 211s and 212s increasing a *lot*? Near values are 2022 Certified values, far values are 2020 Board values.
+Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, far values are Board values from two years ago.
 
 ``` {r}
 assessment_pin %>%
@@ -799,7 +800,7 @@ hie_data <- DBI::dbGetQuery(
   FROM ccao.hie
   WHERE pin IN ({hie_pins*})
   AND qu_sqft_bld > 0
-  AND year >= '2018'
+  AND year >= '{as.numeric(params$year) - 4}'
   ",
     .con = AWS_ATHENA_CONN_NOCTUA
   )
@@ -850,8 +851,8 @@ training_data %>%
   group_by(meta_pin) %>%
   filter(
     !ind_pin_is_multicard,
-    min(meta_sale_date) < lubridate::make_date(2019),
-    max(meta_sale_date) > lubridate::make_date(2019),
+    min(meta_sale_date) < lubridate::make_date(as.numeric(params$year) - 3),
+    max(meta_sale_date) > lubridate::make_date(as.numeric(params$year) - 3),
   ) %>%
   filter(n() > 6) %>%
   ungroup() %>%
@@ -868,6 +869,8 @@ training_data %>%
 ```
 
 ## Multi-Card and Multi-PIN Aggregation
+
+This uses 5 test pins to assess if multi-card parcels successfully aggregate to the full pin. 
 
 ```{r}
 test_card_pins <- c(
@@ -940,7 +943,7 @@ assessment_pin %>%
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
 # Declare time frame for study
-time_frame <- c("min" = "2021", "max" = "2022")
+time_frame <- c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
 
 # Data path
 data_path <- "~/model-res-avm-move-existing-reports/data/res_parcels.parquet"
@@ -1457,9 +1460,11 @@ ggplot(
     axis.title.x = element_blank()
   )
 
+year_minus_3 <- as.numeric(params$year) - 4
+
 temp <- ggplot(
   sales %>%
-    filter(sv_is_outlier == FALSE & meta_year >= "2019") %>%
+    filter(sv_is_outlier == FALSE & meta_year >= as.numeric(params$year) -4) %>%
     group_by(meta_year, meta_township_name, meta_triad_name) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     group_by(meta_township_name, meta_triad_name) %>%
@@ -1470,7 +1475,7 @@ temp <- ggplot(
   scale_y_continuous(labels = scales::percent_format()) +
   labs(
     y = "Median Sale Price", x = "Year",
-    title = "Price / 2019 Price, Outliers Excluded", subtitle = "By Tri, Township, and Year"
+    title = paste("Price / Price of", year_minus_3, ", Outliers Excluded"),
   ) +
   theme_minimal() +
   theme(
