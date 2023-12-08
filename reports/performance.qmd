@@ -17,7 +17,6 @@ params:
   dvc_bucket: 's3://ccao-data-dvc-us-east-1'
 ---
 
-
 ```{r setup}
 options(knitr.kable.NA = "", scipen = 99, width = 150)
 
@@ -86,7 +85,11 @@ run_triad_code <- ccao::town_dict %>%
 # Ingest training set used for this run from DVC bucket (if not local)
 train_md5_s3 <- metadata$dvc_md5_training_data
 train_md5_local <- digest::digest(paths$input$training$local, algo = "md5")
-train_md5 <- if (train_md5_s3 != train_md5_local) train_md5_s3 else train_md5_local
+train_md5 <- if (train_md5_s3 != train_md5_local) {
+  train_md5_s3
+} else {
+  train_md5_local
+}
 training_path <- paste0(
   params$dvc_bucket, "/",
   substr(train_md5, 1, 2), "/",
@@ -108,28 +111,33 @@ feat_imp_df <- read_parquet(paths$output$feature_importance$local)
 
 ## Sales Data
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## By Year
 
 *NOTE: Outliers are removed*
 
-``` {r town_year}
+```{r town_year}
 township <- training_data %>%
   filter(!sv_is_outlier, meta_triad_name == run_triad) %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
   group_by(meta_township_name, meta_year) %>%
   summarise(sales = n()) %>%
-  select(Sales = sales, Year = meta_year, Township = meta_township_name) %>%
+  select(
+    Sales = sales,
+    Year = meta_year,
+    Township = meta_township_name
+  ) %>%
   ggplot() +
   geom_line(aes(x = Year, y = Sales, color = Township)) +
   scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
-  scale_x_continuous(breaks = seq((as.numeric(params$year) - 9), as.numeric(params$year), 1)) +
+  scale_x_continuous(breaks = seq(
+    (as.numeric(params$year) - 9),
+    as.numeric(params$year), 1
+  )) +
   theme_minimal() +
   theme(axis.title.x = element_blank())
 
 ggplotly(township)
-
 ```
 
 ## By Quarter
@@ -138,9 +146,13 @@ Sales by bin by by quarter for the previous 4 years. The goal is to see how diff
 
 *NOTE: Outliers are removed*
 
-``` {r town_bin1, fig.height=8, fig.width=7, out.width="100%"}
+```{r town_bin1, fig.height=8, fig.width=7, out.width="100%"}
 training_data %>%
-  filter(!sv_is_outlier, meta_triad_name == run_triad, meta_year >= as.numeric(params$year) - 4) %>%
+  filter(
+    !sv_is_outlier,
+    meta_triad_name == run_triad,
+    meta_year >= as.numeric(params$year) - 4
+  ) %>%
   mutate(
     Bin = cut(
       meta_sale_price,
@@ -160,7 +172,12 @@ training_data %>%
   summarise(Sales = n()) %>%
   ungroup() %>%
   select(Sales, Bin, Township = meta_township_name, Quarter) %>%
-  ggplot(aes(x = Quarter, y = Sales, fill = Bin, group = Bin)) +
+  ggplot(aes(
+    x = Quarter,
+    y = Sales,
+    fill = Bin,
+    group = Bin
+  )) +
   geom_area() +
   scale_color_brewer(palette = "PuOr") +
   theme_minimal() +
@@ -177,7 +194,7 @@ training_data %>%
 
 *NOTE: Outliers are removed*
 
-``` {r class_year}
+```{r class_year}
 class <- training_data %>%
   filter(
     !sv_is_outlier,
@@ -188,13 +205,16 @@ class <- training_data %>%
   group_by(meta_class, meta_year) %>%
   summarise(sales = n()) %>%
   rename(Class = meta_class) %>%
-  pivot_wider(id_cols = Class, names_from = meta_year, values_from = sales)
+  pivot_wider(
+    id_cols = Class,
+    names_from = meta_year,
+    values_from = sales
+  )
 
 class %>%
   kable() %>%
   kable_styling() %>%
-  row_spec(
-    unique(which(is.na(class), arr.ind = TRUE)[, 1]),
+  row_spec(unique(which(is.na(class), arr.ind = TRUE)[, 1]),
     bold = TRUE,
     background = "lightgrey"
   )
@@ -204,7 +224,7 @@ class %>%
 
 These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
 
-``` {r}
+```{r}
 rbind(
   training_data %>%
     filter(
@@ -228,7 +248,7 @@ rbind(
 
 These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
 
-``` {r}
+```{r}
 rbind(
   training_data %>%
     filter(
@@ -247,16 +267,14 @@ rbind(
 ) %>%
   datatable(rownames = FALSE)
 ```
-
 :::
 
 ## Model Time Tracking
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## Training Data (Seen)
 
-Here, the chart demonstrates if the model's median sale price reflects the time trends for the data it has already seen. 
+Here, the chart demonstrates if the model's median sale price reflects the time trends for the data it has already seen.
 
 ```{r, fig.height=8, fig.width=7, out.width="100%"}
 model_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
@@ -281,7 +299,8 @@ training_data_pred %>%
       lubridate::make_date(metadata$input_min_sale_year, 1, 1),
       lubridate::ymd(meta_sale_date)
     ),
-    time_sale_month = as.numeric(time_interval %/% lubridate::dmonths(1)) + 1
+    time_sale_month = as.numeric(time_interval %/%
+      lubridate::dmonths(1)) + 1
   ) %>%
   group_by(meta_township_name, time_sale_month) %>%
   summarize(
@@ -293,7 +312,10 @@ training_data_pred %>%
   geom_line(aes(x = time_sale_month, y = value, color = name)) +
   scale_color_manual(
     name = "",
-    values = c("Median Prediction" = "red", "Median Sale Price" = "blue")
+    values = c(
+      "Median Prediction" = "red",
+      "Median Sale Price" = "blue"
+    )
   ) +
   scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
   facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
@@ -335,7 +357,9 @@ test_data %>%
     values = c("Median Prediction" = "red", "Median Sale Price" = "blue")
   ) +
   scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
-  facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
+  facet_wrap(vars(meta_township_name),
+    scales = "free_y", ncol = 3
+  ) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
@@ -344,7 +368,6 @@ test_data %>%
     axis.title.y = element_blank()
   )
 ```
-
 :::
 
 ::: {.panel-tabset}
@@ -406,12 +429,14 @@ shap_df_filtered %>%
 
 ```{r, eval=shap_exists}
 shap_predictors <- names(shap_df_filtered)
-shap_predictors <- shap_predictors[
-  !shap_predictors %in% c(
-    "meta_year", "meta_pin", "meta_card_num",
-    "pred_card_shap_baseline_fmv", "township_code", "meta_triad"
-  )
-]
+shap_predictors <- shap_predictors[!shap_predictors %in% c(
+  "meta_year",
+  "meta_pin",
+  "meta_card_num",
+  "pred_card_shap_baseline_fmv",
+  "township_code",
+  "meta_triad"
+)]
 
 assessment_card_filtered <- assessment_card %>%
   mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
@@ -420,13 +445,14 @@ assessment_card_filtered <- assessment_card %>%
 
 create_shapviz <- function(shap_df, assessment_df, idx) {
   shap_predictors <- names(shap_df)
-  shap_predictors <- shap_predictors[
-    !shap_predictors %in% c(
-      "meta_year", "meta_pin", "meta_card_num",
-      "pred_card_shap_baseline_fmv", "township_code", "meta_triad"
-    )
-  ]
-
+  shap_predictors <- shap_predictors[!shap_predictors %in% c(
+    "meta_year",
+    "meta_pin",
+    "meta_card_num",
+    "pred_card_shap_baseline_fmv",
+    "township_code",
+    "meta_triad"
+  )]
   shapviz::shapviz(
     object = shap_df %>%
       select(all_of(shap_predictors)) %>%
@@ -485,8 +511,7 @@ cat(":::")
 
 ## Township Outliers and Accuracy
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## Big Misses
 
 What are the sales with the largest miss relative to town and price quartile?
@@ -529,8 +554,8 @@ qnt_df %>%
 ## MAPE by Quintile
 
 How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by quintile for each tri-town?
-  
-``` {r}
+
+```{r}
 mape <- training_data_pred %>%
   filter(!sv_is_outlier) %>%
   left_join(
@@ -645,18 +670,16 @@ pred_v_actual_class <- test_data %>%
 
 ggplotly(pred_v_actual_class)
 ```
-
 :::
 
 ## 211/212s
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## YoY Changes
 
 Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, far values are Board values from two years ago.
 
-``` {r}
+```{r}
 assessment_pin %>%
   filter(
     meta_class %in% c("211", "212"),
@@ -700,7 +723,7 @@ assessment_pin %>%
 
 ## Large Sqft. 212s
 
-``` {r}
+```{r}
 training_data %>%
   filter(
     meta_class %in% c("211", "212"),
@@ -732,14 +755,13 @@ training_data %>%
     )
   )
 ```
-
 :::
 
 ## 210s/295s
 
 How far apart are the initial predicted values for townhomes? Is the average they get assigned reasonable?
 
-``` {r}
+```{r}
 assessment_pin %>%
   filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
   group_by(meta_complex_id) %>%
@@ -775,8 +797,7 @@ assessment_pin %>%
 
 ## Data Quality Checks
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## HIE Spot Check
 
 Are HIE characteristics getting accurately updated?
@@ -871,7 +892,7 @@ training_data %>%
 
 ## Multi-Card and Multi-PIN Aggregation
 
-This uses 5 test pins to assess if multi-card parcels successfully aggregate to the full pin. 
+This uses 5 test pins to assess if multi-card parcels successfully aggregate to the full pin.
 
 ```{r}
 test_card_pins <- c(
@@ -909,8 +930,10 @@ assessment_pin %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
   select(
-    meta_pin, land_pct,
-    pred_pin_final_fmv_bldg, pred_pin_final_fmv_land,
+    meta_pin,
+    land_pct,
+    pred_pin_final_fmv_bldg,
+    pred_pin_final_fmv_land,
     pred_pin_final_fmv_round
   ) %>%
   ggplot() +
@@ -931,9 +954,7 @@ assessment_pin %>%
   filter(pred_pin_final_fmv_land == 0) %>%
   datatable(rownames = FALSE)
 ```
-
 :::
-
 
 ```{r}
 # This script runs balance tests comparing the universe of residential parcels
@@ -944,27 +965,32 @@ assessment_pin %>%
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
 # Declare time frame for study
-time_frame <- c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
+time_frame <-
+  c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
 
 # Data path
-data_path <- "~/model-res-avm-move-existing-reports/data/res_parcels.parquet"
+data_path <-
+  "~/model-res-avm-move-existing-reports/data/res_parcels.parquet"
 
 # GATHER DATA ----
 
-sales <- arrow::read_parquet("~/ccao_res_avm/input/training_data.parquet")
+sales <-
+  arrow::read_parquet("~/ccao_res_avm/input/training_data.parquet")
 
 # All residential parcel characteristics from time frame, with a sale indicator
 
 if (!file.exists(data_path)) {
   dbGetQuery(
     conn = AWS_ATHENA_CONN_NOCTUA,
-    glue("
+    glue(
+      "
 
     SELECT * FROM model.vw_card_res_input vcri
     WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
     AND meta_class NOT IN ('211', '212')
 
-  ")
+  "
+    )
   ) %>%
     write_parquet(data_path)
 }
@@ -987,25 +1013,39 @@ sf_parcels <- read_parquet(data_path) %>%
 
 
 # Vars to test across
-vars <- grep("char_|3435|acs5_median|township_name", names(sf_parcels), value = TRUE) %>%
-  grep("percentile|_apts|_ncu|_use|_qlty", ., value = TRUE, invert = TRUE)
+vars <-
+  grep("char_|3435|acs5_median|township_name",
+    names(sf_parcels),
+    value = TRUE
+  ) %>%
+  grep("percentile|_apts|_ncu|_use|_qlty",
+    .,
+    value = TRUE,
+    invert = TRUE
+  )
 
 sf_parcels <- sf_parcels %>%
+  mutate(char_recent_renovation = case_when(
+    char_recent_renovation == 0 ~ "No",
+    TRUE ~ "Yes"
+  )) %>%
   mutate(
-    char_recent_renovation = case_when(
-      char_recent_renovation == 0 ~ "No",
-      TRUE ~ "Yes"
+    sale = factor(
+      sale,
+      levels = c(0, 1),
+      labels = c("No Sale", "Sale")
+    ),
+    across(starts_with("char_") &
+      where(is.character), ~ as.factor(.x)),
+    across(
+      c(
+        loc_tax_municipality_name,
+        loc_ward_num,
+        char_recent_renovation,
+        char_type_resd
+      ),
+      as.factor
     )
-  ) %>%
-  mutate(
-    sale = factor(sale, levels = c(0, 1), labels = c("No Sale", "Sale")),
-    across(starts_with("char_") & where(is.character), ~ as.factor(.x)),
-    across(c(
-      loc_tax_municipality_name,
-      loc_ward_num,
-      char_recent_renovation,
-      char_type_resd
-    ), as.factor)
   ) %>%
   select(sale, all_of(vars)) %>%
   vars_recode(
@@ -1028,20 +1068,25 @@ vars <- names(sf_parcels) %>%
 
 ## Logit Regressions
 
-All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus.  Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
+All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
 
 ```{r logit}
-remove <- names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>% select(where(is.factor))) %>%
-  grep("Sale|Township|Apartments|Single|Commercial", ., invert = TRUE, value = TRUE)
+remove <-
+  names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>%
+    select(where(is.factor))) %>%
+  grep(
+    "Sale|Township|Apartments|Single|Commercial",
+    .,
+    invert = TRUE,
+    value = TRUE
+  )
 
-fmla <- as.formula(
-  paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
-)
+fmla <- as.formula(paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+")))
 
-logit <- glm(
-  fmla,
+logit <- glm(fmla,
   data = logit_parcels %>%
-    rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
+    rename_with(~ gsub(" |-", "_", .x)),
+  family = "binomial"
 )
 
 sample_size <- logit$df.null
@@ -1053,18 +1098,20 @@ county_logit <- logit %>%
     term = gsub("_", " ", gsub(paste(remove, collapse = "|"), "", term))
   ) %>%
   kable(
-    caption = paste0("Sample size: ", format(sample_size, big.mark = ","), " single-family parcels"),
+    caption = paste0(
+      "Sample size: ",
+      format(sample_size, big.mark = ","),
+      " single-family parcels"
+    ),
     col.names = c("Predictor", "β", "SE", "t", "p"),
     digits = c(0, 5, 5, 3, 0),
     align = c("l", "r", "c", "r", "l"),
     padding = 5L
   ) %>%
-  add_footnote(
-    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+  add_footnote("p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
     notation = "none"
   ) %>%
-  kable_styling(
-    "striped",
+  kable_styling("striped",
     fixed_thead = TRUE,
     html_font = "Consolas"
   ) %>%
@@ -1092,14 +1139,14 @@ logits <- logit_parcels %>%
     if (nrow(x) < 1000) {
       trim_vars <- grep("Renovation", vars, value = TRUE, invert = TRUE)
 
-      fmla <- as.formula(
-        paste0("Sale ~ ", paste0(gsub(" |-", "_", trim_vars), collapse = "+"))
-      )
+      fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(
+        " |-", "_", trim_vars
+      ), collapse = "+")))
 
-      glm(
-        fmla,
+      glm(fmla,
         data = x %>%
-          rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
+          rename_with(~ gsub(" |-", "_", .x)),
+        family = "binomial"
       ) %>%
         broom::tidy() %>%
         mutate(
@@ -1123,14 +1170,12 @@ logits <- logit_parcels %>%
           html_font = "Consolas"
         )
     } else {
-      fmla <- as.formula(
-        paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+"))
-      )
+      fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+")))
 
-      glm(
-        fmla,
+      glm(fmla,
         data = x %>%
-          rename_with(~ gsub(" |-", "_", .x)), family = "binomial"
+          rename_with(~ gsub(" |-", "_", .x)),
+        family = "binomial"
       ) %>%
         broom::tidy() %>%
         mutate(
@@ -1157,168 +1202,241 @@ logits <- logit_parcels %>%
   }, simplify = FALSE)
 ```
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## County
+
 ```{r}
 county_logit
 ```
+
 ## Barrington
+
 ```{r}
 logits[["Barrington"]]
 ```
+
 ## Berwyn
+
 ```{r}
 logits[["Berwyn"]]
 ```
+
 ## Bloom
+
 ```{r}
 logits[["Bloom"]]
 ```
+
 ## Bremen
+
 ```{r}
 logits[["Bremen"]]
 ```
+
 ## Calumet
+
 ```{r}
 logits[["Calumet"]]
 ```
+
 ## Cicero
+
 ```{r}
 logits[["Cicero"]]
 ```
+
 ## Elk Grove
+
 ```{r}
 logits[["Elk Grove"]]
 ```
+
 ## Evanston
+
 ```{r}
 logits[["Evanston"]]
 ```
+
 ## Hanover
+
 ```{r}
 logits[["Hanover"]]
 ```
+
 ## Hyde Park
+
 ```{r}
 logits[["Hyde Park"]]
 ```
+
 ## Jefferson
+
 ```{r}
 logits[["Jefferson"]]
 ```
+
 ## Lake
+
 ```{r}
 logits[["Lake"]]
 ```
+
 ## Lake View
+
 ```{r}
 logits[["Lake View"]]
 ```
+
 ## Lemont
+
 ```{r}
 logits[["Lemont"]]
 ```
+
 ## Leyden
+
 ```{r}
 logits[["Leyden"]]
 ```
+
 ## Lyons
+
 ```{r}
 logits[["Lyons"]]
 ```
+
 ## Maine
+
 ```{r}
 logits[["Maine"]]
 ```
+
 ## New Trier
+
 ```{r}
 logits[["New Trier"]]
 ```
+
 ## Niles
+
 ```{r}
 logits[["Niles"]]
 ```
+
 ## North Chicago
+
 ```{r}
 logits[["North Chicago"]]
 ```
+
 ## Northfield
+
 ```{r}
 logits[["Northfield"]]
 ```
+
 ## Norwood Park
+
 ```{r}
 logits[["Norwood Park"]]
 ```
+
 ## Oak Park
+
 ```{r}
 logits[["Oak Park"]]
 ```
+
 ## Orland
+
 ```{r}
 logits[["Orland"]]
 ```
+
 ## Palatine
+
 ```{r}
 logits[["Palatine"]]
 ```
+
 ## Palos
+
 ```{r}
 logits[["Palos"]]
 ```
+
 ## Proviso
+
 ```{r}
 logits[["Proviso"]]
 ```
+
 ## Rich
+
 ```{r}
 logits[["Rich"]]
 ```
+
 ## River Forest
+
 ```{r}
 logits[["River Forest"]]
 ```
+
 ## Riverside
+
 ```{r}
 logits[["Riverside"]]
 ```
+
 ## Rogers Park
+
 ```{r}
 logits[["Rogers Park"]]
 ```
+
 ## Schaumburg
+
 ```{r}
 logits[["Schaumburg"]]
 ```
+
 ## South Chicago
+
 ```{r}
 logits[["South Chicago"]]
 ```
+
 ## Stickney
+
 ```{r}
 logits[["Stickney"]]
 ```
+
 ## Thornton
+
 ```{r}
 logits[["Thornton"]]
 ```
+
 ## West Chicago
+
 ```{r}
 logits[["West Chicago"]]
 ```
+
 ## Wheeling
+
 ```{r}
 logits[["Wheeling"]]
 ```
+
 ## Worth
+
 ```{r}
 logits[["Worth"]]
 ```
-
 :::
-
-
 
 ## Standardized mean differences
 
@@ -1347,31 +1465,33 @@ Looking for overlap/similar distributions. Numeric variables scaled and centered
 Numeric columns:
 
 ```{r ECDFs1}
-grobs <- lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
-  data <- sf_parcels %>% select(Sale, any_of(x))
-
-  ggplot(data, aes(
-    scale(sf_parcels %>% pull(x)),
-    color = Sale
-  )) +
-    stat_ecdf(geom = "step") +
-    labs(x = str_wrap(x, width = 25)) +
-    theme_minimal() +
-    theme(
-      axis.title.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks.y = element_blank(),
-      legend.position = "none"
-    )
-})
+grobs <-
+  lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
+    data <- sf_parcels %>% select(Sale, any_of(x))
+    ggplot(data, aes(scale(sf_parcels %>% pull(x)),
+      color = Sale
+    )) +
+      stat_ecdf(geom = "step") +
+      labs(x = str_wrap(x, width = 25)) +
+      theme_minimal() +
+      theme(
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "none"
+      )
+  })
 
 for (i in seq(1, length(grobs), by = 6)) {
   if (i == 13) {
     grid.arrange(
       grobs = list(
-        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]], grobs[[i + 3]],
+        grobs[[i]],
+        grobs[[i + 1]],
+        grobs[[i + 2]],
+        grobs[[i + 3]],
         rectGrob(gp = gpar(col = "white")),
         rectGrob(gp = gpar(col = "white"))
       ),
@@ -1394,23 +1514,24 @@ for (i in seq(1, length(grobs), by = 6)) {
 Factor columns:
 
 ```{r ECDFs2}
-grobs <- lapply(names(sf_parcels %>% select(where(is.factor) & any_of(vars))), function(x) {
-  ggplot(sf_parcels, aes(
-    as.numeric(sf_parcels %>% pull(x)),
-    color = Sale
-  )) +
-    stat_ecdf(geom = "step") +
-    labs(x = str_wrap(x, width = 25)) +
-    theme_minimal() +
-    theme(
-      axis.title.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks.y = element_blank(),
-      legend.position = "none"
-    )
-})
+grobs <-
+  lapply(names(sf_parcels %>% select(where(is.factor) &
+    any_of(vars))), function(x) {
+    ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)),
+      color = Sale
+    )) +
+      stat_ecdf(geom = "step") +
+      labs(x = str_wrap(x, width = 25)) +
+      theme_minimal() +
+      theme(
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "none"
+      )
+  })
 
 for (i in seq(1, length(grobs), by = 6)) {
   if (i == 13) {
@@ -1438,11 +1559,10 @@ for (i in seq(1, length(grobs), by = 6)) {
 
 ## Sales Trends
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## Median Sale Price
 
-``` {r Price}
+```{r Price}
 ggplot(
   sales %>%
     group_by(meta_year, sv_is_outlier) %>%
@@ -1461,22 +1581,27 @@ ggplot(
     axis.title.x = element_blank()
   )
 
-year_minus_3 <- as.numeric(params$year) - 4
+year_minus_4 <- as.numeric(params$year) - 4
 
 temp <- ggplot(
   sales %>%
-    filter(sv_is_outlier == FALSE & meta_year >= as.numeric(params$year) -4) %>%
+    filter(sv_is_outlier == FALSE &
+      meta_year >= year_minus_4) %>%
     group_by(meta_year, meta_township_name, meta_triad_name) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     group_by(meta_township_name, meta_triad_name) %>%
-    mutate(median_price_change = (median_price / first(median_price, order_by = meta_year)) - 1),
+    mutate(median_price_change = (
+      median_price /
+        first(median_price, order_by = meta_year)
+    ) - 1),
   aes(x = meta_year, y = median_price_change, group = meta_township_name)
 ) +
   geom_line(aes(color = meta_township_name)) +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(
-    y = "Median Sale Price", x = "Year",
-    title = paste("Price / Price of", year_minus_3, ", Outliers Excluded"),
+    y = "Median Sale Price",
+    x = "Year",
+    title = paste("Price / Price of", year_minus_4, ", Outliers Excluded"),
   ) +
   theme_minimal() +
   theme(
@@ -1490,7 +1615,7 @@ temp <- ggplot(
 ggplotly(temp)
 ```
 
-``` {r}
+```{r}
 temp <- sales %>%
   filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
@@ -1502,7 +1627,12 @@ temp_graph <- function(x, title, limits = NULL) {
   x %>%
     ggplot() +
     geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
-    labs(y = "Median Sale Price", x = "Week", title = paste(title, "Tri, By Year and Week"), subtitle = "Outliers excluded") +
+    labs(
+      y = "Median Sale Price",
+      x = "Week",
+      title = paste(title, "Tri, By Year and Week"),
+      subtitle = "Outliers excluded"
+    ) +
     theme_minimal() +
     scale_y_continuous(labels = scales::dollar, limits = limits) +
     theme(
@@ -1524,7 +1654,7 @@ temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
 
 ## Number of Sales
 
-``` {r Volume1}
+```{r Volume1}
 ggplot(
   sales,
   aes(x = meta_year, group = sv_is_outlier)
@@ -1535,7 +1665,10 @@ ggplot(
   ), stat = "count", vjust = -1) +
   labs(y = "Number of Sales", x = "Year", title = "By Year and Outlier Status") +
   theme_minimal() +
-  scale_y_continuous(labels = scales::comma, limits = c(0, 60000)) +
+  scale_y_continuous(
+    labels = scales::comma,
+    limits = c(0, 60000)
+  ) +
   theme(
     legend.position = "bottom",
     legend.title = element_blank(),
@@ -1548,7 +1681,10 @@ ggplot(
   aes(x = time_sale_month_of_year, group = sv_is_outlier)
 ) +
   geom_bar(aes(fill = sv_is_outlier)) +
-  labs(y = "Number of Sales", x = "Year", title = "By Month and Outlier Status") +
+  labs(
+    y = "Number of Sales", x = "Year",
+    title = "By Month and Outlier Status"
+  ) +
   theme_minimal() +
   scale_y_continuous(labels = scales::comma, limits = c(0, 6000)) +
   scale_x_continuous(breaks = 1:12, labels = month.name) +
@@ -1561,17 +1697,14 @@ ggplot(
   ) +
   facet_wrap(vars(meta_year))
 ```
-
-
 :::
 
 ## Outlier Breakdown
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## Outlier Types
 
-``` {r Outlier Types}
+```{r Outlier Types}
 ggplot(
   sales %>%
     filter(sv_outlier_type != "Not outlier") %>%
@@ -1580,7 +1713,10 @@ ggplot(
     ungroup(),
   aes(x = reorder(sv_outlier_type, -count), y = count)
 ) +
-  labs(y = "Number of Sales", x = "Outlier Types", title = "Count", subtitle = "by Type") +
+  labs(
+    y = "Number of Sales", x = "Outlier Types",
+    title = "Count", subtitle = "by Type"
+  ) +
   geom_bar(stat = "identity") +
   geom_text(aes(
     label = count
@@ -1604,11 +1740,12 @@ sales %>%
 
 ## Class
 
-``` {r Classes}
+```{r Classes}
 ggplot(
   sales %>%
     group_by(meta_class) %>%
-    summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+    summarise(percent = mean(case_when
+    (sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = meta_class, y = percent)
 ) +
@@ -1627,11 +1764,12 @@ ggplot(
 
 ## Township
 
-``` {r Townships}
+```{r Townships}
 ggplot(
   sales %>%
     group_by(meta_township_name) %>%
-    summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+    summarise(percent = mean(case_when
+    (sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
     ungroup(),
   aes(x = reorder(meta_township_name, -percent), y = percent)
 ) +
@@ -1651,7 +1789,7 @@ ggplot(
 
 ## Price
 
-``` {r}
+```{r}
 sales %>%
   group_by(sv_is_outlier) %>%
   summarise(
@@ -1665,7 +1803,7 @@ sales %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
   kable() %>%
   kable_styling(
-    full_width = T
+    full_width = TRUE
   )
 
 ggplot(sales, aes(
@@ -1687,7 +1825,7 @@ ggplot(sales, aes(
   )
 ```
 
-``` {r fig.height=6}
+```{r fig.height=6}
 ggplot(
   sales %>%
     group_by(sv_is_outlier, meta_township_name) %>%
@@ -1700,8 +1838,13 @@ ggplot(
     ) %>%
     mutate(
       percent = `TRUE` / `FALSE`,
-      above_below = ifelse(percent > 1, "Outlier > Not Outlier", "Not Outlier > Outlier"),
-      above_below = factor(above_below, levels = c("Outlier > Not Outlier", "Not Outlier > Outlier"))
+      above_below = ifelse(percent > 1,
+        "Outlier > Not Outlier", "Not Outlier > Outlier"
+      ),
+      above_below = factor(above_below,
+        levels =
+          c("Outlier > Not Outlier", "Not Outlier > Outlier")
+      )
     ),
   aes(x = reorder(meta_township_name, percent), y = percent)
 ) +
@@ -1722,9 +1865,10 @@ ggplot(
     axis.title.x = element_blank(),
   )
 ```
+
 ## Price Per SQFT
 
-``` {r ppsft}
+```{r ppsft}
 sales %>%
   filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
   mutate(ppsf = meta_sale_price / char_bldg_sf) %>%
@@ -1739,16 +1883,13 @@ sales %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
   kable() %>%
-  kable_styling(
-    full_width = T
-  )
+  kable_styling(full_width = TRUE)
 
 ggplot(
   sales %>%
     filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
     mutate(ppsf = meta_sale_price / char_bldg_sf),
-  aes(
-    log(ppsf),
+  aes(log(ppsf),
     fill = sv_is_outlier
   )
 ) +
@@ -1769,7 +1910,7 @@ ggplot(
 
 ## Decile Breakout
 
-``` {r Upper}
+```{r Upper}
 sales %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
@@ -1785,31 +1926,34 @@ sales %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
   kable(caption = "Top Decile") %>%
-  kable_styling(
-    full_width = T
-  )
+  kable_styling(full_width = TRUE)
 
 ggplot(
   sales %>%
     arrange(meta_sale_price) %>%
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     group_by(decile) %>%
-    summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+    summarise(percent = mean(
+      case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)
+    )) %>%
     ungroup(),
   aes(x = decile, y = percent)
 ) +
   labs(title = "Share of Outliers", x = "Quantile") +
   geom_bar(stat = "identity") +
   geom_bar(stat = "identity") +
-  geom_text(aes(
-    label = scales::percent(percent, accuracy = .1)
-  ), hjust = -0.1, angle = 90) +
+  geom_text(aes(label = scales::percent(percent, accuracy = .1)),
+    hjust = -0.1,
+    angle = 90
+  ) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.09), breaks = seq(0, 0.1, 0.02)) +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 0.09),
+    breaks = seq(0, 0.1, 0.02)
+  ) +
   scale_x_continuous(breaks = seq(1, 10, 1)) +
-  theme(
-    axis.title.y = element_blank()
-  )
+  theme(axis.title.y = element_blank())
 
 ggplot(
   sales %>%
@@ -1821,11 +1965,14 @@ ggplot(
     ungroup(),
   aes(x = reorder(sv_outlier_type, -count), y = count)
 ) +
-  labs(y = "Number of Sales", x = "Outlier Types", title = "Outlier Count", subtitle = "by Type, Top Decile") +
+  labs(
+    y = "Number of Sales",
+    x = "Outlier Types",
+    title = "Outlier Count",
+    subtitle = "by Type, Top Decile"
+  ) +
   geom_bar(stat = "identity") +
-  geom_text(aes(
-    label = count
-  ), vjust = -0.5) +
+  geom_text(aes(label = count), vjust = -0.5) +
   ylim(0, 900) +
   theme_minimal() +
   theme(
@@ -1834,16 +1981,14 @@ ggplot(
     axis.title.x = element_blank()
   )
 ```
-
 :::
 
 ## Sale Outliers
 
-::: {.panel-tabset}
-
+::: panel-tabset
 ## Sales View
 
-``` {r}
+```{r}
 temp_sales <- sales %>%
   left_join(
     ccao::town_dict %>% select(township_code, township_name, triad_name),
@@ -1865,7 +2010,10 @@ temp_sales %>%
     temp_sales %>%
       filter(!sv_is_outlier) %>%
       group_by(meta_class, township_name) %>%
-      summarise(`Median Non-outlier Sale Price` = median(meta_sale_price, na.rm = TRUE))
+      summarise(
+        `Median Non-outlier Sale Price` =
+          median(meta_sale_price, na.rm = TRUE)
+      )
   ) %>%
   mutate(across(contains("Sale"), dollar)) %>%
   dplyr::rename(Class = meta_class, "Township Name" = township_name) %>%
@@ -1879,5 +2027,4 @@ temp_sales %>%
     )
   )
 ```
-
 :::
