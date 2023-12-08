@@ -300,7 +300,7 @@ training_data_pred %>%
       lubridate::ymd(meta_sale_date)
     ),
     time_sale_month = as.numeric(time_interval %/%
-      lubridate::dmonths(1)) + 1
+                                   lubridate::dmonths(1)) + 1
   ) %>%
   group_by(meta_township_name, time_sale_month) %>%
   summarize(
@@ -373,9 +373,10 @@ test_data %>%
 ## SHAP Values
 ::: {.panel-tabset}
 
-## SHAP Summary
 SHAP values are a way to explain the importance of specific features within the model.
 They represent both the direction and magnitude of a feature's impact on the prediciton.
+
+## SHAP Summary
 
 ```{r, eval=shap_exists}
 shap_df_filtered <- shap_df %>%
@@ -1459,11 +1460,10 @@ print(smd_table, smd = TRUE)
 
 ## Empirical Cumulative Distributions
 
-::: panel-tabset
-
 For the empirical cumulative distributions, we are looking for overlap/similar distributions. Numeric variables scaled and centered.
 
-Numeric columns:
+::: panel-tabset
+## Numeric columns:
 
 ```{r ECDFs1}
 grobs <-
@@ -1512,7 +1512,7 @@ for (i in seq(1, length(grobs), by = 6)) {
 }
 ```
 
-Factor columns:
+## Factor columns:
 
 ```{r ECDFs2}
 grobs <-
