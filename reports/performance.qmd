@@ -23,6 +23,7 @@ options(knitr.kable.NA = "", scipen = 99, width = 150)
 
 # Load necessary libraries
 library(arrow)
+library(plotly)
 library(dplyr)
 library(ggplot2)
 library(glue)
@@ -1027,7 +1028,7 @@ vars <- names(sf_parcels) %>%
 
 ## Logit Regressions
 
-All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus.  Sample is universe of '21 & '22 single family parcels, excluding some parcels with incomplete characteristics.
+All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus.  Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
 
 ```{r logit}
 remove <- names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>% select(where(is.factor))) %>%
