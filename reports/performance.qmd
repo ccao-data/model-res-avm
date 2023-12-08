@@ -835,305 +835,6 @@ test_data %>%
 ```
 :::
 
-## SHAP Values
-::: {.panel-tabset}
-
-SHAP values are a way to explain the importance of specific features within the model.
-They represent both the direction and magnitude of a feature's impact on the prediciton.
-
-## SHAP Summary
-
-```{r, eval=shap_exists}
-shap_df_filtered <- shap_df %>%
-  left_join(
-    assessment_card %>%
-      mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
-      select(meta_year, meta_pin, meta_card_num, meta_triad),
-    by = c("meta_year", "meta_pin", "meta_card_num")
-  ) %>%
-  filter(meta_triad == run_triad_code) %>%
-  arrange(meta_pin, meta_card_num)
-```
-
-```{r, eval=shap_exists}
-shap_df_filtered %>%
-  select(
-    where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)
-  ) %>%
-  skim() %>%
-  rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
-  select(-c(type, n_missing, complete_rate, p25, p75)) %>%
-  rename(histogram = hist, median = p50, min = p0, max = p100) %>%
-  mutate(
-    variable = str_replace_all(variable, "_", " "),
-    across(where(is.numeric), ~ round(.x, 1)),
-    `mean direction` = case_when(
-      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
-    ),
-    `median direction` = case_when(
-      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
-    ),
-    mean = abs(mean),
-    median = abs(median)
-  ) %>%
-  relocate(`mean direction`, .before = mean) %>%
-  relocate(`median direction`, .before = median) %>%
-  datatable(
-    rownames = FALSE,
-    height = "500px",
-    options = list(
-      columnDefs = list(
-        list(className = "dt-center", targets = c(1:7))
-      )
-    )
-  )
-```
-
-```{r, eval=shap_exists}
-shap_predictors <- names(shap_df_filtered)
-shap_predictors <- shap_predictors[!shap_predictors %in% c(
-  "meta_year",
-  "meta_pin",
-  "meta_card_num",
-  "pred_card_shap_baseline_fmv",
-  "township_code",
-  "meta_triad"
-)]
-
-assessment_card_filtered <- assessment_card %>%
-  mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
-  filter(meta_triad == run_triad_code) %>%
-  arrange(meta_pin, meta_card_num)
-
-create_shapviz <- function(shap_df, assessment_df, idx) {
-  shap_predictors <- names(shap_df)
-  shap_predictors <- shap_predictors[!shap_predictors %in% c(
-    "meta_year",
-    "meta_pin",
-    "meta_card_num",
-    "pred_card_shap_baseline_fmv",
-    "township_code",
-    "meta_triad"
-  )]
-  shapviz::shapviz(
-    object = shap_df %>%
-      select(all_of(shap_predictors)) %>%
-      slice(idx) %>%
-      as.matrix(),
-    X = assessment_df %>%
-      select(all_of(shap_predictors)) %>%
-      slice(idx),
-    baseline = shap_df$pred_card_shap_baseline_fmv[1]
-  )
-}
-```
-
-```{r, results='asis', eval=shap_exists}
-cat("## Riverside Beeswarm")
-```
-
-```{r, eval=shap_exists}
-shap_riverside_idx <- which(
-  assessment_card_filtered$meta_township_code == ccao::town_convert("Riverside")
-)
-create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %>%
-  shapviz::sv_importance("beeswarm") +
-  theme_minimal()
-```
-
-```{r, results='asis', eval=shap_exists}
-cat("## Calumet Beeswarm")
-```
-
-```{r, eval=shap_exists}
-shap_calumet_idx <- which(
-  assessment_card_filtered$meta_township_code == ccao::town_convert("Calumet")
-)
-create_shapviz(shap_df_filtered, assessment_card_filtered, shap_calumet_idx) %>%
-  shapviz::sv_importance("beeswarm") +
-  theme_minimal()
-```
-
-```{r, results='asis', eval=shap_exists}
-cat("## Thornton Beeswarm")
-```
-
-```{r, eval=shap_exists}
-shap_thornton_idx <- which(
-  assessment_card_filtered$meta_township_code == ccao::town_convert("Thornton")
-)
-create_shapviz(shap_df_filtered, assessment_card_filtered, shap_thornton_idx) %>%
-  shapviz::sv_importance("beeswarm") +
-  theme_minimal()
-```
-
-```{r, results='asis', eval=shap_exists}
-cat(":::")
-```
-
-## Township Outliers and Accuracy
-
-::: panel-tabset
-## Big Misses
-
-What are the sales with the largest miss relative to town and price quartile?
-
-```{r}
-qnt_df <- assessment_pin %>%
-  mutate(Town = ccao::town_convert(meta_township_code)) %>%
-  filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
-    !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
-  ) %>%
-  mutate(pred_pin_final_fmv_round) %>%
-  select(
-    PIN = meta_pin, Town, Class = meta_class,
-    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
-    `Sale 1 Date` = sale_recent_2_date, `Sale 1 Price` = sale_recent_2_price,
-    `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price,
-    `Est. FMV` = pred_pin_final_fmv_round
-  ) %>%
-  group_by(Town) %>%
-  mutate(
-    diff = abs(`Sale 2 Price` - `Est. FMV`),
-    `Qnt.` = cut(
-      `Sale 2 Price`,
-      breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
-      labels = c("Q1", "Q2", "Q3", "Q4"),
-      include.lowest = TRUE
-    )
-  ) %>%
-  group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
-  relocate(`Qnt.`, .after = "Town")
-
-qnt_df %>%
-  datatable(rownames = FALSE)
-```
-
-## MAPE by Quintile
-
-How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by quintile for each tri-town?
-
-```{r}
-mape <- training_data_pred %>%
-  filter(!sv_is_outlier) %>%
-  left_join(
-    ccao::town_dict %>%
-      select(meta_township_code = township_code, triad_name)
-  ) %>%
-  filter(triad_name == run_triad, meta_year == max(meta_year)) %>%
-  group_by(meta_township_name) %>%
-  arrange(meta_sale_price) %>%
-  mutate(Quintile = ntile(meta_sale_price, 5)) %>%
-  group_by(meta_township_name, Quintile) %>%
-  summarise(
-    median_sale_price = median(meta_sale_price, na.rm = TRUE),
-    median_predicted_fmv = median(pred_card_initial_fmv, na.rm = TRUE),
-    MAPE = yardstick::mape_vec(meta_sale_price, pred_card_initial_fmv)
-  ) %>%
-  rename(Township = meta_township_name)
-
-ggplotly(
-  mape %>%
-    ggplot(aes(x = Quintile, y = MAPE, color = Township)) +
-    geom_line() +
-    theme_minimal()
-)
-```
-
-## Predicted v Actual By Town
-
-```{r}
-pred_v_actual_town <- test_data %>%
-  filter(meta_triad_code == run_triad_code) %>%
-  mutate(Township = ccao::town_convert(meta_township_code)) %>%
-  rename(
-    `Sale Price` = meta_sale_price,
-    `Predicted FMV` = pred_card_initial_fmv,
-    PIN = meta_pin
-  ) %>%
-  ggplot() +
-  geom_point(aes(
-    group = PIN,
-    x = `Predicted FMV`,
-    y = `Sale Price`,
-    color = Township
-  )) +
-  geom_abline(slope = 1, intercept = 0) +
-  scale_x_continuous(
-    name = "Predicted FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  scale_y_continuous(
-    name = "Actual FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  theme_minimal()
-
-ggplotly(pred_v_actual_town)
-```
-
-## Predicted v Actual By Class
-
-```{r}
-pred_v_actual_class <- test_data %>%
-  filter(meta_triad_code == run_triad_code) %>%
-  mutate(Township = ccao::town_convert(meta_township_code)) %>%
-  rename(
-    `Sale Price` = meta_sale_price,
-    `Predicted FMV` = pred_card_initial_fmv,
-    PIN = meta_pin,
-    Class = meta_class
-  ) %>%
-  ggplot() +
-  geom_point(aes(
-    group = PIN,
-    x = `Predicted FMV`,
-    y = `Sale Price`,
-    color = Class
-  )) +
-  geom_abline(slope = 1, intercept = 0) +
-  scale_x_continuous(
-    name = "Predicted FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  scale_y_continuous(
-    name = "Actual FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  theme_minimal()
-
-ggplotly(pred_v_actual_class)
-```
-:::
-
 ## 211/212s
 
 ::: panel-tabset
@@ -1633,6 +1334,144 @@ logits[["Worth"]]
 ```
 :::
 
+
+## SHAP Values
+::: {.panel-tabset}
+
+SHAP values are a way to explain the importance of specific features within the model.
+They represent both the direction and magnitude of a feature's impact on the prediciton.
+
+## SHAP Summary
+
+```{r, eval=shap_exists}
+shap_df_filtered <- shap_df %>%
+  left_join(
+    assessment_card %>%
+      mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+      select(meta_year, meta_pin, meta_card_num, meta_triad),
+    by = c("meta_year", "meta_pin", "meta_card_num")
+  ) %>%
+  filter(meta_triad == run_triad_code) %>%
+  arrange(meta_pin, meta_card_num)
+```
+
+```{r, eval=shap_exists}
+shap_df_filtered %>%
+  select(
+    where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)
+  ) %>%
+  skim() %>%
+  rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
+  select(-c(type, n_missing, complete_rate, p25, p75)) %>%
+  rename(histogram = hist, median = p50, min = p0, max = p100) %>%
+  mutate(
+    variable = str_replace_all(variable, "_", " "),
+    across(where(is.numeric), ~ round(.x, 1)),
+    `mean direction` = case_when(
+      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
+    ),
+    `median direction` = case_when(
+      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
+    ),
+    mean = abs(mean),
+    median = abs(median)
+  ) %>%
+  relocate(`mean direction`, .before = mean) %>%
+  relocate(`median direction`, .before = median) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1:7))
+      )
+    )
+  )
+```
+
+```{r, eval=shap_exists}
+shap_predictors <- names(shap_df_filtered)
+shap_predictors <- shap_predictors[!shap_predictors %in% c(
+  "meta_year",
+  "meta_pin",
+  "meta_card_num",
+  "pred_card_shap_baseline_fmv",
+  "township_code",
+  "meta_triad"
+)]
+
+assessment_card_filtered <- assessment_card %>%
+  mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+  filter(meta_triad == run_triad_code) %>%
+  arrange(meta_pin, meta_card_num)
+
+create_shapviz <- function(shap_df, assessment_df, idx) {
+  shap_predictors <- names(shap_df)
+  shap_predictors <- shap_predictors[!shap_predictors %in% c(
+    "meta_year",
+    "meta_pin",
+    "meta_card_num",
+    "pred_card_shap_baseline_fmv",
+    "township_code",
+    "meta_triad"
+  )]
+  shapviz::shapviz(
+    object = shap_df %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx) %>%
+      as.matrix(),
+    X = assessment_df %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx),
+    baseline = shap_df$pred_card_shap_baseline_fmv[1]
+  )
+}
+```
+
+```{r, results='asis', eval=shap_exists}
+cat("## Riverside Beeswarm")
+```
+
+```{r, eval=shap_exists}
+shap_riverside_idx <- which(
+  assessment_card_filtered$meta_township_code == ccao::town_convert("Riverside")
+)
+create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %>%
+  shapviz::sv_importance("beeswarm") +
+  theme_minimal()
+```
+
+```{r, results='asis', eval=shap_exists}
+cat("## Calumet Beeswarm")
+```
+
+```{r, eval=shap_exists}
+shap_calumet_idx <- which(
+  assessment_card_filtered$meta_township_code == ccao::town_convert("Calumet")
+)
+create_shapviz(shap_df_filtered, assessment_card_filtered, shap_calumet_idx) %>%
+  shapviz::sv_importance("beeswarm") +
+  theme_minimal()
+```
+
+```{r, results='asis', eval=shap_exists}
+cat("## Thornton Beeswarm")
+```
+
+```{r, eval=shap_exists}
+shap_thornton_idx <- which(
+  assessment_card_filtered$meta_township_code == ccao::town_convert("Thornton")
+)
+create_shapviz(shap_df_filtered, assessment_card_filtered, shap_thornton_idx) %>%
+  shapviz::sv_importance("beeswarm") +
+  theme_minimal()
+```
+
+```{r, results='asis', eval=shap_exists}
+cat(":::")
+```
+
+
 ## Standardized mean differences
 
 The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
@@ -1754,6 +1593,169 @@ for (i in seq(1, length(grobs), by = 6)) {
 }
 ```
 
+:::
+
+## Township Outliers and Accuracy
+
+::: panel-tabset
+## Big Misses
+
+What are the sales with the largest miss relative to town and price quartile?
+
+```{r}
+qnt_df <- assessment_pin %>%
+  mutate(Town = ccao::town_convert(meta_township_code)) %>%
+  filter(
+    Town %in% c("Calumet", "Thornton", "Bloom"),
+    !is.na(sale_recent_1_price),
+    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
+  ) %>%
+  mutate(pred_pin_final_fmv_round) %>%
+  select(
+    PIN = meta_pin, Town, Class = meta_class,
+    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
+    `Sale 1 Date` = sale_recent_2_date, `Sale 1 Price` = sale_recent_2_price,
+    `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price,
+    `Est. FMV` = pred_pin_final_fmv_round
+  ) %>%
+  group_by(Town) %>%
+  mutate(
+    diff = abs(`Sale 2 Price` - `Est. FMV`),
+    `Qnt.` = cut(
+      `Sale 2 Price`,
+      breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
+      labels = c("Q1", "Q2", "Q3", "Q4"),
+      include.lowest = TRUE
+    )
+  ) %>%
+  group_by(Town, `Qnt.`) %>%
+  slice_max(diff, n = 1) %>%
+  select(-diff) %>%
+  relocate(`Qnt.`, .after = "Town")
+
+qnt_df %>%
+  datatable(rownames = FALSE)
+```
+
+## MAPE by Quintile
+
+How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by quintile for each tri-town?
+
+```{r}
+mape <- training_data_pred %>%
+  filter(!sv_is_outlier) %>%
+  left_join(
+    ccao::town_dict %>%
+      select(meta_township_code = township_code, triad_name)
+  ) %>%
+  filter(triad_name == run_triad, meta_year == max(meta_year)) %>%
+  group_by(meta_township_name) %>%
+  arrange(meta_sale_price) %>%
+  mutate(Quintile = ntile(meta_sale_price, 5)) %>%
+  group_by(meta_township_name, Quintile) %>%
+  summarise(
+    median_sale_price = median(meta_sale_price, na.rm = TRUE),
+    median_predicted_fmv = median(pred_card_initial_fmv, na.rm = TRUE),
+    MAPE = yardstick::mape_vec(meta_sale_price, pred_card_initial_fmv)
+  ) %>%
+  rename(Township = meta_township_name)
+
+ggplotly(
+  mape %>%
+    ggplot(aes(x = Quintile, y = MAPE, color = Township)) +
+    geom_line() +
+    theme_minimal()
+)
+```
+
+## Predicted v Actual By Town
+
+```{r}
+pred_v_actual_town <- test_data %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  rename(
+    `Sale Price` = meta_sale_price,
+    `Predicted FMV` = pred_card_initial_fmv,
+    PIN = meta_pin
+  ) %>%
+  ggplot() +
+  geom_point(aes(
+    group = PIN,
+    x = `Predicted FMV`,
+    y = `Sale Price`,
+    color = Township
+  )) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_x_continuous(
+    name = "Predicted FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  scale_y_continuous(
+    name = "Actual FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  theme_minimal()
+
+ggplotly(pred_v_actual_town)
+```
+
+## Predicted v Actual By Class
+
+```{r}
+pred_v_actual_class <- test_data %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  rename(
+    `Sale Price` = meta_sale_price,
+    `Predicted FMV` = pred_card_initial_fmv,
+    PIN = meta_pin,
+    Class = meta_class
+  ) %>%
+  ggplot() +
+  geom_point(aes(
+    group = PIN,
+    x = `Predicted FMV`,
+    y = `Sale Price`,
+    color = Class
+  )) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_x_continuous(
+    name = "Predicted FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  scale_y_continuous(
+    name = "Actual FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  theme_minimal()
+
+ggplotly(pred_v_actual_class)
+```
 :::
 
 
