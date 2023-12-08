@@ -23,23 +23,32 @@ options(knitr.kable.NA = "", scipen = 99, width = 150)
 
 # Load necessary libraries
 library(arrow)
+library(ccao)
+library(DBI)
 library(dplyr)
-library(DT)
 library(ggplot2)
 library(glue)
-library(here)
-library(htmltools)
+library(grid)
+library(gridExtra)
+library(gtools)
 library(kableExtra)
-library(leaflet)
+library(noctua)
 library(plotly)
 library(purrr)
-library(recipes)
 library(scales)
 library(sf)
-library(skimr)
 library(stringr)
 library(tableone)
 library(tidyr)
+library(tools)
+library(DT)
+library(here)
+library(htmltools)
+library(leaflet)
+library(recipes)
+library(skimr)
+
+
 source(here("R", "helpers.R"))
 
 # TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
@@ -772,6 +781,8 @@ Are HIE characteristics getting accurately updated?
 ```{r}
 AWS_ATHENA_CONN_NOCTUA <- DBI::dbConnect(noctua::athena())
 
+noctua_options(cache_size = 10)
+
 hie_pins <- training_data %>%
   filter(
     hie_num_active == 1,
@@ -917,3 +928,5 @@ assessment_pin %>%
 ```
 
 :::
+
+
