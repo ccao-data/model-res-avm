@@ -38,6 +38,7 @@ library(stringr)
 library(tableone)
 library(tidyr)
 library(tools)
+library(DT)
 
 options(width = 120)
 options(knitr.kable.NA = "")
@@ -49,7 +50,7 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 time_frame <- c("min" = "2021", "max" = "2022")
 
 # Data path
-data_path <- "~/model-res-avm-move-existing-reports/data/res_parcels.parquet"
+data_path <- "~/data/res_parcels.parquet"
 
 # GATHER DATA ----
 
@@ -949,7 +950,7 @@ temp_sales <- sales %>%
     ccao::town_dict %>% select(township_code, township_name, triad_name),
     by = c("meta_township_code" = "township_code")
   ) %>%
-  filter(meta_class != "200" & triad_name == "South")
+  filter(meta_class != "200" & triad_name == "City")
 
 
 temp_sales %>%
@@ -965,7 +966,7 @@ temp_sales %>%
     temp_sales %>%
       filter(!sv_is_outlier) %>%
       group_by(meta_class, township_name) %>%
-      summarise(`Median Non-outlier Sale Price` = median(sale_price, na.rm = TRUE))
+      summarise(`Median Non-outlier Sale Price` = median(meta_sale_price, na.rm = TRUE))
   ) %>%
   mutate(across(contains("Sale"), dollar)) %>%
   dplyr::rename(Class = meta_class, "Township Name" = township_name) %>%
