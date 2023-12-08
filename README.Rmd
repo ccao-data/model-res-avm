@@ -618,13 +618,20 @@ We're constantly making minor tweaks to improve the model's accuracy, speed, and
 
 # Usage
 
+There are two ways of running the model:
+
+* [On a local machine](#running-the-model-locally-all-users) (available to all users)
+* [In the cloud via AWS Batch](#running-the-model-on-aws-batch-ccao-staff-only) (only available to CCAO staff)
+
+## Running the Model Locally (All Users)
+
 The code in this repository is written primarily in [R](https://www.r-project.org/about.html). Please install the [latest version of R](https://cloud.r-project.org/) (requires R version >= 4.2.1) and [RStudio](https://posit.co/download/rstudio-desktop/) before proceeding with the steps below.
 
 If you're on Windows, you'll also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to build the necessary packages. You may also want to (optionally) install [DVC](https://dvc.org/doc/install) to pull data and run pipelines.
 
 We also publish a Docker image containing model code and all of the dependencies necessary to run it. If you're comfortable using Docker, you can skip the installation steps below and instead pull the image from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version of the model.
 
-## Installation
+### Installation
 
 1. Clone this repository using git, or simply download it using the button at the top of the page.
 2. Set your working directory to the local folder containing this repository's files, either using R's `setwd()` command or (preferably) using RStudio's [projects](https://support.posit.co/hc/en-us/articles/200526207-Using-Projects).
@@ -634,7 +641,7 @@ We also publish a Docker image containing model code and all of the dependencies
 
 For installation issues, particularly related to package installation and dependencies, see [Managing R dependencies](#managing-r-dependencies) and [Troubleshooting](#troubleshooting).
 
-## Running
+### Running
 
 #### Manually
 
@@ -674,6 +681,31 @@ dvc repro -f
 ```
 
 The web of dependencies, outputs, parameters, and intermediate files is defined via the [`dvc.yaml`](./dvc.yaml) file. See that file for more information about each stage's outputs, inputs/dependencies, and related parameters (defined in [`params.yaml`](./params.yaml)).
+
+## Running the Model on AWS Batch (CCAO Staff Only)
+
+If you have write permissions for this repository (i.e. you are a member of the CCAO Data Department), you can run the model in the cloud on AWS Batch using GitHub Actions workflow runs.
+
+### Executing a Run
+
+#### Initialization
+
+Model runs are initiated by the [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml) workflow when one of the following events is triggered:
+
+* A pull request is opened, or a commit is pushed to an open pull request
+* The workflow is [manually dispatched](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow)
+
+In both cases, runs are gated behind a [deploy environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment) that requires approval from a `@ccao-data/core-team` member before the model will run. The `build` job to rebuild a Docker image for the model will always run, but the subsequent `run` job will not run unless a core-team member approves it.
+
+#### Monitoring
+
+Runs can be monitored on AWS via CloudWatch as they execute in a Batch job. Navigate to the run logs in the GitHub Actions console and look for the `build-and-run-model / run` job. Find the `Wait for Batch job to start and print link to AWS logs` step and expand it to reveal a link to the CloudWatch logs for the run.
+
+### Deleting Test Runs
+
+Test runs of the model can be deleted using the [`delete-model-runs`](./.github/workflows/build-and-run-model.yaml) workflow. This workflow will delete all of the associated run artifacts from S3. To delete one or more runs, copy their unique IDs (e.g. `2024-01-01-foo-bar`) and paste them in the workflow dispatch input box, with each run ID separated by a space (e.g. `2024-01-01-foo-bar 2024-02-02-bar-baz`).
+
+> :warning: NOTE: In order to protect production model run artifacts, the `delete-model-runs` workflow can only delete model runs for the upcoming assessment cycle (the current year from January-April, or the next year from May-December). The workflow will raise an error if you attempt to delete a model run outside the upcoming assessment cycle. In the off chance that you do in fact need to delete a test run from a previous assessment cycle, you can work around this limitation by moving model run artifacts to bucket prefixes representing the partition for the upcoming assessment year (e.g. `year=2024/`) and then proceed to delete the model run.
 
 ## Parameters
 
