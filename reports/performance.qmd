@@ -765,7 +765,7 @@ training_data_pred %>%
       lubridate::ymd(meta_sale_date)
     ),
     time_sale_month = as.numeric(time_interval %/%
-                                   lubridate::dmonths(1)) + 1
+      lubridate::dmonths(1)) + 1
   ) %>%
   group_by(meta_township_name, time_sale_month) %>%
   summarize(
