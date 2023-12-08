@@ -132,13 +132,13 @@ ggplotly(township)
 
 ## By Quarter
 
-Sales by bin by quarter since 2018. Goal is to see how different segments of the market are changing as a proportion in each tri-town.
+Sales by bin by by quarter for the previous 4 years. The goal is to see how different segments of the market are changing as a proportion in each tri-town.
 
 *NOTE: Outliers are removed*
 
 ``` {r town_bin1, fig.height=8, fig.width=7, out.width="100%"}
 training_data %>%
-  filter(!sv_is_outlier, meta_triad_name == run_triad, meta_year >= "2018") %>%
+  filter(!sv_is_outlier, meta_triad_name == run_triad, meta_year >= as.numeric(params$year) - 4) %>%
   mutate(
     Bin = cut(
       meta_sale_price,
@@ -152,7 +152,7 @@ training_data %>%
       )
     ),
     Quarter = lubridate::quarter(meta_sale_date) + 4 *
-      (as.numeric(meta_year) - 2018)
+      (as.numeric(meta_year) - as.numeric(params$year))
   ) %>%
   group_by(meta_township_name, Quarter, Bin) %>%
   summarise(Sales = n()) %>%
@@ -254,7 +254,7 @@ rbind(
 
 ## Training Data (Seen)
 
-Does the model accurately model time trends for the data it's already seen?
+Here, the chart demonstrates if the model's median sale price reflects the time trends for the data it has already seen. 
 
 ```{r, fig.height=8, fig.width=7, out.width="100%"}
 model_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
@@ -344,6 +344,8 @@ test_data %>%
 ```
 
 :::
+
+::: {.panel-tabset}
 
 ```{r, results='asis', eval=shap_exists}
 cat("## SHAP Values")
@@ -485,7 +487,7 @@ cat(":::")
 
 ## Big Misses
 
-What is the 2022 sale with the biggest miss for each town and price quartile?
+What are the sales with the largest miss relative to town and price quartile?
 
 ```{r}
 qnt_df <- assessment_pin %>%
@@ -1312,7 +1314,7 @@ logits[["Worth"]]
 
 :::
 
-Across the township regressions we see two characteristics that tend to be significant and have large magnitudes: type of residence (stories), and the recent renovation indicator. For the South Tri, the recent renovation indicator is most significant in Bloom and Palos. What this implies for predicted AVs and desk review is hard to say - the recent reno indicator is clearly important, but difficult to update on the fly. Keep an eye out for older homes with unexpectedly high AVs next to homes that have just been renovated.
+
 
 ## Standardized mean differences
 
