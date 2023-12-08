@@ -330,7 +330,7 @@ training_data_pred %>%
 
 ## Test Data (Unseen)
 
-Does the model accurately model time trends for unseen data slightly in the future?
+This chart looks at sales slightly in the future to see if the model tracks trends which it has not yet seen. 
 
 ```{r, fig.height=8, fig.width=7, out.width="100%"}
 test_data <- read_parquet(paths$output$test_card$local)
@@ -677,7 +677,7 @@ ggplotly(pred_v_actual_class)
 ::: panel-tabset
 ## YoY Changes
 
-Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, far values are Board values from two years ago.
+Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, and far values are board values from two years ago.
 
 ```{r}
 assessment_pin %>%
@@ -721,7 +721,7 @@ assessment_pin %>%
   )
 ```
 
-## Large Sqft. 212s
+## Large Sqft. 211s and 212s
 
 ```{r}
 training_data %>%
@@ -755,7 +755,7 @@ training_data %>%
     )
   )
 ```
-:::
+
 
 ## 210s/295s
 
@@ -795,12 +795,14 @@ assessment_pin %>%
   )
 ```
 
+:::
+
 ## Data Quality Checks
 
 ::: panel-tabset
-## HIE Spot Check
+## Home Improvement Exemption Spot Check
 
-Are HIE characteristics getting accurately updated?
+Are Home Improvement Exemption characteristics getting accurately updated?
 
 ```{r}
 AWS_ATHENA_CONN_NOCTUA <- DBI::dbConnect(noctua::athena())
@@ -984,11 +986,9 @@ if (!file.exists(data_path)) {
     conn = AWS_ATHENA_CONN_NOCTUA,
     glue(
       "
-
     SELECT * FROM model.vw_card_res_input vcri
     WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
     AND meta_class NOT IN ('211', '212')
-
   "
     )
   ) %>%
@@ -1989,12 +1989,14 @@ ggplot(
 ## Sales View
 
 ```{r}
+
+
 temp_sales <- sales %>%
   left_join(
     ccao::town_dict %>% select(township_code, township_name, triad_name),
     by = c("meta_township_code" = "township_code")
   ) %>%
-  filter(meta_class != "200" & triad_name == "City")
+  filter(meta_class != "200" & triad_name == run_triad)
 
 
 temp_sales %>%
