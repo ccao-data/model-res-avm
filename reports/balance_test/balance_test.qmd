@@ -950,7 +950,7 @@ temp_sales <- sales %>%
     ccao::town_dict %>% select(township_code, township_name, triad_name),
     by = c("meta_township_code" = "township_code")
   ) %>%
-  filter(meta_class != "200" & triad_name == "City")
+  filter(meta_class != "200" & triad_name == run_triad)
 
 
 temp_sales %>%
