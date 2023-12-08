@@ -22,14 +22,14 @@ Table of Contents
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
 - [FAQs](#faqs)
 - [Usage](#usage)
-  - [Running the model locally (all
-    users)](#running-the-model-locally-all-users)
+  - [Running the Model Locally (All
+    Users)](#running-the-model-locally-all-users)
     - [Installation](#installation)
     - [Running](#running)
-  - [Running the model on AWS Batch (CCAO staff
-    only)](#running-the-model-on-aws-batch-ccao-staff-only)
-    - [Executing a run](#executing-a-run)
-    - [Deleting test runs](#deleting-test-runs)
+  - [Running the Model on AWS Batch (CCAO Staff
+    Only)](#running-the-model-on-aws-batch-ccao-staff-only)
+    - [Executing a Run](#executing-a-run)
+    - [Deleting Test Runs](#deleting-test-runs)
   - [Parameters](#parameters)
   - [Output](#output)
   - [Getting Data](#getting-data)
@@ -350,7 +350,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-07.
+model as of 2023-12-08.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -1043,7 +1043,7 @@ There are two ways of running the model:
   Batch](#running-the-model-on-aws-batch-ccao-staff-only) (only
   available to CCAO staff)
 
-## Running the model locally (all users)
+## Running the Model Locally (All Users)
 
 The code in this repository is written primarily in
 [R](https://www.r-project.org/about.html). Please install the [latest
@@ -1147,13 +1147,13 @@ defined via the [`dvc.yaml`](./dvc.yaml) file. See that file for more
 information about each stage’s outputs, inputs/dependencies, and related
 parameters (defined in [`params.yaml`](./params.yaml)).
 
-## Running the model on AWS Batch (CCAO staff only)
+## Running the Model on AWS Batch (CCAO Staff Only)
 
 If you have write permissions for this repository (i.e. you are a member
-of the CCAO Data team), you can run the model in the cloud on AWS Batch
-using GitHub Actions workflow runs.
+of the CCAO Data Department), you can run the model in the cloud on AWS
+Batch using GitHub Actions workflow runs.
 
-### Executing a run
+### Executing a Run
 
 #### Initialization
 
@@ -1168,9 +1168,10 @@ workflow when one of the following events is triggered:
 
 In both cases, runs are gated behind a [deploy
 environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)
-that requires codeowner approval before the model will run. The `build`
-job to rebuild a Docker image for the model will always run, but the
-subsequent `run` job will not run unless a codeowner approves it.
+that requires approval from a `@ccao-data/core-team` member before the
+model will run. The `build` job to rebuild a Docker image for the model
+will always run, but the subsequent `run` job will not run unless a
+core-team member approves it.
 
 #### Monitoring
 
@@ -1180,7 +1181,7 @@ the `build-and-run-model / run` job. Find the
 `Wait for Batch job to start and print link to AWS logs` step and expand
 it to reveal a link to the CloudWatch logs for the run.
 
-### Deleting test runs
+### Deleting Test Runs
 
 Test runs of the model can be deleted using the
 [`delete-model-runs`](./.github/workflows/build-and-run-model.yaml)
