@@ -512,6 +512,7 @@ assessment_pin_data_final_2 <- assessment_pin_data_sale_2 %>%
     flag_prior_near_yoy_dec_gt_5_pct = prior_near_yoy_change_pct < -0.05,
   ) %>%
   # Flag high-value properties from prior years
+  arrange(meta_year, meta_pin) %>%
   group_by(meta_township_code) %>%
   mutate(flag_prior_near_fmv_top_decile = ntile(prior_near_tot, 10) == 10) %>%
   ungroup() %>%

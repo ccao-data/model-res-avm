@@ -50,6 +50,7 @@ params <- read_yaml("params.yaml")
 # Lightgbm docs recommend using only real cores, not logical
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
+data.table::setDTthreads(num_threads)
 
 # Set the overall model seed
 set.seed(params$model$seed)
