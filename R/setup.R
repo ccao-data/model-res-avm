@@ -22,6 +22,7 @@ suppressPackageStartupMessages({
 conflicts_prefer(
   data.table::`:=`,
   dplyr::filter,
+  dplyr::first,
   dplyr::lag,
   dplyr::pull,
   dplyr::slice,
