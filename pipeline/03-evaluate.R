@@ -76,40 +76,24 @@ if (run_type == "full") {
 # aggregate performance statistics for different levels of geography
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography, class, col_dict) {
+  # List of column names that summary stat functions expand to
+  rs_cols <- sapply(
+    c("cod", "prd", "prb"),
+    \(x) paste0(x, "_", c("ci_2_5", "ci_97_5", "met", "ci_met", "n")),
+    simplify = FALSE
+  )
+
   # List of summary stat/performance functions applied within summarize() below
-  # Each function is listed on the right while the name of the function is on
-  # the left
+  # Each function is on the right while the name of the function is on the left
   rs_fns_list <- list(
-    cod_no_sop = \(x, y) ifelse(
-      sum(!is.na(y)) > 1,
-      cod(x / y, na.rm = TRUE),
-      NA
-    ),
-    prd_no_sop = \(x, y) ifelse(
-      sum(!is.na(y)) > 1,
-      prd(x, y, na.rm = TRUE),
-      NA
-    ),
-    prb_no_sop = \(x, y) ifelse(
-      sum(!is.na(y)) > 1,
-      prb(x, y, na.rm = TRUE),
-      NA
-    ),
-    cod = \(x, y) ifelse(
-      sum(!is.na(y)) > 33,
-      list(ccao_cod(x / y, na.rm = TRUE)),
-      NA
-    ),
-    prd = \(x, y) ifelse(
-      sum(!is.na(y)) > 33,
-      list(ccao_prd(x, y, na.rm = TRUE)),
-      NA
-    ),
-    prb = \(x, y) ifelse(
-      sum(!is.na(y)) > 33,
-      list(ccao_prb(x, y, na.rm = TRUE)),
-      NA
-    )
+    # nolint start
+    cod_no_sop = \(x, y) ifelse(sum(!is.na(y)) > 1, cod(x / y, na.rm = TRUE), NA),
+    prd_no_sop = \(x, y) ifelse(sum(!is.na(y)) > 1, prd(x, y, na.rm = TRUE), NA),
+    prb_no_sop = \(x, y) ifelse(sum(!is.na(y)) > 1, prb(x, y, na.rm = TRUE), NA),
+    cod = \(x, y) ifelse(sum(!is.na(y)) > 33, list(ccao_cod(x / y, na.rm = TRUE)), NA),
+    prd = \(x, y) ifelse(sum(!is.na(y)) > 33, list(ccao_prd(x, y, na.rm = TRUE)), NA),
+    prb = \(x, y) ifelse(sum(!is.na(y)) > 33, list(ccao_prb(x, y, na.rm = TRUE)), NA)
+    # nolint end
   )
   ys_fns_list <- list(
     rmse        = rmse_vec,
@@ -133,10 +117,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     max         = \(x, y) max(x / y, na.rm = TRUE)
   )
   yoy_fns_list <- list(
-    min         = \(x, y) min((x - .) / .y, na.rm = TRUE),
-    q25         = \(x, y) quantile((x - y) / .y, na.rm = TRUE, probs = 0.25),
-    median      = \(x, y) median((x - y) / .y, na.rm = TRUE),
-    q75         = \(x, y) quantile((x - y) / .y, na.rm = TRUE, probs = 0.75),
+    min         = \(x, y) min((x - y) / y, na.rm = TRUE),
+    q25         = \(x, y) quantile((x - y) / y, na.rm = TRUE, probs = 0.25),
+    median      = \(x, y) median((x - y) / y, na.rm = TRUE),
+    q75         = \(x, y) quantile((x - y) / y, na.rm = TRUE, probs = 0.75),
     max         = \(x, y) max((x - y) / y, na.rm = TRUE)
   )
 
@@ -171,162 +155,106 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         estimate_total_av = sum(get(estimate) / 10, na.rm = TRUE),
 
         # Assessment-specific statistics
-        imap(rs_fns_list, ~ rlang::exec(.x, get(estimate), get(truth))),
+        imap(rs_fns_list, ~ exec(.x, get(estimate), get(truth))),
         median_ratio = median(get(estimate) / get(truth), na.rm = TRUE),
 
         # Yardstick (ML-specific) performance stats
-        imap(ys_fns_list, ~ rlang::exec(.x, get(truth), get(estimate))),
+        imap(ys_fns_list, ~ exec(.x, get(truth), get(estimate))),
 
         # Summary stats of sale price and sale price per sqft
-        imap(sum_fns_list, ~ rlang::exec(.x, get(truth))) %>%
+        imap(sum_fns_list, ~ exec(.x, get(truth))) %>%
           purrr::set_names(paste0("sale_fmv_", names(.))),
-        imap(
-          sum_sqft_fns_list,
-          ~ rlang::exec(.x, get(truth), get(bldg_sqft))
-        ) %>%
-          purrr::set_names(paste0("sale_fmv_per_sqft_", names(.)))
-        #
-        #     # Summary stats of prior values and value per sqft. Need to mult
-        #     # by 10 first since PIN history is in AV, not FMV
-        #     prior_far_num_missing = sum(is.na({{ rsf_col }})),
-        #     across(
-        #       .fns = sum_fns_list, {{ rsf_col }},
-        #       .names = "prior_far_fmv_{.fn}"
-        #     ),
-        #     across(
-        #       .fns = sum_sqft_fns_list, {{ rsf_col }}, {{ bldg_sqft }},
-        #       .names = "prior_far_fmv_per_sqft_{.fn}"
-        #     ),
-        #     across(
-        #       .fns = yoy_fns_list, {{ estimate }}, {{ rsf_col }},
-        #       .names = "prior_far_yoy_pct_chg_{.fn}"
-        #     ),
-        #     prior_near_num_missing = sum(is.na({{ rsn_col }})),
-        #     across(
-        #       .fns = sum_fns_list, {{ rsn_col }},
-        #       .names = "prior_near_fmv_{.fn}"
-        #     ),
-        #     across(
-        #       .fns = sum_sqft_fns_list, {{ rsn_col }}, {{ bldg_sqft }},
-        #       .names = "prior_near_fmv_per_sqft_{.fn}"
-        #     ),
-        #     across(
-        #       .fns = yoy_fns_list, {{ estimate }}, {{ rsn_col }},
-        #       .names = "prior_near_yoy_pct_chg_{.fn}"
-        #     ),
-        #
-        #     # Summary stats of estimate value and estimate per sqft
-        #     estimate_num_missing = sum(is.na({{ estimate }})),
-        #     across(
-        #       .fns = sum_fns_list, {{ estimate }},
-        #       .names = "estimate_fmv_{.fn}"
-        #     ),
-        #     across(
-        #       .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
-        #       .names = "estimate_fmv_per_sqft_{.fn}"
-        #     ),
+        imap(sum_sqft_fns_list, ~ exec(.x, get(truth), get(bldg_sqft))) %>%
+          purrr::set_names(paste0("sale_fmv_per_sqft_", names(.))),
+
+        # Summary stats of prior values and value per sqft
+        prior_far_num_missing = sum(is.na(get(rsf_col))),
+        imap(sum_fns_list, ~ exec(.x, get(rsf_col))) %>%
+          purrr::set_names(paste0("prior_far_fmv_", names(.))),
+        imap(sum_sqft_fns_list, ~ exec(.x, get(rsf_col), get(bldg_sqft))) %>%
+          purrr::set_names(paste0("prior_far_fmv_per_sqft_", names(.))),
+        imap(yoy_fns_list, ~ exec(.x, get(estimate), get(rsf_col))) %>%
+          purrr::set_names(paste0("prior_far_yoy_pct_chg_", names(.))),
+        prior_near_num_missing = sum(is.na(get(rsn_col))),
+        imap(sum_fns_list, ~ exec(.x, get(rsn_col))) %>%
+          purrr::set_names(paste0("prior_near_fmv_", names(.))),
+        imap(sum_sqft_fns_list, ~ exec(.x, get(rsn_col), get(bldg_sqft))) %>%
+          purrr::set_names(paste0("prior_near_fmv_per_sqft_", names(.))),
+        imap(yoy_fns_list, ~ exec(.x, get(estimate), get(rsn_col))) %>%
+          purrr::set_names(paste0("prior_near_yoy_pct_chg_", names(.))),
+
+        # Summary stats of estimate value and estimate per sqft
+        estimate_num_missing = sum(is.na(get(estimate))),
+        imap(sum_fns_list, ~ exec(.x, get(estimate))) %>%
+          purrr::set_names(paste0("estimate_fmv_", names(.))),
+        imap(sum_sqft_fns_list, ~ exec(.x, get(estimate), get(bldg_sqft))) %>%
+          purrr::set_names(paste0("estimate_fmv_per_sqft_", names(.)))
       ))
     },
     by = c(triad, geography, class)
+  ][
+    ,
+      # COD, PRD, and PRB all output to a list. We can unnest each list to get
+      # additional info for each stat (95% CI, sample count, etc)
+      c("cod", rs_cols$cod, "prd", rs_cols$prd, "prb", rs_cols$prb) :=
+      c(data.table::transpose(lapply(cod, \(x) unlist(x))),
+        data.table::transpose(lapply(prd, \(x) unlist(x))),
+        data.table::transpose(lapply(prb, \(x) unlist(x)))
+      )
   ]
 
-  return(df_stat)
+  # Clean up the stats output (rename and relocate cols, replace inf values)
+  df_stat[
+    ,
+    `:=`(
+      by_class = !is.null(class),
+      geography_type = ifelse(
+        !is.null(geography),
+        ccao::vars_rename(
+          geography,
+          names_from = "model",
+          names_to = "athena"
+        ),
+        "triad_code"
+      )
+    )
+  ]
 
-  #     # Assessment-specific statistics
-  #     across(
-  #       .fns = rs_fns_list, {{ estimate }}, {{ truth }},
-  #       .names = "{.fn}"
-  #     ),
-  #     median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
-  #
-  #     # Yardstick (ML-specific) performance stats
-  #     across(.fns = ys_fns_list, {{ truth }}, {{ estimate }}, .names = "{.fn}"),
-  #
-  #     # Summary stats of sale price and sale price per sqft
-  #     across(.fns = sum_fns_list, {{ truth }}, .names = "sale_fmv_{.fn}"),
-  #     across(
-  #       .fns = sum_sqft_fns_list, {{ truth }}, {{ bldg_sqft }},
-  #       .names = "sale_fmv_per_sqft_{.fn}"
-  #     ),
-  #
-  #     # Summary stats of prior values and value per sqft. Need to multiply
-  #     # by 10 first since PIN history is in AV, not FMV
-  #     prior_far_num_missing = sum(is.na({{ rsf_col }})),
-  #     across(
-  #       .fns = sum_fns_list, {{ rsf_col }},
-  #       .names = "prior_far_fmv_{.fn}"
-  #     ),
-  #     across(
-  #       .fns = sum_sqft_fns_list, {{ rsf_col }}, {{ bldg_sqft }},
-  #       .names = "prior_far_fmv_per_sqft_{.fn}"
-  #     ),
-  #     across(
-  #       .fns = yoy_fns_list, {{ estimate }}, {{ rsf_col }},
-  #       .names = "prior_far_yoy_pct_chg_{.fn}"
-  #     ),
-  #     prior_near_num_missing = sum(is.na({{ rsn_col }})),
-  #     across(
-  #       .fns = sum_fns_list, {{ rsn_col }},
-  #       .names = "prior_near_fmv_{.fn}"
-  #     ),
-  #     across(
-  #       .fns = sum_sqft_fns_list, {{ rsn_col }}, {{ bldg_sqft }},
-  #       .names = "prior_near_fmv_per_sqft_{.fn}"
-  #     ),
-  #     across(
-  #       .fns = yoy_fns_list, {{ estimate }}, {{ rsn_col }},
-  #       .names = "prior_near_yoy_pct_chg_{.fn}"
-  #     ),
-  #
-  #     # Summary stats of estimate value and estimate per sqft
-  #     estimate_num_missing = sum(is.na({{ estimate }})),
-  #     across(
-  #       .fns = sum_fns_list, {{ estimate }},
-  #       .names = "estimate_fmv_{.fn}"
-  #     ),
-  #     across(
-  #       .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
-  #       .names = "estimate_fmv_per_sqft_{.fn}"
-  #     ),
-  #     .groups = "drop"
-  #   ) %>%
-  #   ungroup() %>%
-  #   # COD, PRD, and PRB all output to a list. We can unnest each list to get
-  #   # additional info for each stat (95% CI, sample count, etc)
-  #   tidyr::unnest_wider(cod) %>%
-  #   tidyr::unnest_wider(COD_CI, names_sep = "_") %>%
-  #   tidyr::unnest_wider(prd) %>%
-  #   tidyr::unnest_wider(PRD_CI, names_sep = "_") %>%
-  #   tidyr::unnest_wider(prb) %>%
-  #   tidyr::unnest_wider(PRB_CI, names_sep = "_") %>%
-  #   # Rename columns resulting from unnesting
-  #   rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
-  #
-  # # Clean up the stats output (rename cols, relocate cols, etc.)
-  # df_stat %>%
-  #   mutate(
-  #     by_class = !is.null({{ class }}),
-  #     geography_type = ifelse(
-  #       !is.null({{ geography }}),
-  #       ccao::vars_rename(
-  #         rlang::as_string(rlang::ensym(geography)),
-  #         names_from = "model",
-  #         names_to = "athena"
-  #       ),
-  #       "triad_code"
-  #     )
-  #   ) %>%
-  #   rename(any_of(col_dict)) %>%
-  #   relocate(
-  #     any_of(c("geography_type", "geography_id", "by_class", "class")),
-  #     .after = "triad_code"
-  #   ) %>%
-  #   mutate(across(
-  #     -(contains("_max") & contains("yoy")) & where(is.numeric),
-  #     ~ replace(.x, !is.finite(.x), NA)
-  #   ))
+  # Move important columns to front and rename geography column
+  setnames(df_stat, col_dict, names(col_dict), skip_absent = TRUE)
+  setcolorder(df_stat, c(
+    "triad_code", "geography_type", "geography_id", "by_class",
+    names(col_dict)[col_dict == class]
+  ))
+
+  # Move ratio stat expanded columns to after their respective summary stat
+  move_after <- function(x, neworder = NULL, after = NULL) {
+    neworder <- data.table:::colnamesInt(x, neworder, check_dups=FALSE)
+    neworder <- c(setdiff(seq_len(data.table:::colnamesInt(x, after)), neworder), neworder) # nolint
+    neworder <- c(neworder, setdiff(seq_along(x), neworder))
+    setcolorder(x, neworder)
+  }
+  for (col in c("cod", "prd", "prb")) move_after(df_stat, rs_cols[[col]], col)
+
+  # Convert columns to expected types
+  met_cols <- grep(names(df_stat), pattern = "_met$", value = TRUE)
+  df_stat[ , (met_cols) := lapply(.SD, as.logical), .SDcols = met_cols]
+
+  # Replace infinite values with NA
+  inf_cols <- names(df_stat)[!(
+    grepl(names(df_stat), pattern = "_max$") &
+    grepl(names(df_stat), pattern = "_yoy")) &
+    sapply(df_stat, is.numeric)
+  ]
+  df_stat[
+    ,
+    (inf_cols) := lapply(.SD, \(x) replace(x, !is.finite(x), NA)),
+    .SDcols = inf_cols
+  ]
+  return(df_stat)
 }
 
+tic()
 meta_township_code <- gen_agg_stats(
   data = assessment_data_pin,
   truth = "sale_ratio_study_price",
@@ -339,6 +267,38 @@ meta_township_code <- gen_agg_stats(
   class = NULL,
   col_dict = col_rename_dict
 )
+toc()
+
+ids <- c(
+  "meta_township_code",
+  "meta_nbhd_code", "loc_cook_municipality_name",
+  "loc_ward_num", "loc_census_puma_geoid", "loc_census_tract_geoid",
+  "loc_school_elementary_district_geoid", "loc_school_secondary_district_geoid",
+  "loc_school_unified_district_geoid"
+)
+
+
+assessment_data <- as.data.table(assessment_data_pin)
+
+temp <- melt(
+  assessment_data,
+  id.vars = c("meta_pin"),
+  measure.vars = ids,
+  variable.name = "geography_type",
+  value.name = "geography_id"
+)[
+  assessment_data,
+  `:=`(
+    truth = i.sale_ratio_study_price,
+    estimate = i.pred_pin_final_fmv_round,
+    bldg_sqft = i.char_total_bldg_sf,
+    rsn_col = i.prior_near_tot,
+    rsf_col = i.prior_far_tot,
+    triad = i.meta_triad_code
+  ),
+  on = "meta_pin"
+]
+
 
 
 #

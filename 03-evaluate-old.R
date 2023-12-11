@@ -77,7 +77,7 @@ if (run_type == "full") {
 
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
-gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
+gen_agg_stats_old <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography, class, col_dict) {
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
@@ -146,8 +146,8 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       # Basic summary stats, counts, proportions, etc
       num_pin = n(),
       num_sale = sum(!is.na({{ truth }})),
-      pct_of_total_pin_by_class = num_pin / first(num_pin_no_class),
-      pct_of_total_sale_by_class = num_sale / first(num_sale_no_class),
+      pct_of_total_pin_by_class = num_pin / dplyr::first(num_pin_no_class),
+      pct_of_total_sale_by_class = num_sale / dplyr::first(num_sale_no_class),
       pct_of_pin_sold = num_sale / num_pin,
       prior_far_total_av = sum({{ rsf_col }} / 10, na.rm = TRUE),
       prior_near_total_av = sum({{ rsn_col }} / 10, na.rm = TRUE),
@@ -212,8 +212,8 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       .groups = "drop"
     ) %>%
     ungroup() %>%
-    # COD, PRD, and PRB all output to a list. We can unnest each list to get
-    # additional info for each stat (95% CI, sample count, etc)
+    # # COD, PRD, and PRB all output to a list. We can unnest each list to get
+    # # additional info for each stat (95% CI, sample count, etc)
     tidyr::unnest_wider(cod) %>%
     tidyr::unnest_wider(COD_CI, names_sep = "_") %>%
     tidyr::unnest_wider(prd) %>%
@@ -221,7 +221,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     tidyr::unnest_wider(prb) %>%
     tidyr::unnest_wider(PRB_CI, names_sep = "_") %>%
     # Rename columns resulting from unnesting
-    rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
+    rename_with(~ trimws(gsub("%", "", gsub("\\.", "_", tolower(.x)))))
 
   # Clean up the stats output (rename cols, relocate cols, etc.)
   df_stat %>%
@@ -248,6 +248,19 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     ))
 }
 
+
+meta_township_code_old <- gen_agg_stats_old(
+  data = assessment_data_pin,
+  truth = sale_ratio_study_price,
+  estimate = pred_pin_final_fmv_round,
+  bldg_sqft = char_total_bldg_sf,
+  rsn_col = prior_near_tot,
+  rsf_col = prior_far_tot,
+  triad = meta_triad_code,
+  geography = meta_township_code,
+  class = NULL,
+  col_dict = col_rename_dict
+)
 
 # Same as the gen_agg_stats function, but with different statistics and broken
 # out by quantile
