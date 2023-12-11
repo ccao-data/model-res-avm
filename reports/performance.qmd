@@ -22,44 +22,33 @@ options(knitr.kable.NA = "", scipen = 99, width = 150)
 
 # Load necessary libraries
 library(arrow)
-library(plotly)
+library(ccao)
+library(DBI)
 library(dplyr)
+library(DT)
 library(ggplot2)
 library(glue)
 library(here)
+library(htmltools)
 library(kableExtra)
 library(leaflet)
-source(here("R", "helpers.R"))
-library(ccao)
-library(DBI)
 library(grid)
 library(gridExtra)
 library(gtools)
 library(noctua)
 library(plotly)
 library(purrr)
+library(recipes)
 library(scales)
 library(sf)
+library(skimr)
 library(stringr)
 library(tableone)
 library(tidyr)
 library(tools)
-library(DT)
-library(htmltools)
-library(recipes)
-library(skimr)
 
+source(here("R", "helpers.R"))
 
-# TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
-# https://github.com/apache/arrow/issues/32026
-cpp11::cpp_source(code = "
-#include <csignal>
-#include <cpp11.hpp>
-
-[[cpp11::register]] void ignore_sigpipes() {
-  signal(SIGPIPE, SIG_IGN);
-}
-")
 
 ignore_sigpipes()
 
