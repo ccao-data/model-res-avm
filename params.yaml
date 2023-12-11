@@ -30,6 +30,9 @@ toggle:
   # desirable to save time when testing many models
   shap_enable: FALSE
 
+  # Should comps be calculated for this run in the interpret stage?
+  comp_enable: FALSE
+
   # Upload all modeling artifacts and results to S3 in the finalize stage. Set
   # to FALSE if you are not a CCAO employee
   upload_to_s3: TRUE

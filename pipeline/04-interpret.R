@@ -105,6 +105,31 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
   rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
   write_parquet(paths$output$feature_importance$local)
 
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Save leaf node assignments  -----------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+if (comp_enable) {
+  message("Saving leaf node assignments")
+
+  # Calculate the leaf node assignments for every predicted value
+  leaf_nodes <- predict(
+    object = lgbm_final_full_fit$fit,
+    data = as.matrix(assessment_data_prepped),
+    predleaf = TRUE
+  ) %>%
+    as_tibble() %>%
+    mutate(id = row_number()) %>%
+    write_parquet(paths$output$leaf_node$local)
+} else {
+  # If comp creation is disabled, we still need to write an empty stub file
+  # so DVC doesn't complain
+  arrow::write_parquet(data.frame(), paths$output$leaf_node$local)
+}
+
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
 bind_rows(tictoc::tic.log(format = FALSE)) %>%

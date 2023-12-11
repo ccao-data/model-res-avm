@@ -120,6 +120,8 @@ stages:
         cache: false
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
+    - output/intermediate/leaf_node/model_leaf_node.parquet:
+        cache: false
 
   finalize:
     cmd: Rscript pipeline/05-finalize.R

@@ -53,13 +53,16 @@ num_threads <- parallel::detectCores(logical = FALSE)
 # Set the overall model seed
 set.seed(params$model$seed)
 
-# Override CV toggle, SHAP toggle, and run_type set in params.yaml.
+# Override run flags and run_type set in params.yaml.
 # Used to disable certain features for CI or limited runs
 cv_enable <- as.logical(
   Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
 )
 shap_enable <- as.logical(
   Sys.getenv("SHAP_ENABLE_OVERRIDE", unset = params$toggle$shap_enable)
+)
+comp_enable <- as.logical(
+  Sys.getenv("COMP_ENABLE_OVERRIDE", unset = params$toggle$comp_enable)
 )
 run_type <- as.character(
   Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
