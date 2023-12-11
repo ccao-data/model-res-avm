@@ -46,7 +46,22 @@ Config/renv/profiles/dev/dependencies:
     rmarkdown,
     RJDBC
 Config/renv/profiles/reporting/dependencies:
+    DBI,
+    DT,
+    ggplot2,
+    htmltools,
+    kableExtra,
+    grid,
+    gridExtra,
+    gtools,
+    noctua,
+    plotly,
     leaflet,
     plotly,
     quarto,
-    sf
+    scales,
+    sf,
+    skimr,
+    stringr,
+    tableone,
+    tools
