@@ -48,6 +48,19 @@ library(tidyr)
 library(tools)
 source(here("R", "helpers.R"))
 
+# TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = "
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+")
+
+ignore_sigpipes()
+
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict(params$run_id, params$year)
 
