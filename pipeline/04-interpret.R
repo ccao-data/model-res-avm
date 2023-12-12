@@ -24,8 +24,8 @@ message("Loading model fit and recipe")
 lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 
-if (shap_enable) {
-  message("Loading assessment data for SHAP calculation")
+if (shap_enable || comp_enable) {
+  message("Loading assessment data for SHAP and comp calculation")
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
