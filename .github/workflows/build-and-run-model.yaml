@@ -27,8 +27,9 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/truncate-resource-names
     with:
+      ref: jeancochrane/truncate-resource-names
       vcpu: "16.0"
       memory: "65536"
       role-duration-seconds: 14400  # Worst-case time for a full model run
