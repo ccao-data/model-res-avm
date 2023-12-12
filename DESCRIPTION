@@ -46,8 +46,12 @@ Config/renv/profiles/dev/dependencies:
     rmarkdown,
     RJDBC
 Config/renv/profiles/reporting/dependencies:
+    backports,
+    brio,
     broom,
     DBI,
+    decor,
+    desc,
     DT,
     digest,
     fastmap,

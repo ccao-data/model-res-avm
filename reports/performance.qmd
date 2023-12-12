@@ -19,11 +19,15 @@ params:
 
 ```{r setup}
 options(knitr.kable.NA = "", scipen = 99, width = 150)
+noctua::noctua_options(cache_size = 10)
 
 # Load necessary libraries
 library(arrow)
 library(ccao)
+library(brio)
 library(DBI)
+library(decor)
+library(desc)
 library(dplyr)
 library(DT)
 library(ggplot2)
@@ -81,19 +85,7 @@ run_triad_code <- ccao::town_dict %>%
   pull(triad_code)
 
 # Ingest training set used for this run from DVC bucket (if not local)
-train_md5_s3 <- metadata$dvc_md5_training_data
-train_md5_local <- digest::digest(paths$input$training$local, algo = "md5")
-train_md5 <- if (train_md5_s3 != train_md5_local) {
-  train_md5_s3
-} else {
-  train_md5_local
-}
-training_path <- paste0(
-  params$dvc_bucket, "/",
-  substr(train_md5, 1, 2), "/",
-  substr(train_md5, 3, nchar(train_md5))
-)
-training_data <- read_parquet(training_path)
+training_data <- read_parquet(paths$input$training$local)
 
 # Load model-generated output data sets
 assessment_card <- read_parquet(paths$output$assessment_card$local)
@@ -120,32 +112,23 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 time_frame <-
   c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
 
-# Data path
-data_path <-
-  "~/model-res-avm-move-existing-reports/data/res_parcels.parquet"
-
 # GATHER DATA ----
 
-sales <-
-  arrow::read_parquet("~/ccao_res_avm/input/training_data.parquet")
+sales <- arrow::read_parquet(paths$input$training$local)
 
 # All residential parcel characteristics from time frame, with a sale indicator
+res_chars <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  glue(
+    "
+  SELECT * FROM model.vw_card_res_input vcri
+  WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
+  AND meta_class NOT IN ('211', '212')
+"
+  )
+)
 
-if (!file.exists(data_path)) {
-  dbGetQuery(
-    conn = AWS_ATHENA_CONN_NOCTUA,
-    glue(
-      "
-    SELECT * FROM model.vw_card_res_input vcri
-    WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
-    AND meta_class NOT IN ('211', '212')
-  "
-    )
-  ) %>%
-    write_parquet(data_path)
-}
-
-sf_parcels <- read_parquet(data_path) %>%
+sf_parcels <- res_chars %>%
   # Join on sales indicator for most recent sale in the last two years -
   # if there is one
   left_join(
