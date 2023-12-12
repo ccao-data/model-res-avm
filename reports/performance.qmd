@@ -49,9 +49,6 @@ library(tools)
 
 source(here("R", "helpers.R"))
 
-
-ignore_sigpipes()
-
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict(params$run_id, params$year)
 
