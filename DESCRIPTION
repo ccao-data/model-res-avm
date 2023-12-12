@@ -46,6 +46,7 @@ Config/renv/profiles/dev/dependencies:
     rmarkdown,
     RJDBC
 Config/renv/profiles/reporting/dependencies:
+    broom,
     DBI,
     DT,
     digest,
@@ -60,15 +61,18 @@ Config/renv/profiles/reporting/dependencies:
     kableExtra,
     leaflet,
     magrittr,
+    markdown,
     noctua,
     plotly,
     quarto,
     repr,
     scales,
+    shapviz,
     sf,
     skimr,
     stringr,
     survey,
     svglite,
     tableone,
-    tools
+    tools,
+    xgboost

@@ -46,7 +46,6 @@ library(stringr)
 library(tableone)
 library(tidyr)
 library(tools)
-
 source(here("R", "helpers.R"))
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details

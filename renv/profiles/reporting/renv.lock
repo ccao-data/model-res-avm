@@ -155,6 +155,27 @@
       ],
       "Hash": "9fe98599ca456d6552421db0d6772d8f"
     },
+    "broom": {
+      "Package": "broom",
+      "Version": "1.0.5",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "backports",
+        "dplyr",
+        "ellipsis",
+        "generics",
+        "glue",
+        "lifecycle",
+        "purrr",
+        "rlang",
+        "stringr",
+        "tibble",
+        "tidyr"
+      ],
+      "Hash": "fd25391c3c4f6ecf0fa95f1e6d15378c"
+    },
     "bslib": {
       "Package": "bslib",
       "Version": "0.6.1",
@@ -263,6 +284,13 @@
         "stats"
       ],
       "Hash": "f20c47fd52fae58b4e377c37bb8c335b"
+    },
+    "commonmark": {
+      "Package": "commonmark",
+      "Version": "1.9.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "d691c61bff84bd63c383874d2d0c3307"
     },
     "cpp11": {
       "Package": "cpp11",
@@ -875,6 +903,19 @@
         "R"
       ],
       "Hash": "7ce2733a9826b3aeb1775d56fd305472"
+    },
+    "markdown": {
+      "Package": "markdown",
+      "Version": "1.12",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "commonmark",
+        "utils",
+        "xfun"
+      ],
+      "Hash": "765cf53992401b3b6c297b69e1edb8bd"
     },
     "memoise": {
       "Package": "memoise",
@@ -1598,6 +1639,26 @@
       ],
       "Hash": "e2111252a76984ca50bf8d6314348681"
     },
+    "shapviz": {
+      "Package": "shapviz",
+      "Version": "0.9.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "ggfittext",
+        "gggenes",
+        "ggplot2",
+        "ggrepel",
+        "grid",
+        "patchwork",
+        "rlang",
+        "stats",
+        "utils",
+        "xgboost"
+      ],
+      "Hash": "585018356857dc6413acd42497bfc706"
+    },
     "skimr": {
       "Package": "skimr",
       "Version": "2.1.5",
@@ -1692,9 +1753,9 @@
     },
     "survival": {
       "Package": "survival",
-      "Version": "3.4-0",
+      "Version": "3.5-7",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "Matrix",
         "R",
@@ -1704,7 +1765,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "04411ae66ab4659230c067c32966fc20"
+      "Hash": "b8e943d262c3da0b0febd3e04517c197"
     },
     "svglite": {
       "Package": "svglite",
@@ -1984,18 +2045,30 @@
       ],
       "Hash": "460a5e0fe46a80ef87424ad216028014"
     },
+    "xgboost": {
+      "Package": "xgboost",
+      "Version": "1.7.6.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "data.table",
+        "jsonlite",
+        "methods"
+      ],
+      "Hash": "ac985d74c033923a3e56c6deb500fca3"
+    },
     "xml2": {
       "Package": "xml2",
-      "Version": "1.3.6",
+      "Version": "1.3.5",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "R",
-        "cli",
-        "methods",
-        "rlang"
+        "methods"
       ],
-      "Hash": "1d0336142f4cd25d8d23cd3ba7a8fb61"
+      "Hash": "6c40e5cfcc6aefd88110666e18c31f40"
     },
     "yaml": {
       "Package": "yaml",
