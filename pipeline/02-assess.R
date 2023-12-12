@@ -357,12 +357,12 @@ sales_data_ratio_study <- sales_data %>%
 # Keep the two most recent sales for each PIN from any year. These are just for
 # review, not for ratio studies
 sales_data_two_most_recent <- sales_data %>%
-  group_by(meta_pin) %>%
-  slice_max(meta_sale_date, n = 2) %>%
   distinct(
     meta_pin, meta_year,
     meta_sale_price, meta_sale_date, meta_sale_document_num
   ) %>%
+  group_by(meta_pin) %>%
+  slice_max(meta_sale_date, n = 2) %>%
   mutate(mr = paste0("sale_recent_", row_number())) %>%
   tidyr::pivot_wider(
     id_cols = meta_pin,
