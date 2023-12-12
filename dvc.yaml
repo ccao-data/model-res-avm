@@ -120,7 +120,7 @@ stages:
         cache: false
     - output/intermediate/timing/model_timing_interpret.parquet:
         cache: false
-    - output/intermediate/leaf_node/model_leaf_node.parquet:
+    - output/comp/model_comp.parquet:
         cache: false
 
   finalize:
@@ -173,6 +173,7 @@ stages:
     - output/performance/model_performance_assessment.parquet
     - output/performance_quantile/model_performance_quantile_assessment.parquet
     - output/shap/model_shap.parquet
+    - output/comp/model_comp.parquet
     - output/feature_importance/model_feature_importance.parquet
     - output/metadata/model_metadata.parquet
     - output/timing/model_timing.parquet

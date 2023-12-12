@@ -202,6 +202,14 @@ if (params$toggle$upload_to_s3) {
       write_parquet(paths$output$feature_importance$s3)
   }
 
+  # Upload comps
+  if (run_type == "full" && comp_enable) {
+    message("Uploading comps")
+    read_parquet(paths$output$comp$local) %>%
+      mutate(year = params$assessment$year) %>%
+      write_parquet(paths$output$comp$s3)
+  }
+
 
   # 2.5. Finalize --------------------------------------------------------------
   message("Uploading run metadata, timings, and performance report")

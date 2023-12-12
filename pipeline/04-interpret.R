@@ -109,11 +109,11 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Save leaf node assignments  -----------------------------------------------
+# 4. Calculate comps -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (comp_enable) {
-  message("Saving leaf node assignments")
+  message("Calculating comps")
 
   # Calculate the leaf node assignments for every predicted value
   leaf_nodes <- predict(
@@ -121,13 +121,31 @@ if (comp_enable) {
     data = as.matrix(assessment_data_prepped),
     predleaf = TRUE
   ) %>%
-    as_tibble() %>%
-    mutate(id = row_number()) %>%
-    write_parquet(paths$output$leaf_node$local)
+    as_tibble()
+
+  tree_weights <- extract_weights(
+    model = lgbm_final_full_fit$fit,
+    train = assessment_data_prepped,
+    outcome_col = "sale_price",
+    metric = "rmse"
+  )
+
+  # Calculate comps for each card;
+  # we do this in Python because the code is simpler and faster
+  comps_module <- import("python.comps")
+  comps <- comps_module$get_comps(leaf_nodes, tree_weights, n=5)
+
+  # Translate comps to PINs before writing them out to S3
+  comps %>%
+    mutate_all(function(idx_row) { assessment_data_prepped$pin[idx_row]}) %>%
+    cbind(assessment_data_prepped$pin) %>%
+    rename_with(function(colname) { gsub("V", "comp_", colname) }) %>%
+    relocate(pin) %>%
+    write_parquet(paths$output$comp$local)
 } else {
   # If comp creation is disabled, we still need to write an empty stub file
   # so DVC doesn't complain
-  arrow::write_parquet(data.frame(), paths$output$leaf_node$local)
+  arrow::write_parquet(data.frame(), paths$output$comp$local)
 }
 
 # End the stage timer and write the time elapsed to a temporary file
