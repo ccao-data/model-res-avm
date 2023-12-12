@@ -1,2 +1,4 @@
 ARROW_S3=ON
 ARROW_WITH_SNAPPY=ON
+AWS_ATHENA_S3_STAGING_DIR=s3://ccao-athena-results-us-east-1
+AWS_DEFAULT_REGION=us-east-1
