@@ -214,3 +214,22 @@ var_encode <- function(data,
     })
   )
 }
+
+# Yardstick doesn't currently include MdAPE, so we'll add it here
+mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
+  check_numeric_metric(truth, estimate, case_weights)
+
+  if (na_rm) {
+    result <- yardstick_remove_missing(truth, estimate, case_weights)
+
+    truth <- result$truth
+    estimate <- result$estimate
+  } else if (yardstick_any_missing(truth, estimate, case_weights)) {
+    return(NA_real_)
+  }
+
+  errors <- abs((truth - estimate) / truth)
+  out <- median(errors)
+  out <- out * 100
+  out
+}

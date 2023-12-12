@@ -107,7 +107,8 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     r_squared   = rsq_vec,
     mae         = mae_vec,
     mpe         = mpe_vec,
-    mape        = mape_vec
+    mape        = mape_vec,
+    mdape       = mdape_vec
   )
   sum_fns_list <- list(
     min         = ~ min(.x, na.rm = TRUE),
