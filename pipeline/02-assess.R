@@ -379,7 +379,7 @@ message("Collapsing card-level data to PIN level")
 
 # Collapse card-level data to the PIN level, keeping the largest building on
 # each PIN but summing the total square footage of all buildings
-assessment_pin_data_base_new <- assessment_card_data_merged %>%
+assessment_pin_data_base <- assessment_card_data_merged %>%
   group_by(meta_year, meta_pin) %>%
   arrange(desc(char_bldg_sf)) %>%
   mutate(
