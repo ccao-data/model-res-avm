@@ -309,17 +309,21 @@ geographies_quosures <- c(
   rlang::parse_quos(params$ratio_study$geographies, env = .GlobalEnv),
   rlang::quo(NULL)
 )
-geographies_list <- unname(as.list(tidyr::expand_grid(
+geographies_list <- tidyr::expand_grid(
   geographies_quosures,
   rlang::quos(meta_class, NULL)
-)))
+) %>%
+  as.list() %>%
+  unname()
 
 # Same as above, but add quantile breakouts to the grid expansion
-geographies_list_quantile <- unname(as.list(tidyr::expand_grid(
+geographies_list_quantile <- tidyr::expand_grid(
   geographies_quosures,
   rlang::quos(meta_class, NULL),
   params$ratio_study$num_quantile
-)))
+) %>%
+  as.list() %>%
+  unname()
 
 
 ## 4.1. Test Set ---------------------------------------------------------------
