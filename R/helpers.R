@@ -214,3 +214,13 @@ var_encode <- function(data,
     })
   )
 }
+
+
+# Move selected columns after the selected column. Taken from:
+# https://github.com/Rdatatable/data.table/issues/4358
+dt_move_after <- function(x, neworder = NULL, after = NULL) {
+  neworder <- data.table:::colnamesInt(x, neworder, check_dups = FALSE)
+  neworder <- c(setdiff(seq_len(data.table:::colnamesInt(x, after)), neworder), neworder) # nolint
+  neworder <- c(neworder, setdiff(seq_along(x), neworder))
+  setcolorder(x, neworder)
+}

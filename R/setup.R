@@ -28,6 +28,7 @@ conflicts_prefer(
   dplyr::slice,
   lubridate::duration,
   purrr::flatten,
+  purrr::is_empty,
   purrr::set_names,
   purrr::splice,
   purrr::when,

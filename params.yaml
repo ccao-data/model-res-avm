@@ -15,10 +15,10 @@ run_note: |
   Test run for updated 2024 model pipeline. Uses 2022 data to assess 2023
   since full 2023 data isn't available yet
 
-# Determines what stages and outputs are produced. See misc/file_dict.csv for
-# details. Note, DVC does not support "conditional" stages, so changing this to
-# anything other than "full" will require you to run each stage manually. See
-# README for details
+# Determines what stages and outputs are produced. Options are
+# "limited" or "full". See misc/file_dict.csv for details. Note, DVC does not
+# support "conditional" stages, so changing this to anything other than "full"
+# will require you to run each stage manually.
 run_type: "full"
 
 toggle:
@@ -361,8 +361,22 @@ ratio_study:
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
+  # Geographies for which to calculate performance statistics in the evaluate
+  # stage. Each geography is also broken out by class
+  geographies: [
+    "meta_township_code",
+    "meta_nbhd_code",
+    "loc_cook_municipality_name",
+    "loc_ward_num",
+    "loc_census_puma_geoid",
+    "loc_census_tract_geoid",
+    "loc_school_elementary_district_geoid",
+    "loc_school_secondary_district_geoid",
+    "loc_school_unified_district_geoid"
+  ]
+
   # Quantile breakouts to use in the evaluate stage. For example, 3 will split
-  # each geography in evaluate into terciles
+  # each geography listed above into terciles
   num_quantile: [3, 5, 10]
 
 

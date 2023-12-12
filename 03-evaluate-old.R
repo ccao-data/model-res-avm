@@ -77,7 +77,7 @@ if (run_type == "full") {
 
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
-gen_agg_stats_old <- function(data, truth, estimate, bldg_sqft,
+gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography, class, col_dict) {
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
@@ -249,18 +249,18 @@ gen_agg_stats_old <- function(data, truth, estimate, bldg_sqft,
 }
 
 
-meta_township_code_old <- gen_agg_stats_old(
-  data = assessment_data_pin,
-  truth = sale_ratio_study_price,
-  estimate = pred_pin_final_fmv_round,
-  bldg_sqft = char_total_bldg_sf,
-  rsn_col = prior_near_tot,
-  rsf_col = prior_far_tot,
-  triad = meta_triad_code,
-  geography = meta_township_code,
-  class = NULL,
-  col_dict = col_rename_dict
-)
+# meta_township_code_old <- gen_agg_stats_old(
+#   data = assessment_data_pin,
+#   truth = sale_ratio_study_price,
+#   estimate = pred_pin_final_fmv_round,
+#   bldg_sqft = char_total_bldg_sf,
+#   rsn_col = prior_near_tot,
+#   rsf_col = prior_far_tot,
+#   triad = meta_triad_code,
+#   geography = meta_township_code,
+#   class = NULL,
+#   col_dict = col_rename_dict
+# )
 
 # Same as the gen_agg_stats function, but with different statistics and broken
 # out by quantile
@@ -355,6 +355,7 @@ geographies_list_quantile <- purrr::cross3(
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
 message("Calculating test set aggregate statistics")
+tic()
 future_map_dfr(
   geographies_list,
   ~ gen_agg_stats(
@@ -376,24 +377,24 @@ future_map_dfr(
 
 # Same as above, but calculate stats per quantile of sale price
 message("Calculating test set quantile statistics")
-future_map_dfr(
-  geographies_list_quantile,
-  ~ gen_agg_stats_quantile(
-    data = test_data_card,
-    truth = meta_sale_price,
-    estimate = pred_card_initial_fmv,
-    rsn_col = prior_near_tot,
-    rsf_col = prior_far_tot,
-    triad = meta_triad_code,
-    geography = !!.x[[1]],
-    class = !!.x[[2]],
-    col_dict = col_rename_dict,
-    num_quantile = .x[[3]]
-  ),
-  .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = FALSE
-) %>%
-  write_parquet(paths$output$performance_quantile_test$local)
+# future_map_dfr(
+#   geographies_list_quantile,
+#   ~ gen_agg_stats_quantile(
+#     data = test_data_card,
+#     truth = meta_sale_price,
+#     estimate = pred_card_initial_fmv,
+#     rsn_col = prior_near_tot,
+#     rsf_col = prior_far_tot,
+#     triad = meta_triad_code,
+#     geography = !!.x[[1]],
+#     class = !!.x[[2]],
+#     col_dict = col_rename_dict,
+#     num_quantile = .x[[3]]
+#   ),
+#   .options = furrr_options(seed = TRUE, stdout = FALSE),
+#   .progress = FALSE
+# ) %>%
+#   write_parquet(paths$output$performance_quantile_test$local)
 
 
 ## 4.2. Assessment Set ---------------------------------------------------------
@@ -421,27 +422,27 @@ if (run_type == "full") {
     .progress = FALSE
   ) %>%
     write_parquet(paths$output$performance_assessment$local)
-
+toc()
   # Same as above, but calculate stats per quantile of sale price
-  message("Calculating assessment set quantile statistics")
-  future_map_dfr(
-    geographies_list_quantile,
-    ~ gen_agg_stats_quantile(
-      data = assessment_data_pin,
-      truth = sale_ratio_study_price,
-      estimate = pred_pin_final_fmv_round,
-      rsn_col = prior_near_tot,
-      rsf_col = prior_far_tot,
-      triad = meta_triad_code,
-      geography = !!.x[[1]],
-      class = !!.x[[2]],
-      col_dict = col_rename_dict,
-      num_quantile = .x[[3]]
-    ),
-    .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = FALSE
-  ) %>%
-    write_parquet(paths$output$performance_quantile_assessment$local)
+  # message("Calculating assessment set quantile statistics")
+  # future_map_dfr(
+  #   geographies_list_quantile,
+  #   ~ gen_agg_stats_quantile(
+  #     data = assessment_data_pin,
+  #     truth = sale_ratio_study_price,
+  #     estimate = pred_pin_final_fmv_round,
+  #     rsn_col = prior_near_tot,
+  #     rsf_col = prior_far_tot,
+  #     triad = meta_triad_code,
+  #     geography = !!.x[[1]],
+  #     class = !!.x[[2]],
+  #     col_dict = col_rename_dict,
+  #     num_quantile = .x[[3]]
+  #   ),
+  #   .options = furrr_options(seed = TRUE, stdout = FALSE),
+  #   .progress = FALSE
+  # ) %>%
+  #   write_parquet(paths$output$performance_quantile_assessment$local)
 }
 
 # End the stage timer and write the time elapsed to a temporary file
