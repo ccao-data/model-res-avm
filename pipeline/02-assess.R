@@ -379,7 +379,7 @@ message("Collapsing card-level data to PIN level")
 
 # Collapse card-level data to the PIN level, keeping the largest building on
 # each PIN but summing the total square footage of all buildings
-assessment_pin_data_base <- assessment_card_data_merged %>%
+assessment_pin_data_base_new <- assessment_card_data_merged %>%
   group_by(meta_year, meta_pin) %>%
   arrange(desc(char_bldg_sf)) %>%
   mutate(
@@ -428,7 +428,7 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
     pred_pin_final_fmv_round, township_code
   ) %>%
   # Make a flag for any vital missing characteristics
-  bind_cols(
+  left_join(
     assessment_card_data_merged %>%
       select(
         meta_year, meta_pin,
@@ -441,8 +441,8 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
         ind_char_missing_critical_value =
           sum(ind_char_missing_critical_value) > 0
       ) %>%
-      ungroup() %>%
-      select(ind_char_missing_critical_value)
+      ungroup(),
+    by = c("meta_year", "meta_pin")
   )
 
 
