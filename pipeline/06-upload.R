@@ -11,10 +11,8 @@
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Load various overridden parameters as defined in the `finalize` step
+# Load various parameters as defined in the `finalize` step
 metadata <- read_parquet(paths$output$metadata$local)
-cv_enable <- metadata$cv_enable
-shap_enable <- metadata$shap_enable
 run_id <- metadata$run_id
 
 
@@ -30,7 +28,7 @@ if (upload_enable) {
   # Initialize a dictionary of paths AND S3 URIs specific to the run ID and year
   paths <- model_file_dict(
     run_id = run_id,
-    year = params$assessment$year
+    year = params$assessment$working_year
   )
 
 
@@ -126,7 +124,7 @@ if (upload_enable) {
   # reduce file size and improve query performance we partition them by year,
   # run ID, and township
   read_parquet(paths$output$assessment_card$local) %>%
-    mutate(run_id = run_id, year = params$assessment$year) %>%
+    mutate(run_id = run_id, year = params$assessment$working_year) %>%
     group_by(year, run_id, township_code) %>%
     arrow::write_dataset(
       path = paths$output$assessment_card$s3,
@@ -135,7 +133,7 @@ if (upload_enable) {
       compression = "snappy"
     )
   read_parquet(paths$output$assessment_pin$local) %>%
-    mutate(run_id = run_id, year = params$assessment$year) %>%
+    mutate(run_id = run_id, year = params$assessment$working_year) %>%
     group_by(year, run_id, township_code) %>%
     arrow::write_dataset(
       path = paths$output$assessment_pin$s3,
@@ -179,7 +177,7 @@ if (upload_enable) {
   if (shap_enable) {
     message("Uploading SHAP values")
     read_parquet(paths$output$shap$local) %>%
-      mutate(run_id = run_id, year = params$assessment$year) %>%
+      mutate(run_id = run_id, year = params$assessment$working_year) %>%
       group_by(year, run_id, township_code) %>%
       arrow::write_dataset(
         path = paths$output$shap$s3,

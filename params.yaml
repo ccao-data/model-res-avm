@@ -33,19 +33,23 @@ toggle:
 
 # Assessment context and dates
 assessment:
-  # Year of assessment. Used to partition results and pull data
+  # Year of assessment. Used to pull land rates, HIEs, and other information
   year: "2023"
 
   # The statutorily set "sale date" for the purpose of prediction
   date: "2023-01-01"
 
-  # Added context for model artifacts stored in s3. Does not change behavior
+  # Added context for model artifacts stored in S3. Does not change behavior
   triad: "south"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
   data_year: "2022"
+
+  # Year used to partition data on S3. Working year in this case means the year
+  # the Data Department is currently creating models for
+  working_year: "2024"
 
 # Parameters used to define the input/training data
 input:
