@@ -85,6 +85,22 @@ hie_data <- dbGetQuery(
 )
 tictoc::toc()
 
+# Save HIE and characteristics data for use in performance review
+hie_data %>%
+  write_parquet(paths$input$hie$local)
+
+DBI::dbGetQuery(
+  conn = AWS_ATHENA_CONN_JDBC, glue::glue_sql("
+  SELECT * FROM model.vw_card_res_input vcri
+  WHERE
+    vcri.meta_year BETWEEN '{as.numeric(params$assessment$year) - 1}'
+    AND {params$assessment$year}
+  ",
+  .con = AWS_ATHENA_CONN_JDBC
+  )
+) %>%
+  write_parquet(paths$input$char$local)
+
 # Pull all residential PIN input data for the assessment year. This will be the
 # data we actually run the model on
 tictoc::tic("Assessment data pulled")

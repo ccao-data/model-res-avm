@@ -19,7 +19,6 @@ params:
 
 ```{r setup}
 options(knitr.kable.NA = "", scipen = 99, width = 150)
-noctua::noctua_options(cache_size = 10)
 
 # Load necessary libraries
 library(arrow)
@@ -39,7 +38,6 @@ library(here)
 library(htmltools)
 library(kableExtra)
 library(leaflet)
-library(noctua)
 library(plotly)
 library(purrr)
 library(recipes)
@@ -105,9 +103,6 @@ feat_imp_df <- read_parquet(paths$output$feature_importance$local)
 # to the sample of residential parcels with sales in the previous 8 years
 # that are used to train the data department's CAMA.
 
-# Connect to Athena
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
-
 # Declare time frame for study
 time_frame <-
   c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
@@ -117,16 +112,8 @@ time_frame <-
 sales <- arrow::read_parquet(paths$input$training$local)
 
 # All residential parcel characteristics from time frame, with a sale indicator
-res_chars <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA,
-  glue(
-    "
-  SELECT * FROM model.vw_card_res_input vcri
-  WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
-  AND meta_class NOT IN ('211', '212')
-"
-  )
-)
+res_chars <- read_parquet(paths$input$char$local) %>%
+  filter(!meta_class %in% c('211', '212'))
 
 sf_parcels <- res_chars %>%
   # Join on sales indicator for most recent sale in the last two years -
@@ -369,10 +356,6 @@ rbind(
 This tests if our Home Improvement Exemption characteristics are getting accurately updated.
 
 ```{r}
-AWS_ATHENA_CONN_NOCTUA <- DBI::dbConnect(noctua::athena())
-
-noctua_options(cache_size = 10)
-
 hie_pins <- training_data %>%
   filter(
     hie_num_active == 1,
@@ -382,41 +365,31 @@ hie_pins <- training_data %>%
   pull(meta_pin) %>%
   unique()
 
-hie_data <- DBI::dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue::glue_sql("
-  SELECT *
-  FROM ccao.hie
-  WHERE pin IN ({hie_pins*})
-  AND qu_sqft_bld > 0
-  AND year >= '{as.numeric(params$year) - 4}'
-  ",
-    .con = AWS_ATHENA_CONN_NOCTUA
+hie_data <- read_parquet(paths$input$hie$local) %>%
+  filter(
+    pin %in% hie_pins,
+    year >= as.numeric(params$year) - 4,
+    qu_sqft_bld > 0
   )
-)
 
-chars_data <- DBI::dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue::glue_sql("
-  SELECT *
-  FROM default.vw_card_res_char
-  WHERE pin IN ({hie_pins*})
-  AND year = '{as.numeric(params$year) - 1}'
-  ",
-    .con = AWS_ATHENA_CONN_NOCTUA
-  )
-)
+chars_data <- read_parquet(paths$input$char$local) %>%
+  filter(
+    meta_year == as.numeric(params$year) - 1,
+    meta_pin %in% hie_pins
+    )
 
 chars_data %>%
-  inner_join(hie_data %>% select(-year), by = c("pin")) %>%
+  inner_join(hie_data %>% select(-year), by = join_by(meta_pin == pin)) %>%
   left_join(
     training_data %>% select(
       meta_pin, meta_year,
       train_sqft = char_bldg_sf,
       train_fbath = char_fbath, train_air = char_air
     ),
-    by = c("pin" = "meta_pin", "year" = "meta_year")
+    by = join_by(meta_pin, meta_year)
   ) %>%
   select(
-    pin,
+    pin = meta_pin,
     `OG SQFT` = char_bldg_sf,
     `HIE SQFT` = qu_sqft_bld,
     `NEW SQFT` = train_sqft,
