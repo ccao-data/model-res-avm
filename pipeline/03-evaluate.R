@@ -20,16 +20,7 @@ plan(multisession, workers = num_threads)
 col_rename_dict <- c(
   "triad_code" = "meta_triad_code",
   "class" = "meta_class",
-  "geography_id" = "meta_township_code",
-  "geography_id" = "meta_township_name",
-  "geography_id" = "meta_nbhd_code",
-  "geography_id" = "loc_cook_municipality_name",
-  "geography_id" = "loc_ward_num",
-  "geography_id" = "loc_census_puma_geoid",
-  "geography_id" = "loc_census_tract_geoid",
-  "geography_id" = "loc_school_elementary_district_geoid",
-  "geography_id" = "loc_school_secondary_district_geoid",
-  "geography_id" = "loc_school_unified_district_geoid"
+  purrr::set_names(params$ratio_study$geographies, "geography_id")
 )
 
 # Get the triad of the run to use for filtering
@@ -59,10 +50,8 @@ if (run_type == "full") {
   assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
     filter(meta_triad_code == run_triad_code) %>%
     select(
-      meta_pin, meta_class, meta_triad_code, meta_township_code, meta_nbhd_code,
-      loc_cook_municipality_name, loc_ward_num, loc_census_puma_geoid,
-      loc_census_tract_geoid, loc_school_elementary_district_geoid,
-      loc_school_secondary_district_geoid, loc_school_unified_district_geoid,
+      meta_pin, meta_class, meta_triad_code,
+      all_of(params$ratio_study$geographies),
       char_total_bldg_sf, prior_far_tot, prior_near_tot,
       pred_pin_final_fmv_round, sale_ratio_study_price
     )
@@ -317,25 +306,25 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
 
 # Use fancy tidyeval to create a list of all the geography levels with a
 # class or no class option for each level
-geographies_quosures <- rlang::quos(
-  meta_township_code,
-  meta_nbhd_code, loc_cook_municipality_name,
-  loc_ward_num, loc_census_puma_geoid, loc_census_tract_geoid,
-  loc_school_elementary_district_geoid, loc_school_secondary_district_geoid,
-  loc_school_unified_district_geoid,
-  NULL
+geographies_quosures <- c(
+  rlang::parse_quos(params$ratio_study$geographies, env = .GlobalEnv),
+  rlang::quo(NULL)
 )
-geographies_list <- purrr::cross2(
+geographies_list <- tidyr::expand_grid(
   geographies_quosures,
   rlang::quos(meta_class, NULL)
-)
+) %>%
+  as.list() %>%
+  unname()
 
 # Same as above, but add quantile breakouts to the grid expansion
-geographies_list_quantile <- purrr::cross3(
+geographies_list_quantile <- tidyr::expand_grid(
   geographies_quosures,
   rlang::quos(meta_class, NULL),
   params$ratio_study$num_quantile
-)
+) %>%
+  as.list() %>%
+  unname()
 
 
 ## 4.1. Test Set ---------------------------------------------------------------
@@ -343,44 +332,50 @@ geographies_list_quantile <- purrr::cross3(
 # Use parallel map to calculate aggregate stats for every geography level and
 # class combination for the test set
 message("Calculating test set aggregate statistics")
-future_map_dfr(
+future_pmap(
   geographies_list,
-  ~ gen_agg_stats(
-    data = test_data_card,
-    truth = meta_sale_price,
-    estimate = pred_card_initial_fmv,
-    bldg_sqft = char_bldg_sf,
-    rsn_col = prior_near_tot,
-    rsf_col = prior_far_tot,
-    triad = meta_triad_code,
-    geography = !!.x[[1]],
-    class = !!.x[[2]],
-    col_dict = col_rename_dict
-  ),
+  function(geo, cls) {
+    gen_agg_stats(
+      data = test_data_card,
+      truth = meta_sale_price,
+      estimate = pred_card_initial_fmv,
+      bldg_sqft = char_bldg_sf,
+      rsn_col = prior_near_tot,
+      rsf_col = prior_far_tot,
+      triad = meta_triad_code,
+      geography = !!geo,
+      class = !!cls,
+      col_dict = col_rename_dict
+    )
+  },
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = FALSE
 ) %>%
+  purrr::list_rbind() %>%
   write_parquet(paths$output$performance_test$local)
 
 # Same as above, but calculate stats per quantile of sale price
 message("Calculating test set quantile statistics")
-future_map_dfr(
+future_pmap(
   geographies_list_quantile,
-  ~ gen_agg_stats_quantile(
-    data = test_data_card,
-    truth = meta_sale_price,
-    estimate = pred_card_initial_fmv,
-    rsn_col = prior_near_tot,
-    rsf_col = prior_far_tot,
-    triad = meta_triad_code,
-    geography = !!.x[[1]],
-    class = !!.x[[2]],
-    col_dict = col_rename_dict,
-    num_quantile = .x[[3]]
-  ),
+  function(geo, cls, qnt) {
+    gen_agg_stats_quantile(
+      data = test_data_card,
+      truth = meta_sale_price,
+      estimate = pred_card_initial_fmv,
+      rsn_col = prior_near_tot,
+      rsf_col = prior_far_tot,
+      triad = meta_triad_code,
+      geography = !!geo,
+      class = !!cls,
+      col_dict = col_rename_dict,
+      num_quantile = qnt
+    )
+  },
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = FALSE
 ) %>%
+  purrr::list_rbind() %>%
   write_parquet(paths$output$performance_quantile_test$local)
 
 
@@ -391,44 +386,50 @@ if (run_type == "full") {
   # Do the same thing for the assessment set. This will have accurate property
   # counts and proportions, since it also includes unsold properties
   message("Calculating assessment set aggregate statistics")
-  future_map_dfr(
+  future_pmap(
     geographies_list,
-    ~ gen_agg_stats(
-      data = assessment_data_pin,
-      truth = sale_ratio_study_price,
-      estimate = pred_pin_final_fmv_round,
-      bldg_sqft = char_total_bldg_sf,
-      rsn_col = prior_near_tot,
-      rsf_col = prior_far_tot,
-      triad = meta_triad_code,
-      geography = !!.x[[1]],
-      class = !!.x[[2]],
-      col_dict = col_rename_dict
-    ),
+    function(geo, cls) {
+      gen_agg_stats(
+        data = assessment_data_pin,
+        truth = sale_ratio_study_price,
+        estimate = pred_pin_final_fmv_round,
+        bldg_sqft = char_total_bldg_sf,
+        rsn_col = prior_near_tot,
+        rsf_col = prior_far_tot,
+        triad = meta_triad_code,
+        geography = !!geo,
+        class = !!cls,
+        col_dict = col_rename_dict
+      )
+    },
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = FALSE
   ) %>%
+    purrr::list_rbind() %>%
     write_parquet(paths$output$performance_assessment$local)
 
   # Same as above, but calculate stats per quantile of sale price
   message("Calculating assessment set quantile statistics")
-  future_map_dfr(
+  future_pmap(
     geographies_list_quantile,
-    ~ gen_agg_stats_quantile(
-      data = assessment_data_pin,
-      truth = sale_ratio_study_price,
-      estimate = pred_pin_final_fmv_round,
-      rsn_col = prior_near_tot,
-      rsf_col = prior_far_tot,
-      triad = meta_triad_code,
-      geography = !!.x[[1]],
-      class = !!.x[[2]],
-      col_dict = col_rename_dict,
-      num_quantile = .x[[3]]
-    ),
+    function(geo, cls, qnt) {
+      gen_agg_stats_quantile(
+        data = assessment_data_pin,
+        truth = sale_ratio_study_price,
+        estimate = pred_pin_final_fmv_round,
+        rsn_col = prior_near_tot,
+        rsf_col = prior_far_tot,
+        triad = meta_triad_code,
+        geography = !!geo,
+        class = !!cls,
+        col_dict = col_rename_dict,
+        num_quantile = qnt
+      )
+    },
     .options = furrr_options(seed = TRUE, stdout = FALSE),
     .progress = FALSE
   ) %>%
+    purrr::list_rbind() %>%
     write_parquet(paths$output$performance_quantile_assessment$local)
 }
 

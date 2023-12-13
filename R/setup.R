@@ -21,11 +21,13 @@ suppressPackageStartupMessages({
 # shown over other functions with the same name from different libraries
 conflicts_prefer(
   dplyr::filter,
+  dplyr::first,
   dplyr::lag,
   dplyr::pull,
   dplyr::slice,
   lubridate::duration,
   purrr::flatten,
+  purrr::is_empty,
   purrr::set_names,
   purrr::splice,
   purrr::when,
