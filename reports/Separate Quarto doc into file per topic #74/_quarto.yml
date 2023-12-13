@@ -1,0 +1,12 @@
+project:
+  type: website
+  output-dir: _output
+
+format:
+  html:
+    toc: true
+
+params:
+  run_id: "2023-03-14-clever-damani"
+  year: "2023"
+  dvc_bucket: "s3://ccao-data-dvc-us-east-1"

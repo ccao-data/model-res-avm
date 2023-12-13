@@ -1,0 +1,149 @@
+---
+title: "Model performance for `r params$run_id`"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+editor: source
+params:
+  run_id: 2023-03-14-clever-damani
+  year: '2023'
+---
+
+```{r}
+library(knitr)
+source("Setup File.R")
+```
+
+## 211/212s
+
+::: panel-tabset
+## YoY Changes
+
+Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, and far values are board values from two years ago.
+
+```{r}
+assessment_pin %>%
+  filter(
+    meta_class %in% c("211", "212"),
+    meta_triad_code == run_triad_code
+  ) %>%
+  mutate(
+    yoy_far = abs((pred_pin_final_fmv - prior_far_tot) / pred_pin_final_fmv),
+    yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv)
+  ) %>%
+  mutate(
+    big_swing_near = yoy_near > 0.5,
+    big_swing_far = yoy_far > 0.5
+  ) %>%
+  group_by(meta_township_code, meta_class) %>%
+  summarise(
+    big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE) / n(),
+    big_swings_far = sum(as.numeric(big_swing_far), na.rm = TRUE) / n()
+  ) %>%
+  ungroup() %>%
+  arrange(desc(big_swings_near)) %>%
+  mutate(across(starts_with("big"), ~ label_percent(accuracy = 0.1)(.x))) %>%
+  left_join(
+    ccao::town_dict %>% select(meta_township_code = township_code, township_name)
+  ) %>%
+  select(
+    "Township Name" = township_name,
+    Class = meta_class,
+    "% Delta Near > 50%" = big_swings_near,
+    "% Delta Far > 50%" = big_swings_far
+  ) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1:2))
+      )
+    )
+  )
+```
+
+## Large Sqft. 211s and 212s
+
+This creates a subset of 211s and 212s which are three standard deviations above the norm in terms of square footage. 
+
+```{r}
+training_data %>%
+  filter(
+    meta_class %in% c("211", "212"),
+    meta_triad_code == run_triad_code,
+    !ind_pin_is_multicard
+  ) %>%
+  group_by(meta_class) %>%
+  mutate(
+    mean_sf = round(mean(char_bldg_sf, na.rm = TRUE), 0),
+    outlier = abs(char_bldg_sf) >
+      mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  filter(outlier) %>%
+  select(
+    PIN = meta_pin,
+    Township = meta_township_name,
+    Class = meta_class,
+    "Mean SF" = mean_sf,
+    "Building SF" = char_bldg_sf
+  ) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1:4))
+      )
+    )
+  )
+```
+
+
+## 210s/295s
+
+This takes a sample of 20 observations to see how far apart the initial predicted values are for townhomes. Is the average they get assigned reasonable?
+
+```{r}
+assessment_pin %>%
+  filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
+  group_by(meta_complex_id) %>%
+  mutate(
+    fmvpsf = pred_pin_final_fmv / char_total_bldg_sf
+  ) %>%
+  summarise(
+    n = n(),
+    "Min Initial FMV" = min(pred_pin_initial_fmv, na.rm = TRUE),
+    "Max Initial FMV" = max(pred_pin_initial_fmv, na.rm = TRUE),
+    "Initial % Range" = (`Max Initial FMV` - `Min Initial FMV`) / `Min Initial FMV`,
+    "Mean Final FMV" = mean(pred_pin_final_fmv, na.rm = TRUE),
+    "FMV per SQFT SD" = sd(fmvpsf, na.rm = TRUE)
+  ) %>%
+  slice_max(order_by = `Initial % Range`, n = 20) %>%
+  mutate(
+    across(contains("SQFT"), ~ round(.x, 1)),
+    across(contains("FMV"), dollar),
+    across(contains("%"), ~ percent(.x, accuracy = 0.1))
+  ) %>%
+  relocate(c(meta_complex_id, n)) %>%
+  rename("Complex ID" = meta_complex_id, "Count" = n) %>%
+  datatable(
+    rownames = FALSE,
+    height = "500px",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1:6))
+      )
+    )
+  )
+```
+
+:::

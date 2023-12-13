@@ -1,3 +1,26 @@
+---
+title: "Model performance for `r params$run_id`"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+editor: source
+params:
+  run_id: 2023-03-14-clever-damani
+  year: '2023'
+---
+
+
+```{r}
+library(knitr)
+source("Setup File.R")
+```
 
 
 ## Data Quality Checks
@@ -6,68 +29,6 @@
 ## Home Improvement Exemption Spot Check
 
 This tests if our Home Improvement Exemption characteristics are getting accurately updated.
-
-```{r}
-AWS_ATHENA_CONN_NOCTUA <- DBI::dbConnect(noctua::athena())
-
-noctua_options(cache_size = 10)
-
-hie_pins <- training_data %>%
-  filter(
-    hie_num_active == 1,
-    meta_triad_code == run_triad_code,
-    meta_year == as.numeric(params$year) - 1
-  ) %>%
-  pull(meta_pin) %>%
-  unique()
-
-hie_data <- DBI::dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue::glue_sql("
-  SELECT *
-  FROM ccao.hie
-  WHERE pin IN ({hie_pins*})
-  AND qu_sqft_bld > 0
-  AND year >= '{as.numeric(params$year) - 4}'
-  ",
-    .con = AWS_ATHENA_CONN_NOCTUA
-  )
-)
-
-chars_data <- DBI::dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue::glue_sql("
-  SELECT *
-  FROM default.vw_card_res_char
-  WHERE pin IN ({hie_pins*})
-  AND year = '{as.numeric(params$year) - 1}'
-  ",
-    .con = AWS_ATHENA_CONN_NOCTUA
-  )
-)
-
-chars_data %>%
-  inner_join(hie_data %>% select(-year), by = c("pin")) %>%
-  left_join(
-    training_data %>% select(
-      meta_pin, meta_year,
-      train_sqft = char_bldg_sf,
-      train_fbath = char_fbath, train_air = char_air
-    ),
-    by = c("pin" = "meta_pin", "year" = "meta_year")
-  ) %>%
-  select(
-    pin,
-    `OG SQFT` = char_bldg_sf,
-    `HIE SQFT` = qu_sqft_bld,
-    `NEW SQFT` = train_sqft,
-    `OG FBATH` = char_fbath,
-    `HIE FBATH` = qu_full_bath,
-    `NEW FBATH` = train_fbath,
-    `OG AIR` = char_air,
-    `HIE AIR` = qu_air,
-    `NEW AIR` = train_air
-  ) %>%
-  datatable(rownames = FALSE)
-```
 
 ## Characteristic Filling
 
@@ -104,7 +65,6 @@ test_card_pins <- c(
   "17321110470000", "05174150240000",
   "05213220250000", "08121220400000", "06334030310000"
 )
-
 assessment_card %>%
   filter(meta_pin %in% test_card_pins) %>%
   arrange(meta_pin, meta_card_num) %>%
