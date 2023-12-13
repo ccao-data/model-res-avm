@@ -21,3 +21,8 @@ cache/
 *.xlsx
 *.xlsm
 *.html
+*.css
+*js
+*.gitkeep
+*.json
+*.woff
