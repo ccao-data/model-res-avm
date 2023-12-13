@@ -924,7 +924,6 @@ stages:
         toggle:
           cv_enable: false
           shap_enable: false
-          upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
       md5: 9e85deeac700ca9ab731c5d438e27548

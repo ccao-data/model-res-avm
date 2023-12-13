@@ -27,7 +27,7 @@ run_type <- metadata$run_type
 message("Uploading run artifacts")
 
 # Only upload files if explicitly enabled
-if (params$toggle$upload_to_s3) {
+if (upload_enable) {
   # Initialize a dictionary of paths AND S3 URIs specific to the run ID and year
   paths <- model_file_dict(
     run_id = run_id,
@@ -234,7 +234,7 @@ if (params$toggle$upload_to_s3) {
 
 # This will run a Glue crawler to update schemas and send an email to any SNS
 # subscribers. Only run when actually uploading
-if (params$toggle$upload_to_s3) {
+if (upload_enable) {
   message("Sending run email and running model crawler")
 
   # If assessments and SHAP values were uploaded, trigger a Glue crawler to find
