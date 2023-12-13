@@ -87,7 +87,6 @@ stages:
     - output/test_card/model_test_card.parquet
     - output/assessment_pin/model_assessment_pin.parquet
     params:
-    - run_type
     - assessment.data_year
     - ratio_study
     outs:
@@ -133,7 +132,6 @@ stages:
     - output/intermediate/timing/model_timing_interpret.parquet
     params:
     - run_note
-    - run_type
     - toggle
     - input
     - cv

@@ -45,17 +45,15 @@ test_data_card <- read_parquet(paths$output$test_card$local)
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
-# aggregated to the PIN-level. Only runs for full runs due to compute cost
-if (run_type == "full") {
-  assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
-    filter(meta_triad_code == run_triad_code) %>%
-    select(
-      meta_pin, meta_class, meta_triad_code,
-      all_of(params$ratio_study$geographies),
-      char_total_bldg_sf, prior_far_tot, prior_near_tot,
-      pred_pin_final_fmv_round, sale_ratio_study_price
-    )
-}
+# aggregated to the PIN-level
+assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  select(
+    meta_pin, meta_class, meta_triad_code,
+    all_of(params$ratio_study$geographies),
+    char_total_bldg_sf, prior_far_tot, prior_near_tot,
+    pred_pin_final_fmv_round, sale_ratio_study_price
+  )
 
 
 
@@ -382,57 +380,54 @@ future_pmap(
 
 ## 4.2. Assessment Set ---------------------------------------------------------
 
-# Only value the assessment set for full runs
-if (run_type == "full") {
-  # Do the same thing for the assessment set. This will have accurate property
-  # counts and proportions, since it also includes unsold properties
-  message("Calculating assessment set aggregate statistics")
-  future_pmap(
-    geographies_list,
-    function(geo, cls) {
-      gen_agg_stats(
-        data = assessment_data_pin,
-        truth = sale_ratio_study_price,
-        estimate = pred_pin_final_fmv_round,
-        bldg_sqft = char_total_bldg_sf,
-        rsn_col = prior_near_tot,
-        rsf_col = prior_far_tot,
-        triad = meta_triad_code,
-        geography = !!geo,
-        class = !!cls,
-        col_dict = col_rename_dict
-      )
-    },
-    .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = FALSE
-  ) %>%
-    purrr::list_rbind() %>%
-    write_parquet(paths$output$performance_assessment$local)
+# Do the same thing for the assessment set. This will have accurate property
+# counts and proportions, since it also includes unsold properties
+message("Calculating assessment set aggregate statistics")
+future_pmap(
+  geographies_list,
+  function(geo, cls) {
+    gen_agg_stats(
+      data = assessment_data_pin,
+      truth = sale_ratio_study_price,
+      estimate = pred_pin_final_fmv_round,
+      bldg_sqft = char_total_bldg_sf,
+      rsn_col = prior_near_tot,
+      rsf_col = prior_far_tot,
+      triad = meta_triad_code,
+      geography = !!geo,
+      class = !!cls,
+      col_dict = col_rename_dict
+    )
+  },
+  .options = furrr_options(seed = TRUE, stdout = FALSE),
+  .progress = FALSE
+) %>%
+  purrr::list_rbind() %>%
+  write_parquet(paths$output$performance_assessment$local)
 
-  # Same as above, but calculate stats per quantile of sale price
-  message("Calculating assessment set quantile statistics")
-  future_pmap(
-    geographies_list_quantile,
-    function(geo, cls, qnt) {
-      gen_agg_stats_quantile(
-        data = assessment_data_pin,
-        truth = sale_ratio_study_price,
-        estimate = pred_pin_final_fmv_round,
-        rsn_col = prior_near_tot,
-        rsf_col = prior_far_tot,
-        triad = meta_triad_code,
-        geography = !!geo,
-        class = !!cls,
-        col_dict = col_rename_dict,
-        num_quantile = qnt
-      )
-    },
-    .options = furrr_options(seed = TRUE, stdout = FALSE),
-    .progress = FALSE
-  ) %>%
-    purrr::list_rbind() %>%
-    write_parquet(paths$output$performance_quantile_assessment$local)
-}
+# Same as above, but calculate stats per quantile of sale price
+message("Calculating assessment set quantile statistics")
+future_pmap(
+  geographies_list_quantile,
+  function(geo, cls, qnt) {
+    gen_agg_stats_quantile(
+      data = assessment_data_pin,
+      truth = sale_ratio_study_price,
+      estimate = pred_pin_final_fmv_round,
+      rsn_col = prior_near_tot,
+      rsf_col = prior_far_tot,
+      triad = meta_triad_code,
+      geography = !!geo,
+      class = !!cls,
+      col_dict = col_rename_dict,
+      num_quantile = qnt
+    )
+  },
+  .options = furrr_options(seed = TRUE, stdout = FALSE),
+  .progress = FALSE
+) %>%
+  purrr::list_rbind() %>%
+  write_parquet(paths$output$performance_quantile_assessment$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)

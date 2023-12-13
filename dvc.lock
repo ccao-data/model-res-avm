@@ -475,7 +475,6 @@ stages:
           - 3
           - 5
           - 10
-        run_type: full
     outs:
     - path: output/intermediate/timing/model_timing_evaluate.parquet
       md5: 85b926b00b9957f2ca09587f3f3ca9fd
@@ -920,11 +919,9 @@ stages:
           - 5
           - 10
         run_note: "Rebuilt final 2023 run (relaxed-dan) using update proration method\n"
-        run_type: full
         toggle:
           cv_enable: false
           shap_enable: false
-          upload_to_s3: true
     outs:
     - path: output/metadata/model_metadata.parquet
       md5: 9e85deeac700ca9ab731c5d438e27548
