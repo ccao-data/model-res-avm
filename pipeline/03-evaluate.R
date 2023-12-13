@@ -75,6 +75,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x / .y, na.rm = TRUE), NA),
     prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = TRUE), NA),
     prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = TRUE), NA),
+    mki_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, mki(.x, .y, na.rm = TRUE), NA),
     cod = ~ ifelse(
       sum(!is.na(.y)) > 33,
       list(ccao_cod(.x / .y, na.rm = TRUE)),
