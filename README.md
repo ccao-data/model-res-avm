@@ -1159,14 +1159,14 @@ Batch using GitHub Actions workflow runs.
 
 Model runs are initiated by the
 [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml)
-workflow when one of the following events is triggered:
+workflow via [manual
+dispatch](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow).
 
-- A pull request is opened, or a commit is pushed to an open pull
-  request
-- The workflow is [manually
-  dispatched](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow)
+To run a model, use the **Run workflow** button on right side of the
+`build-and-run-model` [Actions
+page](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml).
 
-In both cases, runs are gated behind a [deploy
+Runs are gated behind a [deploy
 environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)
 that requires approval from a `@ccao-data/core-team` member before the
 model will run. The `build` job to rebuild a Docker image for the model
