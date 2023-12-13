@@ -127,8 +127,10 @@ metadata <- tibble::tibble(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Generate performance report -----------------------------------------------
+# 3. Generate reports ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+## 3.1. Performance Report -----------------------------------------------------
 
 # Wrap this block in an error handler so that the pipeline continues execution
 # even if report generation fails. This is important because the report file is

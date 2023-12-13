@@ -313,12 +313,8 @@ message("Finalizing and saving trained model")
 test %>%
   mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
   select(
-    meta_year, meta_pin, meta_class, meta_card_num,
-    meta_triad_code, meta_township_code, meta_nbhd_code,
-    loc_cook_municipality_name, loc_ward_num, loc_census_puma_geoid,
-    loc_census_tract_geoid, loc_school_elementary_district_geoid,
-    loc_school_secondary_district_geoid, loc_school_unified_district_geoid,
-    char_bldg_sf,
+    meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
+    all_of(params$ratio_study$geographies), char_bldg_sf,
     all_of(c(
       "prior_far_tot" = params$ratio_study$far_column,
       "prior_near_tot" = params$ratio_study$near_column
