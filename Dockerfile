@@ -35,7 +35,7 @@ COPY renv/ renv/
 # Install R dependencies. Restoring renv first ensures that it's
 # using the same version as recorded in the lockfile
 RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
-RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock"); renv::install("quarto")'
+RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 
 # Set the working directory to the model directory
 WORKDIR /model-res-avm/
