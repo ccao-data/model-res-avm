@@ -229,7 +229,7 @@ mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
   }
 
   errors <- abs((truth - estimate) / truth)
-  out <- stats::median(errors)
+  out <- median(errors)
   out <- out * 100
   out
 }
