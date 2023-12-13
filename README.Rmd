@@ -734,22 +734,6 @@ file_dict %>%
   knitr::kable(format = "markdown")
 ```
 
-#### Run Types
-
-The pipeline supports 2 types of runs (`run_type` in [`params.yaml`](params.yaml)): `full` and `limited`. The `full` run type will run the entire pipeline with all outputs. The `limited` run type will _only train the model and measure performance on the test set_. It will not measure performance on the assessment data or calculate SHAP values.
-
-We recommend using the `limited` run type for testing features and changes and finalizing with the `full` run type. The table below shoes breakdown of what is created for each type:
-
-```{r file_dict2, message=FALSE, results='asis', echo=FALSE}
-file_dict %>%
-  select(athena_table, starts_with("run_type_")) %>%
-  distinct(athena_table, .keep_all = TRUE) %>%
-  filter(!is.na(athena_table)) %>%
-  arrange(athena_table) %>%
-  setNames(c("Athena Table", "Limited Run", "Full Run")) %>%
-  knitr::kable(format = "markdown")
-```
-
 ## Getting Data
 
 The [data required](#data-used) to run these scripts is produced by the [ingest stage](pipeline/00-ingest.R), which uses SQL pulls from the CCAO's Athena database as a primary data source. CCAO employees can run the ingest stage or pull the latest version of the input data from our internal DVC store using:

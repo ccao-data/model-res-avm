@@ -350,7 +350,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-08.
+model as of 2023-12-13.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -1241,34 +1241,6 @@ Uploaded Parquet files are converted into the following Athena tables:
 | shap                 | card                               | year, run_id, township_code, meta_pin, meta_card_num                         | SHAP values for each feature for each card in the assessment data                     |
 | test_card            | card                               | year, meta_pin, meta_card_num                                                | Test set predictions at the card level                                                |
 | timing               | model run                          | year, run_id                                                                 | Finalized time elapsed for each stage of the run                                      |
-
-#### Run Types
-
-The pipeline supports 2 types of runs (`run_type` in
-[`params.yaml`](params.yaml)): `full` and `limited`. The `full` run type
-will run the entire pipeline with all outputs. The `limited` run type
-will *only train the model and measure performance on the test set*. It
-will not measure performance on the assessment data or calculate SHAP
-values.
-
-We recommend using the `limited` run type for testing features and
-changes and finalizing with the `full` run type. The table below shoes
-breakdown of what is created for each type:
-
-| Athena Table         | Limited Run | Full Run          |
-|:---------------------|:------------|:------------------|
-| assessment_card      | No          | Yes               |
-| assessment_pin       | No          | Yes               |
-| feature_importance   | No          | Yes               |
-| metadata             | Yes         | Yes               |
-| parameter_final      | Yes         | Yes               |
-| parameter_range      | No          | If CV enabled     |
-| parameter_search     | No          | If CV enabled     |
-| performance          | Test only   | Test + assessment |
-| performance_quantile | Test only   | Test + assessment |
-| shap                 | No          | Yes               |
-| test_card            | Yes         | Yes               |
-| timing               | Yes         | Yes               |
 
 ## Getting Data
 
