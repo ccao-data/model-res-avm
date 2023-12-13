@@ -18,39 +18,18 @@ params:
 ---
 
 ```{r setup}
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+
+suppressPackageStartupMessages(
+ purrr::walk(
+    strsplit(yaml::read_yaml(here("DESCRIPTION"))$`Config/renv/profiles/reporting/dependencies`, ", ")[[1]],
+    library,
+    character.only = TRUE
+  )
+)
+
 options(knitr.kable.NA = "", scipen = 99, width = 150)
 noctua::noctua_options(cache_size = 10)
-
-# Load necessary libraries
-library(arrow)
-library(ccao)
-library(brio)
-library(DBI)
-library(decor)
-library(desc)
-library(dplyr)
-library(DT)
-library(ggplot2)
-library(glue)
-library(grid)
-library(gridExtra)
-library(gtools)
-library(here)
-library(htmltools)
-library(kableExtra)
-library(leaflet)
-library(noctua)
-library(plotly)
-library(purrr)
-library(recipes)
-library(scales)
-library(sf)
-library(skimr)
-library(stringr)
-library(tableone)
-library(tidyr)
-library(tools)
-source(here("R", "helpers.R"))
 
 # TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
 # https://github.com/apache/arrow/issues/32026

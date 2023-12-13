@@ -11,7 +11,7 @@ options(
 # Any new pipeline dependencies should be added there
 suppressPackageStartupMessages({
   purrr::walk(
-    strsplit(yaml::read_yaml("DESCRIPTION")$Depends, ", ")[[1]],
+    strsplit(yaml::read_yaml(here::here("DESCRIPTION"))$Depends, ", ")[[1]],
     library,
     character.only = TRUE
   )
@@ -43,7 +43,7 @@ source(here::here("R", "helpers.R"))
 paths <- model_file_dict()
 
 # Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
+params <- read_yaml(here::here("params.yaml"))
 
 # Get the number of available physical cores to use for multi-threading
 # Lightgbm docs recommend using only real cores, not logical
