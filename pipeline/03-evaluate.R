@@ -65,7 +65,8 @@ assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
 # Function to take either test set results or assessment results and generate
 # aggregate performance statistics for different levels of geography
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
-                          rsn_col, rsf_col, triad, geography, class, col_dict) {
+                          rsn_col, rsf_col, triad, geography,
+                          class, col_dict, min_n) {
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
   # the left
@@ -74,21 +75,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = TRUE), NA),
     prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = TRUE), NA),
     mki_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, mki(.x, .y, na.rm = TRUE), NA),
-    cod = ~ ifelse(
-      sum(!is.na(.y)) > 33,
-      list(ccao_cod(.x / .y, na.rm = TRUE)),
-      NA
-    ),
-    prd = ~ ifelse(
-      sum(!is.na(.y)) > 33,
-      list(ccao_prd(.x, .y, na.rm = TRUE)),
-      NA
-    ),
-    prb = ~ ifelse(
-      sum(!is.na(.y)) > 33,
-      list(ccao_prb(.x, .y, na.rm = TRUE)),
-      NA
-    )
+    cod = ~ ifelse(sum(!is.na(.y)) >= min_n, cod(.x / .y, na.rm = TRUE), NA),
+    prd = ~ ifelse(sum(!is.na(.y)) >= min_n, prd(.x, .y, na.rm = TRUE), NA),
+    prb = ~ ifelse(sum(!is.na(.y)) >= min_n, prb(.x, .y, na.rm = TRUE), NA),
+    mki = ~ ifelse(sum(!is.na(.y)) >= min_n, mki(.x, .y, na.rm = TRUE), NA)
   )
   ys_fns_list <- list(
     rmse        = rmse_vec,
@@ -201,15 +191,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       .groups = "drop"
     ) %>%
     ungroup() %>%
-    # COD, PRD, and PRB all output to a list. We can unnest each list to get
-    # additional info for each stat (95% CI, sample count, etc)
-    tidyr::unnest_wider(cod) %>%
-    tidyr::unnest_wider(COD_CI, names_sep = "_") %>%
-    tidyr::unnest_wider(prd) %>%
-    tidyr::unnest_wider(PRD_CI, names_sep = "_") %>%
-    tidyr::unnest_wider(prb) %>%
-    tidyr::unnest_wider(PRB_CI, names_sep = "_") %>%
-    # Rename columns resulting from unnesting
     rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
 
   # Clean up the stats output (rename cols, relocate cols, etc.)
@@ -344,7 +325,8 @@ future_pmap(
       triad = meta_triad_code,
       geography = !!geo,
       class = !!cls,
-      col_dict = col_rename_dict
+      col_dict = col_rename_dict,
+      min_n = params$ratio_study$min_n_sales
     )
   },
   .options = furrr_options(seed = TRUE, stdout = FALSE),
@@ -396,7 +378,8 @@ future_pmap(
       triad = meta_triad_code,
       geography = !!geo,
       class = !!cls,
-      col_dict = col_rename_dict
+      col_dict = col_rename_dict,
+      min_n = params$ratio_study$min_n_sales
     )
   },
   .options = furrr_options(seed = TRUE, stdout = FALSE),
