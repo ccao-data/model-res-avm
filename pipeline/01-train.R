@@ -14,6 +14,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
 
+message(Sys.getenv("WORKFLOW_RUN_NOTE"))
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Prepare Data --------------------------------------------------------------
