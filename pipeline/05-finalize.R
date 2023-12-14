@@ -34,7 +34,7 @@ git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
 # If in a CI context, use the run note passed to the workflow. Otherwise, use
 # the note included in params.yaml
-run_note <- as.logical(
+run_note <- as.character(
   Sys.getenv("WORKFLOW_RUN_NOTE", unset = params$run_note)
 )
 
