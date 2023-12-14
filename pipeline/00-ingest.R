@@ -47,7 +47,7 @@ message("Pulling data from Athena")
 # from the residential input view
 tictoc::tic("Training data pulled")
 training_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_JDBC, glue::glue("
   SELECT
       sale.sale_price AS meta_sale_price,
       sale.sale_date AS meta_sale_date,
@@ -78,7 +78,7 @@ tictoc::toc()
 # stored in the legacy (AS/400) data system
 tictoc::tic("HIE data pulled")
 hie_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_JDBC, glue::glue("
   SELECT *
   FROM ccao.hie
   ")
@@ -105,7 +105,7 @@ DBI::dbGetQuery(
 # data we actually run the model on
 tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_JDBC, glue::glue("
   SELECT *
   FROM model.vw_card_res_input
   WHERE meta_year = '{params$assessment$data_year}'
@@ -117,7 +117,7 @@ tictoc::toc()
 # rates ($/sqft), as calculated by Valuations
 tictoc::tic("Land rate data pulled")
 land_site_rate_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_JDBC, glue::glue("
   SELECT *
   FROM ccao.land_site_rate
   WHERE year = '{params$assessment$year}'
@@ -125,7 +125,7 @@ land_site_rate_data <- dbGetQuery(
 )
 
 land_nbhd_rate_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_JDBC, glue::glue("
   SELECT *
   FROM ccao.land_nbhd_rate
   WHERE year = '{params$assessment$year}'
