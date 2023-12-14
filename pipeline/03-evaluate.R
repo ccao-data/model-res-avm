@@ -191,6 +191,10 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       .groups = "drop"
     ) %>%
     ungroup() %>%
+    mutate(cod_met = cod_met(cod), .after = cod) %>%
+    mutate(prd_met = prd_met(prd), .after = prd) %>%
+    mutate(prb_met = prb_met(cod), .after = prb) %>%
+    mutate(mki_met = mki_met(cod), .after = mki) %>%
     rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
 
   # Clean up the stats output (rename cols, relocate cols, etc.)
