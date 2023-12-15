@@ -85,33 +85,29 @@ hie_data <- dbGetQuery(
 )
 tictoc::toc()
 
-# Save HIE and characteristics data for use in performance review
+# Save HIE data for use in performance review
 hie_data %>%
   write_parquet(paths$input$hie$local)
 
-DBI::dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue::glue_sql("
-  SELECT * FROM model.vw_card_res_input vcri
-  WHERE
-    vcri.meta_year BETWEEN '{as.numeric(params$assessment$year) - 1}'
-    AND {params$assessment$year}
-  ",
-  .con = AWS_ATHENA_CONN_JDBC
-  )
-) %>%
-  write_parquet(paths$input$char$local)
-
-# Pull all residential PIN input data for the assessment year. This will be the
-# data we actually run the model on
+# Pull all residential PIN input data for the assessment and prior year. We will
+# only use the assessmebt year to run the model, but the prior year can be used
+# for evaluating performance
 tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue::glue("
   SELECT *
   FROM model.vw_card_res_input
-  WHERE meta_year = '{params$assessment$data_year}'
+  WHERE meta_year BETWEEN '{as.numeric(params$assessment$year) - 1}'
+    AND '{params$assessment$year}'
   ")
 )
 tictoc::toc()
+
+assessment_data %>%
+  write_parquet(paths$input$char$local)
+
+assessment_data <- assessment_data %>%
+  filter(meta_year == params$assessment$year)
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
