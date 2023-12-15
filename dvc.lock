@@ -10,24 +10,11 @@ stages:
           triad: south
           group: residential
           data_year: '2022'
+          working_year: '2024'
         input:
           min_sale_year: '2014'
           max_sale_year: '2022'
           time_split: 15
-          sale_validation:
-            stat_groups:
-            - meta_year
-            - meta_township_code
-            - meta_class
-            iso_forest:
-            - meta_sale_price
-            - sv_price_per_sqft
-            - sv_days_since_last_transaction
-            - sv_cgdr
-            - sv_sale_dup_counts
-            dev_bounds:
-            - 2
-            - 3
           complex:
             match_exact:
             - meta_township_code
@@ -45,20 +32,26 @@ stages:
               dist_ft: 250
     outs:
     - path: input/assessment_data.parquet
-      md5: 8d9c625389f7acbd230fed9d7a481247
-      size: 299460934
+      md5: 795b12e466f50bbbcb07a14ccc2539b1
+      size: 83541611
+    - path: input/char_data.parquet
+      md5: e15fb5bbe233e9307c711414fb2c361d
+      size: 415759127
     - path: input/complex_id_data.parquet
-      md5: 4ea318bdabdffabac75fa04e2b48295b
-      size: 730032
+      md5: 5eea24e235dadc1198862e1f3f7d515a
+      size: 665256
+    - path: input/hie_data.parquet
+      md5: cf3a2d24a9ba2701951d8c82095966ae
+      size: 1917397
     - path: input/land_nbhd_rate_data.parquet
-      md5: 730c5638b23ef13d160b65c1ad35549c
-      size: 4246
+      md5: 00b1ba56b7a0fe896b8e6cb6a5888141
+      size: 4052
     - path: input/land_site_rate_data.parquet
-      md5: 1aca61d6c93cb243322cc890fb7a4e71
-      size: 1754
+      md5: 8ca048a81c0b61159de6cac8fe318663
+      size: 1552
     - path: input/training_data.parquet
-      md5: 57668d6ebd4cbfc1b444d8d0232c796c
-      size: 149053138
+      md5: 29157ecc938a787f9560671bb2b225e1
+      size: 153945920
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
