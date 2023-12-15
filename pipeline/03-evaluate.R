@@ -174,7 +174,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         set_names(paste0("prior_far_yoy_pct_chg_", names(.))) %>%
         map(., \(f) exec(f, {{ estimate }}, {{ rsf_col }})) %>%
         list(),
-
       prior_near_num_missing = sum(is.na({{ rsn_col }})),
       sum_rsn_lst = sum_fns_list %>%
         set_names(paste0("prior_near_fmv_", names(.))) %>%
@@ -199,7 +198,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         set_names(paste0("estimate_fmv_per_sqft_", names(.))) %>%
         map(., \(f) exec(f, {{ estimate }}, {{ bldg_sqft }})) %>%
         list(),
-
       .groups = "drop"
     ) %>%
     ungroup() %>%
