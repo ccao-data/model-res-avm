@@ -18,14 +18,14 @@ params:
 
 ```{r}
 library(knitr)
-source("Setup File.R")
+source("Setup_File.R")
 ```
 
 ## Standardized mean differences
 
 The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
 
-$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
+<!-- $$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$ -->
 
 
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.

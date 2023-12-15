@@ -1,12 +1,21 @@
 project:
-  type: website
   output-dir: _output
+
+toc: true
+number-sections: true
 
 format:
   html:
-    toc: true
+    css: styles.css
+    html-math-method: katex
+  pdf:
+    documentclass: report
+    margin-left: 30mm
+    margin-right: 30mm
 
 params:
   run_id: "2023-03-14-clever-damani"
   year: "2023"
   dvc_bucket: "s3://ccao-data-dvc-us-east-1"
+
+

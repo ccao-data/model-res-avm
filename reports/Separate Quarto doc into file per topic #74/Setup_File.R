@@ -93,17 +93,7 @@ time_frame <-
 
 sales <- arrow::read_parquet(paths$input$training$local)
 
-# All residential parcel characteristics from time frame, with a sale indicator
-res_chars <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA,
-  glue(
-    "
-  SELECT * FROM model.vw_card_res_input vcri
-  WHERE vcri.meta_year BETWEEN '{time_frame['min']}' AND '{time_frame['max']}'
-  AND meta_class NOT IN ('211', '212')
-"
-  )
-)
+res_chars <- read_parquet("res_chars.parquet")
 
 sf_parcels <- res_chars %>%
   # Join on sales indicator for most recent sale in the last two years -

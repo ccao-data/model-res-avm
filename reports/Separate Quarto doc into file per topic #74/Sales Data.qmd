@@ -1,7 +1,6 @@
 ---
 title: "Model performance for `r params$run_id`"
 execute:
-  echo: false
   warning: false
 format:
   html:
@@ -18,7 +17,7 @@ params:
 
 ```{r}
 library(knitr)
-source("Setup File.R")
+source("Setup_File.R")
 ```
 
 ## Sales Data
