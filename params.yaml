@@ -359,6 +359,10 @@ ratio_study:
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
+  # Min. number of sales to calculate ratio statistics, per CCAO SOPs. Groups
+  # must have greater than or equal to the number of sales specified
+  min_n_sales: 30
+
   # Quantile breakouts to use in the evaluate stage. For example, 3 will split
   # each geography in evaluate into terciles
   num_quantile: [3, 5, 10]
