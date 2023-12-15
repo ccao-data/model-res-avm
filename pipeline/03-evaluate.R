@@ -67,18 +67,25 @@ assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography,
                           class, col_dict, min_n) {
+  # Helper function to return NA when sale sample size is too small
+  gte_n <- \(n_sales, min_n, fn) ifelse(sum(!is.na(n_sales)) >= min_n, fn, NA)
+
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
   # the left
   rs_fns_list <- list(
-    cod_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, cod(.x / .y, na.rm = TRUE), NA),
-    prd_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prd(.x, .y, na.rm = TRUE), NA),
-    prb_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, prb(.x, .y, na.rm = TRUE), NA),
-    mki_no_sop = ~ ifelse(sum(!is.na(.y)) > 1, mki(.x, .y, na.rm = TRUE), NA),
-    cod = ~ ifelse(sum(!is.na(.y)) >= min_n, cod(.x / .y, na.rm = TRUE), NA),
-    prd = ~ ifelse(sum(!is.na(.y)) >= min_n, prd(.x, .y, na.rm = TRUE), NA),
-    prb = ~ ifelse(sum(!is.na(.y)) >= min_n, prb(.x, .y, na.rm = TRUE), NA),
-    mki = ~ ifelse(sum(!is.na(.y)) >= min_n, mki(.x, .y, na.rm = TRUE), NA)
+    cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE)),
+    prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE)),
+    prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE)),
+    mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE)),
+    cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE)),
+    cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE))),
+    prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE)),
+    prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE))),
+    prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE)),
+    prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE))),
+    mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE)),
+    mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)))
   )
   ys_fns_list <- list(
     rmse        = rmse_vec,
@@ -86,28 +93,28 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     mae         = mae_vec,
     mpe         = mpe_vec,
     mape        = mape_vec,
-    mdape       = mdape_vec
+    mdape       = mdape_vec # From R/helpers.R
   )
   sum_fns_list <- list(
-    min         = ~ min(.x, na.rm = TRUE),
-    q25         = ~ quantile(.x, na.rm = TRUE, probs = 0.25),
-    median      = ~ median(.x, na.rm = TRUE),
-    q75         = ~ quantile(.x, na.rm = TRUE, probs = 0.75),
-    max         = ~ max(.x, na.rm = TRUE)
+    min         = \(x) min(x, na.rm = TRUE),
+    q25         = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
+    median      = \(x) median(x, na.rm = TRUE),
+    q75         = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
+    max         = \(x) max(x, na.rm = TRUE)
   )
   sum_sqft_fns_list <- list(
-    min         = ~ min(.x / .y, na.rm = TRUE),
-    q25         = ~ quantile(.x / .y, na.rm = TRUE, probs = 0.25),
-    median      = ~ median(.x / .y, na.rm = TRUE),
-    q75         = ~ quantile(.x / .y, na.rm = TRUE, probs = 0.75),
-    max         = ~ max(.x / .y, na.rm = TRUE)
+    min         = \(x, y) min(x / y, na.rm = TRUE),
+    q25         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.25),
+    median      = \(x, y) median(x / y, na.rm = TRUE),
+    q75         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.75),
+    max         = \(x, y) max(x / y, na.rm = TRUE)
   )
   yoy_fns_list <- list(
-    min         = ~ min((.x - .y) / .y, na.rm = TRUE),
-    q25         = ~ quantile((.x - .y) / .y, na.rm = TRUE, probs = 0.25),
-    median      = ~ median((.x - .y) / .y, na.rm = TRUE),
-    q75         = ~ quantile((.x - .y) / .y, na.rm = TRUE, probs = 0.75),
-    max         = ~ max((.x - .y) / .y, na.rm = TRUE)
+    min         = \(x, y) min((x - y) / y, na.rm = TRUE),
+    q25         = \(x, y) quantile((x - y) / y, na.rm = TRUE, probs = 0.25),
+    median      = \(x, y) median((x - y) / y, na.rm = TRUE),
+    q75         = \(x, y) quantile((x - y) / y, na.rm = TRUE, probs = 0.75),
+    max         = \(x, y) max((x - y) / y, na.rm = TRUE)
   )
 
   # Generate aggregate performance stats by geography
@@ -132,70 +139,71 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       prior_near_total_av = sum({{ rsn_col }} / 10, na.rm = TRUE),
       estimate_total_av = sum({{ estimate }} / 10, na.rm = TRUE),
 
-      # Assessment-specific statistics
-      across(
-        .fns = rs_fns_list, {{ estimate }}, {{ truth }},
-        .names = "{.fn}"
-      ),
+      # Assessment-specific ratio stats
+      rs_lst = rs_fns_list %>%
+        map(., \(f) exec(f, {{ estimate }}, {{ truth }})) %>%
+        list(),
       median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
 
       # Yardstick (ML-specific) performance stats
-      across(.fns = ys_fns_list, {{ truth }}, {{ estimate }}, .names = "{.fn}"),
+      ys_lst = ys_fns_list %>%
+        map(., \(f) exec(f, {{ truth }}, {{ estimate }})) %>%
+        list(),
 
       # Summary stats of sale price and sale price per sqft
-      across(.fns = sum_fns_list, {{ truth }}, .names = "sale_fmv_{.fn}"),
-      across(
-        .fns = sum_sqft_fns_list, {{ truth }}, {{ bldg_sqft }},
-        .names = "sale_fmv_per_sqft_{.fn}"
-      ),
+      sum_sale_lst = sum_fns_list %>%
+        set_names(paste0("sale_fmv_", names(.))) %>%
+        map(., \(f) exec(f, {{ truth }})) %>%
+        list(),
+      sum_sale_sf_lst = sum_sqft_fns_list %>%
+        set_names(paste0("sale_fmv_per_sqft_", names(.))) %>%
+        map(., \(f) exec(f, {{ truth }}, {{ bldg_sqft }})) %>%
+        list(),
 
-      # Summary stats of prior values and value per sqft. Need to multiply
-      # by 10 first since PIN history is in AV, not FMV
+      # Summary stats of prior values and value per sqft
       prior_far_num_missing = sum(is.na({{ rsf_col }})),
-      across(
-        .fns = sum_fns_list, {{ rsf_col }},
-        .names = "prior_far_fmv_{.fn}"
-      ),
-      across(
-        .fns = sum_sqft_fns_list, {{ rsf_col }}, {{ bldg_sqft }},
-        .names = "prior_far_fmv_per_sqft_{.fn}"
-      ),
-      across(
-        .fns = yoy_fns_list, {{ estimate }}, {{ rsf_col }},
-        .names = "prior_far_yoy_pct_chg_{.fn}"
-      ),
+      sum_rsf_lst = sum_fns_list %>%
+        set_names(paste0("prior_far_fmv_", names(.))) %>%
+        map(., \(f) exec(f, {{ rsf_col }})) %>%
+        list(),
+      sum_rsf_sf_lst = sum_sqft_fns_list %>%
+        set_names(paste0("prior_far_fmv_per_sqft_", names(.))) %>%
+        map(., \(f) exec(f, {{ rsf_col }}, {{ bldg_sqft }})) %>%
+        list(),
+      yoy_rsf_lst = yoy_fns_list %>%
+        set_names(paste0("prior_far_yoy_pct_chg_", names(.))) %>%
+        map(., \(f) exec(f, {{ estimate }}, {{ rsf_col }})) %>%
+        list(),
+
       prior_near_num_missing = sum(is.na({{ rsn_col }})),
-      across(
-        .fns = sum_fns_list, {{ rsn_col }},
-        .names = "prior_near_fmv_{.fn}"
-      ),
-      across(
-        .fns = sum_sqft_fns_list, {{ rsn_col }}, {{ bldg_sqft }},
-        .names = "prior_near_fmv_per_sqft_{.fn}"
-      ),
-      across(
-        .fns = yoy_fns_list, {{ estimate }}, {{ rsn_col }},
-        .names = "prior_near_yoy_pct_chg_{.fn}"
-      ),
+      sum_rsn_lst = sum_fns_list %>%
+        set_names(paste0("prior_near_fmv_", names(.))) %>%
+        map(., \(f) exec(f, {{ rsn_col }})) %>%
+        list(),
+      sum_rsn_sf_lst = sum_sqft_fns_list %>%
+        set_names(paste0("prior_near_fmv_per_sqft_", names(.))) %>%
+        map(., \(f) exec(f, {{ rsn_col }}, {{ bldg_sqft }})) %>%
+        list(),
+      yoy_rsn_lst = yoy_fns_list %>%
+        set_names(paste0("prior_near_yoy_pct_chg_", names(.))) %>%
+        map(., \(f) exec(f, {{ estimate }}, {{ rsn_col }})) %>%
+        list(),
 
       # Summary stats of estimate value and estimate per sqft
       estimate_num_missing = sum(is.na({{ estimate }})),
-      across(
-        .fns = sum_fns_list, {{ estimate }},
-        .names = "estimate_fmv_{.fn}"
-      ),
-      across(
-        .fns = sum_sqft_fns_list, {{ estimate }}, {{ bldg_sqft }},
-        .names = "estimate_fmv_per_sqft_{.fn}"
-      ),
+      sum_est_lst = sum_fns_list %>%
+        set_names(paste0("estimate_fmv_", names(.))) %>%
+        map(., \(f) exec(f, {{ estimate }})) %>%
+        list(),
+      sum_est_sf_lst = sum_sqft_fns_list %>%
+        set_names(paste0("estimate_fmv_per_sqft_", names(.))) %>%
+        map(., \(f) exec(f, {{ estimate }}, {{ bldg_sqft }})) %>%
+        list(),
+
       .groups = "drop"
     ) %>%
     ungroup() %>%
-    mutate(cod_met = cod_met(cod), .after = cod) %>%
-    mutate(prd_met = prd_met(prd), .after = prd) %>%
-    mutate(prb_met = prb_met(cod), .after = prb) %>%
-    mutate(mki_met = mki_met(cod), .after = mki) %>%
-    rename_with(~ gsub("%", "", gsub("\\.", "_", tolower(.x))))
+    unnest_wider(ends_with("_lst"))
 
   # Clean up the stats output (rename cols, relocate cols, etc.)
   df_stat %>%
