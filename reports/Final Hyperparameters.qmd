@@ -6,30 +6,43 @@ format: html
 ```{r}
 ## Final Hyperparameters
 # Custom headers for parameter results table, purely aesthetic
-param_headers <- htmltools::withTags(table(
-  class = "display", 
+param_headers <- withTags(table(
+  class = "display",
   thead(
     tr(
-      th(rowspan = 2, "Total Iterations"),
-      th(rowspan = 2, "Best Iteration"),
-      th(colspan = 7, "Parameters"),
-    ),
-    tr(
-    th("mtry"), th("min_n"), th("tree_depth"),
-      th("learn_rate"), th("loss_reduction"), th("num_leaves")
+      th("run_id"), 
+      th("config"), 
+      th("engine"), 
+      th("seed"), 
+      th("objective"), 
+      th("learning rate"), 
+      th("val prop"), 
+      th("val type"), 
+      th("val metric"), 
+      th("link max depth"), 
+      th("max bin"), 
+      th("stop iter"),
+      th("num leaves"),
+      th("add linked depth"),
+      th("feature fraction"),
+      th("min gain to split"),
+      th("min data in leaf"),
+      th("max cat"),
+      th("min data in group"),
+      th("cat smooth"),
+      th("cat l2"),
+      th("lamdal1"),
+      th("lamdal2"),
+      th("max depth")
     )
   )
 ))
-model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet") 
-  #select(c("num_iterations", "configuration", "run_id", "seed", "feature_fraction"))
+model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet")
 
 # Table of all final model hyperparameters that were used
 model_parameter_final  %>%
-  select(-any_of(c(
-    "n", "std_err", "num_iterations", ".metric", ".estimator",
-    ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb", "mape"
+  select(-any_of(c("num_iterations"
   ))) %>%
-  #relocate(c(iterations, .config), .before = NULL) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
