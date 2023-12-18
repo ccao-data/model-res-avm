@@ -1,0 +1,95 @@
+---
+title: "Final Hyperparameters"
+format: html
+---
+
+```{r}
+## Final Hyperparameters
+# Custom headers for parameter results table, purely aesthetic
+param_headers <- htmltools::withTags(table(
+  class = "display", 
+  thead(
+    tr(
+      th(rowspan = 2, "Total Iterations"),
+      th(rowspan = 2, "Best Iteration"),
+      th(colspan = 7, "Parameters"),
+    ),
+    tr(
+    th("mtry"), th("min_n"), th("tree_depth"),
+      th("learn_rate"), th("loss_reduction"), th("num_leaves")
+    )
+  )
+))
+model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet") 
+  #select(c("num_iterations", "configuration", "run_id", "seed", "feature_fraction"))
+
+# Table of all final model hyperparameters that were used
+model_parameter_final  %>%
+  select(-any_of(c(
+    "n", "std_err", "num_iterations", ".metric", ".estimator",
+    ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb", "mape"
+  ))) %>%
+  #relocate(c(iterations, .config), .before = NULL) %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    container = param_headers,
+    escape = FALSE,
+    options = list(
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c(6:7), digits = 4)
+```
+
+
+```{r}
+## Final Hyperparameters
+# Dynamically create header row based on selected column names
+create_dynamic_headers <- function(data_frame, start_col, end_col) {
+  column_names <- colnames(data_frame)[start_col:end_col]
+  header_row <- htmltools::tags$tr(lapply(column_names, htmltools::tags$th))
+  colspan_value <- length(column_names)
+
+  htmltools::withTags(table(
+    class = "display",
+    thead(
+      tr(
+        th(rowspan = 2, "Total Iterations"),
+        th(rowspan = 2, "Best Iteration"),
+        th(colspan = colspan_value, "Parameters")
+      ),
+      header_row
+    )
+  ))
+}
+
+model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet")
+
+# Table of all final model hyperparameters that were used
+param_headers <- create_dynamic_headers(model_parameter_final, 1, 25)
+
+model_parameter_final %>%
+  select(1:25) %>%  # Selecting columns 1 through 25
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    container = param_headers,
+    escape = FALSE,
+    options = list(
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(1:25, digits = 4)
+
+
+```
+

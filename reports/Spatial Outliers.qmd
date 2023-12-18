@@ -66,7 +66,7 @@ outlier_dist %>%
     geom_sf(data = town_shp %>% 
               filter(triad_name == "South")) +
     geom_sf(aes(geometry = geometry, color = quantile_category)) +
-    guides(color = guide_legend(title = "Quantile Category")) +
+    guides(color = guide_legend(title = "Outlier Type")) +
     theme_void() +
     theme(
       strip.text = element_text(size = 12)
