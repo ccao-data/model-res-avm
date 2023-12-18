@@ -115,13 +115,13 @@ sf_parcels <- res_chars %>%
 # Vars to test across
 vars <-
   grep("char_|3435|acs5_median|township_name",
-       names(sf_parcels),
-       value = TRUE
+    names(sf_parcels),
+    value = TRUE
   ) %>%
   grep("percentile|_apts|_ncu|_use|_qlty",
-       .,
-       value = TRUE,
-       invert = TRUE
+    .,
+    value = TRUE,
+    invert = TRUE
   )
 
 sf_parcels <- sf_parcels %>%
@@ -136,7 +136,7 @@ sf_parcels <- sf_parcels %>%
       labels = c("No Sale", "Sale")
     ),
     across(starts_with("char_") &
-             where(is.character), ~ as.factor(.x)),
+      where(is.character), ~ as.factor(.x)),
     across(
       c(
         loc_tax_municipality_name,
@@ -164,5 +164,3 @@ logit_parcels <- sf_parcels %>%
 
 vars <- names(sf_parcels) %>%
   grep("Sale|Township", ., value = TRUE, invert = TRUE)
-
-

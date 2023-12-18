@@ -10,17 +10,17 @@ param_headers <- withTags(table(
   class = "display",
   thead(
     tr(
-      th("run_id"), 
-      th("config"), 
-      th("engine"), 
-      th("seed"), 
-      th("objective"), 
-      th("learning rate"), 
-      th("val prop"), 
-      th("val type"), 
-      th("val metric"), 
-      th("link max depth"), 
-      th("max bin"), 
+      th("run_id"),
+      th("config"),
+      th("engine"),
+      th("seed"),
+      th("objective"),
+      th("learning rate"),
+      th("val prop"),
+      th("val type"),
+      th("val metric"),
+      th("link max depth"),
+      th("max bin"),
       th("stop iter"),
       th("num leaves"),
       th("add linked depth"),
@@ -40,9 +40,8 @@ param_headers <- withTags(table(
 model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet")
 
 # Table of all final model hyperparameters that were used
-model_parameter_final  %>%
-  select(-any_of(c("num_iterations"
-  ))) %>%
+model_parameter_final %>%
+  select(-any_of(c("num_iterations"))) %>%
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -87,7 +86,7 @@ model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic
 param_headers <- create_dynamic_headers(model_parameter_final, 1, 25)
 
 model_parameter_final %>%
-  select(1:25) %>%  # Selecting columns 1 through 25
+  select(1:25) %>% # Selecting columns 1 through 25
   datatable(
     rownames = FALSE,
     filter = "none",
@@ -102,7 +101,5 @@ model_parameter_final %>%
     )
   ) %>%
   formatRound(1:25, digits = 4)
-
-
 ```
 

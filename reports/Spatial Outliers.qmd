@@ -23,15 +23,14 @@ source("Setup_File.R")
 
 ## Standardized mean differences
 ```{r outlier_map, message=FALSE}
-
-# This should be replaced with 
-outliers <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/test_card/model_test_card.parquet") 
+# This should be replaced with
+outliers <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/test_card/model_test_card.parquet")
 
 
 # that would be trimmed according to CCAO SOPs using the is_outlier() function
 outlier_dist <- outliers %>%
   group_by(meta_township_code) %>%
-  mutate(ratio = meta_sale_price / pred_card_initial_fmv) 
+  mutate(ratio = meta_sale_price / pred_card_initial_fmv)
 
 # Find 1st and 99th percentile for trimmed and untrimmed ratios
 quantiles <- outlier_dist %>%
@@ -45,7 +44,6 @@ outlier_dist <- outlier_dist %>%
       TRUE ~ "1st-99th Percentile"
     )
   )
-
 ```
 
 <br>
@@ -63,14 +61,12 @@ outlier_dist %>%
   filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
   st_as_sf(coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
   ggplot() +
-    geom_sf(data = town_shp %>% 
-              filter(triad_name == "South")) +
-    geom_sf(aes(geometry = geometry, color = quantile_category)) +
-    guides(color = guide_legend(title = "Outlier Type")) +
-    theme_void() +
-    theme(
-      strip.text = element_text(size = 12)
-    )
-
-
+  geom_sf(data = town_shp %>%
+    filter(triad_name == "South")) +
+  geom_sf(aes(geometry = geometry, color = quantile_category)) +
+  guides(color = guide_legend(title = "Outlier Type")) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 12)
+  )
 ```
