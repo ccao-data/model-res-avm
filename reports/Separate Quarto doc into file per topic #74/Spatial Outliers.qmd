@@ -4,11 +4,14 @@ format: html
 ---
 
 ```{r outlier_map, message=FALSE}
+library(assessr)
 
-qnt_df %>%
-  datatable(rownames = FALSE)
-outliers <- inner_join(sales, assessment_pin, by = c("meta_pin" = "meta_pin"))
-# Get the overall distribution of ratios for the lightgbm model. Flag ratios
+
+# qnt_df %>%
+#   datatable(rownames = FALSE)
+
+
+outliers <- inner_join(training_data, assessment_pin, by = c("meta_pin" = "meta_pin"))
 # that would be trimmed according to CCAO SOPs using the is_outlier() function
 outlier_dist <- outliers %>%
   group_by(meta_township_name) %>%
@@ -39,7 +42,7 @@ ggplot(outlier_dist) +
     aes(xmin = q99, xmax = Inf, ymin = -Inf, ymax = Inf, fill = trimmed),
     alpha = 0.3
   ) +
-  scale_x_continuous(breaks = breaks_extended(10), limits = c(0, 4)) +
+  scale_x_continuous(breaks = breaks_extended(10), limits = c(0, 10)) +
   guides(fill = FALSE) +
   labs(
     x = "Sale Ratio",

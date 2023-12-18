@@ -20,10 +20,10 @@ param_headers <- htmltools::withTags(table(
     )
   )
 ))
-model_performance_test <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/performance/model_performance_test.parquet")
+model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet")
 
 # Table of all final model hyperparameters that were used
-model_performance_test  %>%
+model_parameter_final  %>%
   select(-any_of(c(
     "n", "std_err", "num_iterations", ".metric", ".estimator",
     ".best", ".bound", "rmse", "rsq", "cod", "prd", "prb", "mape"
