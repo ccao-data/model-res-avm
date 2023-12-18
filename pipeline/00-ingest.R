@@ -190,7 +190,7 @@ training_data_w_hie <- training_data %>%
   )) %>%
   left_join(
     hie_data_training_sparse,
-    by = c("meta_pin" = "pin", "year" = "year", "ind_pin_is_multicard")
+    by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
   ) %>%
   mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
   ccao::chars_update(
@@ -233,7 +233,7 @@ assessment_data_w_hie <- assessment_data %>%
   )) %>%
   left_join(
     hie_data_assessment_sparse,
-    by = c("meta_pin" = "pin", "year" = "year", "ind_pin_is_multicard")
+    by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
   ) %>%
   mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
   ccao::chars_update(
