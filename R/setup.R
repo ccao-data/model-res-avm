@@ -25,6 +25,7 @@ conflicts_prefer(
   dplyr::lag,
   dplyr::pull,
   dplyr::slice,
+  glue::glue,
   lubridate::duration,
   purrr::flatten,
   purrr::is_empty,
