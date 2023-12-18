@@ -1,64 +1,49 @@
 ---
-title: "Spatial Distribution of Outliers"
-format: html
+title: "Distributions `r params$run_id`"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+editor: source
+params:
+  run_id: 2023-03-14-clever-damani
+  year: '2023'
 ---
 
+```{r}
+library(knitr)
+source("Setup_File.R")
+```
+
+## Standardized mean differences
 ```{r outlier_map, message=FALSE}
-library(assessr)
+
+# This should be replaced with 
+outliers <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/test_card/model_test_card.parquet") 
 
 
-# qnt_df %>%
-#   datatable(rownames = FALSE)
-
-
-outliers <- inner_join(training_data, assessment_pin, by = c("meta_pin" = "meta_pin"))
 # that would be trimmed according to CCAO SOPs using the is_outlier() function
 outlier_dist <- outliers %>%
-  group_by(meta_township_name) %>%
-  mutate(
-    outlier = is_outlier(pred_pin_initial_fmv / meta_sale_price, method = "quantile"),
-    trimmed = "Trimmed"
-  ) %>%
-  filter(!outlier) %>%
-  bind_rows(outliers %>% mutate(trimmed = "Not Trimmed")) %>%
-  mutate(ratio = pred_pin_initial_fmv / meta_sale_price) 
+  group_by(meta_township_code) %>%
+  mutate(ratio = meta_sale_price / pred_card_initial_fmv) 
 
 # Find 1st and 99th percentile for trimmed and untrimmed ratios
 quantiles <- outlier_dist %>%
-  group_by(trimmed) %>%
   summarize(q01 = quantile(ratio, 0.01), q99 = quantile(ratio, 0.99))
 
-# Plot histogram of ratios, where the colored areas represent the 1st and 99th
-# percentile for each distribution
-ggplot(outlier_dist) +
-  geom_histogram(aes(x = ratio), binwidth = 0.05) +
-  geom_rect(
-    data = quantiles,
-    aes(xmin = -Inf, xmax = q01, ymin = -Inf, ymax = Inf, fill = trimmed),
-    alpha = 0.3
-  ) +
-  geom_rect(
-    data = quantiles,
-    aes(xmin = q99, xmax = Inf, ymin = -Inf, ymax = Inf, fill = trimmed),
-    alpha = 0.3
-  ) +
-  scale_x_continuous(breaks = breaks_extended(10), limits = c(0, 10)) +
-  guides(fill = FALSE) +
-  labs(
-    x = "Sale Ratio",
-    y = "Number of Properties",
-    caption = "*Colored regions represent < 1st and > 99th percentile"
-  ) +
-  facet_wrap(vars(trimmed), ncol = 1) +
-  theme_minimal() +
-  theme(
-    strip.text = element_text(size = 12),
-    axis.title.x = element_text(margin = margin(t = 6), size = 10),
-    axis.title.y = element_text(margin = margin(r = 10), size = 10),
-    panel.grid.minor = element_blank()
-  ) +
-  theme(
-    strip.text = element_text(size = 12)
+outlier_dist <- outlier_dist %>%
+  mutate(
+    quantile_category = case_when(
+      ratio < quantiles$q01 ~ "< 1st Percentile",
+      ratio > quantiles$q99 ~ "> 99th Percentile",
+      TRUE ~ "1st-99th Percentile"
+    )
   )
 
 ```
@@ -70,22 +55,22 @@ ggplot(outlier_dist) +
 ```{r outlier_map, message=FALSE}
 # Create a township level map showing the location of individual outliers within
 # the 1st and 99th percentile from the histogram above
+
 outlier_dist %>%
-  left_join(quantiles, by = "trimmed") %>%
-  filter(ratio < q01 | ratio > q99) %>%
-  mutate(above_1 = ifelse(ratio > 1, "Above 1", "Below 1")) %>%
-  ungroup() %>%
-  filter(!is.na(loc_longitude.x) & !is.na(loc_latitude.x)) %>%
-  st_as_sf(coords = c("loc_longitude.x", "loc_latitude.x"), crs = 4326) %>%
-ggplot() +
-  geom_sf(data = town_shp %>% filter(triad_name == "South")) +
-  geom_sf(aes(geometry = geometry, color = trimmed, shape = above_1)) +
-  scale_shape_manual(name = "Ratio is:", values = c("Above 1" = 0, "Below 1" = 16)) +
-  facet_wrap(vars(trimmed), nrow = 1) +
-  guides(color = FALSE) +
-  theme_void() +
-  theme(
-    strip.text = element_text(size = 12)
-  )
+  filter(meta_triad_code == 3) %>%
+  filter(quantile_category != "1st-99th Percentile") %>%
+  left_join(training_data, by = "meta_pin") %>%
+  filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
+  st_as_sf(coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
+  ggplot() +
+    geom_sf(data = town_shp %>% 
+              filter(triad_name == "South")) +
+    geom_sf(aes(geometry = geometry, color = quantile_category)) +
+    guides(color = guide_legend(title = "Quantile Category")) +
+    theme_void() +
+    theme(
+      strip.text = element_text(size = 12)
+    )
+
 
 ```

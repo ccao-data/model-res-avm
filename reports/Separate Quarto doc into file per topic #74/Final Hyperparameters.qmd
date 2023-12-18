@@ -20,7 +20,8 @@ param_headers <- htmltools::withTags(table(
     )
   )
 ))
-model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet")
+model_parameter_final <- read_parquet("~/Separate Quarto doc into file per topic #74/reports/Separate Quarto doc into file per topic #74/output/parameter_final/model_parameter_final.parquet") %>%
+  select(c("num_iterations", "configuration", "run_id", "seed", ""))
 
 # Table of all final model hyperparameters that were used
 model_parameter_final  %>%
@@ -45,3 +46,4 @@ model_parameter_final  %>%
   formatRound(c(6:7), digits = 4)
 ```
 
+in params_yaml
