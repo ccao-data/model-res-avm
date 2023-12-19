@@ -1,0 +1,85 @@
+---
+params:
+  run_id: '2023-12-19-recursing-jacob'
+  year: '2023'
+---
+
+```{r setup}
+# This setup script is run at the top of each Quarto report subsection to load
+# libraries, data, and other objects needed for the report. It only loads
+# objects if they don't already exist in the environment, so it can be run
+# idempotently to avoid reloading data sets and libraries
+
+# Load list of helper files and main libraries
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+
+# Load reporting-only R libraries
+suppressPackageStartupMessages({
+  reporting_libs <- "Config/renv/profiles/reporting/dependencies"
+  purrr::walk(
+    strsplit(read_yaml(here::here("DESCRIPTION"))[[reporting_libs]], ", ")[[1]],
+    library,
+    character.only = TRUE
+  )
+})
+
+# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = "
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+")
+
+ignore_sigpipes()
+
+# Initialize a dictionary of file paths. See misc/file_dict.csv for details
+paths <- model_file_dict(model_params$run_id, model_params$year)
+
+# Grab metadata to check input alignment
+metadata <- read_parquet(paths$output$metadata$local)
+if (metadata$run_id != params$run_id) {
+  stop(
+    "Local run outputs are NOT equal to the requested run_id. You ",
+    "should run model_fetch_run() to fetch model outputs from S3"
+  )
+}
+
+# Get the triad of the run to use for filtering
+run_triad <- tools::toTitleCase(metadata$assessment_triad)
+run_triad_code <- ccao::town_dict %>%
+  filter(triad_name == run_triad) %>%
+  distinct(triad_code) %>%
+  pull(triad_code)
+
+# Ingest training set used for this run from DVC bucket (if not local)
+if (!exists("training_data")) {
+  training_data <- read_parquet(paths$input$training$local)
+}
+
+# Load model-generated output data sets
+if (!exists("assessment_card")) {
+  assessment_card <- read_parquet(paths$output$assessment_card$local)
+}
+if (!exists("assessment_pin")) {
+  assessment_pin <- read_parquet(paths$output$assessment_pin$local)
+}
+
+# Load SHAP data if it exists (only exists for important runs)
+if (file.exists(paths$output$shap$local)) {
+  if (!exists("shap_df")) {
+    shap_df <- read_parquet(paths$output$shap$local)
+    shap_exists <- nrow(shap_df) > 0
+  }
+} else {
+  shap_exists <- FALSE
+}
+
+# Load feature importance data
+if (!exists("feat_imp_df")) {
+  feat_imp_df <- read_parquet(paths$output$feature_importance$local)
+}
+```

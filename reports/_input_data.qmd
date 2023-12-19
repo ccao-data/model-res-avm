@@ -1,0 +1,148 @@
+## Data Quality Checks
+
+::: panel-tabset
+
+## Home Improvement Exemption Spot Check
+
+This tests if our Home Improvement Exemption characteristics are getting accurately updated.
+
+```{r}
+hie_pins <- training_data %>%
+  filter(
+    hie_num_active == 1,
+    meta_triad_code == run_triad_code,
+    meta_year == as.numeric(params$year) - 1
+  ) %>%
+  pull(meta_pin) %>%
+  unique()
+
+hie_data <- read_parquet(paths$input$hie$local) %>%
+  filter(
+    pin %in% hie_pins,
+    year >= as.numeric(params$year) - 4,
+    qu_sqft_bld > 0
+  )
+
+chars_data <- read_parquet(paths$input$char$local) %>%
+  filter(
+    meta_year == as.numeric(params$year) - 1,
+    meta_pin %in% hie_pins
+  )
+
+chars_data %>%
+  inner_join(hie_data %>% select(-year), by = join_by(meta_pin == pin)) %>%
+  left_join(
+    training_data %>% select(
+      meta_pin, meta_year,
+      train_sqft = char_bldg_sf,
+      train_fbath = char_fbath, train_air = char_air
+    ),
+    by = join_by(meta_pin, meta_year)
+  ) %>%
+  select(
+    pin = meta_pin,
+    `OG SQFT` = char_bldg_sf,
+    `HIE SQFT` = qu_sqft_bld,
+    `NEW SQFT` = train_sqft,
+    `OG FBATH` = char_fbath,
+    `HIE FBATH` = qu_full_bath,
+    `NEW FBATH` = train_fbath,
+    `OG AIR` = char_air,
+    `HIE AIR` = qu_air,
+    `NEW AIR` = train_air
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+## Characteristic Filling
+
+This tests if our time filling techniques are working as expected.
+
+```{r}
+training_data %>%
+  group_by(meta_pin) %>%
+  filter(
+    !ind_pin_is_multicard,
+    min(meta_sale_date) < lubridate::make_date(as.numeric(params$year) - 3),
+    max(meta_sale_date) > lubridate::make_date(as.numeric(params$year) - 3),
+  ) %>%
+  filter(n() > 6) %>%
+  ungroup() %>%
+  select(
+    PIN = meta_pin,
+    Year = meta_year,
+    `Sale Date` = meta_sale_date,
+    `FS Flood Factor (2019)` = loc_env_flood_fs_factor,
+    `Walkability (2017)` = loc_access_cmap_walk_total_score,
+    `GS Rating (2021)` = prox_avg_school_rating_in_half_mile
+  ) %>%
+  arrange(PIN, Year) %>%
+  datatable(rownames = FALSE)
+```
+
+## Multi-Card and Multi-PIN Aggregation
+
+This uses 5 test pins to assess if multi-card parcels successfully aggregate to the full pin.
+
+```{r}
+test_card_pins <- c(
+  "17321110470000", "05174150240000",
+  "05213220250000", "08121220400000", "06334030310000"
+)
+
+assessment_card %>%
+  filter(meta_pin %in% test_card_pins) %>%
+  arrange(meta_pin, meta_card_num) %>%
+  select(
+    PIN = meta_pin, Class = meta_class, Card = meta_card_num,
+    `Card %` = meta_card_pct_total_fmv, SQFT = char_bldg_sf,
+    `Card Initial` = pred_card_initial_fmv,
+    `Card Final` = pred_card_final_fmv
+  ) %>%
+  left_join(
+    assessment_pin %>%
+      select(
+        PIN = meta_pin, Proration = meta_tieback_proration_rate,
+        `PIN Far` = prior_far_tot,
+        `PIN Near` = prior_near_tot,
+        `PIN Initial` = pred_pin_initial_fmv,
+        `PIN Final` = pred_pin_final_fmv_round
+      ),
+    by = c("PIN")
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+## Land Valuation
+
+```{r, out.width="100%"}
+assessment_pin %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
+  select(
+    meta_pin,
+    land_pct,
+    pred_pin_final_fmv_bldg,
+    pred_pin_final_fmv_land,
+    pred_pin_final_fmv_round
+  ) %>%
+  ggplot() +
+  geom_histogram(aes(x = land_pct)) +
+  scale_x_continuous(
+    name = "Land % of Total FMV",
+    labels = scales::label_percent()
+  ) +
+  labs(y = "Count") +
+  theme_minimal()
+```
+
+### PINs With 0 Land Sqft.
+
+```{r}
+assessment_pin %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  filter(pred_pin_final_fmv_land == 0) %>%
+  datatable(rownames = FALSE)
+```
+
+:::

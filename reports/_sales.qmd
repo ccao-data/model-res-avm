@@ -1,0 +1,309 @@
+{{< include _setup.qmd >}}
+
+# Sales
+
+## Sales Data
+
+::: panel-tabset
+
+## By Year
+
+*NOTE: Outliers are removed*
+
+```{r town_year}
+township <- training_data %>%
+  filter(!sv_is_outlier, meta_triad_name == run_triad) %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_township_name, meta_year) %>%
+  summarise(sales = n()) %>%
+  select(
+    Sales = sales,
+    Year = meta_year,
+    Township = meta_township_name
+  ) %>%
+  ggplot() +
+  geom_line(aes(x = Year, y = Sales, color = Township)) +
+  scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
+  scale_x_continuous(breaks = seq(
+    (as.numeric(params$year) - 9),
+    as.numeric(params$year), 1
+  )) +
+  theme_minimal() +
+  theme(axis.title.x = element_blank())
+
+ggplotly(township)
+```
+
+## By Quarter
+
+Sales by bin by by quarter for the previous 4 years. The goal is to see how different segments of the market are changing as a proportion in each tri-town.
+
+*NOTE: Outliers are removed*
+
+```{r town_bin1, fig.height=8, fig.width=7, out.width="100%"}
+training_data %>%
+  filter(
+    !sv_is_outlier,
+    meta_triad_name == run_triad,
+    meta_year >= as.numeric(params$year) - 4
+  ) %>%
+  mutate(
+    Bin = cut(
+      meta_sale_price,
+      breaks = c(1, 100000, 300000, 600000, 1000000, max(meta_sale_price)),
+      labels = c(
+        "$1 - $100,000",
+        "$100,000 - $300,000",
+        "$300,000 - $600,000",
+        "$600,000 - $1,000,000",
+        "$1,000,000+"
+      )
+    ),
+    Quarter = lubridate::quarter(meta_sale_date) + 4 *
+      (as.numeric(meta_year) - as.numeric(params$year))
+  ) %>%
+  group_by(meta_township_name, Quarter, Bin) %>%
+  summarise(Sales = n()) %>%
+  ungroup() %>%
+  select(Sales, Bin, Township = meta_township_name, Quarter) %>%
+  ggplot(aes(
+    x = Quarter,
+    y = Sales,
+    fill = Bin,
+    group = Bin
+  )) +
+  geom_area() +
+  scale_color_brewer(palette = "PuOr") +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  ) +
+  facet_wrap(vars(Township), scales = "free_y", ncol = 3)
+```
+
+## By Class and Year
+
+*NOTE: Outliers are removed*
+
+```{r class_year}
+class <- training_data %>%
+  filter(
+    !sv_is_outlier,
+    meta_triad_name == run_triad,
+    !ind_pin_is_multicard
+  ) %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  group_by(meta_class, meta_year) %>%
+  summarise(sales = n()) %>%
+  rename(Class = meta_class) %>%
+  pivot_wider(
+    id_cols = Class,
+    names_from = meta_year,
+    values_from = sales
+  )
+
+class %>%
+  kable() %>%
+  kable_styling() %>%
+  row_spec(unique(which(is.na(class), arr.ind = TRUE)[, 1]),
+    bold = TRUE,
+    background = "lightgrey"
+  )
+```
+
+## Removed Outliers
+
+These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
+
+```{r}
+rbind(
+  training_data %>%
+    filter(
+      sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_max(order_by = meta_sale_price, n = 25),
+  training_data %>%
+    filter(
+      sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_min(order_by = meta_sale_price, n = 25)
+) %>%
+  datatable(rownames = FALSE)
+```
+
+## Kept Outliers
+
+These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
+
+```{r}
+rbind(
+  training_data %>%
+    filter(
+      !sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_max(order_by = meta_sale_price, n = 25),
+  training_data %>%
+    filter(
+      !sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_min(order_by = meta_sale_price, n = 25)
+) %>%
+  datatable(rownames = FALSE)
+```
+
+:::
+
+## Sales Trends
+
+::: panel-tabset
+
+## Median Sale Price
+
+```{r Price, eval=FALSE}
+ggplot(
+  sales %>%
+    group_by(meta_year, sv_is_outlier) %>%
+    summarise(median_price = median(meta_sale_price)) %>%
+    ungroup(),
+  aes(x = meta_year, y = median_price, group = sv_is_outlier)
+) +
+  geom_line(aes(color = sv_is_outlier)) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  labs(y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status") +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank()
+  )
+
+year_minus_4 <- as.numeric(params$year) - 4
+
+temp <- ggplot(
+  sales %>%
+    filter(sv_is_outlier == FALSE &
+      meta_year >= year_minus_4) %>%
+    group_by(meta_year, meta_township_name, meta_triad_name) %>%
+    summarise(median_price = median(meta_sale_price)) %>%
+    group_by(meta_township_name, meta_triad_name) %>%
+    mutate(median_price_change = (
+      median_price /
+        first(median_price, order_by = meta_year)
+    ) - 1),
+  aes(x = meta_year, y = median_price_change, group = meta_township_name)
+) +
+  geom_line(aes(color = meta_township_name)) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    y = "Median Sale Price",
+    x = "Year",
+    title = paste("Price / Price of", year_minus_4, ", Outliers Excluded"),
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank()
+  ) +
+  facet_wrap(vars(meta_triad_name), scales = "free")
+
+ggplotly(temp)
+```
+
+```{r, eval=FALSE}
+temp <- sales %>%
+  filter(sv_is_outlier == FALSE) %>%
+  mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
+  group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
+  summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
+  split(.$meta_triad_name)
+
+temp_graph <- function(x, title, limits = NULL) {
+  x %>%
+    ggplot() +
+    geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
+    labs(
+      y = "Median Sale Price",
+      x = "Week",
+      title = paste(title, "Tri, By Year and Week"),
+      subtitle = "Outliers excluded"
+    ) +
+    theme_minimal() +
+    scale_y_continuous(labels = scales::dollar, limits = limits) +
+    theme(
+      legend.position = "bottom",
+      legend.title = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank()
+    ) +
+    facet_wrap(vars(time_sale_year))
+}
+
+temp[["City"]] %>% temp_graph(title = "City")
+
+temp[["North"]] %>% temp_graph(title = "North")
+
+temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
+```
+
+## Number of Sales
+
+```{r Volume1, eval=FALSE}
+ggplot(
+  sales,
+  aes(x = meta_year, group = sv_is_outlier)
+) +
+  geom_bar(aes(fill = sv_is_outlier)) +
+  geom_text(aes(
+    label = format(after_stat(count), big.mark = ",")
+  ), stat = "count", vjust = -1) +
+  labs(y = "Number of Sales", x = "Year", title = "By Year and Outlier Status") +
+  theme_minimal() +
+  scale_y_continuous(
+    labels = scales::comma,
+    limits = c(0, 60000)
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank()
+  )
+
+ggplot(
+  sales,
+  aes(x = time_sale_month_of_year, group = sv_is_outlier)
+) +
+  geom_bar(aes(fill = sv_is_outlier)) +
+  labs(
+    y = "Number of Sales", x = "Year",
+    title = "By Month and Outlier Status"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::comma, limits = c(0, 6000)) +
+  scale_x_continuous(breaks = 1:12, labels = month.name) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  facet_wrap(vars(meta_year))
+```
+
+:::
