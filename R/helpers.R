@@ -8,7 +8,7 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   # Convert flat dictionary file to nested list
   dict <- read.csv(
     here::here("misc", "file_dict.csv"),
-    colClasses = c("character", "character", "numeric", rep("character", 11)),
+    colClasses = c("character", "character", "numeric", rep("character", 9)),
     na.strings = ""
   ) %>%
     dplyr::mutate(
@@ -213,4 +213,23 @@ var_encode <- function(data,
       }
     })
   )
+}
+
+# Yardstick doesn't currently include MdAPE, so we'll add it here
+mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
+  yardstick::check_numeric_metric(truth, estimate, case_weights)
+
+  if (na_rm) {
+    result <- yardstick::yardstick_remove_missing(truth, estimate, case_weights)
+
+    truth <- result$truth
+    estimate <- result$estimate
+  } else if (yardstick::yardstick_any_missing(truth, estimate, case_weights)) {
+    return(NA_real_)
+  }
+
+  errors <- abs((truth - estimate) / truth)
+  out <- median(errors)
+  out <- out * 100
+  out
 }

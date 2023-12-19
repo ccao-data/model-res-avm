@@ -21,11 +21,14 @@ suppressPackageStartupMessages({
 # shown over other functions with the same name from different libraries
 conflicts_prefer(
   dplyr::filter,
+  dplyr::first,
   dplyr::lag,
   dplyr::pull,
   dplyr::slice,
+  glue::glue,
   lubridate::duration,
   purrr::flatten,
+  purrr::is_empty,
   purrr::set_names,
   purrr::splice,
   purrr::when,
@@ -50,10 +53,7 @@ params <- read_yaml(here::here("params.yaml"))
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
 
-# Set the overall model seed
-set.seed(params$model$seed)
-
-# Override CV toggle, SHAP toggle, and run_type set in params.yaml.
+# Override CV toggle, SHAP toggle, and S3 upload set in params.yaml.
 # Used to disable certain features for CI or limited runs
 cv_enable <- as.logical(
   Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
@@ -61,6 +61,6 @@ cv_enable <- as.logical(
 shap_enable <- as.logical(
   Sys.getenv("SHAP_ENABLE_OVERRIDE", unset = params$toggle$shap_enable)
 )
-run_type <- as.character(
-  Sys.getenv("RUN_TYPE_OVERRIDE", unset = params$run_type)
+upload_enable <- as.logical(
+  Sys.getenv("UPLOAD_ENABLE_OVERRIDE", unset = params$toggle$upload_enable)
 )

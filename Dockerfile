@@ -37,13 +37,13 @@ COPY renv/ renv/
 RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
 RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 
-# Set the working directory to the app dir
+# Set the working directory to the model directory
 WORKDIR /model-res-avm/
 
 # Copy the directory into the container
 COPY ./ .
 
-# Copy R dependencies into the app directory
+# Copy R dependencies into the model directory
 RUN rm -Rf /model-res-avm/renv && \
     mv /setup/renv /model-res-avm/renv
 

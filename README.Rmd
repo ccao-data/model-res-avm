@@ -690,12 +690,11 @@ If you have write permissions for this repository (i.e. you are a member of the 
 
 #### Initialization
 
-Model runs are initiated by the [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml) workflow when one of the following events is triggered:
+Model runs are initiated by the [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml) workflow via [manual dispatch](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow).
 
-* A pull request is opened, or a commit is pushed to an open pull request
-* The workflow is [manually dispatched](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow)
+To run a model, use the **Run workflow** button on right side of the `build-and-run-model` [Actions page](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml).
 
-In both cases, runs are gated behind a [deploy environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment) that requires approval from a `@ccao-data/core-team` member before the model will run. The `build` job to rebuild a Docker image for the model will always run, but the subsequent `run` job will not run unless a core-team member approves it.
+Runs are gated behind a [deploy environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment) that requires approval from a `@ccao-data/core-team` member before the model will run. The `build` job to rebuild a Docker image for the model will always run, but the subsequent `run` job will not run unless a core-team member approves it.
 
 #### Monitoring
 
@@ -731,22 +730,6 @@ file_dict %>%
   filter(!is.na(athena_table)) %>%
   arrange(athena_table) %>%
   rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
-  knitr::kable(format = "markdown")
-```
-
-#### Run Types
-
-The pipeline supports 2 types of runs (`run_type` in [`params.yaml`](params.yaml)): `full` and `limited`. The `full` run type will run the entire pipeline with all outputs. The `limited` run type will _only train the model and measure performance on the test set_. It will not measure performance on the assessment data or calculate SHAP values.
-
-We recommend using the `limited` run type for testing features and changes and finalizing with the `full` run type. The table below shoes breakdown of what is created for each type:
-
-```{r file_dict2, message=FALSE, results='asis', echo=FALSE}
-file_dict %>%
-  select(athena_table, starts_with("run_type_")) %>%
-  distinct(athena_table, .keep_all = TRUE) %>%
-  filter(!is.na(athena_table)) %>%
-  arrange(athena_table) %>%
-  setNames(c("Athena Table", "Limited Run", "Full Run")) %>%
   knitr::kable(format = "markdown")
 ```
 
