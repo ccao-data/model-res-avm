@@ -34,7 +34,7 @@ Table of Contents
   - [Output](#output)
   - [Getting Data](#getting-data)
   - [System Requirements](#system-requirements)
-  - [Managing R dependencies](#managing-r-dependencies)
+  - [Managing R Dependencies](#managing-r-dependencies)
     - [Profiles and Lockfiles](#profiles-and-lockfiles)
     - [Using Lockfiles for Local
       Development](#using-lockfiles-for-local-development)
@@ -350,7 +350,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-13.
+model as of 2023-12-20.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -403,12 +403,12 @@ model as of 2023-12-13.
 | Recent Renovation                                                       | Characteristic | logical     |                                                                              | Indicates whether or not a property was renovated within the last 3 years                                         |
 | Longitude                                                               | Location       | numeric     |                                                                              | X coordinate in degrees (global longitude)                                                                        |
 | Latitude                                                                | Location       | numeric     |                                                                              | Y coordinate in degrees (global latitude)                                                                         |
-| Municipality Name                                                       | Location       | character   |                                                                              |                                                                                                                   |
 | FEMA Special Flood Hazard Area                                          | Location       | logical     |                                                                              | FEMA Special Flood Hazard Area, derived from spatial intersection with FEMA floodplain maps                       |
 | First Street Factor                                                     | Location       | numeric     |                                                                              | First Street flood factor The flood factor is a risk score, where 10 is the highest risk and 1 is the lowest risk |
 | First Street Risk Direction                                             | Location       | numeric     |                                                                              | First Street risk direction                                                                                       |
 | School Elementary District GEOID                                        | Location       | character   |                                                                              | School district (elementary) GEOID                                                                                |
 | School Secondary District GEOID                                         | Location       | character   |                                                                              | School district (secondary) GEOID                                                                                 |
+| Municipality Name                                                       | Location       | character   |                                                                              | Taxing district name, as seen on Cook County tax bills                                                            |
 | CMAP Walkability Score (No Transit)                                     | Location       | numeric     |                                                                              | CMAP walkability score for a given PIN, excluding transit walkability                                             |
 | CMAP Walkability Total Score                                            | Location       | numeric     |                                                                              | CMAP walkability score for a given PIN, including transit walkability                                             |
 | Airport Noise DNL                                                       | Location       | numeric     |                                                                              | O’Hare and Midway noise, measured as DNL                                                                          |
@@ -1313,7 +1313,7 @@ sped up using the parallel processing built-in to LightGBM. Note that:
   or wait for the [upcoming CUDA
   release](https://github.com/microsoft/LightGBM/issues/5153).
 
-## Managing R dependencies
+## Managing R Dependencies
 
 We use [renv](https://rstudio.github.io/renv/index.html) to manage R
 dependencies. The main model dependencies are listed explicitly in the

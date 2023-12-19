@@ -21,7 +21,7 @@ Each `.qmd` file (even a module) can be rendered independently. Simply click the
 
 To add new content to a module of a main document, simply edit the relevant module. Your changes will be interpolated directly into the main document when it renders.
 
-Be sure to load any new data you used in the module in `_setup.qmd`, and add any new libraries you used to the main `DESCRIPTION` file (see [Managing R dependencies](https://github.com/ccao-data/model-res-avm?tab=readme-ov-file#managing-r-dependencies) in the main README).
+Be sure to load any new data you used in the module in `_setup.qmd`, and add any new libraries you used to the main `DESCRIPTION` file (see [Managing R Dependencies](https://github.com/ccao-data/model-res-avm?tab=readme-ov-file#managing-r-dependencies) in the main README).
 
 ### Adding a New Module
 
