@@ -53,9 +53,6 @@ params <- read_yaml("params.yaml")
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
 
-# Set the overall model seed
-set.seed(params$model$seed)
-
 # Override CV toggle, SHAP toggle, and S3 upload set in params.yaml.
 # Used to disable certain features for CI or limited runs
 cv_enable <- as.logical(
