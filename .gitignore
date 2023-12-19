@@ -23,5 +23,3 @@ cache/
 *.xlsm
 *.html
 *.rmarkdown
-
-/.quarto/
