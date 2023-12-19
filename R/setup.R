@@ -25,6 +25,7 @@ conflicts_prefer(
   dplyr::lag,
   dplyr::pull,
   dplyr::slice,
+  glue::glue,
   lubridate::duration,
   purrr::flatten,
   purrr::is_empty,
@@ -51,9 +52,6 @@ params <- read_yaml("params.yaml")
 # Lightgbm docs recommend using only real cores, not logical
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
-
-# Set the overall model seed
-set.seed(params$model$seed)
 
 # Override CV toggle, SHAP toggle, and S3 upload set in params.yaml.
 # Used to disable certain features for CI or limited runs

@@ -9,12 +9,14 @@ stages:
     - input
     outs:
     - input/assessment_data.parquet
+    - input/char_data.parquet
     - input/complex_id_data.parquet
+    - input/hie_data.parquet
     - input/land_nbhd_rate_data.parquet
     - input/land_site_rate_data.parquet
     - input/training_data.parquet
-
     frozen: true
+
   train:
     cmd: Rscript pipeline/01-train.R
     desc: >
