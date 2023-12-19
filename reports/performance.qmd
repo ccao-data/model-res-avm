@@ -12,9 +12,8 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: 2023-03-14-clever-damani
+  run_id: 2023-12-19-recursing-jacob
   year: '2023'
-  dvc_bucket: 's3://ccao-data-dvc-us-east-1'
 ---
 
 ```{r setup}
@@ -90,9 +89,11 @@ assessment_card <- read_parquet(paths$output$assessment_card$local)
 assessment_pin <- read_parquet(paths$output$assessment_pin$local)
 
 # Load SHAP and feature importance data
-shap_exists <- file.exists(paths$output$shap$local)
-if (shap_exists) {
+if (file.exists(paths$output$shap$local)) {
   shap_df <- read_parquet(paths$output$shap$local)
+  shap_exists <- nrow(shap_df) > 0
+} else {
+  shap_exists <- FALSE
 }
 feat_imp_df <- read_parquet(paths$output$feature_importance$local)
 ```
