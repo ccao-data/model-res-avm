@@ -113,7 +113,7 @@ sales <- arrow::read_parquet(paths$input$training$local)
 
 # All residential parcel characteristics from time frame, with a sale indicator
 res_chars <- read_parquet(paths$input$char$local) %>%
-  filter(!meta_class %in% c('211', '212'))
+  filter(!meta_class %in% c("211", "212"))
 
 sf_parcels <- res_chars %>%
   # Join on sales indicator for most recent sale in the last two years -
@@ -376,7 +376,7 @@ chars_data <- read_parquet(paths$input$char$local) %>%
   filter(
     meta_year == as.numeric(params$year) - 1,
     meta_pin %in% hie_pins
-    )
+  )
 
 chars_data %>%
   inner_join(hie_data %>% select(-year), by = join_by(meta_pin == pin)) %>%
@@ -930,17 +930,17 @@ All covariates regressed on sale status - significance indicates a non-random ef
 #     invert = TRUE,
 #     value = TRUE
 #   )
-# 
+#
 # fmla <- as.formula(paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+")))
-# 
+#
 # logit <- glm(fmla,
 #   data = logit_parcels %>%
 #     rename_with(~ gsub(" |-", "_", .x)),
 #   family = "binomial"
 # )
-# 
+#
 # sample_size <- logit$df.null
-# 
+#
 # county_logit <- logit %>%
 #   broom::tidy() %>%
 #   mutate(
@@ -982,17 +982,17 @@ All covariates regressed on sale status - significance indicates a non-random ef
 #   pack_rows("Central Air Conditioning", 67, 68) %>%
 #   pack_rows("Design Plan", 69, 70) %>%
 #   pack_rows("Recent Renovation", 71, 71)
-# 
+#
 # logits <- logit_parcels %>%
 #   split(.$`Meta Township Name`) %>%
 #   sapply(function(x) {
 #     if (nrow(x) < 1000) {
 #       trim_vars <- grep("Renovation", vars, value = TRUE, invert = TRUE)
-# 
+#
 #       fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(
 #         " |-", "_", trim_vars
 #       ), collapse = "+")))
-# 
+#
 #       glm(fmla,
 #         data = x %>%
 #           rename_with(~ gsub(" |-", "_", .x)),
@@ -1021,7 +1021,7 @@ All covariates regressed on sale status - significance indicates a non-random ef
 #         )
 #     } else {
 #       fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+")))
-# 
+#
 #       glm(fmla,
 #         data = x %>%
 #           rename_with(~ gsub(" |-", "_", .x)),
@@ -1443,7 +1443,7 @@ We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 #   test = FALSE,
 #   includeNA = TRUE
 # )
-# 
+#
 # print(smd_table, smd = TRUE)
 ```
 
@@ -1473,7 +1473,7 @@ For the empirical cumulative distributions, we are looking for overlap/similar d
 #         legend.position = "none"
 #       )
 #   })
-# 
+#
 # for (i in seq(1, length(grobs), by = 6)) {
 #   if (i == 13) {
 #     grid.arrange(
