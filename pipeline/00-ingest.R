@@ -72,13 +72,13 @@ hie_data <- dbGetQuery(
 )
 tictoc::toc()
 
-# Save HIE data for use in performance review
+# Save HIE data for use in report generation
 hie_data %>%
   write_parquet(paths$input$hie$local)
 
 # Pull all residential PIN input data for the assessment and prior year. We will
-# only use the assessmebt year to run the model, but the prior year can be used
-# for evaluating performance
+# only use the assessment year to run the model, but the prior year can be used
+# for report generation
 tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
@@ -90,9 +90,11 @@ assessment_data <- dbGetQuery(
 )
 tictoc::toc()
 
+# Save both years for report generation using the characteristics
 assessment_data %>%
   write_parquet(paths$input$char$local)
 
+# Save only the assessment year data to use for assessing values
 assessment_data <- assessment_data %>%
   filter(year == params$assessment$year)
 
