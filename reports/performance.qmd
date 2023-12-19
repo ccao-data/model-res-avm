@@ -12,44 +12,25 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: 2023-12-19-recursing-jacob
+  run_id: '2023-12-19-vigilant-jacob'
   year: '2023'
 ---
 
 ```{r setup}
-options(knitr.kable.NA = "", scipen = 99, width = 150)
+# Load list of helper files and main libraries
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
-# Load necessary libraries
-library(arrow)
-library(ccao)
-library(brio)
-library(DBI)
-library(decor)
-library(desc)
-library(dplyr)
-library(DT)
-library(ggplot2)
-library(glue)
-library(grid)
-library(gridExtra)
-library(gtools)
-library(here)
-library(htmltools)
-library(kableExtra)
-library(leaflet)
-library(plotly)
-library(purrr)
-library(recipes)
-library(scales)
-library(sf)
-library(skimr)
-library(stringr)
-library(tableone)
-library(tidyr)
-library(tools)
-source(here("R", "helpers.R"))
+# Load reporting-only libraries
+suppressPackageStartupMessages({
+  reporting_libs <- "Config/renv/profiles/reporting/dependencies"
+  purrr::walk(
+    strsplit(yaml::read_yaml(here::here("DESCRIPTION"))[[reporting_libs]], ", ")[[1]],
+    library,
+    character.only = TRUE
+  )
+})
 
-# TODO: Catch for weird arrow bug with SIGPIPE. Need to permanently fix later
+# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
 # https://github.com/apache/arrow/issues/32026
 cpp11::cpp_source(code = "
 #include <csignal>
@@ -63,7 +44,7 @@ cpp11::cpp_source(code = "
 ignore_sigpipes()
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict(params$run_id, params$year)
+paths <- model_file_dict(model_params$run_id, model_params$year)
 
 # Grab metadata to check input alignment
 metadata <- read_parquet(paths$output$metadata$local)
@@ -97,7 +78,6 @@ if (file.exists(paths$output$shap$local)) {
 }
 feat_imp_df <- read_parquet(paths$output$feature_importance$local)
 ```
-
 
 ```{r}
 # This script runs balance tests comparing the universe of residential parcels

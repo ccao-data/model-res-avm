@@ -3,15 +3,14 @@ options(
   tidymodels.dark = TRUE, # Tidymodels CV output compatible with dark theme
   dplyr.summarise.inform = FALSE, # Disable messages when aggregating
   scipen = 99, # Disable scientific notation
-  knitr.kable.NA = "", # Replace NA with empty string in knitr::kable
-  java.parameters = "-Xmx10g" # Pre-allocate memory for Java JDBC driver
+  knitr.kable.NA = "" # Replace NA with empty string in knitr::kable
 )
 
 # Load R pipeline dependencies from the Depends: key in the DESCRIPTION file.
 # Any new pipeline dependencies should be added there
 suppressPackageStartupMessages({
   purrr::walk(
-    strsplit(yaml::read_yaml("DESCRIPTION")$Depends, ", ")[[1]],
+    strsplit(yaml::read_yaml(here::here("DESCRIPTION"))$Depends, ", ")[[1]],
     library,
     character.only = TRUE
   )
@@ -45,8 +44,15 @@ source(here::here("R", "helpers.R"))
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict()
 
-# Load the parameters file containing the run settings
-params <- read_yaml("params.yaml")
+# Load the parameters file containing the run settings. The conditional here
+# detects rendering in a Quarto/RMarkdown document and assigns to `model_params`
+# instead, since `params` is a reserved variable name in Quarto
+if (knitr::is_html_output() || knitr::is_latex_output()) {
+  params_obj_name <- "model_params"
+} else {
+  params_obj_name <- "params"
+}
+assign(params_obj_name, read_yaml(here("params.yaml")))
 
 # Get the number of available physical cores to use for multi-threading
 # Lightgbm docs recommend using only real cores, not logical
@@ -55,12 +61,15 @@ num_threads <- parallel::detectCores(logical = FALSE)
 
 # Override CV toggle, SHAP toggle, and S3 upload set in params.yaml.
 # Used to disable certain features for CI or limited runs
-cv_enable <- as.logical(
-  Sys.getenv("CV_ENABLE_OVERRIDE", unset = params$toggle$cv_enable)
-)
-shap_enable <- as.logical(
-  Sys.getenv("SHAP_ENABLE_OVERRIDE", unset = params$toggle$shap_enable)
-)
-upload_enable <- as.logical(
-  Sys.getenv("UPLOAD_ENABLE_OVERRIDE", unset = params$toggle$upload_enable)
-)
+cv_enable <- as.logical(Sys.getenv(
+  "CV_ENABLE_OVERRIDE",
+  unset = get(params_obj_name)$toggle$cv_enable
+))
+shap_enable <- as.logical(Sys.getenv(
+  "SHAP_ENABLE_OVERRIDE",
+  unset = get(params_obj_name)$toggle$shap_enable
+))
+upload_enable <- as.logical(Sys.getenv(
+  "UPLOAD_ENABLE_OVERRIDE",
+  unset = get(params_obj_name)$toggle$upload_enable
+))
