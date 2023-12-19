@@ -10,7 +10,7 @@
 
 *NOTE: Outliers are removed*
 
-```{r town_year}
+```{r _sales_town_year}
 township <- training_data %>%
   filter(!sv_is_outlier, meta_triad_name == run_triad) %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
@@ -40,7 +40,7 @@ Sales by bin by by quarter for the previous 4 years. The goal is to see how diff
 
 *NOTE: Outliers are removed*
 
-```{r town_bin1, fig.height=8, fig.width=7, out.width="100%"}
+```{r _sales_town_bin1, fig.height=8, fig.width=7, out.width="100%"}
 training_data %>%
   filter(
     !sv_is_outlier,
@@ -88,7 +88,7 @@ training_data %>%
 
 *NOTE: Outliers are removed*
 
-```{r class_year}
+```{r _sales_class_year}
 class <- training_data %>%
   filter(
     !sv_is_outlier,
@@ -170,9 +170,9 @@ rbind(
 
 ## Median Sale Price
 
-```{r Price, eval=FALSE}
+```{r _sales_median_price}
 ggplot(
-  sales %>%
+  training_data %>%
     group_by(meta_year, sv_is_outlier) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     ungroup(),
@@ -192,7 +192,7 @@ ggplot(
 year_minus_4 <- as.numeric(params$year) - 4
 
 temp <- ggplot(
-  sales %>%
+  training_data %>%
     filter(sv_is_outlier == FALSE &
       meta_year >= year_minus_4) %>%
     group_by(meta_year, meta_township_name, meta_triad_name) %>%
@@ -223,8 +223,8 @@ temp <- ggplot(
 ggplotly(temp)
 ```
 
-```{r, eval=FALSE}
-temp <- sales %>%
+```{r}
+temp <- training_data %>%
   filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
   group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
@@ -262,9 +262,9 @@ temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
 
 ## Number of Sales
 
-```{r Volume1, eval=FALSE}
+```{r _sales_volume1}
 ggplot(
-  sales,
+  training_data,
   aes(x = meta_year, group = sv_is_outlier)
 ) +
   geom_bar(aes(fill = sv_is_outlier)) +
@@ -285,7 +285,7 @@ ggplot(
   )
 
 ggplot(
-  sales,
+  training_data,
   aes(x = time_sale_month_of_year, group = sv_is_outlier)
 ) +
   geom_bar(aes(fill = sv_is_outlier)) +
