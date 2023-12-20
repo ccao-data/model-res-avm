@@ -22,7 +22,6 @@ cache/
 *.xlsx
 *.xlsm
 *.html
-
 *.rmarkdown
 
 # Python files

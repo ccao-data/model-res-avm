@@ -115,8 +115,10 @@ extract_num_iterations <- function(x) {
 }
 
 
-# Extract weights for model features based on feature importance. Useful for
-# computing comps via leaf node assignments
+# Extract weights for model features based on feature importance. Assumes that
+# the model was trained with the `valids` parameter set such that error metrics
+# are saved for each tree on the model$record_evals attribute. The output
+# weights are useful for computing comps using leaf node assignments
 extract_weights <- function(model, train, outcome_col, metric = "rmse") {
   train_lgb <- lgb.Dataset(as.matrix(train), label = train[[outcome_col]])
 

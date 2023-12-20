@@ -12,8 +12,6 @@ tictoc::tic("Interpret")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-comp_enable = TRUE
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -130,8 +128,8 @@ if (comp_enable) {
         type = "leaf",
         # Make sure to predict with all trees, even if the last tree isn't
         # the best iteration; otherwise, the default predict() behavior for
-        # lightgbm is to stop after the best iteration, which will interact
-        # poorly with the weights we compute later on
+        # lightgbm is to stop after the best iteration, which will cause the
+        # output not to match the weights we compute for each tree later on
         num_iteration = lgbm_final_full_fit$spec$args$trees %>% eval_tidy(),
       )
     )
