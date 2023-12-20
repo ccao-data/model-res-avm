@@ -28,8 +28,7 @@ if (shap_enable || comp_enable) {
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
-  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local)) %>%
-    head(1000)
+  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
@@ -128,7 +127,12 @@ if (comp_enable) {
       predict(
         object = lgbm_final_full_fit$fit,
         newdata = as.matrix(chunk),
-        type = "leaf"
+        type = "leaf",
+        # Make sure to predict with all trees, even if the last tree isn't
+        # the best iteration; otherwise, the default predict() behavior for
+        # lightgbm is to stop after the best iteration, which will interact
+        # poorly with the weights we compute later on
+        num_iteration = lgbm_final_full_fit$spec$args$trees %>% eval_tidy(),
       )
     )
   # Prefer do.call(rbind, ...) over bind_rows() because the chunks are
@@ -140,9 +144,7 @@ if (comp_enable) {
   # leaf node assignments based on the most important features.
   # To do this, we need the training data so that we can compute base model
   # error
-  training_data <- read_parquet(paths$input$training$local) %>%
-    as_tibble() %>%
-    head(1000)
+  training_data <- read_parquet(paths$input$training$local) %>% as_tibble()
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
@@ -150,17 +152,18 @@ if (comp_enable) {
     outcome_col = "meta_sale_price",
   )
 
-  # Calculate comps for each card. We do this in Python because the code is
-  # simpler and faster
+  # Do the comps calculation in Python because the code is simpler and faster
   comps_module <- import("python.comps")
-  comps <- comps_module$get_comps(leaf_nodes, tree_weights, n=5)
+  comps <- comps_module$get_comps(leaf_nodes, tree_weights, n = as.integer(n))
+  # Correct for the fact that Python is 0-indexed
+  comps <- comps + 1
 
-  # Translate comps to PINs before writing them out to S3
+  # Translate comps to PINs before writing them out to a file
   comps %>%
-    mutate_all(\(idx_row) assessment_data_prepped$pin[idx_row]) %>%
-    cbind(assessment_data_prepped$pin) %>%
-    rename_with(\(colname) gsub("V", "comp_", colname)) %>%
+    mutate_all(\(idx_row) assessment_data$meta_pin[idx_row]) %>%
+    cbind(pin = assessment_data$meta_pin) %>%
     relocate(pin) %>%
+    rename_with(\(colname) gsub("comp_", "comp_pin_", colname)) %>%
     write_parquet(paths$output$comp$local)
 } else {
   # If comp creation is disabled, we still need to write an empty stub file

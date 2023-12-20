@@ -12,7 +12,12 @@ def get_comps(leaf_node_df, weights, n=5):
     # Convert the input dataframe to a matrix so that we can take advantage
     # of numba acceleration
     leaf_node_matrix = leaf_node_df.values
-    top_n_comps = _get_comps(leaf_node_matrix, weights, n)
+    weights_arr = np.asarray(weights, dtype=np.float64)
+    comps = _get_similarity_matrix(leaf_node_matrix, weights_arr)
+    # Extract the top n matches from each row of the comp matrix
+    # by sorting the columns for each row, selecting the last n indices, and
+    # reversing the order
+    top_n_comps = np.argsort(comps)[:, -n:][:, ::-1]
     # Turn the comps back into a pandas dataframe to match the input
     return pd.DataFrame(
         top_n_comps,
@@ -20,25 +25,29 @@ def get_comps(leaf_node_df, weights, n=5):
     )
 
 
-@nb.njit(parallel=True, fastmath=True)
-def _get_comps(leaf_node_matrix, weights, n=5):
+@nb.njit(fastmath=True)
+def _get_similarity_matrix(leaf_node_matrix, weights):
+    """Helper function that takes a matrix of leaf node assignments for each
+    observation in a tree model and an array of weights for each tree, and
+    returns a matrix scoring the similarity every observation to every other
+    observation."""
     num_observations = len(leaf_node_matrix)
-    comp_matrix = np.zeros(
+    similarity_matrix = np.zeros(
         (num_observations, num_observations),
         dtype=np.float64
     )
     for x_i in range(num_observations):
         for y_i in range(num_observations):
             if x_i == y_i:
-                # Properties should never be comps of themselves, so zero out
-                # the comparison
-                comp_matrix[x_i][y_i] = 0
+                # Observations should never be similar to themselves, so zero
+                # out the comparison
+                similarity_matrix[x_i][y_i] = 0
             else:
-                comp_matrix[x_i][y_i] = np.sum(
-                    (leaf_node_matrix[x_i] == leaf_node_matrix[y_i]) * weights
+                leaf_node_match_arr = (
+                  leaf_node_matrix[x_i] == leaf_node_matrix[y_i]
+                ).astype(np.int64)
+                similarity_matrix[x_i][y_i] = np.sum(
+                    leaf_node_match_arr * weights
                 )
 
-    # Extract the top num_comps matches from each row of the comp matrix
-    # by sorting the columns for each row, selecting the last N indices, and
-    # reversing the order
-    return np.argsort(comp_matrix, axis=1)[:, -n:][:, ::-1]
+    return similarity_matrix
