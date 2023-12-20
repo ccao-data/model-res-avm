@@ -2,7 +2,7 @@
 
 # Statistical tests
 
-```{r gather_data}
+```{r _stats_gather_data}
 # This script runs balance tests comparing the universe of residential parcels
 # to the sample of residential parcels with sales in the previous 8 years
 # that are used to train the data department's CAMA.
@@ -93,7 +93,7 @@ vars <- names(sf_parcels) %>%
 
 All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
 
-```{r logit}
+```{r _stats_logit}
 remove <-
   names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>%
     select(where(is.factor))) %>%
@@ -469,7 +469,7 @@ $$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard d
 
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
-```{r SMDs}
+```{r _stats_SMDs}
 smd_table <- CreateTableOne(
   vars = vars %>% grep("Median", ., invert = TRUE, value = TRUE),
   strata = "Sale",
@@ -488,7 +488,7 @@ For the empirical cumulative distributions, we are looking for overlap/similar d
 ::: panel-tabset
 ## Numeric columns:
 
-```{r ECDFs1}
+```{r _stats_ecdfs1}
 grobs <-
   lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
     data <- sf_parcels %>% select(Sale, any_of(x))
@@ -537,7 +537,7 @@ for (i in seq(1, length(grobs), by = 6)) {
 
 ## Factor columns:
 
-```{r ECDFs2}
+```{r _stats_ecdfs2}
 grobs <-
   lapply(names(sf_parcels %>% select(where(is.factor) &
     any_of(vars))), function(x) {
