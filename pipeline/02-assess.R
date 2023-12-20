@@ -357,12 +357,12 @@ sales_data_ratio_study <- sales_data %>%
 # Keep the two most recent sales for each PIN from any year. These are just for
 # review, not for ratio studies
 sales_data_two_most_recent <- sales_data %>%
-  group_by(meta_pin) %>%
-  slice_max(meta_sale_date, n = 2) %>%
   distinct(
     meta_pin, meta_year,
     meta_sale_price, meta_sale_date, meta_sale_document_num
   ) %>%
+  group_by(meta_pin) %>%
+  slice_max(meta_sale_date, n = 2) %>%
   mutate(mr = paste0("sale_recent_", row_number())) %>%
   tidyr::pivot_wider(
     id_cols = meta_pin,
@@ -412,8 +412,9 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
     # Keep locations, prior year values, and indicators
     loc_longitude, loc_latitude,
     starts_with(c(
-      "loc_property_", "loc_cook_", "loc_chicago_", "loc_ward_",
-      "loc_census", "loc_school_", "prior_", "ind_"
+      "loc_property_", "loc_chicago_", "loc_ward_",
+      "loc_census", "loc_school_", "loc_tax_",
+      "prior_", "ind_"
     )),
 
     # Keep HIE flag
@@ -428,7 +429,7 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
     pred_pin_final_fmv_round, township_code
   ) %>%
   # Make a flag for any vital missing characteristics
-  bind_cols(
+  left_join(
     assessment_card_data_merged %>%
       select(
         meta_year, meta_pin,
@@ -441,8 +442,8 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
         ind_char_missing_critical_value =
           sum(ind_char_missing_critical_value) > 0
       ) %>%
-      ungroup() %>%
-      select(ind_char_missing_critical_value)
+      ungroup(),
+    by = c("meta_year", "meta_pin")
   )
 
 
@@ -528,7 +529,11 @@ assessment_pin_data_final %>%
     type = "short",
     as_factor = FALSE
   ) %>%
-  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
+  # Coerce columns to their expected Athena output type
+  mutate(
+    land_rate_per_pin = as.numeric(land_rate_per_pin),
+    meta_complex_id = as.numeric(meta_complex_id)
+  ) %>%
   # Reorder columns into groups by prefix
   select(
     starts_with(c("meta_", "loc_")), char_yrblt, char_total_bldg_sf,

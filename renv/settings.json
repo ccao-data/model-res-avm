@@ -1,9 +1,7 @@
 {
   "bioconductor.version": null,
   "external.libraries": [],
-  "ignored.packages": [
-    "quarto"
-  ],
+  "ignored.packages": [],
   "package.dependency.fields": [
     "Imports",
     "Depends",

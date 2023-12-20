@@ -690,12 +690,11 @@ If you have write permissions for this repository (i.e. you are a member of the 
 
 #### Initialization
 
-Model runs are initiated by the [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml) workflow when one of the following events is triggered:
+Model runs are initiated by the [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml) workflow via [manual dispatch](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow).
 
-* A pull request is opened, or a commit is pushed to an open pull request
-* The workflow is [manually dispatched](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow)
+To run a model, use the **Run workflow** button on right side of the `build-and-run-model` [Actions page](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml).
 
-In both cases, runs are gated behind a [deploy environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment) that requires approval from a `@ccao-data/core-team` member before the model will run. The `build` job to rebuild a Docker image for the model will always run, but the subsequent `run` job will not run unless a core-team member approves it.
+Runs are gated behind a [deploy environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment) that requires approval from a `@ccao-data/core-team` member before the model will run. The `build` job to rebuild a Docker image for the model will always run, but the subsequent `run` job will not run unless a core-team member approves it.
 
 #### Monitoring
 
@@ -719,7 +718,7 @@ The full model pipeline produces a large number of outputs. A full list of these
 
 #### Athena Tables
 
-```{r file_dict, message=FALSE, results='asis', echo=FALSE}
+```{r file_dict, message=FALSE, results='asis', echo=FALSE, warning=FALSE}
 library(dplyr)
 library(here)
 library(readr)
@@ -731,22 +730,6 @@ file_dict %>%
   filter(!is.na(athena_table)) %>%
   arrange(athena_table) %>%
   rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
-  knitr::kable(format = "markdown")
-```
-
-#### Run Types
-
-The pipeline supports 2 types of runs (`run_type` in [`params.yaml`](params.yaml)): `full` and `limited`. The `full` run type will run the entire pipeline with all outputs. The `limited` run type will _only train the model and measure performance on the test set_. It will not measure performance on the assessment data or calculate SHAP values.
-
-We recommend using the `limited` run type for testing features and changes and finalizing with the `full` run type. The table below shoes breakdown of what is created for each type:
-
-```{r file_dict2, message=FALSE, results='asis', echo=FALSE}
-file_dict %>%
-  select(athena_table, starts_with("run_type_")) %>%
-  distinct(athena_table, .keep_all = TRUE) %>%
-  filter(!is.na(athena_table)) %>%
-  arrange(athena_table) %>%
-  setNames(c("Athena Table", "Limited Run", "Full Run")) %>%
   knitr::kable(format = "markdown")
 ```
 
@@ -791,7 +774,7 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 * The number of threads is set via the [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads) parameter, which is passed to the model using the `set_args()` function from `parsnip`. By default, `num_threads` is equal to the full number of physical cores available. More (or faster) cores will decrease total training time.
 * This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build) or wait for the [upcoming CUDA release](https://github.com/microsoft/LightGBM/issues/5153).
 
-## Managing R dependencies
+## Managing R Dependencies
 
 We use [renv](https://rstudio.github.io/renv/index.html) to manage R dependencies. The main model dependencies are listed explicitly in the `DESCRIPTION` file under the `Depends:` key. These dependencies are installed automatically when you run `renv::restore()`.
 

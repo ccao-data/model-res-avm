@@ -1,5 +1,8 @@
 ---
-title: "Model performance for `r params$run_id`"
+title: "`r params$year` Model Performance and Diagnostics"
+subtitle: "Run ID: `r params$run_id`"
+date: "`r Sys.Date()`"
+author: "Cook County Assessor's Office Data Department"
 execute:
   echo: false
   warning: false
@@ -12,16 +15,20 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: 2023-03-14-clever-damani
-  year: '2023'
+  run_id: "2023-12-19-recursing-jacob"
+  year: "2023"
 ---
 
-This document is a stub.
+{{< include _setup.qmd >}}
 
-```{r setup}
-library(plotly)
-library(leaflet)
-library(sf)
+{{< include _model.qmd >}}
 
-print("All packages loaded!")
-```
+{{< include _sales.qmd >}}
+
+{{< include _input.qmd >}}
+
+{{< include _outliers.qmd >}}
+
+{{< include _shap.qmd >}}
+
+{{< include _stats.qmd >}}

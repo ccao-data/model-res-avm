@@ -34,7 +34,7 @@ Table of Contents
   - [Output](#output)
   - [Getting Data](#getting-data)
   - [System Requirements](#system-requirements)
-  - [Managing R dependencies](#managing-r-dependencies)
+  - [Managing R Dependencies](#managing-r-dependencies)
     - [Profiles and Lockfiles](#profiles-and-lockfiles)
     - [Using Lockfiles for Local
       Development](#using-lockfiles-for-local-development)
@@ -350,7 +350,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-08.
+model as of 2023-12-20.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -403,12 +403,12 @@ model as of 2023-12-08.
 | Recent Renovation                                                       | Characteristic | logical     |                                                                              | Indicates whether or not a property was renovated within the last 3 years                                         |
 | Longitude                                                               | Location       | numeric     |                                                                              | X coordinate in degrees (global longitude)                                                                        |
 | Latitude                                                                | Location       | numeric     |                                                                              | Y coordinate in degrees (global latitude)                                                                         |
-| Municipality Name                                                       | Location       | character   |                                                                              |                                                                                                                   |
 | FEMA Special Flood Hazard Area                                          | Location       | logical     |                                                                              | FEMA Special Flood Hazard Area, derived from spatial intersection with FEMA floodplain maps                       |
 | First Street Factor                                                     | Location       | numeric     |                                                                              | First Street flood factor The flood factor is a risk score, where 10 is the highest risk and 1 is the lowest risk |
 | First Street Risk Direction                                             | Location       | numeric     |                                                                              | First Street risk direction                                                                                       |
 | School Elementary District GEOID                                        | Location       | character   |                                                                              | School district (elementary) GEOID                                                                                |
 | School Secondary District GEOID                                         | Location       | character   |                                                                              | School district (secondary) GEOID                                                                                 |
+| Municipality Name                                                       | Location       | character   |                                                                              | Taxing district name, as seen on Cook County tax bills                                                            |
 | CMAP Walkability Score (No Transit)                                     | Location       | numeric     |                                                                              | CMAP walkability score for a given PIN, excluding transit walkability                                             |
 | CMAP Walkability Total Score                                            | Location       | numeric     |                                                                              | CMAP walkability score for a given PIN, including transit walkability                                             |
 | Airport Noise DNL                                                       | Location       | numeric     |                                                                              | O’Hare and Midway noise, measured as DNL                                                                          |
@@ -1159,14 +1159,14 @@ Batch using GitHub Actions workflow runs.
 
 Model runs are initiated by the
 [`build-and-run-model`](./.github/workflows/build-and-run-model.yaml)
-workflow when one of the following events is triggered:
+workflow via [manual
+dispatch](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow).
 
-- A pull request is opened, or a commit is pushed to an open pull
-  request
-- The workflow is [manually
-  dispatched](https://docs.github.com/en/actions/using-workflows/manually-running-a-workflow)
+To run a model, use the **Run workflow** button on right side of the
+`build-and-run-model` [Actions
+page](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml).
 
-In both cases, runs are gated behind a [deploy
+Runs are gated behind a [deploy
 environment](https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)
 that requires approval from a `@ccao-data/core-team` member before the
 model will run. The `build` job to rebuild a Docker image for the model
@@ -1242,34 +1242,6 @@ Uploaded Parquet files are converted into the following Athena tables:
 | test_card            | card                               | year, meta_pin, meta_card_num                                                | Test set predictions at the card level                                                |
 | timing               | model run                          | year, run_id                                                                 | Finalized time elapsed for each stage of the run                                      |
 
-#### Run Types
-
-The pipeline supports 2 types of runs (`run_type` in
-[`params.yaml`](params.yaml)): `full` and `limited`. The `full` run type
-will run the entire pipeline with all outputs. The `limited` run type
-will *only train the model and measure performance on the test set*. It
-will not measure performance on the assessment data or calculate SHAP
-values.
-
-We recommend using the `limited` run type for testing features and
-changes and finalizing with the `full` run type. The table below shoes
-breakdown of what is created for each type:
-
-| Athena Table         | Limited Run | Full Run          |
-|:---------------------|:------------|:------------------|
-| assessment_card      | No          | Yes               |
-| assessment_pin       | No          | Yes               |
-| feature_importance   | No          | Yes               |
-| metadata             | Yes         | Yes               |
-| parameter_final      | Yes         | Yes               |
-| parameter_range      | No          | If CV enabled     |
-| parameter_search     | No          | If CV enabled     |
-| performance          | Test only   | Test + assessment |
-| performance_quantile | Test only   | Test + assessment |
-| shap                 | No          | Yes               |
-| test_card            | Yes         | Yes               |
-| timing               | Yes         | Yes               |
-
 ## Getting Data
 
 The [data required](#data-used) to run these scripts is produced by the
@@ -1341,7 +1313,7 @@ sped up using the parallel processing built-in to LightGBM. Note that:
   or wait for the [upcoming CUDA
   release](https://github.com/microsoft/LightGBM/issues/5153).
 
-## Managing R dependencies
+## Managing R Dependencies
 
 We use [renv](https://rstudio.github.io/renv/index.html) to manage R
 dependencies. The main model dependencies are listed explicitly in the

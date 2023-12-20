@@ -15,12 +15,6 @@ run_note: |
   Test run for updated 2024 model pipeline. Uses 2022 data to assess 2023
   since full 2023 data isn't available yet
 
-# Determines what stages and outputs are produced. See misc/file_dict.csv for
-# details. Note, DVC does not support "conditional" stages, so changing this to
-# anything other than "full" will require you to run each stage manually. See
-# README for details
-run_type: "full"
-
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
@@ -33,28 +27,32 @@ toggle:
   # Should comps be calculated for this run in the interpret stage?
   comp_enable: FALSE
 
-  # Upload all modeling artifacts and results to S3 in the finalize stage. Set
+  # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
-  upload_to_s3: TRUE
+  upload_enable: TRUE
 
 
 # Data/Ingest ------------------------------------------------------------------
 
 # Assessment context and dates
 assessment:
-  # Year of assessment. Used to partition results and pull data
+  # Year of assessment. Used to pull land rates, HIEs, and other information
   year: "2023"
 
   # The statutorily set "sale date" for the purpose of prediction
   date: "2023-01-01"
 
-  # Added context for model artifacts stored in s3. Does not change behavior
+  # Added context for model artifacts stored in S3. Does not change behavior
   triad: "south"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
   data_year: "2022"
+
+  # Year used to partition data on S3. Working year in this case means the year
+  # the Data Department is currently creating models for
+  working_year: "2024"
 
 # Parameters used to define the input/training data
 input:
@@ -178,7 +176,7 @@ model:
       "loc_school_secondary_district_geoid",
       "loc_access_cmap_walk_nta_score",
       "loc_access_cmap_walk_total_score",
-      "loc_cook_municipality_name",
+      "loc_tax_municipality_name",
       "prox_num_pin_in_half_mile",
       "prox_num_bus_stop_in_half_mile",
       "prox_num_foreclosure_per_1000_pin_past_5_years",
@@ -255,7 +253,7 @@ model:
       "char_tp_dsgn",
       "char_tp_plan",
       "char_type_resd",
-      "loc_cook_municipality_name",
+      "loc_tax_municipality_name",
       "loc_school_elementary_district_geoid",
       "loc_school_secondary_district_geoid",
       "time_sale_quarter_of_year"
@@ -364,9 +362,27 @@ ratio_study:
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
+  # Min. number of sales to calculate ratio statistics, per CCAO SOPs. Groups
+  # must have greater than or equal to the number of sales specified
+  min_n_sales: 30
+
   # Quantile breakouts to use in the evaluate stage. For example, 3 will split
   # each geography in evaluate into terciles
   num_quantile: [3, 5, 10]
+
+  # Geographies for which to calculate performance statistics in the evaluate
+  # stage. Each geography is also broken out by class
+  geographies: [
+    "meta_township_code",
+    "meta_nbhd_code",
+    "loc_tax_municipality_name",
+    "loc_ward_num",
+    "loc_census_puma_geoid",
+    "loc_census_tract_geoid",
+    "loc_school_elementary_district_geoid",
+    "loc_school_secondary_district_geoid",
+    "loc_school_unified_district_geoid"
+  ]
 
 
 # Export -----------------------------------------------------------------------

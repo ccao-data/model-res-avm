@@ -51,8 +51,8 @@ if (shap_enable) {
   # assessment data. Uses lightgbm's built-in method (predcontrib = TRUE)
   shap_values <- predict(
     object = lgbm_final_full_fit$fit,
-    data = as.matrix(assessment_data_prepped),
-    predcontrib = TRUE
+    newdata = as.matrix(assessment_data_prepped),
+    type = "contrib"
   )
 
   # Convert the SHAP value output from a matrix to a tibble and add column names

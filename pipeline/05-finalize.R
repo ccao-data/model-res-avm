@@ -32,13 +32,11 @@ run_end_timestamp <- lubridate::now()
 # Get the commit of the current reference
 git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
-# For full runs, use the run note included in params.yaml, otherwise use the
-# commit message
-if (run_type == "full") {
-  run_note <- params$run_note
-} else {
-  run_note <- gsub("\n", "", git_commit$message)
-}
+# If in a CI context, use the run note passed to the workflow. Otherwise, use
+# the note included in params.yaml
+run_note <- as.character(
+  Sys.getenv("WORKFLOW_RUN_NOTE", unset = params$run_note)
+)
 
 
 ## 2.2. DVC Hashes -------------------------------------------------------------
@@ -58,7 +56,6 @@ dvc_md5_df <- bind_rows(read_yaml("dvc.lock")$stages$ingest$outs) %>%
 metadata <- tibble::tibble(
   run_id = run_id,
   run_end_timestamp = run_end_timestamp,
-  run_type = run_type,
   run_note = run_note,
   git_sha_short = substr(git_commit$sha, 1, 8),
   git_sha_long = git_commit$sha,
@@ -127,8 +124,10 @@ metadata <- tibble::tibble(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Generate performance report -----------------------------------------------
+# 3. Generate reports ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+## 3.1. Performance Report -----------------------------------------------------
 
 # Wrap this block in an error handler so that the pipeline continues execution
 # even if report generation fails. This is important because the report file is
@@ -179,19 +178,11 @@ bind_rows(tictoc::tic.log(format = FALSE)) %>%
     "model_timing_finalize.parquet"
   )))
 
-# Filter ensure we only get timing files for stages that actually ran
-if (run_type == "full") {
-  timings <- list.files(
-    paste0(paths$intermediate$timing, "/"),
-    full.names = TRUE
-  )
-} else {
-  timings <- list.files(
-    paste0(paths$intermediate$timing, "/"),
-    pattern = "train|evaluate|finalize",
-    full.names = TRUE
-  )
-}
+# Load the intermediate timing logs
+timings <- list.files(
+  paste0(paths$intermediate$timing, "/"),
+  full.names = TRUE
+)
 
 # Convert the intermediate timing logs to a wide data frame, then save to file
 timings_df <- purrr::map_dfr(timings, read_parquet) %>%

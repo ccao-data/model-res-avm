@@ -47,19 +47,6 @@
       ],
       "Hash": "470851b6d5d0ac559e9d01bb352b4021"
     },
-    "RJDBC": {
-      "Package": "RJDBC",
-      "Version": "0.2-10",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "DBI",
-        "R",
-        "methods",
-        "rJava"
-      ],
-      "Hash": "13c8497cff6152328799ffcaf141ae2b"
-    },
     "Rcpp": {
       "Package": "Rcpp",
       "Version": "1.0.11",
@@ -445,6 +432,23 @@
       ],
       "Hash": "18e9c28c1d3ca1560ce30658b22ce104"
     },
+    "noctua": {
+      "Package": "noctua",
+      "Version": "2.6.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "DBI",
+        "R",
+        "data.table",
+        "methods",
+        "paws",
+        "stats",
+        "utils",
+        "uuid"
+      ],
+      "Hash": "c03d73125d695e80b35b4bb3eacf0358"
+    },
     "openxlsx": {
       "Package": "openxlsx",
       "Version": "4.2.5.2",
@@ -511,17 +515,6 @@
         "prettyunits"
       ],
       "Hash": "14dc9f7a3c91ebb14ec5bb9208a07061"
-    },
-    "rJava": {
-      "Package": "rJava",
-      "Version": "1.0-10",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "methods"
-      ],
-      "Hash": "151b95627c232d3822bb6d876286a99c"
     },
     "rappdirs": {
       "Package": "rappdirs",

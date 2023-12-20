@@ -16,24 +16,11 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 suppressPackageStartupMessages({
   library(DBI)
   library(igraph)
-  library(RJDBC)
+  library(noctua)
 })
 
-# Setup the Athena JDBC driver
-aws_athena_jdbc_driver <- RJDBC::JDBC(
-  driverClass = "com.simba.athena.jdbc.Driver",
-  classPath = list.files("~/drivers", "^Athena.*jar$", full.names = TRUE),
-  identifier.quote = "'"
-)
-
 # Establish Athena connection
-AWS_ATHENA_CONN_JDBC <- dbConnect(
-  aws_athena_jdbc_driver,
-  url = Sys.getenv("AWS_ATHENA_JDBC_URL"),
-  aws_credentials_provider_class = Sys.getenv("AWS_CREDENTIALS_PROVIDER_CLASS"),
-  Schema = "Default",
-  WorkGroup = "read-only-with-scan-limit"
-)
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
 
 
@@ -47,7 +34,7 @@ message("Pulling data from Athena")
 # from the residential input view
 tictoc::tic("Training data pulled")
 training_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT
       sale.sale_price AS meta_sale_price,
       sale.sale_date AS meta_sale_date,
@@ -61,8 +48,8 @@ training_data <- dbGetQuery(
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
-      AND sale.year = res.meta_year
-  WHERE res.meta_year
+      AND sale.year = res.year
+  WHERE res.year
       BETWEEN '{params$input$min_sale_year}'
       AND '{params$input$max_sale_year}'
   AND NOT sale.is_multisale
@@ -78,30 +65,44 @@ tictoc::toc()
 # stored in the legacy (AS/400) data system
 tictoc::tic("HIE data pulled")
 hie_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM ccao.hie
   ")
 )
 tictoc::toc()
 
-# Pull all residential PIN input data for the assessment year. This will be the
-# data we actually run the model on
+# Save HIE data for use in report generation
+hie_data %>%
+  write_parquet(paths$input$hie$local)
+
+# Pull all residential PIN input data for the assessment and prior year. We will
+# only use the assessment year to run the model, but the prior year can be used
+# for report generation
 tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM model.vw_card_res_input
-  WHERE meta_year = '{params$assessment$data_year}'
+  WHERE year BETWEEN '{as.numeric(params$assessment$data_year) - 1}'
+    AND '{params$assessment$data_year}'
   ")
 )
 tictoc::toc()
+
+# Save both years for report generation using the characteristics
+assessment_data %>%
+  write_parquet(paths$input$char$local)
+
+# Save only the assessment year data to use for assessing values
+assessment_data <- assessment_data %>%
+  filter(year == params$assessment$data_year)
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
 tictoc::tic("Land rate data pulled")
 land_site_rate_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM ccao.land_site_rate
   WHERE year = '{params$assessment$year}'
@@ -109,7 +110,7 @@ land_site_rate_data <- dbGetQuery(
 )
 
 land_nbhd_rate_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM ccao.land_nbhd_rate
   WHERE year = '{params$assessment$year}'
@@ -118,8 +119,8 @@ land_nbhd_rate_data <- dbGetQuery(
 tictoc::toc()
 
 # Close connection to Athena
-dbDisconnect(AWS_ATHENA_CONN_JDBC)
-rm(AWS_ATHENA_CONN_JDBC, aws_athena_jdbc_driver)
+dbDisconnect(AWS_ATHENA_CONN_NOCTUA)
+rm(AWS_ATHENA_CONN_NOCTUA)
 
 
 
@@ -178,7 +179,7 @@ hie_data_training_sparse <- hie_data %>%
     replacement_source = any_of(chars_cols$replace$source)
   ) %>%
   mutate(
-    ind_pin_is_multicard = "0",
+    ind_pin_is_multicard = FALSE,
     year = as.character(year)
   )
 
@@ -191,7 +192,7 @@ training_data_w_hie <- training_data %>%
   )) %>%
   left_join(
     hie_data_training_sparse,
-    by = c("meta_pin" = "pin", "meta_year" = "year", "ind_pin_is_multicard")
+    by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
   ) %>%
   mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
   ccao::chars_update(
@@ -221,7 +222,7 @@ hie_data_assessment_sparse <- hie_data %>%
     replacement_source = any_of(chars_cols$replace$source)
   ) %>%
   mutate(
-    ind_pin_is_multicard = "0",
+    ind_pin_is_multicard = FALSE,
     year = as.character(year)
   )
 
@@ -234,7 +235,7 @@ assessment_data_w_hie <- assessment_data %>%
   )) %>%
   left_join(
     hie_data_assessment_sparse,
-    by = c("meta_pin" = "pin", "meta_year" = "year", "ind_pin_is_multicard")
+    by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
   ) %>%
   mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
   ccao::chars_update(
