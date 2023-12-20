@@ -28,7 +28,8 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date)
+  arrange(meta_sale_date) %>%
+  head(1000) # Temporarily restrict the training set for testing purposes
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -116,6 +117,7 @@ lgbm_model <- parsnip::boost_tree(
     # Max number of bins that feature values will be bucketed in
     max_bin = params$model$parameter$max_bin,
 
+    valids = list(),
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
 
@@ -291,11 +293,18 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = train)
 
+valids <- list(valids = lightgbm::lgb.Dataset(
+  data = as.matrix(training_data_full),
+  label = training_data_full[["meta_sale_price"]]
+))
+lgbm_model_final_full_fit <- lgbm_model_final %>%
+  set_args(valids = valids)
+
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
 message("Fitting final model on full data")
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  update_model(lgbm_model_final) %>%
+  update_model(lgbm_model_final_full_fit) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
 
@@ -337,7 +346,7 @@ test %>%
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
-lgbm_wflow_final_full_fit %>%
+model_fit <- lgbm_wflow_final_full_fit %>%
   workflows::extract_fit_parsnip() %>%
   lightsnip::lgbm_save(paths$output$workflow_fit$local)
 

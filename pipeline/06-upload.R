@@ -203,7 +203,7 @@ if (params$toggle$upload_to_s3) {
   }
 
   # Upload comps
-  if (run_type == "full" && comp_enable) {
+  if (comp_enable) {
     message("Uploading comps")
     read_parquet(paths$output$comp$local) %>%
       mutate(year = params$assessment$year) %>%

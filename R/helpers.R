@@ -120,15 +120,13 @@ extract_num_iterations <- function(x) {
 extract_weights <- function(model, train, outcome_col, metric = "rmse") {
   train_lgb <- lgb.Dataset(as.matrix(train), label = train[[outcome_col]])
 
-  # Get the initial error for base model before first tree
-  # (this NEEDS to be after the model is traine or else it won't
-  # train correctly)
+  # Get the initial error for base model before the first tree
   set_field(train_lgb, "init_score", as.matrix(train[[outcome_col]]))
   initial_predictions <- get_field(train_lgb, "init_score")
   init_score <- mean(initial_predictions)
 
   # Index into the errors list, and un-list so it is a flat/1dim list
-  errors <- unlist(trained_model$record_evals$test[[metric]]$eval)
+  errors <- unlist(model$record_evals$valids[[metric]]$eval)
   errors <- c(init_score, errors)
   diff_in_errors <- diff(errors, 1, 1)
 

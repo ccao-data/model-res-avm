@@ -12,8 +12,7 @@ tictoc::tic("Interpret")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-
-
+comp_enable = TRUE
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
@@ -29,7 +28,8 @@ if (shap_enable || comp_enable) {
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
-  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
+  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local)) %>%
+    head(1000)
 
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
@@ -38,7 +38,6 @@ if (shap_enable || comp_enable) {
     all_predictors()
   )
 }
-
 
 
 
@@ -115,31 +114,52 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 if (comp_enable) {
   message("Calculating comps")
 
-  # Calculate the leaf node assignments for every predicted value
-  leaf_nodes <- predict(
-    object = lgbm_final_full_fit$fit,
-    data = as.matrix(assessment_data_prepped),
-    predleaf = TRUE
-  ) %>%
-    as_tibble()
+  # Calculate the leaf node assignments for every predicted value.
+  # Due to integer overflow problems with leaf node assignment, we need to
+  # chunk our data such that they are strictly less than the limit of 1073742
+  # rows. More detail here: https://github.com/microsoft/LightGBM/issues/1884
+  chunk_size <- 500000
+  chunks <- split(
+    assessment_data_prepped,
+    ceiling(seq_along(assessment_data_prepped[[1]]) / chunk_size)
+  )
+  chunked_leaf_nodes <- chunks %>%
+    map(\(chunk)
+      predict(
+        object = lgbm_final_full_fit$fit,
+        newdata = as.matrix(chunk),
+        type = "leaf"
+      )
+    )
+  # Prefer do.call(rbind, ...) over bind_rows() because the chunks are
+  # not guaranteed to have the same number of rows, and bind_rows() will raise
+  # an error in that case
+  leaf_nodes <- do.call(rbind, chunked_leaf_nodes) %>% as_tibble()
+
+  # Calculate weights representing feature importance, so that we can weight
+  # leaf node assignments based on the most important features.
+  # To do this, we need the training data so that we can compute base model
+  # error
+  training_data <- read_parquet(paths$input$training$local) %>%
+    as_tibble() %>%
+    head(1000)
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
-    train = assessment_data_prepped,
-    outcome_col = "sale_price",
-    metric = "rmse"
+    train = training_data,
+    outcome_col = "meta_sale_price",
   )
 
-  # Calculate comps for each card;
-  # we do this in Python because the code is simpler and faster
+  # Calculate comps for each card. We do this in Python because the code is
+  # simpler and faster
   comps_module <- import("python.comps")
   comps <- comps_module$get_comps(leaf_nodes, tree_weights, n=5)
 
   # Translate comps to PINs before writing them out to S3
   comps %>%
-    mutate_all(function(idx_row) { assessment_data_prepped$pin[idx_row]}) %>%
+    mutate_all(\(idx_row) assessment_data_prepped$pin[idx_row]) %>%
     cbind(assessment_data_prepped$pin) %>%
-    rename_with(function(colname) { gsub("V", "comp_", colname) }) %>%
+    rename_with(\(colname) gsub("V", "comp_", colname)) %>%
     relocate(pin) %>%
     write_parquet(paths$output$comp$local)
 } else {

@@ -275,7 +275,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
     # When early stopping is enabled, num_iterations is effectively the MAX
     # number of iterations
-    num_iterations: 2000
+    num_iterations: 10
     learning_rate: 0.025
 
     # For CV only, proportion of the training data to hold out for use in
