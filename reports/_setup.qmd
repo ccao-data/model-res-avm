@@ -1,7 +1,7 @@
 ---
 params:
-  run_id: "2023-12-19-recursing-jacob"
-  year: "2023"
+  run_id: "2023-12-20-awesome-claire"
+  year: "2024"
 ---
 
 ```{r}
@@ -91,6 +91,14 @@ if (!exists("assessment_pin")) {
 }
 if (!exists("test_card")) {
   test_card <- read_parquet(paths$output$test_card$local)
+}
+if (!exists("model_performance_test")) {
+  model_performance_test <- 
+    arrow::read_parquet(paths$output$performance_test$local)
+}
+if (!exists("model_performance_quantile_test")) {
+model_performance_quantile_test <- 
+  arrow::read_parquet(paths$output$performance_quantile_test$local)
 }
 
 # Load feature importance data
