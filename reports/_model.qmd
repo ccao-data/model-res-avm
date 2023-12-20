@@ -18,24 +18,24 @@ training_data_pred <- training_data %>%
 
 ## MAPE by Quintile
 
-How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by quintile for each tri-town?
+How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by
+quintile for each tri-town (`r max(training_data_pred$year)` only)?
 
 ```{r}
 mape <- training_data_pred %>%
-  filter(!sv_is_outlier) %>%
-  left_join(
-    ccao::town_dict %>%
-      select(meta_township_code = township_code, triad_name)
-  ) %>%
-  filter(triad_name == run_triad, meta_year == max(meta_year)) %>%
-  group_by(meta_township_name) %>%
+  # Remove outliers, limit to current tri and year
+  filter(
+    !sv_is_outlier,
+    meta_triad_name == run_triad,
+    meta_year == max(meta_year)
+    ) %>%
   arrange(meta_sale_price) %>%
-  mutate(Quintile = ntile(meta_sale_price, 5)) %>%
-  group_by(meta_township_name, Quintile) %>%
+  mutate(Quintile = ntile(meta_sale_price, 5), .by = meta_township_name) %>%
   summarise(
     median_sale_price = median(meta_sale_price, na.rm = TRUE),
     median_predicted_fmv = median(pred_card_initial_fmv, na.rm = TRUE),
-    MAPE = yardstick::mape_vec(meta_sale_price, pred_card_initial_fmv)
+    MAPE = yardstick::mape_vec(meta_sale_price, pred_card_initial_fmv),
+    .by = c(meta_township_name, Quintile)
   ) %>%
   rename(Township = meta_township_name)
 
@@ -51,7 +51,7 @@ ggplotly(
 
 ```{r}
 pred_v_actual_town <- test_card %>%
-  filter(meta_triad_code == run_triad_code) %>%
+  filter(meta_triad_name == run_triad) %>%
   mutate(Township = ccao::town_convert(meta_township_code)) %>%
   rename(
     `Sale Price` = meta_sale_price,
@@ -143,7 +143,8 @@ ggplotly(pred_v_actual_class)
 
 ## Training Data (Seen)
 
-Here, the chart demonstrates if the model's median sale price reflects the time trends for the data it has already seen.
+Here the chart demonstrates if the model's median sale price reflects the time
+trends for the data it has already seen.
 
 ```{r, fig.height=8, fig.width=7, out.width="100%"}
 training_data_pred %>%
@@ -160,10 +161,10 @@ training_data_pred %>%
     time_sale_month = as.numeric(time_interval %/%
       lubridate::dmonths(1)) + 1
   ) %>%
-  group_by(meta_township_name, time_sale_month) %>%
   summarize(
     `Median Prediction` = median(pred_card_initial_fmv),
-    `Median Sale Price` = median(meta_sale_price)
+    `Median Sale Price` = median(meta_sale_price),
+    .by = c(meta_township_name, time_sale_month)
   ) %>%
   tidyr::pivot_longer(cols = starts_with("Median")) %>%
   ggplot() +
@@ -178,10 +179,9 @@ training_data_pred %>%
   scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
   facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
   theme_minimal() +
+  xlab("Time in Months, (0 = Jan 1, 2014)") +
   theme(
     legend.position = "bottom",
-    axis.text.x = element_text(angle = 90, hjust = 1),
-    axis.title.x = element_blank(),
     axis.title.y = element_blank()
   )
 ```
@@ -218,10 +218,9 @@ test_card %>%
     scales = "free_y", ncol = 3
   ) +
   theme_minimal() +
+  xlab("Time in Months (0 = Jan 1, 2014)") +
   theme(
     legend.position = "bottom",
-    axis.text.x = element_text(angle = 90, hjust = 1),
-    axis.title.x = element_blank(),
     axis.title.y = element_blank()
   )
 ```
