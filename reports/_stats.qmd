@@ -2,7 +2,7 @@
 
 # Statistical tests
 
-```{r}
+```{r gather_data}
 # This script runs balance tests comparing the universe of residential parcels
 # to the sample of residential parcels with sales in the previous 8 years
 # that are used to train the data department's CAMA.
