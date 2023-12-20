@@ -84,8 +84,8 @@ assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM model.vw_card_res_input
-  WHERE year BETWEEN '{as.numeric(params$assessment$year) - 1}'
-    AND '{params$assessment$year}'
+  WHERE year BETWEEN '{as.numeric(params$assessment$data_year) - 1}'
+    AND '{params$assessment$data_year}'
   ")
 )
 tictoc::toc()
@@ -96,7 +96,7 @@ assessment_data %>%
 
 # Save only the assessment year data to use for assessing values
 assessment_data <- assessment_data %>%
-  filter(year == params$assessment$year)
+  filter(year == params$assessment$data_year)
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
