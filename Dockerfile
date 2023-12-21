@@ -28,7 +28,7 @@ RUN gdebi -n quarto-linux-amd64.deb
 RUN pip install --no-cache-dir dvc[s3]
 
 # Copy R bootstrap files into the image
-COPY renv.lock .Rprofile DESCRIPTION ./
+COPY renv.lock .Rprofile DESCRIPTION requirements.txt ./
 COPY renv/profiles/reporting/renv.lock reporting-renv.lock
 COPY renv/ renv/
 
