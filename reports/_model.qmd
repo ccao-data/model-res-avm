@@ -260,8 +260,6 @@ plot_feature_importance <- function(data, gain_column, color) {
 
 ```
 
-
-
 ::: {.panel-tabset}
 
 #### Gain
