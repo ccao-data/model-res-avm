@@ -45,27 +45,27 @@ data_to_plot <- model_performance_quantile_test %>%
       )
     )
 
-  ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
-    geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
-      fill = "#D3F2C2", alpha = 0.1
-    ) +
-    geom_line(aes(group = 1),
-      color = "#2C3E50"
-    ) +
-    geom_point(color = "deepskyblue4", size = 3) +
-    geom_text(aes(label = round(median_ratio, 2)),
-      vjust = -0.55,
-      color = "#34495E",
-      size = 3.9
-    ) +
-    geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
-    theme_minimal() +
-    labs(
-      title = "Overall Median Ratio by Decile",
-      x = "Decile", y = "Median Ratio"
-    ) +
-    scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
-    theme(axis.text.x = element_text(size = 10))  
+ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
+    fill = "#D3F2C2", alpha = 0.1
+  ) +
+  geom_line(aes(group = 1),
+    color = "#2C3E50"
+  ) +
+  geom_point(color = "deepskyblue4", size = 3) +
+  geom_text(aes(label = round(median_ratio, 2)),
+    vjust = -0.55,
+    color = "#34495E",
+    size = 3.9
+  ) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
+  theme_minimal() +
+  labs(
+    title = "Overall Median Ratio by Decile",
+    x = "Decile", y = "Median Ratio"
+  ) +
+  scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
+  theme(axis.text.x = element_text(size = 10))  
 
 ```
 
@@ -125,7 +125,7 @@ make_township_ratio_decile_graph <- function(data, township) {
   print(
     ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
       geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
-        fill = "#D3F2C2", alpha=0.1
+        fill = "#D3F2C2", alpha = 0.1
       ) +
       geom_line(aes(group = 1), color = "#2C3E50") +
       geom_point(color = "deepskyblue4", size = 3) +
@@ -137,7 +137,7 @@ make_township_ratio_decile_graph <- function(data, township) {
       geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
       theme_minimal() +
       labs(
-        title=township,
+        title = township,
         x = "Decile", y = "Median Ratio"
       ) +
       # 0.08 is appended to the y_axis value so that the
@@ -195,7 +195,7 @@ model_performance_test_w_township_name <- model_performance_test %>%
 
 township_level <- model_performance_test_w_township_name %>%
   filter(
-    geography_type == 'township_code',
+    geography_type == "township_code",
     by_class == FALSE,
     triad_code == run_triad_code
   )
