@@ -179,7 +179,7 @@ ggplot(training_data, aes(
   )
 ```
 
-```{r _outliers_median_price_outliers fig.height=6}
+```{r _outliers_median_price_outliers, fig.height=6}
 ggplot(
   training_data %>%
     group_by(sv_is_outlier, meta_township_name) %>%
