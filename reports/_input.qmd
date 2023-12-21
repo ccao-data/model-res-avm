@@ -20,21 +20,21 @@ hie_pins <- training_data %>%
   pull(meta_pin) %>%
   unique()
 
-hie_data_fil <- hie_data %>%
+chars_data_table <- chars_data %>%
+  filter(
+    meta_year == as.numeric(params$year) - 1,
+    meta_pin %in% hie_pins
+  ) %>%
+  inner_join(
+    hie_data %>%
   filter(
     pin %in% hie_pins,
     year >= as.numeric(params$year) - 4,
     qu_sqft_bld > 0
-  )
-
-chars_data_fil <- chars_data %>%
-  filter(
-    meta_year == as.numeric(params$year) - 1,
-    meta_pin %in% hie_pins
-  )
-
-chars_data_fil %>%
-  inner_join(hie_data_fil %>% select(-year), by = join_by(meta_pin == pin)) %>%
+  ) %>%
+  select(-year),
+    by = join_by(meta_pin == pin)
+    ) %>%
   left_join(
     training_data %>% select(
       meta_pin, meta_year,
@@ -54,7 +54,9 @@ chars_data_fil %>%
     `OG AIR` = char_air,
     `HIE AIR` = qu_air,
     `NEW AIR` = train_air
-  ) %>%
+  )
+
+chars_data_table %>%
   datatable(rownames = FALSE)
 ```
 
@@ -63,15 +65,14 @@ chars_data_fil %>%
 This tests if our time filling techniques are working as expected.
 
 ```{r}
-training_data %>%
-  group_by(meta_pin) %>%
+filling_table <- training_data %>%
   filter(
     !ind_pin_is_multicard,
     min(meta_sale_date) < lubridate::make_date(as.numeric(params$year) - 3),
     max(meta_sale_date) > lubridate::make_date(as.numeric(params$year) - 3),
+    .by = meta_pin
   ) %>%
-  filter(n() > 6) %>%
-  ungroup() %>%
+  filter(n() > 6, .by = meta_pin) %>%
   select(
     PIN = meta_pin,
     Year = meta_year,
@@ -80,7 +81,9 @@ training_data %>%
     `Walkability (2017)` = loc_access_cmap_walk_total_score,
     `GS Rating (2021)` = prox_avg_school_rating_in_half_mile
   ) %>%
-  arrange(PIN, Year) %>%
+  arrange(PIN, Year)
+
+filling_table %>%
   datatable(rownames = FALSE)
 ```
 
@@ -90,11 +93,14 @@ This uses 5 test pins to assess if multi-card parcels successfully aggregate to 
 
 ```{r}
 test_card_pins <- c(
-  "17321110470000", "05174150240000",
-  "05213220250000", "08121220400000", "06334030310000"
+  "17321110470000",
+  "05174150240000",
+  "05213220250000",
+  "08121220400000",
+  "06334030310000"
 )
 
-assessment_card %>%
+test_card_pins <- assessment_card %>%
   filter(meta_pin %in% test_card_pins) %>%
   arrange(meta_pin, meta_card_num) %>%
   select(
@@ -113,14 +119,16 @@ assessment_card %>%
         `PIN Final` = pred_pin_final_fmv_round
       ),
     by = c("PIN")
-  ) %>%
+  )
+
+test_card_pins %>%
   datatable(rownames = FALSE)
 ```
 
 ## Land Valuation
 
 ```{r, out.width="100%"}
-assessment_pin %>%
+land_valuation <- assessment_pin %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
   select(
@@ -129,7 +137,9 @@ assessment_pin %>%
     pred_pin_final_fmv_bldg,
     pred_pin_final_fmv_land,
     pred_pin_final_fmv_round
-  ) %>%
+  )
+
+land_valuation %>%
   ggplot() +
   geom_histogram(aes(x = land_pct)) +
   scale_x_continuous(
@@ -160,36 +170,36 @@ assessment_pin %>%
 Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, and far values are board values from two years ago.
 
 ```{r}
-assessment_pin %>%
+multifamily_change <- assessment_pin %>%
   filter(
     meta_class %in% c("211", "212"),
     meta_triad_code == run_triad_code
   ) %>%
   mutate(
     yoy_far = abs((pred_pin_final_fmv - prior_far_tot) / pred_pin_final_fmv),
-    yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv)
-  ) %>%
-  mutate(
+    yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv),
     big_swing_near = yoy_near > 0.5,
     big_swing_far = yoy_far > 0.5
   ) %>%
-  group_by(meta_township_code, meta_class) %>%
   summarise(
     big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE) / n(),
-    big_swings_far = sum(as.numeric(big_swing_far), na.rm = TRUE) / n()
+    big_swings_far = sum(as.numeric(big_swing_far), na.rm = TRUE) / n(),
+    .by = c(meta_township_code, meta_class)
   ) %>%
-  ungroup() %>%
   arrange(desc(big_swings_near)) %>%
   mutate(across(starts_with("big"), ~ label_percent(accuracy = 0.1)(.x))) %>%
   left_join(
-    ccao::town_dict %>% select(meta_township_code = township_code, township_name)
+    ccao::town_dict %>%
+      select(meta_township_code = township_code, township_name)
   ) %>%
   select(
     "Township Name" = township_name,
-    Class = meta_class,
+    "Class" = meta_class,
     "% Delta Near > 50%" = big_swings_near,
     "% Delta Far > 50%" = big_swings_far
-  ) %>%
+  )
+
+multifamily_change %>%
   datatable(
     rownames = FALSE,
     height = "500px",
@@ -206,19 +216,18 @@ assessment_pin %>%
 This creates a subset of 211s and 212s which are three standard deviations above the norm in terms of square footage. 
 
 ```{r}
-training_data %>%
+large_sqft <- training_data %>%
   filter(
     meta_class %in% c("211", "212"),
     meta_triad_code == run_triad_code,
     !ind_pin_is_multicard
   ) %>%
-  group_by(meta_class) %>%
   mutate(
     mean_sf = round(mean(char_bldg_sf, na.rm = TRUE), 0),
     outlier = abs(char_bldg_sf) >
-      mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE)
+      mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE),
+    .by = meta_class
   ) %>%
-  ungroup() %>%
   filter(outlier) %>%
   select(
     PIN = meta_pin,
@@ -226,7 +235,9 @@ training_data %>%
     Class = meta_class,
     "Mean SF" = mean_sf,
     "Building SF" = char_bldg_sf
-  ) %>%
+  )
+
+large_sqft %>%
   datatable(
     rownames = FALSE,
     height = "500px",
@@ -244,7 +255,7 @@ training_data %>%
 This takes a sample of 20 observations to see how far apart the initial predicted values are for townhomes. Is the average they get assigned reasonable?
 
 ```{r}
-assessment_pin %>%
+townhome_preds <- assessment_pin %>%
   filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
   group_by(meta_complex_id) %>%
   mutate(
@@ -265,7 +276,9 @@ assessment_pin %>%
     across(contains("%"), ~ percent(.x, accuracy = 0.1))
   ) %>%
   relocate(c(meta_complex_id, n)) %>%
-  rename("Complex ID" = meta_complex_id, "Count" = n) %>%
+  rename("Complex ID" = meta_complex_id, "Count" = n)
+
+townhome_preds %>%
   datatable(
     rownames = FALSE,
     height = "500px",
