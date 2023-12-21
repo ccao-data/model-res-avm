@@ -93,11 +93,11 @@ if (!exists("test_card")) {
   test_card <- read_parquet(paths$output$test_card$local)
 }
 if (!exists("model_performance_test")) {
-  model_performance_test <- 
+  model_performance_test <-
     arrow::read_parquet(paths$output$performance_test$local)
 }
 if (!exists("model_performance_quantile_test")) {
-model_performance_quantile_test <- 
+model_performance_quantile_test <-
   arrow::read_parquet(paths$output$performance_quantile_test$local)
 }
 
