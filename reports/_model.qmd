@@ -70,6 +70,8 @@ shorten_number <- function(num) {
   return(as.character(num))
 }
 
+
+# Make graph function to iterate through for tabset
 make_township_ratio_decile_graph <- function(data, township){
   
 # Manually set axes to highest and lowest contained in the data
@@ -228,8 +230,6 @@ test_summary_township %>%
 ## Feature Importance Metrics
 
 ```{r}
-
-
 # Feature importance bar chart function
 plot_feature_importance <- function(data, gain_column, color) {
   
