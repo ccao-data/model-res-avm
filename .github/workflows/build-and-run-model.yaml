@@ -54,9 +54,12 @@ jobs:
       packages: write
     uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
-      vcpu: "16.0"
+      backend: "ec2"
+      vcpu: "32"
       memory: "65536"
-      role-duration-seconds: 14400  # Worst-case time for a full model run
+      # Maximum pipeline runtime. This is slightly below 6 hours, which
+      # is the maximum length of any single GitHub Actions job
+      role-duration-seconds: 21000
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
