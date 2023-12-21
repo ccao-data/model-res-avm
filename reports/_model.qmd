@@ -15,7 +15,7 @@ training_data_pred <- training_data %>%
 
 ## Overall Ratio Distribution
 
-```{r _overall_ratio_distribution_decile, fig.width=10, fig.height=6}
+```{r _model_overall_ratio_distribution_decile, fig.width=10, fig.height=6}
 # Helper function to help with x-axis tick labels
 shorten_number <- function(num) {
   if (num >= 1000) {
@@ -73,7 +73,7 @@ ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
 
 ## Ratio Distribution by Township by Sale Price Decile
 
-```{r _ratio_distribution_township_decile}
+```{r _model_ratio_distribution_township_decile}
 # Make graph function to iterate through for tabset
 make_township_ratio_decile_graph <- function(data, township) {
   # Manually set axes to highest and lowest contained in the data
@@ -165,7 +165,7 @@ townships_to_iterate <- data_for_tabset %>%
 
 ::: {.panel-tabset}
 
-```{r _iterate_township_decile_tabset, results='asis'}
+```{r _model_iterate_township_decile_tabset, results='asis'}
 # Dynamically produce tabset
 for (township in townships_to_iterate) {
   cat("##", township, "\n")
@@ -178,7 +178,7 @@ for (township in townships_to_iterate) {
 ## Township Level Stats
 
 
-```{r _township_level_stats_table}
+```{r _model_township_level_stats_table}
 # Make join for township name
 model_performance_test_w_township_name <- model_performance_test %>%
   left_join(ccao::town_dict, by = c("geography_id" = "township_code")) %>%
@@ -248,7 +248,7 @@ test_summary_township %>%
 
 ## Feature Importance Metrics
 
-```{r _feature_importance_function}
+```{r _model_feature_importance_function}
 # Feature importance bar chart function
 plot_feature_importance <- function(data, gain_column, color) {
   # Clean up name of column for ggplot
@@ -291,7 +291,7 @@ plot_feature_importance <- function(data, gain_column, color) {
 
 #### Gain
 
-```{r _gain_score, fig.width=8, fig.height=30, fig.align='center'}
+```{r _model_gain_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
   feat_imp_df,
   "gain_value",
@@ -301,7 +301,7 @@ plot_feature_importance(
 
 #### Cover
 
-```{r _cover_score, fig.width=8, fig.height=30, fig.align='center'}
+```{r _model_cover_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
   feat_imp_df,
   "cover_value",
@@ -311,7 +311,7 @@ plot_feature_importance(
 
 #### Frequency
 
-```{r _frequency_score, fig.width=8, fig.height=30, fig.align='center'}
+```{r _model_frequency_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
   feat_imp_df,
   "frequency_value",
