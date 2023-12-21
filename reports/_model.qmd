@@ -182,6 +182,7 @@ for (township in townships_to_iterate) {
 :::
 
 ## Township Level Stats
+
 ```{r}
 # Make join for township name
 model_performance_test_w_township_name <- model_performance_test %>%
