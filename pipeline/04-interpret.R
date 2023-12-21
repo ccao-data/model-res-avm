@@ -121,7 +121,7 @@ if (comp_enable) {
     ceiling(seq_along(assessment_data_prepped[[1]]) / chunk_size)
   )
   chunked_leaf_nodes <- chunks %>%
-    map(\(chunk)
+    map(\(chunk) {
       predict(
         object = lgbm_final_full_fit$fit,
         newdata = as.matrix(chunk),
@@ -132,7 +132,7 @@ if (comp_enable) {
         # output not to match the weights we compute for each tree later on
         num_iteration = lgbm_final_full_fit$spec$args$trees %>% eval_tidy(),
       )
-    )
+    })
   # Prefer do.call(rbind, ...) over bind_rows() because the chunks are
   # not guaranteed to have the same number of rows, and bind_rows() will raise
   # an error in that case
