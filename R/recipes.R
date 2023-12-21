@@ -36,3 +36,25 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       strict = TRUE, zero_based = TRUE
     )
 }
+
+
+#' Create the main data cleaning Tidymodels recipe
+model_no_cat_recipe <- function(data, pred_vars, cat_vars, id_vars) {
+  recipe(data) %>%
+    # Set the role of each variable in the input data
+    update_role(meta_sale_price, new_role = "outcome") %>%
+    update_role(all_of(pred_vars), new_role = "predictor") %>%
+    update_role(all_of(id_vars), new_role = "ID") %>%
+    update_role_requirements("ID", bake = FALSE) %>%
+    update_role_requirements("NA", bake = FALSE) %>%
+    # Remove any variables not an outcome var or in the pred_vars vector
+    step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
+    # Replace novel levels with "new"
+    step_novel(all_of(cat_vars), -has_role("ID")) %>%
+    # Replace NA in factors with "unknown"
+    step_unknown(all_of(cat_vars), -has_role("ID")) %>%
+    embed::step_lencode_glm(
+      all_of(cat_vars), -has_role("ID"),
+      outcome = vars(meta_sale_price)
+    )
+}

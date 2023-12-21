@@ -50,6 +50,20 @@ train_recipe <- model_main_recipe(
 )
 
 
+enet_model <- parsnip::linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("glmnet")
+
+
+no_cat_recipe <- model_no_cat_recipe(
+  data = training_data_full %>% select(-time_split),
+  pred_vars = params$model$predictor$all,
+  cat_vars = params$model$predictor$categorical,
+  id_vars = params$model$predictor$id
+)
+
+temp <- bake(prep(no_cat_recipe), new_data = train)
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
