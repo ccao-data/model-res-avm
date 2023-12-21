@@ -1,7 +1,7 @@
 ---
 params:
-  run_id: "2023-12-19-recursing-jacob"
-  year: "2023"
+  run_id: "2023-12-20-awesome-claire"
+  year: "2024"
 ---
 
 ```{r}
@@ -72,6 +72,43 @@ if (metadata$run_id != params$run_id) {
     "should run model_fetch_run() to fetch model outputs from S3"
   )
 }
+
+dvc_lock <- read_yaml("../dvc.lock")
+
+# Extract values from the dvc_lock object
+dvc_lock_values <- c(
+  dvc_lock$stages$ingest$outs[[1]]$md5, # assessment_data
+  dvc_lock$stages$ingest$outs[[2]]$md5, # char_data
+  dvc_lock$stages$ingest$outs[[3]]$md5, # complex_id_data
+  dvc_lock$stages$ingest$outs[[4]]$md5, # hie_data
+  dvc_lock$stages$ingest$outs[[5]]$md5, # land_nbhd_rate_data
+  dvc_lock$stages$ingest$outs[[6]]$md5, # land_site_rate_data
+  dvc_lock$stages$ingest$outs[[7]]$md5  # training_data
+)
+
+metadata_dvc_md5 <- metadata %>%
+  select(
+    dvc_md5_assessment_data,
+    dvc_md5_char_data,
+    dvc_md5_complex_id_data,
+    dvc_md5_hie_data,
+    dvc_md5_land_nbhd_rate_data,
+    dvc_md5_land_site_rate_data,
+    dvc_md5_training_data
+  )
+
+# Compare each column value with the corresponding yaml value
+comparison_results <- mapply(FUN = `==`, metadata_dvc_md5, dvc_lock_values)
+
+# Check if all hashes match
+if(!all(comparison_results)) {
+  stop(
+    "Hash values between the dvc.lock file and the metadata
+    do not match. Potential mismatch in input and output data."
+  )
+} 
+
+
 
 # Get the triad of the run to use for filtering
 run_triad <- tools::toTitleCase(metadata$assessment_triad)
