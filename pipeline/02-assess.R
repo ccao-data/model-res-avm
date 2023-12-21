@@ -529,7 +529,12 @@ assessment_pin_data_final %>%
     type = "short",
     as_factor = FALSE
   ) %>%
-  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
+  # Coerce columns to their expected Athena output type
+  mutate(
+    land_rate_per_pin = as.numeric(land_rate_per_pin),
+    meta_complex_id = as.numeric(meta_complex_id),
+    flag_hie_num_expired = as.numeric(flag_hie_num_expired)
+  ) %>%
   # Reorder columns into groups by prefix
   select(
     starts_with(c("meta_", "loc_")), char_yrblt, char_total_bldg_sf,
