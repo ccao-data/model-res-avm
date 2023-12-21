@@ -93,7 +93,7 @@ make_township_ratio_decile_graph <- function(data, township) {
       min_value = min(median_ratio),
       max_value = max(median_ratio)
     )
-  
+
   data_to_plot <- data %>%
     filter(
       geography_type == "township_code",
@@ -118,7 +118,7 @@ make_township_ratio_decile_graph <- function(data, township) {
         sep = ""
       )
     )
-  
+
   print(
     ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
       geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
@@ -255,17 +255,17 @@ test_summary_township %>%
 ```{r}
 # Feature importance bar chart function
 plot_feature_importance <- function(data, gain_column, color) {
-  
+
   # Clean up name of column for ggplot
   name_labs <- strsplit(gain_column, "_")[[1]][1] %>% str_to_title()
-  
+
   # Wrap Names
   data <- data %>%
     mutate(
       model_predictor_all_name_wrapped =
         gsub("(.{20})", "\\1\n", model_predictor_all_name, perl = TRUE)
     )
-  
+
   # Use !!sym to unquote and convert the column name into a symbol for dynamic
   # ggplot evaluation and .data[[gain_column]] is used to reference the gain
   # column dynamically in the aes() function.
