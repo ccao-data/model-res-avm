@@ -255,7 +255,6 @@ test_summary_township %>%
 ```{r}
 # Feature importance bar chart function
 plot_feature_importance <- function(data, gain_column, color) {
-
   # Clean up name of column for ggplot
   name_labs <- strsplit(gain_column, "_")[[1]][1] %>% str_to_title()
 
