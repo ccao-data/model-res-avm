@@ -42,8 +42,8 @@ data_to_plot <- model_performance_quantile_test %>%
       "K",
       "]",
       sep = ""
-      )
     )
+  )
 
 ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
@@ -65,7 +65,7 @@ ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
     x = "Decile", y = "Median Ratio"
   ) +
   scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
-  theme(axis.text.x = element_text(size = 10))  
+  theme(axis.text.x = element_text(size = 10))
 
 ```
 
