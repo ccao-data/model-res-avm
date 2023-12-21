@@ -469,7 +469,7 @@ $$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard d
 
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
-```{r _stats_SMDs}
+```{r _stats_smds}
 smd_table <- CreateTableOne(
   vars = vars %>% grep("Median", ., invert = TRUE, value = TRUE),
   strata = "Sale",
