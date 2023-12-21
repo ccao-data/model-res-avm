@@ -62,7 +62,7 @@ mutate(lower_bound_short = sapply(lower_bound, shorten_number),
 ## Ratio Distribution by Township by Sale Price Decile
 
 ```{r}
-# Helper functino for a x axis tick labels
+# Helper functinon for a x axis tick labels
 shorten_number <- function(num) {
   if (num >= 1000) {
     return(paste(format(round(num / 1000), nsmall = 0)))
