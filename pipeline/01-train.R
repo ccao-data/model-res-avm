@@ -116,6 +116,15 @@ lgbm_model <- parsnip::boost_tree(
     # Max number of bins that feature values will be bucketed in
     max_bin = params$model$parameter$max_bin,
 
+    # Initialize the validation set to an empty list. Not actually used for
+    # validation; If `validation > 0`, this list will get overridden by a
+    # randomly sampled validation set. Instead, it is used during comps
+    # calculation to instruct lightgbm to save error metrics for every tree
+    # in the model, which allows us to weight the importance of leaf node
+    # assignments for each tree. We initialize to an empty list here, since
+    # parsnip requires all attributes be initialized during the first
+    # set_engine call if they are to be updated later
+    valids = list(),
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
 
@@ -291,11 +300,25 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = train)
 
+if (comp_enable) {
+  # Instruct lightgbm to record errors for each tree to the model$record_evals
+  # attribute by setting the `valids` engine argument. Use the full set of
+  # training data so that the error encapsulates all the data
+  valids <- list(valids = lightgbm::lgb.Dataset(
+    data = as.matrix(training_data_full),
+    label = training_data_full[["meta_sale_price"]]
+  ))
+  lgbm_model_final_full_fit <- lgbm_model_final %>%
+    set_args(valids = valids)
+} else {
+  lgbm_model_final_full_fit <- lgbm_model_final
+}
+
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
 message("Fitting final model on full data")
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  update_model(lgbm_model_final) %>%
+  update_model(lgbm_model_final_full_fit) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
 

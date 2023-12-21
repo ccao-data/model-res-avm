@@ -23,6 +23,7 @@ Depends:
     paws.analytics,
     paws.application.integration,
     recipes,
+    reticulate,
     rlang,
     rsample,
     stringr,

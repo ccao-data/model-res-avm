@@ -12,9 +12,6 @@ tictoc::tic("Interpret")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -24,8 +21,8 @@ message("Loading model fit and recipe")
 lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 
-if (shap_enable) {
-  message("Loading assessment data for SHAP calculation")
+if (shap_enable || comp_enable) {
+  message("Loading assessment data for SHAP and comp calculation")
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
@@ -38,7 +35,6 @@ if (shap_enable) {
     all_predictors()
   )
 }
-
 
 
 
@@ -104,6 +100,69 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
   )) %>%
   rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
   write_parquet(paths$output$feature_importance$local)
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. Calculate comps -----------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+if (comp_enable) {
+  message("Calculating comps")
+
+  # Calculate the leaf node assignments for every predicted value.
+  # Due to integer overflow problems with leaf node assignment, we need to
+  # chunk our data such that they are strictly less than the limit of 1073742
+  # rows. More detail here: https://github.com/microsoft/LightGBM/issues/1884
+  chunk_size <- 500000
+  chunks <- split(
+    assessment_data_prepped,
+    ceiling(seq_along(assessment_data_prepped[[1]]) / chunk_size)
+  )
+  chunked_leaf_nodes <- chunks %>%
+    map(\(chunk) {
+      predict(
+        object = lgbm_final_full_fit$fit,
+        newdata = as.matrix(chunk),
+        type = "leaf",
+      )
+    })
+  # Prefer do.call(rbind, ...) over bind_rows() because the chunks are
+  # not guaranteed to have the same number of rows, and bind_rows() will raise
+  # an error in that case
+  leaf_nodes <- do.call(rbind, chunked_leaf_nodes) %>% as_tibble()
+
+  # Calculate weights representing feature importance, so that we can weight
+  # leaf node assignments based on the most important features.
+  # To do this, we need the training data so that we can compute base model
+  # error
+  training_data <- read_parquet(paths$input$training$local) %>% as_tibble()
+
+  tree_weights <- extract_weights(
+    model = lgbm_final_full_fit$fit,
+    train = training_data,
+    outcome_col = "meta_sale_price",
+  )
+
+  # Do the comps calculation in Python because the code is simpler and faster
+  comps_module <- import("python.comps")
+  comps <- comps_module$get_comps(leaf_nodes, tree_weights, n = as.integer(20))
+  # Correct for the fact that Python is 0-indexed
+  comps <- comps + 1
+
+  # Translate comps to PINs before writing them out to a file
+  comps %>%
+    mutate_all(\(idx_row) assessment_data$meta_pin[idx_row]) %>%
+    cbind(pin = assessment_data$meta_pin) %>%
+    relocate(pin) %>%
+    rename_with(\(colname) gsub("comp_", "comp_pin_", colname)) %>%
+    write_parquet(paths$output$comp$local)
+} else {
+  # If comp creation is disabled, we still need to write an empty stub file
+  # so DVC doesn't complain
+  arrow::write_parquet(data.frame(), paths$output$comp$local)
+}
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
