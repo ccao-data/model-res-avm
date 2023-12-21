@@ -118,7 +118,7 @@ class %>%
 
 These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
 
-```{r}
+```{r _sales_removed_outliers}
 rbind(
   training_data %>%
     filter(
@@ -142,7 +142,7 @@ rbind(
 
 These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
 
-```{r}
+```{r _sales_kept_outliers}
 rbind(
   training_data %>%
     filter(
@@ -223,7 +223,7 @@ temp <- ggplot(
 ggplotly(temp)
 ```
 
-```{r}
+```{r _sales_price_week}
 temp <- training_data %>%
   filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%

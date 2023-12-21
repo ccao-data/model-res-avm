@@ -2,7 +2,7 @@
 
 # Model
 
-```{r}
+```{r _model_setup}
 training_data_pred <- training_data %>%
   mutate(
     pred_card_initial_fmv = predict(
@@ -20,7 +20,7 @@ training_data_pred <- training_data %>%
 
 How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by quintile for each tri-town?
 
-```{r}
+```{r _model_mape_by_quintile}
 mape <- training_data_pred %>%
   filter(!sv_is_outlier) %>%
   left_join(
@@ -49,7 +49,7 @@ ggplotly(
 
 ## Predicted v Actual By Town
 
-```{r}
+```{r _model_predicted_vs_actual_town}
 pred_v_actual_town <- test_card %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(Township = ccao::town_convert(meta_township_code)) %>%
@@ -93,7 +93,7 @@ ggplotly(pred_v_actual_town)
 
 ## Predicted v Actual By Class
 
-```{r}
+```{r _model_predicted_vs_actual_class}
 pred_v_actual_class <- test_card %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(Township = ccao::town_convert(meta_township_code)) %>%
@@ -145,7 +145,7 @@ ggplotly(pred_v_actual_class)
 
 Here, the chart demonstrates if the model's median sale price reflects the time trends for the data it has already seen.
 
-```{r, fig.height=8, fig.width=7, out.width="100%"}
+```{r _model_time_trends_seen, fig.height=8, fig.width=7, out.width="100%"}
 training_data_pred %>%
   filter(
     !sv_is_outlier,
@@ -190,7 +190,7 @@ training_data_pred %>%
 
 This chart looks at sales slightly in the future to see if the model tracks trends which it has not yet seen. 
 
-```{r, fig.height=8, fig.width=7, out.width="100%"}
+```{r _model_time_trends_unseen, fig.height=8, fig.width=7, out.width="100%"}
 test_card %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(
