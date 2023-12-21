@@ -49,7 +49,7 @@ data_to_plot <- model_performance_quantile_test %>%
 
 ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
-    fill = "#D3F2C2", 
+    fill = "#D3F2C2",
     alpha = 0.1
   ) +
   geom_line(aes(group = 1),
