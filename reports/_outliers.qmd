@@ -264,7 +264,7 @@ ggplot(
 
 ## Decile Breakout
 
-```{r _outliers_upper_decile}
+```{r _outliers_decile_breakout}
 training_data %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
