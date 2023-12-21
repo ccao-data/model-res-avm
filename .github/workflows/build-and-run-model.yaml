@@ -14,14 +14,29 @@ on:
     types: [opened, reopened, synchronize, closed]
   workflow_dispatch:
     inputs:
-      enable_upload:
-        type: boolean
-        description: Upload results to S3
-        default: false
-        required: true
       run_note:
         type: string
         description: Note to include with run
+        required: true
+      upload_enable:
+        type: boolean
+        description: Upload results to S3
+        default: true
+        required: true
+      cv_enable:
+        type: boolean
+        description: Run cross-validation
+        default: false
+        required: true
+      comp_enable:
+        type: boolean
+        description: Run comparables finding
+        default: false
+        required: true
+      shap_enable:
+        type: boolean
+        description: Calculate SHAP values
+        default: false
         required: true
   push:
     branches: [master]
@@ -47,5 +62,8 @@ jobs:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       CONTAINER_ENV_VARS: |
         AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
-        UPLOAD_ENABLE_OVERRIDE=${{ inputs.enable_upload }}
         WORKFLOW_RUN_NOTE=${{ inputs.run_note }}
+        UPLOAD_ENABLE_OVERRIDE=${{ inputs.upload_enable }}
+        CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
+        COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
+        SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
