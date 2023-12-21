@@ -107,7 +107,7 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %
   theme_minimal()
 ```
 
-```{r _shap_riverside_end, results='asis', eval=shap_exists}
+```{r _shap_riverside_footer, results='asis', eval=shap_exists}
 cat("## Calumet Beeswarm")
 ```
 
@@ -133,6 +133,6 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_thornton_idx) %>
   theme_minimal()
 ```
 
-```{r _shap_thornton_end, results='asis', eval=shap_exists}
+```{r _shap_thornton_footer, results='asis', eval=shap_exists}
 cat(":::")
 ```
