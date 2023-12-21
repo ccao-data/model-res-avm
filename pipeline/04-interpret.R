@@ -147,7 +147,7 @@ if (comp_enable) {
 
   # Do the comps calculation in Python because the code is simpler and faster
   comps_module <- import("python.comps")
-  comps <- comps_module$get_comps(leaf_nodes, tree_weights, n = as.integer(n))
+  comps <- comps_module$get_comps(leaf_nodes, tree_weights, n = as.integer(20))
   # Correct for the fact that Python is 0-indexed
   comps <- comps + 1
 
