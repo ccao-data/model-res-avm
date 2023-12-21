@@ -10,7 +10,7 @@
 
 *NOTE: Outliers are removed*
 
-```{r sales_town_year}
+```{r _sales_town_year}
 township <- training_data %>%
   filter(!sv_is_outlier, meta_triad_name == run_triad) %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
@@ -40,7 +40,7 @@ Sales by bin by by quarter for the previous 4 years. The goal is to see how diff
 
 *NOTE: Outliers are removed*
 
-```{r sales_town_bin1, fig.height=8, fig.width=7, out.width="100%"}
+```{r _sales_town_bin1, fig.height=8, fig.width=7, out.width="100%"}
 training_data %>%
   filter(
     !sv_is_outlier,
@@ -88,7 +88,7 @@ training_data %>%
 
 *NOTE: Outliers are removed*
 
-```{r sales_class_year}
+```{r _sales_class_year}
 class <- training_data %>%
   filter(
     !sv_is_outlier,
@@ -118,7 +118,7 @@ class %>%
 
 These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
 
-```{r removed_outliers}
+```{r _sales_removed_outliers}
 rbind(
   training_data %>%
     filter(
@@ -142,7 +142,7 @@ rbind(
 
 These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
 
-```{r kept_outliers}
+```{r _sales_kept_outliers}
 rbind(
   training_data %>%
     filter(
@@ -170,7 +170,7 @@ rbind(
 
 ## Median Sale Price
 
-```{r sales_median_price}
+```{r _sales_median_price}
 ggplot(
   training_data %>%
     group_by(meta_year, sv_is_outlier) %>%
@@ -223,7 +223,7 @@ temp <- ggplot(
 ggplotly(temp)
 ```
 
-```{r sale_price_week}
+```{r _sales_price_week}
 temp <- training_data %>%
   filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
@@ -262,7 +262,7 @@ temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
 
 ## Number of Sales
 
-```{r sales_volume1}
+```{r _sales_volume1}
 ggplot(
   training_data,
   aes(x = meta_year, group = sv_is_outlier)

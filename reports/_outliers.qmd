@@ -58,7 +58,7 @@ temp_sales %>%
 
 ## Outlier Types
 
-```{r _outliers_outlier_types}
+```{r _outliers_type_breakdown}
 ggplot(
   training_data %>%
     filter(sv_outlier_type != "Not outlier") %>%

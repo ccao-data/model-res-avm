@@ -9,7 +9,7 @@ They represent both the direction and magnitude of a feature's impact on the pre
 
 ## SHAP Summary
 
-```{r shap_filtering, eval=shap_exists}
+```{r _shap_filtering, eval=shap_exists}
 shap_df_filtered <- shap_df %>%
   left_join(
     assessment_card %>%
@@ -21,7 +21,7 @@ shap_df_filtered <- shap_df %>%
   arrange(meta_pin, meta_card_num)
 ```
 
-```{r shap_table, eval=shap_exists}
+```{r _shap_table, eval=shap_exists}
 shap_df_filtered %>%
   select(
     where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)
@@ -55,7 +55,7 @@ shap_df_filtered %>%
   )
 ```
 
-```{r shap_function, eval=shap_exists}
+```{r _shap_function, eval=shap_exists}
 shap_predictors <- names(shap_df_filtered)
 shap_predictors <- shap_predictors[!shap_predictors %in% c(
   "meta_year",
@@ -98,7 +98,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 cat("## Riverside Beeswarm")
 ```
 
-```{r shap_riverside_beeswarm, eval=shap_exists}
+```{r _shap_riverside_beeswarm, eval=shap_exists}
 shap_riverside_idx <- which(
   assessment_card_filtered$meta_township_code == ccao::town_convert("Riverside")
 )
@@ -111,7 +111,7 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %
 cat("## Calumet Beeswarm")
 ```
 
-```{r calumet_beeswarm, eval=shap_exists}
+```{r _shap_calumet_beeswarm, eval=shap_exists}
 shap_calumet_idx <- which(
   assessment_card_filtered$meta_township_code == ccao::town_convert("Calumet")
 )
@@ -124,7 +124,7 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_calumet_idx) %>%
 cat("## Thornton Beeswarm")
 ```
 
-```{r thornton_beeswarm, eval=shap_exists}
+```{r _shap_thornton_beeswarm, eval=shap_exists}
 shap_thornton_idx <- which(
   assessment_card_filtered$meta_township_code == ccao::town_convert("Thornton")
 )

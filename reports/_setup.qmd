@@ -4,7 +4,7 @@ params:
   year: "2023"
 ---
 
-```{r setup_file}
+```{r}
 # This setup script is run at the top of each Quarto report subsection to load
 # libraries, data, and other objects needed for the report. It only loads
 # objects if they don't already exist in the environment, so it can be run
