@@ -25,7 +25,7 @@ toggle:
   shap_enable: FALSE
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: FALSE
+  comp_enable: TRUE
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
