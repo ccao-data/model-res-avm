@@ -82,7 +82,7 @@ dvc_lock_values <- sapply(
 metadata_dvc_md5 <- metadata %>%
   select(starts_with("dvc_md5"))
 
-# Compare each column value with the corresponding yaml value
+# Compare hash for each metadata value with the corresponding dvc.lock value
 comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
 
 # Check if all hashes match between metadata and dvc.lock
