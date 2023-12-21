@@ -74,30 +74,15 @@ if (metadata$run_id != params$run_id) {
 }
 
 # Extract hash values from dvc.lock file
-dvc_lock <- read_yaml("../dvc.lock")
-dvc_lock_values <- c(
-  dvc_lock$stages$ingest$outs[[1]]$md5,
-  dvc_lock$stages$ingest$outs[[2]]$md5,
-  dvc_lock$stages$ingest$outs[[3]]$md5,
-  dvc_lock$stages$ingest$outs[[4]]$md5,
-  dvc_lock$stages$ingest$outs[[5]]$md5,
-  dvc_lock$stages$ingest$outs[[6]]$md5,
-  dvc_lock$stages$ingest$outs[[7]]$md5
-)
+dvc_lock_values <- sapply(
+  read_yaml(here::here("dvc.lock"))$stages$ingest$outs, 
+  function(x) x$md5)
 
 metadata_dvc_md5 <- metadata %>%
-  select(
-    dvc_md5_assessment_data,
-    dvc_md5_char_data,
-    dvc_md5_complex_id_data,
-    dvc_md5_hie_data,
-    dvc_md5_land_nbhd_rate_data,
-    dvc_md5_land_site_rate_data,
-    dvc_md5_training_data
-  )
+  select(starts_with("dvc_md5"))
 
 # Compare each column value with the corresponding yaml value
-comparison_results <- mapply(FUN = `==`, metadata_dvc_md5, dvc_lock_values)
+comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
 
 # Check if all hashes match between metadata and dvc.lock
 if (!all(comparison_results)) {
