@@ -11,6 +11,8 @@ params:
 # idempotently to avoid reloading data sets and libraries
 
 ## Libraries and paths ---------------------------------------------------------
+library(purrr)
+library(here)
 
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
