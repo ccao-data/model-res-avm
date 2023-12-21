@@ -14,7 +14,9 @@ training_data_pred <- training_data %>%
 
 
 ## Overall Ratio Distribution
-```{r, fig.width=10, fig.height=6}
+
+```{r _overall_ratio_distribution_decile, fig.width=10, fig.height=6}
+# Helper function to help with x-axis tick labels
 shorten_number <- function(num) {
   if (num >= 1000) {
     return(paste(format(round(num / 1000), nsmall = 0)))
@@ -47,7 +49,8 @@ data_to_plot <- model_performance_quantile_test %>%
 
 ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
-    fill = "#D3F2C2", alpha = 0.1
+    fill = "#D3F2C2", 
+    alpha = 0.1
   ) +
   geom_line(aes(group = 1),
     color = "#2C3E50"
@@ -70,15 +73,7 @@ ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
 
 ## Ratio Distribution by Township by Sale Price Decile
 
-```{r}
-# Helper function for a x axis tick labels
-shorten_number <- function(num) {
-  if (num >= 1000) {
-    return(paste(format(round(num / 1000), nsmall = 0)))
-  }
-  return(as.character(num))
-}
-
+```{r _ratio_distribution_township_decile}
 # Make graph function to iterate through for tabset
 make_township_ratio_decile_graph <- function(data, township) {
   # Manually set axes to highest and lowest contained in the data
@@ -122,7 +117,8 @@ make_township_ratio_decile_graph <- function(data, township) {
   print(
     ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
       geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
-        fill = "#D3F2C2", alpha = 0.1
+        fill = "#D3F2C2",
+        alpha = 0.1
       ) +
       geom_line(aes(group = 1), color = "#2C3E50") +
       geom_point(color = "deepskyblue4", size = 3) +
@@ -147,9 +143,7 @@ make_township_ratio_decile_graph <- function(data, township) {
       theme(axis.text.x = element_text(size = 10))
   )
 }
-```
 
-```{r}
 # Get township name for graphs
 data_for_tabset <- model_performance_quantile_test %>%
   left_join(ccao::town_dict, by = c("geography_id" = "township_code")) %>%
@@ -171,7 +165,7 @@ townships_to_iterate <- data_for_tabset %>%
 
 ::: {.panel-tabset}
 
-```{r, results='asis'}
+```{r _iterate_township_decile_tabset, results='asis'}
 # Dynamically produce tabset
 for (township in townships_to_iterate) {
   cat("##", township, "\n")
@@ -183,7 +177,8 @@ for (township in townships_to_iterate) {
 
 ## Township Level Stats
 
-```{r}
+
+```{r _township_level_stats_table}
 # Make join for township name
 model_performance_test_w_township_name <- model_performance_test %>%
   left_join(ccao::town_dict, by = c("geography_id" = "township_code")) %>%
@@ -253,7 +248,7 @@ test_summary_township %>%
 
 ## Feature Importance Metrics
 
-```{r}
+```{r _feature_importance_function}
 # Feature importance bar chart function
 plot_feature_importance <- function(data, gain_column, color) {
   # Clean up name of column for ggplot
@@ -295,7 +290,8 @@ plot_feature_importance <- function(data, gain_column, color) {
 ::: {.panel-tabset}
 
 #### Gain
-```{r, fig.width=8, fig.height=30, fig.align='center'}
+
+```{r _gain_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
   feat_imp_df,
   "gain_value",
@@ -305,7 +301,7 @@ plot_feature_importance(
 
 #### Cover
 
-```{r, fig.width=8, fig.height=30, fig.align='center'}
+```{r _cover_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
   feat_imp_df,
   "cover_value",
@@ -315,7 +311,7 @@ plot_feature_importance(
 
 #### Frequency
 
-```{r, fig.width=8, fig.height=30, fig.align='center'}
+```{r _frequency_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
   feat_imp_df,
   "frequency_value",
