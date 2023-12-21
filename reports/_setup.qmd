@@ -75,7 +75,7 @@ if (metadata$run_id != params$run_id) {
 
 # Extract hash values from dvc.lock file
 dvc_lock_values <- sapply(
-  read_yaml(here::here("dvc.lock"))$stages$ingest$outs, 
+  read_yaml(here::here("dvc.lock"))$stages$ingest$outs,
   function(x) x$md5
 )
 
