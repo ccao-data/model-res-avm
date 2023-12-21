@@ -126,11 +126,6 @@ if (comp_enable) {
         object = lgbm_final_full_fit$fit,
         newdata = as.matrix(chunk),
         type = "leaf",
-        # Make sure to predict with all trees, even if the last tree isn't
-        # the best iteration; otherwise, the default predict() behavior for
-        # lightgbm is to stop after the best iteration, which will cause the
-        # output not to match the weights we compute for each tree later on
-        num_iteration = lgbm_final_full_fit$spec$args$trees %>% eval_tidy(),
       )
     })
   # Prefer do.call(rbind, ...) over bind_rows() because the chunks are
