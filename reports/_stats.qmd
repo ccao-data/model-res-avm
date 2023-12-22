@@ -229,7 +229,7 @@ logits <- logit_parcels %>%
 
 ::: {.panel-tabset}
 
-```{r _stats_iwalk, results = 'asis'}
+```{r _stats_township_regressions, results = 'asis'}
 iwalk(logits, ~ {
   cat("## ", .y, "\n\n")
 
