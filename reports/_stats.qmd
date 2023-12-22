@@ -228,14 +228,18 @@ logits <- logit_parcels %>%
 ## Township Logistic Regressions
 
 ::: {.panel-tabset}
+
+```{r}
+county_logit
+```
+
 ```{r _stats_iwalk, results = 'asis'}
 iwalk(logits, ~ {
-  cat('## ', .y, '\n\n')
-  
+  cat("## ", .y, "\n\n")
+
   print(.x)
-  
-  cat('\n\n')
-  
+
+  cat("\n\n")
 })
 ```
 :::
