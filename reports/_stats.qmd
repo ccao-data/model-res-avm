@@ -15,7 +15,7 @@ time_frame <-
 
 # All residential parcel characteristics from time frame, with a sale indicator
 res_chars <- chars_data %>%
-  filter(!meta_class %in% c("211", "212")) 
+  filter(!meta_class %in% c("211", "212"))
 
 sf_parcels <- res_chars %>%
   # Join on sales indicator for most recent sale in the last two years -
