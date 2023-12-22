@@ -225,7 +225,7 @@ logits <- logit_parcels %>%
   }, simplify = FALSE)
 ```
 
-# Logits by Township
+## Township Logistic Regressions
 
 ::: {.panel-tabset}
 ```{r _stats_iwalk, results = 'asis'}
@@ -247,7 +247,6 @@ The standardized (mean) difference is a measure of distance between two group me
 $$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
 
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
-
 
 ```{r _stats_smds}
 smd_table <- CreateTableOne(
