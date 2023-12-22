@@ -232,7 +232,8 @@ if (cv_enable) {
     arrow::write_parquet(paths$output$parameter_range$local)
 
   # Choose the best model (whichever model minimizes the chosen objective,
-  # averaged across CV folds)
+  # averaged across CV folds), the combine with any static parameters
+  lgbm_best_params <- select_best(lgbm_search, metric = params$cv$best_metric)
   lgbm_final_params <- tibble(
     engine = params$model$engine,
     seed = params$model$seed,
@@ -242,10 +243,12 @@ if (cv_enable) {
       select_max_iterations(lgbm_search, metric = params$cv$best_metric)
     ) %>%
     bind_cols(
-      as_tibble(params$model$parameter) %>% select(-num_iterations)
+      as_tibble(params$model$parameter) %>%
+        select(-num_iterations, -any_of(names(lgbm_best_params)))
     ) %>%
     bind_cols(
-      select_best(lgbm_search, metric = params$cv$best_metric)
+      lgbm_best_params %>%
+        select(-any_of("trees"))
     ) %>%
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
