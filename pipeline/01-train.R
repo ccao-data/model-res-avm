@@ -244,7 +244,7 @@ if (cv_enable) {
     ) %>%
     bind_cols(
       as_tibble(params$model$parameter) %>%
-        select(-num_iterations, -any_of(names(lgbm_best_params)))
+        select(-any_of(c("num_iterations", names(lgbm_best_params))))
     ) %>%
     bind_cols(
       lgbm_best_params %>%
@@ -258,7 +258,7 @@ if (cv_enable) {
   lgbm_missing_params <- names(params$model$hyperparameter$default)
   lgbm_missing_params <- lgbm_missing_params[
     !lgbm_missing_params %in%
-      hardhat::extract_parameter_set_dials(lgbm_wflow)$name
+      c(hardhat::extract_parameter_set_dials(lgbm_wflow)$name, "num_iterations")
   ]
   lgbm_final_params <- tibble(
     configuration = "Default",
