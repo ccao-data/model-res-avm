@@ -229,7 +229,7 @@ logits <- logit_parcels %>%
 
 ::: {.panel-tabset}
 
-```{r}
+```{r _stats_base_regression}
 county_logit
 ```
 
