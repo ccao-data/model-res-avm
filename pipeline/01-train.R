@@ -70,7 +70,7 @@ message("Initializing LightGBM model")
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
   stop_iter = params$model$parameter$stop_iter,
-  trees = params$model$parameter$num_iterations
+  trees = tune()
 ) %>%
   set_mode("regression") %>%
   set_engine(
@@ -94,7 +94,7 @@ lgbm_model <- parsnip::boost_tree(
     objective = params$model$objective,
 
     # Typically set manually along with the number of iterations (trees)
-    learning_rate = params$model$parameter$learning_rate,
+    learning_rate = tune(),
 
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
@@ -114,7 +114,7 @@ lgbm_model <- parsnip::boost_tree(
     link_max_depth = params$model$parameter$link_max_depth,
 
     # Max number of bins that feature values will be bucketed in
-    max_bin = params$model$parameter$max_bin,
+    max_bin = tune(),
 
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
@@ -179,6 +179,9 @@ if (cv_enable) {
     hardhat::extract_parameter_set_dials() %>%
     update(
       # nolint start
+      trees               = dials::trees(),
+      learning_rate       = lightsnip::learning_rate(),
+      max_bin             = lightsnip::max_bin(),
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
       add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
       feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
