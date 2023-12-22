@@ -94,7 +94,7 @@ cv:
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
-  initial_set: 3
+  initial_set: 20
 
   # Max number of total search iterations
   max_iterations: 70
