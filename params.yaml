@@ -18,7 +18,7 @@ run_note: |
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: TRUE
+  cv_enable: FALSE
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
@@ -64,16 +64,15 @@ input:
   complex:
     # Townhomes (class 210/295) should match exactly on these variables to be
     # considered in the same complex
-    match_exact: [
-      "meta_township_code",
-      "meta_class",
-      "char_bsmt",
-      "char_gar1_size",
-      "char_attic_fnsh",
-      "char_beds",
-      "meta_pin_num_cards",
-      "meta_tieback_proration_rate"
-    ]
+    match_exact:
+      - "meta_township_code"
+      - "meta_class"
+      - "char_bsmt"
+      - "char_gar1_size"
+      - "char_attic_fnsh"
+      - "char_beds"
+      - "meta_pin_num_cards"
+      - "meta_tieback_proration_rate"
 
     # Townhomes should match fuzzily on these variables to be in the same
     # complex e.g. a PIN with 2000 and a PIN with 2020 square feet will match
@@ -135,148 +134,138 @@ model:
   predictor:
     # Vector of predictors from the training data included in the model. Edit
     # this list to add or remove variables from the model
-    all: [
-      "meta_township_code",
-      "meta_nbhd_code",
-      "meta_modeling_group",
-      "meta_tieback_proration_rate",
-      "char_yrblt",
-      "char_air",
-      "char_apts",
-      "char_attic_fnsh",
-      "char_attic_type",
-      "char_beds",
-      "char_bldg_sf",
-      "char_bsmt",
-      "char_bsmt_fin",
-      "char_ext_wall",
-      "char_fbath",
-      "char_frpl",
-      "char_gar1_area",
-      "char_gar1_att",
-      "char_gar1_cnst",
-      "char_gar1_size",
-      "char_hbath",
-      "char_land_sf",
-      "char_heat",
-      "char_ncu",
-      "char_porch",
-      "char_roof_cnst",
-      "char_rooms",
-      "char_tp_dsgn",
-      "char_tp_plan",
-      "char_type_resd",
-      "char_recent_renovation",
-      "loc_longitude",
-      "loc_latitude",
-      "loc_env_flood_fema_sfha",
-      "loc_env_flood_fs_factor",
-      "loc_env_flood_fs_risk_direction",
-      "loc_env_airport_noise_dnl",
-      "loc_school_elementary_district_geoid",
-      "loc_school_secondary_district_geoid",
-      "loc_access_cmap_walk_nta_score",
-      "loc_access_cmap_walk_total_score",
-      "loc_tax_municipality_name",
-      "prox_num_pin_in_half_mile",
-      "prox_num_bus_stop_in_half_mile",
-      "prox_num_foreclosure_per_1000_pin_past_5_years",
-      "prox_num_school_in_half_mile",
-      "prox_num_school_with_rating_in_half_mile",
-      "prox_avg_school_rating_in_half_mile",
-      "prox_nearest_bike_trail_dist_ft",
-      "prox_nearest_cemetery_dist_ft",
-      "prox_nearest_cta_route_dist_ft",
-      "prox_nearest_cta_stop_dist_ft",
-      "prox_nearest_hospital_dist_ft",
-      "prox_lake_michigan_dist_ft",
-      "prox_nearest_major_road_dist_ft",
-      "prox_nearest_metra_route_dist_ft",
-      "prox_nearest_metra_stop_dist_ft",
-      "prox_nearest_park_dist_ft",
-      "prox_nearest_railroad_dist_ft",
-      "prox_nearest_water_dist_ft",
-      "prox_nearest_golf_course_dist_ft",
-      "acs5_percent_age_children",
-      "acs5_percent_age_senior",
-      "acs5_median_age_total",
-      "acs5_percent_mobility_no_move",
-      "acs5_percent_mobility_moved_from_other_state",
-      "acs5_percent_household_family_married",
-      "acs5_percent_household_nonfamily_alone",
-      "acs5_percent_education_high_school",
-      "acs5_percent_education_bachelor",
-      "acs5_percent_education_graduate",
-      "acs5_percent_income_below_poverty_level",
-      "acs5_median_income_household_past_year",
-      "acs5_median_income_per_capita_past_year",
-      "acs5_percent_income_household_received_snap_past_year",
-      "acs5_percent_employment_unemployed",
-      "acs5_median_household_total_occupied_year_built",
-      "acs5_median_household_renter_occupied_gross_rent",
-      "acs5_percent_household_owner_occupied",
-      "acs5_percent_household_total_occupied_w_sel_cond",
-      "acs5_percent_mobility_moved_in_county",
-      "other_tax_bill_rate",
-      "other_school_district_elementary_avg_rating",
-      "other_school_district_secondary_avg_rating",
-      "time_sale_year",
-      "time_sale_day",
-      "time_sale_quarter_of_year",
-      "time_sale_month_of_year",
-      "time_sale_day_of_year",
-      "time_sale_day_of_month",
-      "time_sale_day_of_week",
-      "time_sale_post_covid"
-    ]
+    all:
+      - "meta_township_code"
+      - "meta_nbhd_code"
+      - "meta_modeling_group"
+      - "meta_tieback_proration_rate"
+      - "char_yrblt"
+      - "char_air"
+      - "char_apts"
+      - "char_attic_fnsh"
+      - "char_attic_type"
+      - "char_beds"
+      - "char_bldg_sf"
+      - "char_bsmt"
+      - "char_bsmt_fin"
+      - "char_ext_wall"
+      - "char_fbath"
+      - "char_frpl"
+      - "char_gar1_area"
+      - "char_gar1_att"
+      - "char_gar1_cnst"
+      - "char_gar1_size"
+      - "char_hbath"
+      - "char_land_sf"
+      - "char_heat"
+      - "char_ncu"
+      - "char_porch"
+      - "char_roof_cnst"
+      - "char_rooms"
+      - "char_tp_dsgn"
+      - "char_tp_plan"
+      - "char_type_resd"
+      - "char_recent_renovation"
+      - "loc_longitude"
+      - "loc_latitude"
+      - "loc_env_flood_fema_sfha"
+      - "loc_env_flood_fs_factor"
+      - "loc_env_flood_fs_risk_direction"
+      - "loc_env_airport_noise_dnl"
+      - "loc_school_elementary_district_geoid"
+      - "loc_school_secondary_district_geoid"
+      - "loc_access_cmap_walk_nta_score"
+      - "loc_access_cmap_walk_total_score"
+      - "loc_tax_municipality_name"
+      - "prox_num_pin_in_half_mile"
+      - "prox_num_bus_stop_in_half_mile"
+      - "prox_num_foreclosure_per_1000_pin_past_5_years"
+      - "prox_num_school_in_half_mile"
+      - "prox_num_school_with_rating_in_half_mile"
+      - "prox_avg_school_rating_in_half_mile"
+      - "prox_nearest_bike_trail_dist_ft"
+      - "prox_nearest_cemetery_dist_ft"
+      - "prox_nearest_cta_route_dist_ft"
+      - "prox_nearest_cta_stop_dist_ft"
+      - "prox_nearest_hospital_dist_ft"
+      - "prox_lake_michigan_dist_ft"
+      - "prox_nearest_major_road_dist_ft"
+      - "prox_nearest_metra_route_dist_ft"
+      - "prox_nearest_metra_stop_dist_ft"
+      - "prox_nearest_park_dist_ft"
+      - "prox_nearest_railroad_dist_ft"
+      - "prox_nearest_water_dist_ft"
+      - "prox_nearest_golf_course_dist_ft"
+      - "acs5_percent_age_children"
+      - "acs5_percent_age_senior"
+      - "acs5_median_age_total"
+      - "acs5_percent_mobility_no_move"
+      - "acs5_percent_mobility_moved_from_other_state"
+      - "acs5_percent_household_family_married"
+      - "acs5_percent_household_nonfamily_alone"
+      - "acs5_percent_education_high_school"
+      - "acs5_percent_education_bachelor"
+      - "acs5_percent_education_graduate"
+      - "acs5_percent_income_below_poverty_level"
+      - "acs5_median_income_household_past_year"
+      - "acs5_median_income_per_capita_past_year"
+      - "acs5_percent_income_household_received_snap_past_year"
+      - "acs5_percent_employment_unemployed"
+      - "acs5_median_household_total_occupied_year_built"
+      - "acs5_median_household_renter_occupied_gross_rent"
+      - "acs5_percent_household_owner_occupied"
+      - "acs5_percent_household_total_occupied_w_sel_cond"
+      - "acs5_percent_mobility_moved_in_county"
+      - "other_tax_bill_rate"
+      - "other_school_district_elementary_avg_rating"
+      - "other_school_district_secondary_avg_rating"
+      - "time_sale_year"
+      - "time_sale_day"
+      - "time_sale_quarter_of_year"
+      - "time_sale_month_of_year"
+      - "time_sale_day_of_year"
+      - "time_sale_day_of_month"
+      - "time_sale_day_of_week"
+      - "time_sale_post_covid"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
     # else LightGBM will treat them as numeric
-    categorical: [
-      "meta_township_code",
-      "meta_nbhd_code",
-      "meta_modeling_group",
-      "char_air",
-      "char_apts",
-      "char_attic_fnsh",
-      "char_attic_type",
-      "char_bsmt",
-      "char_bsmt_fin",
-      "char_ext_wall",
-      "char_gar1_area",
-      "char_gar1_att",
-      "char_gar1_cnst",
-      "char_gar1_size",
-      "char_heat",
-      "char_porch",
-      "char_roof_cnst",
-      "char_tp_dsgn",
-      "char_tp_plan",
-      "char_type_resd",
-      "loc_tax_municipality_name",
-      "loc_school_elementary_district_geoid",
-      "loc_school_secondary_district_geoid",
-      "time_sale_quarter_of_year"
-    ]
+    categorical:
+      - "meta_township_code"
+      - "meta_nbhd_code"
+      - "meta_modeling_group"
+      - "char_air"
+      - "char_apts"
+      - "char_attic_fnsh"
+      - "char_attic_type"
+      - "char_bsmt"
+      - "char_bsmt_fin"
+      - "char_ext_wall"
+      - "char_gar1_area"
+      - "char_gar1_att"
+      - "char_gar1_cnst"
+      - "char_gar1_size"
+      - "char_heat"
+      - "char_porch"
+      - "char_roof_cnst"
+      - "char_tp_dsgn"
+      - "char_tp_plan"
+      - "char_type_resd"
+      - "loc_tax_municipality_name"
+      - "loc_school_elementary_district_geoid"
+      - "loc_school_secondary_district_geoid"
+      - "time_sale_quarter_of_year"
 
     # List of identifiers for each observation, can be ignored
-    id: [
-      "meta_year",
-      "meta_pin",
-      "meta_class",
-      "meta_card_num",
-      "meta_sale_document_num"
-    ]
+    id:
+      - "meta_year"
+      - "meta_pin"
+      - "meta_class"
+      - "meta_card_num"
+      - "meta_sale_document_num"
 
   parameter:
-    # Total number of iterations. Usually changed in tandem with learning_rate
-    # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
-    # When early stopping is enabled, num_iterations is effectively the MAX
-    # number of iterations
-    num_iterations: 1500
-    learning_rate: 0.05
-
     # For CV only, proportion of the training data to hold out for use in
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
@@ -290,18 +279,24 @@ model:
     # This is to prevent tune_bayes from exploring useless parameter space
     link_max_depth: TRUE
 
-    # Maximum number of bins for discretizing continuous features. Lower uses
-    # less memory and speeds up training
-    max_bin: 512
-
     # During CV, the number of iterations to go without improvement before
     # stopping training
-    stop_iter: 40
+    stop_iter: 30
 
   hyperparameter:
-    # Default set of hyperparameters to use if CV is not enabled. See docs for
-    # details: https://lightgbm.readthedocs.io/en/latest/Parameters.html
+    # Default set of hyperparameters to use if CV is not enabled
     default:
+      # Total number of iterations. Usually changed in tandem with learning_rate
+      # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
+      # NOTE: When early stopping is enabled, num_iterations is effectively the
+      # MAXIMUM possible number of iterations
+      num_iterations: 2000
+      learning_rate: 0.025
+      # Maximum number of bins for discretizing continuous features. Lower uses
+      # less memory and speeds up training
+      max_bin: 512
+      # See docs for details on each of the remaining parameters:
+      # https://lightgbm.readthedocs.io/en/latest/Parameters.html
       num_leaves: 1300
       add_to_linked_depth: 4
       feature_fraction: 0.475
@@ -316,7 +311,10 @@ model:
 
     # Range of possible hyperparameter values for tune_bayes to explore
     range:
-      num_leaves: [50, 2000]
+      num_iterations: [40, 2000]
+      learning_rate: [-3, 0.4] # 10 ^ X
+      max_bin: [50, 512]
+      num_leaves: [50, 200]
       add_to_linked_depth: [1, 7]
       feature_fraction: [0.3, 0.7]
       min_gain_to_split: [-3.0, 4] # 10 ^ X
@@ -373,17 +371,16 @@ ratio_study:
 
   # Geographies for which to calculate performance statistics in the evaluate
   # stage. Each geography is also broken out by class
-  geographies: [
-    "meta_township_code",
-    "meta_nbhd_code",
-    "loc_tax_municipality_name",
-    "loc_ward_num",
-    "loc_census_puma_geoid",
-    "loc_census_tract_geoid",
-    "loc_school_elementary_district_geoid",
-    "loc_school_secondary_district_geoid",
-    "loc_school_unified_district_geoid"
-  ]
+  geographies:
+    - "meta_township_code"
+    - "meta_nbhd_code"
+    - "loc_tax_municipality_name"
+    - "loc_ward_num"
+    - "loc_census_puma_geoid"
+    - "loc_census_tract_geoid"
+    - "loc_school_elementary_district_geoid"
+    - "loc_school_secondary_district_geoid"
+    - "loc_school_unified_district_geoid"
 
 
 # Export -----------------------------------------------------------------------
