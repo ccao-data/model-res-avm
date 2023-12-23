@@ -255,15 +255,12 @@ if (cv_enable) {
     objective = params$model$objective
   ) %>%
     bind_cols(
-      select_max_iterations(lgbm_search, metric = params$cv$best_metric)
-    ) %>%
-    bind_cols(
       as_tibble(params$model$parameter) %>%
         select(-any_of(c("num_iterations", names(lgbm_best_params))))
     ) %>%
     bind_cols(
       lgbm_best_params %>%
-        select(-any_of("trees"))
+        rename(any_of(c("num_iterations" = "trees")))
     ) %>%
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
