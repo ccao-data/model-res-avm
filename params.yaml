@@ -18,7 +18,7 @@ run_note: |
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: FALSE
+  cv_enable: TRUE
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
@@ -86,15 +86,15 @@ input:
 # Cross-validation -------------------------------------------------------------
 
 # Cross-validation parameters used in the train stage. Most are passed
-# directly to tune_bayes()
+# directly to tune_bayes() or discarded if using grid search
 cv:
   # Proportion of the training data to use for training vs test e.g. 0.9 means
   # the most recent 10% of sales are used as a test set
   split_prop: 0.9
 
-  # Number of initial iterations to create before tuning. Recommend this number
-  # be greater than the number of hyperparameters being tuned
-  initial_set: 20
+  # Number of initial iterations or grid combinations  to create before tuning.
+  # Recommend this number be greater than the number of parameters being tuned
+  initial_set: 40
 
   # Max number of total search iterations
   max_iterations: 70
@@ -269,8 +269,8 @@ model:
     # For CV only, proportion of the training data to hold out for use in
     # early stopping + the metric to evaluate. See R docs for details:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
-    # WARNING: See issue #82 for critical notes about early stopping / CV
-    validation_prop: 0.1
+    # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
+    validation_prop: 0.0 # Zero means early stopping is disabled
     validation_type: "recent"
     validation_metric: "rmse"
 
@@ -280,21 +280,22 @@ model:
     link_max_depth: TRUE
 
     # During CV, the number of iterations to go without improvement before
-    # stopping training
-    stop_iter: 30
+    # stopping training. Early stopping is deactivated when NULL
+    # stop_iter: 40
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
     default:
       # Total number of iterations. Usually changed in tandem with learning_rate
-      # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations
       # NOTE: When early stopping is enabled, num_iterations is effectively the
       # MAXIMUM possible number of iterations
       num_iterations: 2000
       learning_rate: 0.025
+
       # Maximum number of bins for discretizing continuous features. Lower uses
       # less memory and speeds up training
       max_bin: 512
+
       # See docs for details on each of the remaining parameters:
       # https://lightgbm.readthedocs.io/en/latest/Parameters.html
       num_leaves: 1300
@@ -309,15 +310,17 @@ model:
       lambda_l1: 0.124
       lambda_l2: 1.655
 
-    # Range of possible hyperparameter values for tune_bayes to explore
+    # Range of possible hyperparameter values for tuning to explore
     range:
+      # NOTE: When sub-model fitting is used (via grid search), the range for
+      # num_iterations is split into N values, where each value is a sub-model
       num_iterations: [40, 2000]
-      learning_rate: [-3, 0.4] # 10 ^ X
+      learning_rate: [-3.0, 0.4] # 10 ^ X
       max_bin: [50, 512]
-      num_leaves: [50, 200]
+      num_leaves: [32, 2048]
       add_to_linked_depth: [1, 7]
       feature_fraction: [0.3, 0.7]
-      min_gain_to_split: [-3.0, 4] # 10 ^ X
+      min_gain_to_split: [-3.0, 4.0] # 10 ^ X
       min_data_in_leaf: [2, 300]
       max_cat_threshold: [10, 250]
       min_data_per_group: [4, 300]

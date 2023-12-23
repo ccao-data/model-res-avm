@@ -93,17 +93,14 @@ lgbm_model <- parsnip::boost_tree(
     # Set the objective function. This is what lightgbm will try to minimize
     objective = params$model$objective,
 
-    # Typically set manually along with the number of iterations (trees)
-    learning_rate = tune(),
-
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
     categorical_feature = params$model$predictor$categorical,
 
     # Enable early stopping using a proportion of each training sample as a
     # validation set. If lgb.train goes `stop_iter` rounds without improvement
-    # in the chosen metric, then it will end training early. This saves an
-    # immense amount of time during CV. WARNING: See issue #82 for more info
+    # in the chosen metric, then it will end training early. Saves an immense
+    # amount of time during CV. WARNING: See GitLab issue #82 for more info
     validation = params$model$parameter$validation_prop,
     sample_type = params$model$parameter$validation_type,
     metric = params$model$parameter$validation_metric,
@@ -113,14 +110,18 @@ lgbm_model <- parsnip::boost_tree(
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
 
-    # Max number of bins that feature values will be bucketed in
-    max_bin = tune(),
+
 
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
 
-    # These are parameters that are tuned using cross-validation. These are the
-    # main parameters determining model complexity
+    # Typically set manually along with the number of iterations (trees)
+    learning_rate = tune(),
+
+    # Max number of bins that feature values will be bucketed in
+    max_bin = tune(),
+
+    # Main parameters determining model complexity
     num_leaves = tune(),
     add_to_linked_depth = tune(),
     feature_fraction = tune(),
@@ -150,9 +151,9 @@ lgbm_wflow <- workflow() %>%
 
 ## 3.2. Cross-Validation -------------------------------------------------------
 
-# Begin CV tuning if enabled. We use Bayesian tuning as grid search or random
-# search take a very long time to produce good results due to the high number
-# of hyperparameters
+# Begin CV tuning if enabled. We use space-filling grid search along with
+# the sub-model trick to vastly speed up the search. See tidymodels site
+# for details: https://www.tmwr.org/grid-search#submodel-trick
 if (cv_enable) {
   message("Starting cross-validation")
 
@@ -160,15 +161,16 @@ if (cv_enable) {
   # training set, where the validation set is always the X% of sales following
   # the training set in time. See https://www.tmwr.org/resampling.html#rolling
 
-  # CRITICAL NOTE: In the folds created here, the validation set is the last X%
-  # of the training set, meaning they overlap! This is because Lightsnip cuts
+  # CRITICAL NOTE: In the folds created here, the validation set can be the last
+  # X% of the training set, meaning they overlap! This is because Lightsnip cuts
   # out the last X% of each training set to use as a validation set for early
-  # stopping. See issue #82 for more information
+  # stopping. Set overlap = FALSE to disable. See issue #82 for more information
   train_folds <- rolling_origin_pct_split(
     data = train,
     order_col = meta_sale_date,
     split_col = time_split,
-    assessment_pct = params$model$parameter$validation_prop
+    assessment_pct = (1 - params$cv$split_prop),
+    overlap = FALSE
   )
 
   # Create the parameter search space for hyperparameter optimization
@@ -179,9 +181,9 @@ if (cv_enable) {
     hardhat::extract_parameter_set_dials() %>%
     update(
       # nolint start
-      trees               = dials::trees(),
-      learning_rate       = lightsnip::learning_rate(),
-      max_bin             = lightsnip::max_bin(),
+      trees               = dials::trees(lgbm_range$num_iterations),
+      learning_rate       = lightsnip::learning_rate(lgbm_range$learning_rate),
+      max_bin             = lightsnip::max_bin(lgbm_range$max_bin),
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
       add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
       feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
@@ -196,22 +198,35 @@ if (cv_enable) {
       # nolint end
     )
 
-  # Use Bayesian tuning to find best performing hyperparameters. This part takes
-  # quite a long time, depending on the compute resources available
-  lgbm_search <- tune_bayes(
+  # Create the parameter search space using Latin hypercube sampling
+  # NOTE: The sub-model trick (https://www.tmwr.org/grid-search#submodel-trick)
+  # will automatically fit any models with different parameter values but the
+  # same number of trees, so here we test all combinations of trees/parameters
+  lgbm_params_grid <- dials::grid_latin_hypercube(
+    x = lgbm_params,
+    size = params$cv$initial_set,
+    original = TRUE
+  ) %>%
+    select(-trees) %>%
+    tidyr::expand_grid(
+      trees = floor(seq(
+        from = lgbm_range$num_iterations[1],
+        to = lgbm_range$num_iterations[2],
+        length.out = 100
+      )),
+      .
+    )
+
+  # Use grid search tuning to find best performing hyperparameters. This part
+  # takes quite a long time, depending on the compute resources available
+  lgbm_search <- tune_grid(
     object = lgbm_wflow,
     resamples = train_folds,
-    initial = params$cv$initial_set,
-    iter = params$cv$max_iterations,
-    param_info = lgbm_params,
+    grid = lgbm_params_grid,
     metrics = metric_set(rmse, mape, mae),
-    control = control_bayes(
+    control = control_grid(
       verbose = TRUE,
-      verbose_iter = TRUE,
-      uncertain = params$cv$uncertain,
-      no_improve = params$cv$no_improve,
-      extract = extract_num_iterations,
-      seed = params$model$seed
+      allow_par = FALSE
     )
   )
 

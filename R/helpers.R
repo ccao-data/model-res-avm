@@ -139,12 +139,13 @@ select_max_iterations <- function(tune_results, metric) {
 
 # Modified rolling origin forecast split function. Splits the training data into
 # a cumulatively expanding time window. The window contains the training data
-# and the most recent X% of the window is validation data (they overlap! see
-# issue #82). See README for more information
+# and the most recent X% of the window is validation data (they overlap!
+# see GitLab issue #82). See README for more information
 rolling_origin_pct_split <- function(data,
                                      order_col,
                                      split_col,
-                                     assessment_pct) {
+                                     assessment_pct,
+                                     overlap = FALSE) {
   data <- dplyr::arrange(data, {{ order_col }})
   split_sc <- data %>%
     dplyr::group_by({{ split_col }}) %>%
@@ -157,6 +158,11 @@ rolling_origin_pct_split <- function(data,
     m <- min(n - floor(n * assessment_pct), n - 1) + 1
     seq(max(m, 3), n)
   })
+  if (!overlap) {
+    in_idx <- purrr::imap(out_idx, function(x, i) {
+      in_idx[[i]][!in_idx[[i]] %in% out_idx[[i]]]
+    })
+  }
   indices <- mapply(rsample:::merge_lists, in_idx, out_idx, SIMPLIFY = FALSE)
   split_objs <- purrr::map(
     indices, rsample::make_splits,
