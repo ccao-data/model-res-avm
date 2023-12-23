@@ -209,11 +209,11 @@ if (cv_enable) {
   ) %>%
     select(-trees) %>%
     tidyr::expand_grid(
-      trees = floor(seq(
+      trees = unique(floor(seq(
         from = lgbm_range$num_iterations[1],
         to = lgbm_range$num_iterations[2],
         length.out = 100
-      )),
+      ))),
       .
     )
 
