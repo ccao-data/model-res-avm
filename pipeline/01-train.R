@@ -248,7 +248,11 @@ if (cv_enable) {
 
   # Choose the best model (whichever model minimizes the chosen objective,
   # averaged across CV folds), the combine with any static parameters
-  lgbm_best_params <- select_best(lgbm_search, metric = params$cv$best_metric)
+  lgbm_best_params <- select_by_one_std_err(
+    x = lgbm_search,
+    trees, desc(learning_rate), num_leaves,
+    metric = params$cv$best_metric
+  )
   lgbm_final_params <- tibble(
     engine = params$model$engine,
     seed = params$model$seed,
