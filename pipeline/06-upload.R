@@ -100,19 +100,15 @@ if (upload_enable) {
         rename_with(~ gsub("^\\.", "", .x)) %>%
         tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
         relocate(
-          all_of(c(
+          any_of(c(
             "run_id",
             "iteration" = "iter",
             "configuration" = "config", "fold_id" = "id"
           ))
         ) %>%
-        relocate(c(location, type, notes), .after = everything()),
-      read_parquet(paths$output$parameter_raw$local) %>%
-        tidyr::unnest(cols = .extracts) %>%
-        tidyr::unnest(cols = .extracts) %>%
-        dplyr::select(num_iterations = .extracts)
+        relocate(c(location, type, notes), .after = everything())
     ) %>%
-      dplyr::select(-any_of(c("estimator")), -extracts) %>%
+      dplyr::select(-any_of(c("estimator", "extracts"))) %>%
       write_parquet(paths$output$parameter_search$s3)
   }
 
