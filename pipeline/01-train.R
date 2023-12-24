@@ -28,7 +28,8 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date)
+  arrange(meta_sale_date) %>%
+  slice(1:50000)
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -157,20 +158,9 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
   message("Starting cross-validation")
 
-  # Using rolling origin resampling to create a cumulative, sliding time window
-  # training set, where the validation set is always the X% of sales following
-  # the training set in time. See https://www.tmwr.org/resampling.html#rolling
-
-  # CRITICAL NOTE: In the folds created here, the validation set can be the last
-  # X% of the training set, meaning they overlap! This is because Lightsnip cuts
-  # out the last X% of each training set to use as a validation set for early
-  # stopping. Set overlap = FALSE to disable. See issue #82 for more information
-  train_folds <- rolling_origin_pct_split(
+  train_folds <- vfold_cv(
     data = train,
-    order_col = meta_sale_date,
-    split_col = time_split,
-    assessment_pct = (1 - params$cv$split_prop),
-    overlap = FALSE
+    v = 10
   )
 
   # Create the parameter search space for hyperparameter optimization
@@ -216,6 +206,18 @@ if (cv_enable) {
       ))),
       .
     )
+
+  lgbm_search <- finetune::tune_race_anova(
+    object = lgbm_wflow,
+    resamples = train_folds,
+    grid = lgbm_params_grid,
+    metrics = metric_set(rmse, mape, mae),
+    control = control_race(
+      verbose = TRUE,
+      verbose_elim = TRUE,
+      save_pred = TRUE
+    )
+  )
 
   # Use grid search tuning to find best performing hyperparameters. This part
   # takes quite a long time, depending on the compute resources available
