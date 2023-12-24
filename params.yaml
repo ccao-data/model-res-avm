@@ -94,7 +94,7 @@ cv:
 
   # Number of initial iterations or grid combinations  to create before tuning.
   # Recommend this number be greater than the number of parameters being tuned
-  initial_set: 50
+  initial_set: 40
 
   # Max number of total search iterations
   max_iterations: 70
