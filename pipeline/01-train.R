@@ -204,7 +204,8 @@ if (cv_enable) {
     metrics = metric_set(rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
-      uncertain = params$cv$no_improve - 2,
+      verbose_iter = TRUE,
+      uncertain = params$cv$uncertain,
       no_improve = params$cv$no_improve,
       extract = extract_num_iterations,
       seed = params$model$seed
