@@ -245,7 +245,7 @@ if (cv_enable) {
   lgbm_missing_params <- names(params$model$hyperparameter$default)
   lgbm_missing_params <- lgbm_missing_params[
     !lgbm_missing_params %in%
-      hardhat::extract_parameter_set_dials(lgbm_wflow)$name
+      c(hardhat::extract_parameter_set_dials(lgbm_wflow)$name, "num_iterations")
   ]
   lgbm_final_params <- tibble(
     configuration = "Default",
