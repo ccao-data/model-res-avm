@@ -8,6 +8,7 @@ Depends:
     butcher,
     ccao,
     conflicted,
+    doParallel,
     dplyr,
     finetune,
     furrr,
