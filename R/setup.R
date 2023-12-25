@@ -32,6 +32,7 @@ conflicts_prefer(
   purrr::splice,
   purrr::when,
   recipes::step,
+  recipes::update,
   rlang::is_empty,
   tictoc::push,
   utils::timestamp,

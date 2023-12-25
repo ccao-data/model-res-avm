@@ -87,7 +87,7 @@ lgbm_model <- parsnip::boost_tree(
 
     # These are static lightgbm-specific engine parameters passed to lgb.train()
     # See lightsnip::train_lightgbm for details
-    num_threads = 4,
+    num_threads = floor(num_threads / 4),
     verbose = params$model$verbose,
 
     # Set the objective function. This is what lightgbm will try to minimize
@@ -109,8 +109,6 @@ lgbm_model <- parsnip::boost_tree(
     # using floor(log2(num_leaves)) + add_to_linked_depth. Useful since
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
-
-
 
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
@@ -139,18 +137,6 @@ lgbm_model <- parsnip::boost_tree(
     lambda_l2 = tune()
   )
 
-lgbm_model$eng_args <- map(
-  lgbm_model$eng_args,
-  ~ rlang::new_quosure(
-    eval_tidy(.x),
-    env = quo_get_env(lgbm_model$eng_args$force_row_wise)
-  )
-)
-lgbm_model$args$stop_iter <- rlang::new_quosure(
-  NULL,
-  env = quo_get_env(lgbm_model$args$mtry)
-)
-
 # Initialize lightgbm workflow, which contains both the model spec AND the
 # pre-processing steps/recipe needed to prepare the raw data
 lgbm_wflow <- workflow() %>%
@@ -169,9 +155,28 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
   message("Starting cross-validation")
 
+  # Setup parallel processing for use in the CV loop
+  cl <- makePSOCKcluster(4)
+  registerDoParallel(cl)
+
+  # Replace model parameters with evaluated quosures so the model object can be
+  # used by parallel processes. Otherwise, the model references `params` in the
+  # global environment
+  lgbm_model$eng_args <- map(
+    lgbm_model$eng_args,
+    ~ new_quosure(
+      eval_tidy(.x),
+      env = quo_get_env(lgbm_model$eng_args$seed)
+    )
+  )
+  lgbm_model$args$stop_iter <- new_quosure(
+    NULL, quo_get_env(lgbm_model$args$mtry)
+  )
+
+  # Create the cross-validation folds
   train_folds <- vfold_cv(
     data = train,
-    v = 7
+    v = params$cv$num_folds
   )
 
   # Create the parameter search space for hyperparameter optimization
@@ -202,10 +207,10 @@ if (cv_enable) {
   # Create the parameter search space using Latin hypercube sampling
   # NOTE: The sub-model trick (https://www.tmwr.org/grid-search#submodel-trick)
   # will automatically fit any models with different parameter values but the
-  # same number of trees, so here we test all combinations of trees/parameters
+  # same number of trees, so here we test many combinations of trees/parameters
   lgbm_params_grid <- dials::grid_latin_hypercube(
     x = lgbm_params,
-    size = 5,
+    size = params$cv$initial_set,
     original = TRUE
   ) %>%
     select(-trees) %>%
@@ -218,11 +223,6 @@ if (cv_enable) {
       .
     )
 
-  library(doParallel)
-  cl <- makePSOCKcluster(4)
-  registerDoParallel(cl)
-
-
   lgbm_search <- finetune::tune_race_anova(
     object = lgbm_wflow,
     resamples = train_folds,
@@ -231,22 +231,14 @@ if (cv_enable) {
     control = control_race(
       verbose = TRUE,
       verbose_elim = TRUE,
-      save_pred = FALSE
+      allow_par = TRUE,
+      save_pred = FALSE,
+      burn_in = 2,
+      num_ties = 5
     )
   )
 
-  # Use grid search tuning to find best performing hyperparameters. This part
-  # takes quite a long time, depending on the compute resources available
-  lgbm_search <- tune_grid(
-    object = lgbm_wflow,
-    resamples = train_folds,
-    grid = lgbm_params_grid,
-    metrics = metric_set(rmse, mape, mae),
-    control = control_grid(
-      verbose = TRUE,
-      allow_par = FALSE
-    )
-  )
+  toc()
 
   # Save tuning results to file. This is a data.frame where each row is one
   # CV iteration

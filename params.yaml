@@ -85,26 +85,18 @@ input:
 
 # Cross-validation -------------------------------------------------------------
 
-# Cross-validation parameters used in the train stage. Most are passed
-# directly to tune_bayes() or discarded if using grid search
+# Cross-validation parameters used in the train stage
 cv:
+  # Number of folds to use for cross-validation
+  num_folds: 5
+
   # Proportion of the training data to use for training vs test e.g. 0.9 means
   # the most recent 10% of sales are used as a test set
   split_prop: 0.9
 
-  # Number of initial iterations or grid combinations  to create before tuning.
+  # Number of initial iterations or grid combinations to create before tuning.
   # Recommend this number be greater than the number of parameters being tuned
-  initial_set: 40
-
-  # Max number of total search iterations
-  max_iterations: 70
-
-  # Max number of search iterations without improvement before stopping search
-  no_improve: 20
-
-  # The number of iterations with no improvement before an uncertainty sample
-  # is created where a sample with high predicted variance is chosen
-  uncertain: 10
+  initial_set: 50
 
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
@@ -312,8 +304,6 @@ model:
 
     # Range of possible hyperparameter values for tuning to explore
     range:
-      # NOTE: When sub-model fitting is used (via grid search), the range for
-      # num_iterations is split into N values, where each value is a sub-model
       num_iterations: [40, 2000]
       learning_rate: [-3.0, 0.4] # 10 ^ X
       max_bin: [50, 512]

@@ -21,6 +21,7 @@ Depends:
     purrr,
     lightgbm,
     lightsnip,
+    lme4,
     lubridate,
     paws.analytics,
     paws.application.integration,
