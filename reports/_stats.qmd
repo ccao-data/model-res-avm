@@ -225,9 +225,13 @@ logits <- logit_parcels %>%
   }, simplify = FALSE)
 ```
 
-## Township Logistic Regressions
-
 ::: {.panel-tabset}
+
+## County
+
+```{r _stats_county_regression}
+county_logit
+```
 
 ```{r _stats_township_regressions, results = 'asis'}
 iwalk(logits, ~ {
