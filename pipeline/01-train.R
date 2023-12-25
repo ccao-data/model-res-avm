@@ -28,8 +28,7 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date) %>%
-  slice(1:50000)
+  arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -88,7 +87,7 @@ lgbm_model <- parsnip::boost_tree(
 
     # These are static lightgbm-specific engine parameters passed to lgb.train()
     # See lightsnip::train_lightgbm for details
-    num_threads = num_threads,
+    num_threads = 4,
     verbose = params$model$verbose,
 
     # Set the objective function. This is what lightgbm will try to minimize
@@ -140,6 +139,18 @@ lgbm_model <- parsnip::boost_tree(
     lambda_l2 = tune()
   )
 
+lgbm_model$eng_args <- map(
+  lgbm_model$eng_args,
+  ~ rlang::new_quosure(
+    eval_tidy(.x),
+    env = quo_get_env(lgbm_model$eng_args$force_row_wise)
+  )
+)
+lgbm_model$args$stop_iter <- rlang::new_quosure(
+  NULL,
+  env = quo_get_env(lgbm_model$args$mtry)
+)
+
 # Initialize lightgbm workflow, which contains both the model spec AND the
 # pre-processing steps/recipe needed to prepare the raw data
 lgbm_wflow <- workflow() %>%
@@ -160,7 +171,7 @@ if (cv_enable) {
 
   train_folds <- vfold_cv(
     data = train,
-    v = 10
+    v = 7
   )
 
   # Create the parameter search space for hyperparameter optimization
@@ -194,7 +205,7 @@ if (cv_enable) {
   # same number of trees, so here we test all combinations of trees/parameters
   lgbm_params_grid <- dials::grid_latin_hypercube(
     x = lgbm_params,
-    size = params$cv$initial_set,
+    size = 5,
     original = TRUE
   ) %>%
     select(-trees) %>%
@@ -202,10 +213,15 @@ if (cv_enable) {
       trees = unique(floor(seq(
         from = lgbm_range$num_iterations[1],
         to = lgbm_range$num_iterations[2],
-        length.out = 100
+        length.out = 50
       ))),
       .
     )
+
+  library(doParallel)
+  cl <- makePSOCKcluster(4)
+  registerDoParallel(cl)
+
 
   lgbm_search <- finetune::tune_race_anova(
     object = lgbm_wflow,
@@ -215,7 +231,7 @@ if (cv_enable) {
     control = control_race(
       verbose = TRUE,
       verbose_elim = TRUE,
-      save_pred = TRUE
+      save_pred = FALSE
     )
   )
 
