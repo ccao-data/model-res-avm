@@ -309,7 +309,9 @@ message("Finalizing and saving trained model")
 # predictions are used to evaluate model performance on the unseen test set.
 # Keep only the variables necessary for evaluation
 test %>%
-  mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
+  mutate(
+    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred)
+  ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
     all_of(params$ratio_study$geographies), char_bldg_sf,
