@@ -314,7 +314,7 @@ model:
     # Range of possible hyperparameter values for tuning to explore
     range:
       num_iterations: [40, 2500]
-      learning_rate: [-3.0, 0.4] # 10 ^ X
+      learning_rate: [-3.0, -0.4] # 10 ^ X
       max_bin: [50, 512]
       num_leaves: [32, 2048]
       add_to_linked_depth: [1, 7]
