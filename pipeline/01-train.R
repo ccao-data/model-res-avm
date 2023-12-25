@@ -229,13 +229,15 @@ if (cv_enable) {
     objective = params$model$objective
   ) %>%
     bind_cols(
+      as_tibble(params$model$parameter) %>%
+        select(-any_of("num_iterations"))
+    ) %>%
+    bind_cols(
       select_max_iterations(lgbm_search, metric = params$cv$best_metric)
     ) %>%
     bind_cols(
-      as_tibble(params$model$parameter) %>% select(-num_iterations)
-    ) %>%
-    bind_cols(
-      select_best(lgbm_search, metric = params$cv$best_metric)
+      select_best(lgbm_search, metric = params$cv$best_metric) %>%
+        select(-any_of("trees"))
     ) %>%
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
