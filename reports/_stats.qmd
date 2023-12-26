@@ -36,7 +36,7 @@ sf_parcels <- chars_data %>%
       ) %>%
       # We apply distinct here to remove duplicate sales that are a result of
       # multicard and multiland sales, otherwise we'll get many-to-many joins.
-      distinct() %>% 
+      distinct() %>%
       select(meta_pin, meta_sale_date, meta_year)
   ) %>%
   mutate(
@@ -95,7 +95,7 @@ remove <-
 
 fmla <- as.formula(
   paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
-  )
+)
 
 logit <- glm(fmla,
   data = logit_parcels %>%
@@ -123,7 +123,7 @@ county_logit <- logit %>%
     padding = 5L
   ) %>%
   add_footnote(
-    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", #noqa
+    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
     notation = "none"
   ) %>%
   kable_styling("striped",
@@ -187,7 +187,7 @@ logits <- logit_parcels %>%
     } else {
       fmla <- as.formula(
         paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+"))
-        )
+      )
 
       glm(fmla,
         data = x %>%
@@ -206,7 +206,7 @@ logits <- logit_parcels %>%
           padding = 5L
         ) %>%
         add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", #noqa
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
           notation = "none"
         ) %>%
         kable_styling(
