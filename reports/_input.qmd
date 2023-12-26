@@ -295,8 +295,8 @@ leaflet(complex_id_data_v2) %>%
   addCircleMarkers(
     ~loc_longitude,
     ~loc_latitude,
-    color = ~colorPalette(meta_complex_id),
-    popup = ~as.character(meta_complex_id),
+    color = ~ colorPalette(meta_complex_id),
+    popup = ~ as.character(meta_complex_id),
     radius = 4
   )
 ```
