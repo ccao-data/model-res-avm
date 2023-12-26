@@ -366,7 +366,7 @@ ggplotly(
 
 ```{r _model_predicted_vs_actual_town}
 pred_v_actual_town <- test_card %>%
-  filter(meta_triad_name == run_triad) %>%
+  filter(meta_triad_code == run_triad_code) %>%
   mutate(Township = ccao::town_convert(meta_township_code)) %>%
   rename(
     `Sale Price` = meta_sale_price,
