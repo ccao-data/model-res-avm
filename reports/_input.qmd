@@ -279,30 +279,13 @@ assessment_pin %>%
 
 :::
 
-```{r}
-test1 <- char_data %>%
-  dplyr::filter(meta_year == "2022")
+```{r _input_complex_id_map}
+chars_data_1year <- chars_data %>%
+  filter(meta_year == "2022")
 
-complex_id_data_v2 <- left_join(complex_id_data, test1, by = "meta_pin") %>%
-  dplyr::filter(meta_township_code.x == 35)
-```
+complex_id_data_v2 <- left_join(complex_id_data, chars_data_1year, by = "meta_pin") %>%
+  filter(meta_township_code.x == 35)
 
-
-```{r}
-shapes <- c(15, 16, 17, 18, 19, 20)
-
-# Plotting with a limited set of shapes and a variety of colors
-ggplot(complex_id_data_v2, aes(x = loc_longitude, y = loc_latitude, color = as.factor(meta_complex_id), shape = as.factor(meta_complex_id %% 6))) +
-  geom_point(size = 3) +
-  scale_shape_manual(values = shapes) +
-  ggtitle("Map of Complexes by Latitude and Longitude") +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_minimal() +
-  theme(legend.position = "none") # Removes the legend
-
-```
-```{r}
 # Generating a color palette
 colorPalette <- colorFactor(palette = "viridis", domain = complex_id_data_v2$meta_complex_id)
 
@@ -317,4 +300,5 @@ leaflet(complex_id_data_v2) %>%
     radius = 4
   )
 ```
+
 
