@@ -17,9 +17,7 @@ training_data_pred <- training_data %>%
 ```{r _model_township_level_stats_table}
 # Make join for township name
 model_performance_test_w_township_name <- model_performance_test %>%
-  left_join(ccao::town_dict, by = c("geography_id" = "township_code")) %>%
-  select(-triad_code.y) %>%
-  rename(triad_code = triad_code.x)
+  mutate(township_name = ccao::town_convert(geography_id))
 
 township_level <- model_performance_test_w_township_name %>%
   filter(
@@ -224,20 +222,11 @@ make_township_ratio_decile_graph <- function(data, township) {
 
 # Get township name for graphs
 data_for_tabset <- model_performance_quantile_test %>%
-  left_join(ccao::town_dict, by = c("geography_id" = "township_code")) %>%
-  select(-triad_code.y) %>%
-  rename(triad_code = triad_code.x)
+  mutate(township_name = ccao::town_convert(geography_id))
 
 # Collect townships to iterate over
-townships_to_iterate <- data_for_tabset %>%
-  filter(
-    geography_type == "township_code",
-    by_class == FALSE,
-    triad_code == run_triad_code,
-    num_quantile == "10"
-  ) %>%
-  select(township_name) %>%
-  unique() %>%
+townships_to_iterate <- ccao::town_dict %>%
+  filter(triad_name == run_triad) %>%
   pull(township_name)
 ```
 

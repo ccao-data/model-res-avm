@@ -13,7 +13,7 @@ the Sale Validation script.
 
 ```{r _outliers_flagged_sales}
 # This object is joined to itself using different filters, which is why this
-# filtering is not just applied below.
+# filtering is applied here rather than below.
 price_outlier_type <- training_data %>%
   filter(meta_class != "200" & meta_triad_name == run_triad)
 
