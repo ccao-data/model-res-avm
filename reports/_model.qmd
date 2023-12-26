@@ -28,7 +28,7 @@ mape <- training_data_pred %>%
     !sv_is_outlier,
     meta_triad_name == run_triad,
     meta_year == max(meta_year)
-    ) %>%
+  ) %>%
   arrange(meta_sale_price) %>%
   mutate(Quintile = ntile(meta_sale_price, 5), .by = meta_township_name) %>%
   summarise(
@@ -176,7 +176,9 @@ training_data_pred %>%
       "Median Sale Price" = "blue"
     )
   ) +
-  scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
+  scale_y_continuous(
+    labels = scales::label_dollar(scale = 1e-3, suffix = "K")
+    ) +
   facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
   theme_minimal() +
   xlab("Time in Months, (0 = Jan 1, 2014)") +
@@ -188,7 +190,8 @@ training_data_pred %>%
 
 ## Test Data (Unseen)
 
-This chart looks at sales slightly in the future to see if the model tracks trends which it has not yet seen. 
+This chart looks at sales slightly in the future to see if the model tracks
+trends which it has not yet seen. 
 
 ```{r, fig.height=8, fig.width=7, out.width="100%"}
 test_card %>%
@@ -213,7 +216,9 @@ test_card %>%
     name = "",
     values = c("Median Prediction" = "red", "Median Sale Price" = "blue")
   ) +
-  scale_y_continuous(labels = scales::label_dollar(scale = 1e-3, suffix = "K")) +
+  scale_y_continuous(
+    labels = scales::label_dollar(scale = 1e-3, suffix = "K")
+    ) +
   facet_wrap(vars(meta_township_name),
     scales = "free_y", ncol = 3
   ) +

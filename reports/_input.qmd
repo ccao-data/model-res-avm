@@ -8,7 +8,8 @@
 
 ## Home Improvement Exemption Spot Check
 
-This tests if our Home Improvement Exemption characteristics are getting accurately updated.
+This tests if our Home Improvement Exemption characteristics are getting
+accurately updated.
 
 ```{r}
 hie_pins <- training_data %>%
@@ -27,14 +28,14 @@ chars_data_table <- chars_data %>%
   ) %>%
   inner_join(
     hie_data %>%
-  filter(
-    pin %in% hie_pins,
-    year >= as.numeric(params$year) - 4,
-    qu_sqft_bld > 0
-  ) %>%
-  select(-year),
+      filter(
+        pin %in% hie_pins,
+        year >= as.numeric(params$year) - 4,
+        qu_sqft_bld > 0
+      ) %>%
+      select(-year),
     by = join_by(meta_pin == pin)
-    ) %>%
+  ) %>%
   left_join(
     training_data %>% select(
       meta_pin, meta_year,
@@ -89,7 +90,8 @@ filling_table %>%
 
 ## Multi-Card and Multi-PIN Aggregation
 
-This uses 5 test pins to assess if multi-card parcels successfully aggregate to the full pin.
+This uses 5 test pins to assess if multi-card parcels successfully aggregate to
+the full pin.
 
 ```{r}
 test_card_pins <- c(
@@ -167,7 +169,8 @@ assessment_pin %>%
 
 ## YoY Changes
 
-Where are 211s and 212s increasing a *lot*? Near values are Certified values from the current year, and far values are board values from two years ago.
+Where are 211s and 212s increasing a *lot*? Near values are Certified values
+from the current year, and far values are board values from two years ago.
 
 ```{r}
 multifamily_change <- assessment_pin %>%
@@ -213,7 +216,8 @@ multifamily_change %>%
 
 ## Large Sqft. 211s and 212s
 
-This creates a subset of 211s and 212s which are three standard deviations above the norm in terms of square footage. 
+This creates a subset of 211s and 212s which are three standard deviations above
+the norm in terms of square footage. 
 
 ```{r}
 large_sqft <- training_data %>%
@@ -252,7 +256,8 @@ large_sqft %>%
 
 ## 210s/295s
 
-This takes a sample of 20 observations to see how far apart the initial predicted values are for townhomes. Is the average they get assigned reasonable?
+This takes a sample of 20 observations to see how far apart the initial
+predicted values are for townhomes. Is the average they get assigned reasonable?
 
 ```{r}
 townhome_preds <- assessment_pin %>%
@@ -265,7 +270,8 @@ townhome_preds <- assessment_pin %>%
     n = n(),
     "Min Initial FMV" = min(pred_pin_initial_fmv, na.rm = TRUE),
     "Max Initial FMV" = max(pred_pin_initial_fmv, na.rm = TRUE),
-    "Initial % Range" = (`Max Initial FMV` - `Min Initial FMV`) / `Min Initial FMV`,
+    "Initial % Range" =
+      (`Max Initial FMV` - `Min Initial FMV`) / `Min Initial FMV`,
     "Mean Final FMV" = mean(pred_pin_final_fmv, na.rm = TRUE),
     "FMV per SQFT SD" = sd(fmvpsf, na.rm = TRUE)
   ) %>%

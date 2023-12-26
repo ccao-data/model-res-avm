@@ -8,7 +8,8 @@
 
 ## Sales View
 
-These are the counts of flagged sales by township and flag type, as derived by the Sale Validation script.
+These are the counts of flagged sales by township and flag type, as derived by
+the Sale Validation script.
 
 ```{r}
 price_outlier_type <- training_data %>%
@@ -97,7 +98,7 @@ ggplot(
     summarise(
       percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
       .by = meta_class
-      ),
+    ),
   aes(x = meta_class, y = percent)
 ) +
   labs(title = "Share of Outliers", subtitle = "by Class") +
@@ -121,7 +122,7 @@ ggplot(
     summarise(
       percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
       .by = meta_township_name
-      ),
+    ),
   aes(x = reorder(meta_township_name, -percent), y = percent)
 ) +
   labs(title = "Share of Outliers", subtitle = "by Township") +
@@ -176,25 +177,25 @@ ggplot(training_data, aes(
 
 ```{r fig.height=6}
 outlier_vs_nonoutlier <- training_data %>%
-    summarise(
-      median_sale_price = median(meta_sale_price),
-      .by = c(sv_is_outlier, meta_township_name)
-      ) %>%
-    pivot_wider(
-      id_cols = meta_township_name,
-      names_from = sv_is_outlier,
-      values_from = median_sale_price
-    ) %>%
-    mutate(
-      percent = `TRUE` / `FALSE`,
-      above_below = ifelse(percent > 1,
-        "Outlier > Not Outlier", "Not Outlier > Outlier"
-      ),
-      above_below = factor(above_below,
-        levels =
-          c("Outlier > Not Outlier", "Not Outlier > Outlier")
-      )
+  summarise(
+    median_sale_price = median(meta_sale_price),
+    .by = c(sv_is_outlier, meta_township_name)
+  ) %>%
+  pivot_wider(
+    id_cols = meta_township_name,
+    names_from = sv_is_outlier,
+    values_from = median_sale_price
+  ) %>%
+  mutate(
+    percent = `TRUE` / `FALSE`,
+    above_below = ifelse(percent > 1,
+      "Outlier > Not Outlier", "Not Outlier > Outlier"
+    ),
+    above_below = factor(above_below,
+      levels =
+        c("Outlier > Not Outlier", "Not Outlier > Outlier")
     )
+  )
 
 ggplot(
   outlier_vs_nonoutlier,
@@ -222,8 +223,8 @@ ggplot(
 
 ```{r ppsft}
 ppsf <- training_data %>%
-    filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
-    mutate(ppsf = meta_sale_price / char_bldg_sf)
+  filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
+  mutate(ppsf = meta_sale_price / char_bldg_sf)
 
 ppsf %>%
   summarise(
@@ -281,7 +282,8 @@ ggplot(
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     summarise(
       percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
-      .by = decile),
+      .by = decile
+    ),
   aes(x = decile, y = percent)
 ) +
   labs(title = "Share of Outliers", x = "Quantile") +

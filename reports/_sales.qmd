@@ -35,7 +35,9 @@ ggplotly(township)
 
 ## By Quarter
 
-Sales by by quarter for the previous 4 years. The goal is to see how different segments of the market are changing as a proportion in each tri-town. Sales are binned into 4 different groups based on price.
+Sales by by quarter for the previous 4 years. The goal is to see how different
+segments of the market are changing as a proportion in each tri-town. Sales are
+binned into 4 different groups based on price.
 
 *NOTE: Outliers are removed*
 
@@ -111,7 +113,8 @@ class %>%
 
 ## Removed Outliers
 
-These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
+These are outliers that were removed via the sale validation process in the
+ingest stage. The goal is to confirm that these were reasonable sales to remove.
 
 ```{r}
 rbind(
@@ -135,7 +138,9 @@ rbind(
 
 ## Kept Outliers
 
-These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
+These are the top and bottom 25 sales from the training data that are *still* in
+the sample. The goal is to gauge whether or not outlier removal is being too
+strict (or not strict enough).
 
 ```{r}
 rbind(
@@ -171,12 +176,14 @@ ggplot(
     summarise(
       median_price = median(meta_sale_price),
       .by = c(meta_year, sv_is_outlier)
-      ),
+    ),
   aes(x = meta_year, y = median_price, group = sv_is_outlier)
 ) +
   geom_line(aes(color = sv_is_outlier)) +
   scale_y_continuous(labels = scales::dollar_format()) +
-  labs(y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status") +
+  labs(
+    y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status"
+    ) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
@@ -203,7 +210,9 @@ price_change <- ggplot(
   labs(
     y = "Median Sale Price",
     x = "Year",
-    title = paste("Price / Price of", as.numeric(params$year) - 4, ", Outliers Excluded"),
+    title = paste(
+      "Price / Price of", as.numeric(params$year) - 4, ", Outliers Excluded"
+      ),
   ) +
   theme_minimal() +
   theme(
@@ -226,9 +235,8 @@ tri_sales <- training_data %>%
   split(.$meta_triad_name)
 
 map2(tri_sales, names(tri_sales), function(x, title) {
-  
   limits <- if (title == "South") c(100000, 300000) else NULL
-  
+
   x %>%
     ggplot() +
     geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
@@ -249,7 +257,6 @@ map2(tri_sales, names(tri_sales), function(x, title) {
     ) +
     facet_wrap(vars(time_sale_year))
 })
-
 ```
 
 ## Number of Sales
@@ -263,7 +270,9 @@ ggplot(
   geom_text(aes(
     label = format(after_stat(count), big.mark = ",")
   ), stat = "count", vjust = -1) +
-  labs(y = "Number of Sales", x = "Year", title = "By Year and Outlier Status") +
+  labs(
+    y = "Number of Sales", x = "Year", title = "By Year and Outlier Status"
+    ) +
   theme_minimal() +
   scale_y_continuous(
     labels = scales::comma,

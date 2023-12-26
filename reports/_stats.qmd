@@ -7,37 +7,12 @@
 # to the sample of residential parcels with sales in the previous 8 years
 # that are used to train the data department's CAMA.
 
-# Declare time frame for study
-time_frame <-
-  c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
-
 # GATHER DATA ----
-
-# All residential parcel characteristics from time frame, with a sale indicator
-res_chars <- chars_data %>%
-  filter(!meta_class %in% c("211", "212"))
-
-sf_parcels <- res_chars %>%
-  # Join on sales indicator for most recent sale in the last two years -
-  # if there is one
-  left_join(
-    training_data %>%
-      filter(
-        dplyr::between(meta_year, time_frame["min"], time_frame["max"]) &
-          sv_is_outlier == FALSE
-      ) %>%
-      select(meta_pin, meta_sale_date, meta_year) %>%
-      group_by(meta_pin) %>%
-      filter(meta_sale_date == max(meta_sale_date, na.rm = TRUE)) %>%
-      ungroup()
-  ) %>%
-  mutate(sale = as.numeric(!is.na(meta_sale_date)))
-
 
 # Vars to test across
 vars <-
   grep("char_|3435|acs5_median|township_name",
-    names(sf_parcels),
+    names(chars_data),
     value = TRUE
   ) %>%
   grep("percentile|_apts|_ncu|_use|_qlty",
@@ -46,23 +21,36 @@ vars <-
     invert = TRUE
   )
 
-sf_parcels <- sf_parcels %>%
-  mutate(char_recent_renovation = case_when(
-    char_recent_renovation == 0 ~ "No",
-    TRUE ~ "Yes"
-  )) %>%
+# All residential parcel characteristics from time frame, with a sale indicator
+sf_parcels <- chars_data %>%
+  filter(!meta_class %in% c("211", "212")) %>%
+  # Join on sales indicator for most recent sale in the last two years -
+  # if there is one
+  left_join(
+    training_data %>%
+      filter(
+        year >= as.numeric(params$year) - 1,
+        !sv_is_outlier,
+        meta_sale_date == max(meta_sale_date, na.rm = TRUE),
+        .by = meta_pin
+      ) %>%
+      distinct() %>% # we shouldn't need this here, why are there duplicate
+      # sales in the training data?
+      select(meta_pin, meta_sale_date, meta_year)
+  ) %>%
   mutate(
     sale = factor(
-      sale,
+      as.numeric(!is.na(meta_sale_date)),
       levels = c(0, 1),
       labels = c("No Sale", "Sale")
     ),
-    across(starts_with("char_") &
-      where(is.character), ~ as.factor(.x)),
+    char_recent_renovation = case_when(
+      char_recent_renovation == 0 ~ "No",
+      TRUE ~ "Yes"
+    ),
     across(
-      c(
-        loc_tax_municipality_name,
-        loc_ward_num,
+      (starts_with("char_") &
+        where(is.character)) | c(
         char_recent_renovation,
         char_type_resd
       ),
@@ -104,7 +92,9 @@ remove <-
     value = TRUE
   )
 
-fmla <- as.formula(paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+")))
+fmla <- as.formula(
+  paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
+  )
 
 logit <- glm(fmla,
   data = logit_parcels %>%
@@ -131,7 +121,8 @@ county_logit <- logit %>%
     align = c("l", "r", "c", "r", "l"),
     padding = 5L
   ) %>%
-  add_footnote("p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+  add_footnote(
+    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", #noqa
     notation = "none"
   ) %>%
   kable_styling("striped",
@@ -183,7 +174,7 @@ logits <- logit_parcels %>%
           padding = 5L
         ) %>%
         add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
           notation = "none"
         ) %>%
         kable_styling(
@@ -193,7 +184,9 @@ logits <- logit_parcels %>%
           html_font = "Consolas"
         )
     } else {
-      fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+")))
+      fmla <- as.formula(
+        paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+"))
+        )
 
       glm(fmla,
         data = x %>%
@@ -212,7 +205,7 @@ logits <- logit_parcels %>%
           padding = 5L
         ) %>%
         add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", #noqa
           notation = "none"
         ) %>%
         kable_styling(
@@ -463,9 +456,11 @@ logits[["Worth"]]
 
 ## Standardized mean differences
 
-The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
+The standardized (mean) difference is a measure of distance between two group
+means in terms of one or more variables.
 
-$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
+$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard
+deviation of outcome among participants}}$$
 
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
@@ -483,7 +478,8 @@ print(smd_table, smd = TRUE)
 
 ## Empirical Cumulative Distributions
 
-For the empirical cumulative distributions, we are looking for overlap/similar distributions. Numeric variables scaled and centered.
+For the empirical cumulative distributions, we are looking for overlap/similar
+distributions. Numeric variables scaled and centered.
 
 ::: panel-tabset
 ## Numeric columns:
