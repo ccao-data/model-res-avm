@@ -58,7 +58,7 @@ price_outlier_type %>%
 
 ## Outlier Types
 
-```{r Outlier Types}
+```{r _outliers_type_breakdown}
 ggplot(
   training_data %>%
     filter(sv_is_outlier) %>%
@@ -94,7 +94,7 @@ training_data %>%
 
 ## Class
 
-```{r Classes}
+```{r _outliers_classes}
 ggplot(
   training_data %>%
     summarise(
@@ -118,7 +118,7 @@ ggplot(
 
 ## Township
 
-```{r Townships}
+```{r _outliers_townships}
 ggplot(
   training_data %>%
     summarise(
@@ -143,7 +143,7 @@ ggplot(
 
 ## Price
 
-```{r}
+```{r _outliers_price}
 training_data %>%
   summarise(
     Min = min(meta_sale_price),
@@ -177,7 +177,7 @@ ggplot(training_data, aes(
   )
 ```
 
-```{r fig.height=6}
+```{r _outliers_median_price_outliers, fig.height=6}
 outlier_vs_nonoutlier <- training_data %>%
   summarise(
     median_sale_price = median(meta_sale_price),
@@ -223,7 +223,7 @@ ggplot(
 
 ## Price Per SQFT
 
-```{r ppsft}
+```{r _outliers_ppsft}
 ppsf <- training_data %>%
   filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
   mutate(ppsf = meta_sale_price / char_bldg_sf)
@@ -260,7 +260,7 @@ ggplot(ppsf, aes(log(ppsf), fill = sv_is_outlier)) +
 
 ## Decile Breakout
 
-```{r Upper}
+```{r _outliers_decile_breakout}
 training_data %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
@@ -335,7 +335,7 @@ ggplot(
 
 What are the sales with the largest miss relative to town and price quartile?
 
-```{r}
+```{r _outliers_big_misses}
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(

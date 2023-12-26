@@ -11,6 +11,8 @@ params:
 # idempotently to avoid reloading data sets and libraries
 
 ## Libraries and paths ---------------------------------------------------------
+library(purrr)
+library(here)
 
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
@@ -71,6 +73,26 @@ if (metadata$run_id != params$run_id) {
   )
 }
 
+# Extract hash values from dvc.lock file
+dvc_lock_values <- sapply(
+  read_yaml(here::here("dvc.lock"))$stages$ingest$outs,
+  function(x) x$md5
+)
+
+metadata_dvc_md5 <- metadata %>%
+  select(starts_with("dvc_md5"))
+
+# Compare hash for each metadata value with the corresponding dvc.lock value
+comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
+
+# Check if all hashes match between metadata and dvc.lock
+if (!all(comparison_results)) {
+  stop(
+    "Hash values between the dvc.lock file and the metadata",
+    "do not match. Potential mismatch in input and output data."
+  )
+}
+
 # Get the triad of the run to use for filtering
 run_triad <- tools::toTitleCase(metadata$assessment_triad)
 run_triad_code <- ccao::town_dict %>%
@@ -91,6 +113,14 @@ if (!exists("assessment_pin")) {
 }
 if (!exists("test_card")) {
   test_card <- read_parquet(paths$output$test_card$local)
+}
+if (!exists("model_performance_test")) {
+  model_performance_test <-
+    arrow::read_parquet(paths$output$performance_test$local)
+}
+if (!exists("model_performance_quantile_test")) {
+  model_performance_quantile_test <-
+    arrow::read_parquet(paths$output$performance_quantile_test$local)
 }
 
 # Load feature importance data

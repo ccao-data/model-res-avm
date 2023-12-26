@@ -14,14 +14,29 @@ on:
     types: [opened, reopened, synchronize, closed]
   workflow_dispatch:
     inputs:
-      enable_upload:
-        type: boolean
-        description: Upload results to S3
-        default: false
-        required: true
       run_note:
         type: string
         description: Note to include with run
+        required: true
+      upload_enable:
+        type: boolean
+        description: Upload results to S3
+        default: true
+        required: true
+      cv_enable:
+        type: boolean
+        description: Run cross-validation
+        default: false
+        required: true
+      comp_enable:
+        type: boolean
+        description: Run comparables finding
+        default: false
+        required: true
+      shap_enable:
+        type: boolean
+        description: Calculate SHAP values
+        default: false
         required: true
   push:
     branches: [master]
@@ -39,13 +54,19 @@ jobs:
       packages: write
     uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
-      vcpu: "16.0"
+      backend: "ec2"
+      vcpu: "32"
       memory: "65536"
-      role-duration-seconds: 14400  # Worst-case time for a full model run
+      # Maximum pipeline runtime. This is slightly below 6 hours, which
+      # is the maximum length of any single GitHub Actions job
+      role-duration-seconds: 21000
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       CONTAINER_ENV_VARS: |
         AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
-        UPLOAD_ENABLE_OVERRIDE=${{ inputs.enable_upload }}
         WORKFLOW_RUN_NOTE=${{ inputs.run_note }}
+        UPLOAD_ENABLE_OVERRIDE=${{ inputs.upload_enable }}
+        CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
+        COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
+        SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}

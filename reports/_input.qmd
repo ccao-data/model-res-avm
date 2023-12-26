@@ -11,7 +11,7 @@
 This tests if our Home Improvement Exemption characteristics are getting
 accurately updated.
 
-```{r}
+```{r _input_hie_characteristics}
 hie_pins <- training_data %>%
   filter(
     hie_num_active == 1,
@@ -65,7 +65,7 @@ chars_data_table %>%
 
 This tests if our time filling techniques are working as expected.
 
-```{r}
+```{r _input_characteristic_filling}
 filling_table <- training_data %>%
   filter(
     !ind_pin_is_multicard,
@@ -93,7 +93,7 @@ filling_table %>%
 This uses 5 test pins to assess if multi-card parcels successfully aggregate to
 the full pin.
 
-```{r}
+```{r _input_multicard_sample}
 test_card_pins <- c(
   "17321110470000",
   "05174150240000",
@@ -129,7 +129,7 @@ test_card_pins %>%
 
 ## Land Valuation
 
-```{r, out.width="100%"}
+```{r, _input_land_valuation, out.width="100%"}
 land_valuation <- assessment_pin %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
@@ -154,7 +154,7 @@ land_valuation %>%
 
 ### PINs With 0 Land Sqft.
 
-```{r}
+```{r _input_pins_with_0_sq_ft}
 assessment_pin %>%
   filter(meta_triad_code == run_triad_code) %>%
   filter(pred_pin_final_fmv_land == 0) %>%
@@ -172,7 +172,7 @@ assessment_pin %>%
 Where are 211s and 212s increasing a *lot*? Near values are Certified values
 from the current year, and far values are board values from two years ago.
 
-```{r}
+```{r _input_211_and_212_yoy_changes}
 multifamily_change <- assessment_pin %>%
   filter(
     meta_class %in% c("211", "212"),
@@ -219,7 +219,7 @@ multifamily_change %>%
 This creates a subset of 211s and 212s which are three standard deviations above
 the norm in terms of square footage. 
 
-```{r}
+```{r _input_large_211_212}
 large_sqft <- training_data %>%
   filter(
     meta_class %in% c("211", "212"),
@@ -259,7 +259,7 @@ large_sqft %>%
 This takes a sample of 20 observations to see how far apart the initial
 predicted values are for townhomes. Is the average they get assigned reasonable?
 
-```{r}
+```{r _input_townhomes_210_295}
 townhome_preds <- assessment_pin %>%
   filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
   group_by(meta_complex_id) %>%
