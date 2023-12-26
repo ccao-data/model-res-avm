@@ -253,6 +253,77 @@ for (township in townships_to_iterate) {
 ```
 :::
 
+## How do Sales Compare to Estimates?
+
+```{r _model_sales_vs_estimates_township}
+sales_vs_estimates <- model_performance_test %>% 
+  filter(triad_code == run_triad_code,
+         geography_type == 'township_code',
+         by_class == FALSE) %>% 
+  select(geography_type,
+         geography_id,
+         sale_fmv_q25,
+         sale_fmv_median, 
+         sale_fmv_q75, 
+         estimate_fmv_q25, 
+         estimate_fmv_median, 
+         estimate_fmv_q75)
+```
+
+
+```{r, fig.width=8, fig.height=14, fig.align='center'}
+reshaped_data <- sales_vs_estimates %>%
+  mutate(township = ccao::town_convert(geography_id)) %>% 
+  pivot_longer(
+    cols = -c(geography_type, geography_id, township),
+    names_to = "type",
+    values_to = "value"
+  ) %>%
+  mutate(
+    category = ifelse(
+      grepl("sale", type),
+      paste(township, "Sale"),     
+      paste(township, "Estimate")
+    )
+  ) %>%
+  select(category, value)
+
+reshaped_data <- reshaped_data %>%
+  mutate(space_maker = as.numeric(factor(category)),
+         space_maker = space_maker + (space_maker - 1) %/% 2)
+
+line_ends <- reshaped_data %>%
+  group_by(space_maker, category) %>%
+  summarize(Start = min(value), End = max(value))
+
+ggplot() +
+  geom_segment(data = line_ends, 
+               aes(x = Start, 
+                   xend = End, 
+                   y = space_maker, 
+                   yend = space_maker,
+                   color = ifelse(grepl("Sale", category), 
+                                  "SaleColor", "EstimateColor")), 
+               size = 1.2) +
+  geom_point(data = reshaped_data, 
+             aes(x = value, y = space_maker), 
+             color = "black", 
+             size = 2, 
+             shape = 21, 
+             fill = "white") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(color = "darkblue", size = 12),
+        axis.title.y = element_text(color = "darkblue", size = 12),
+        legend.position = "none") +
+  labs(x = "Value", y = "Category", title = "Sales vs Estimates by Township") +
+  scale_color_manual(values = c("SaleColor" = "darkolivegreen",   
+                                "EstimateColor" = "darkgoldenrod3")) +
+  scale_y_continuous(breaks = line_ends$space_maker, 
+                     labels = line_ends$category)
+
+```
+
+
 ## Feature Importance Metrics
 
 ```{r _model_feature_importance_function}
