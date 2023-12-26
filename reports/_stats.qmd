@@ -34,8 +34,9 @@ sf_parcels <- chars_data %>%
         meta_sale_date == max(meta_sale_date, na.rm = TRUE),
         .by = meta_pin
       ) %>%
-      distinct() %>% # we shouldn't need this here, why are there duplicate
-      # sales in the training data?
+      # We apply distinct here to remove duplicate sales that are a result of
+      # multicard and multiland sales, otherwise we'll get many-to-many joins.
+      distinct() %>% 
       select(meta_pin, meta_sale_date, meta_year)
   ) %>%
   mutate(
