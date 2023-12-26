@@ -278,3 +278,37 @@ assessment_pin %>%
 ```
 
 :::
+
+## Map of Townhome Complex IDs
+
+```{r _input_complex_id_map}
+complex_id_map <- complex_id_data %>%
+  left_join(
+    chars_data %>%
+      filter(meta_year == "2022") %>%
+      select(meta_pin, loc_longitude, loc_latitude),
+    by = "meta_pin"
+  ) %>%
+  filter(meta_township_code == 35)
+
+colorPalette <- colorspace::qualitative_hcl(
+  length(unique(complex_id_map$meta_complex_id)),
+  palette = "Dark 3"
+)
+
+leaflet(complex_id_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addCircleMarkers(
+    ~loc_longitude,
+    ~loc_latitude,
+    popup = ~ as.character(meta_complex_id),
+    radius = 5,
+    weight = 1,
+    color = "darkgrey",
+    opacity = 1,
+    fillColor = colorPalette,
+    fillOpacity = 1
+  )
+```
+
+
