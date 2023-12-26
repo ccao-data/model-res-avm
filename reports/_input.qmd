@@ -279,6 +279,8 @@ assessment_pin %>%
 
 :::
 
+## Map of Townhome Complex IDs
+
 ```{r _input_complex_id_map}
 chars_data_1year <- chars_data %>%
   filter(meta_year == "2022")
