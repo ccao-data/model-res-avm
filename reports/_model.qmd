@@ -493,7 +493,7 @@ training_data_pred %>%
   ) +
   scale_y_continuous(
     labels = scales::label_dollar(scale = 1e-3, suffix = "K")
-    ) +
+  ) +
   facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
   theme_minimal() +
   xlab("Time in Months, (0 = Jan 1, 2014)") +
@@ -533,7 +533,7 @@ test_card %>%
   ) +
   scale_y_continuous(
     labels = scales::label_dollar(scale = 1e-3, suffix = "K")
-    ) +
+  ) +
   facet_wrap(vars(meta_township_name),
     scales = "free_y", ncol = 3
   ) +

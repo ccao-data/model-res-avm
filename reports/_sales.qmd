@@ -183,7 +183,7 @@ ggplot(
   scale_y_continuous(labels = scales::dollar_format()) +
   labs(
     y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status"
-    ) +
+  ) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
@@ -212,7 +212,7 @@ price_change <- ggplot(
     x = "Year",
     title = paste(
       "Price / Price of", as.numeric(params$year) - 4, ", Outliers Excluded"
-      ),
+    ),
   ) +
   theme_minimal() +
   theme(
@@ -272,7 +272,7 @@ ggplot(
   ), stat = "count", vjust = -1) +
   labs(
     y = "Number of Sales", x = "Year", title = "By Year and Outlier Status"
-    ) +
+  ) +
   theme_minimal() +
   scale_y_continuous(
     labels = scales::comma,
