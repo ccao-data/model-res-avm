@@ -283,7 +283,8 @@ assessment_pin %>%
 chars_data_1year <- chars_data %>%
   filter(meta_year == "2022")
 
-complex_id_data_v2 <- left_join(complex_id_data, chars_data_1year, by = "meta_pin")
+complex_id_data_v2 <- left_join(complex_id_data, chars_data_1year, by = "meta_pin") %>%
+  filter(meta_township_code.x == 35)
 
 colorPalette <- colorFactor(palette = "viridis", domain = complex_id_data_v2$meta_complex_id)
 
