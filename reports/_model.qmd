@@ -282,19 +282,21 @@ reshaped_data <- sales_vs_estimates %>%
   mutate(
     category = ifelse(
       grepl("sale", type),
-      paste(township, "Sale"),     
-      paste(township, "Estimate")
+      paste(township, " - Sale"),     
+      paste(township, " - Estimate")
     )
   ) %>%
-  select(category, value)
-
-reshaped_data <- reshaped_data %>%
+  select(category, value) %>%
   mutate(space_maker = as.numeric(factor(category)),
          space_maker = space_maker + (space_maker - 1) %/% 2)
 
 line_ends <- reshaped_data %>%
   group_by(space_maker, category) %>%
-  summarize(Start = min(value), End = max(value))
+  summarize(Start = min(value), End = max(value))%>%
+  mutate(color_class = ifelse(grepl("Sale", category), "Sale", "Estimate"),
+         # Set for legend re-ordering
+         color_class = factor(color_class, levels = c("Sale", "Estimate"))) 
+
 
 ggplot() +
   geom_segment(data = line_ends, 
@@ -302,8 +304,7 @@ ggplot() +
                    xend = End, 
                    y = space_maker, 
                    yend = space_maker,
-                   color = ifelse(grepl("Sale", category), 
-                                  "SaleColor", "EstimateColor")), 
+                   color = color_class), 
                size = 1.2) +
   geom_point(data = reshaped_data, 
              aes(x = value, y = space_maker), 
@@ -314,12 +315,19 @@ ggplot() +
   theme_minimal() +
   theme(axis.title.x = element_text(color = "darkblue", size = 12),
         axis.title.y = element_text(color = "darkblue", size = 12),
-        legend.position = "none") +
-  labs(x = "Value", y = "Category", title = "Sales vs Estimates by Township") +
-  scale_color_manual(values = c("SaleColor" = "darkolivegreen",   
-                                "EstimateColor" = "darkgoldenrod3")) +
+        legend.position = c(.9, .9)) +
+  labs(x = "Value", 
+       y = "Township", 
+       title = "Sales vs Estimates by Township",
+       subtitle = "25th percentile, median, 75th percentile",
+       color = "") +
+  scale_color_manual(values = c( "Sale" = "darkolivegreen",
+                                 "Estimate" = "darkgoldenrod3")) +
   scale_y_continuous(breaks = line_ends$space_maker, 
-                     labels = line_ends$category)
+                     labels = line_ends$category) +
+  scale_x_continuous(labels = label_dollar(),
+                     # Prevents last x axis tick mark from being cut off
+                     limits = c(NA, max(reshaped_data$value) * 1.04))
 
 ```
 
