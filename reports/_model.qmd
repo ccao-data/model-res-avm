@@ -312,7 +312,8 @@ ggplot() +
       yend = space_maker,
       color = color_class
     ), 
-    size = 1.2) +
+    size = 1.2
+  ) +
   geom_point(
     data = reshaped_data,
     aes(x = value, y = space_maker),
@@ -336,8 +337,8 @@ ggplot() +
   ) +
   scale_color_manual(values = c(
     "Sale" = "darkolivegreen3",
-    "Estimate" = "cadetblue4")
-  ) +
+    "Estimate" = "cadetblue4"
+  )) +
   scale_y_continuous(
     breaks = line_ends$space_maker,
     labels = line_ends$category
@@ -371,7 +372,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       estimate_fmv_median,
       estimate_fmv_q75
     )
-  
+
   reshaped_data <- sales_vs_estimates_by_class %>%
     mutate(township = ccao::town_convert(geography_id)) %>%
     dplyr::filter(township == township_to_graph) %>%
@@ -392,7 +393,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       space_maker = as.numeric(factor(category)),
       space_maker = space_maker + (space_maker - 1) %/% 2
     )
-  
+
   line_ends <- reshaped_data %>%
     group_by(space_maker, category) %>%
     summarize(Start = min(value), End = max(value)) %>%
@@ -418,11 +419,12 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       geom_point(
         data = reshaped_data,
         aes(
-          x = value, y = space_maker),
-          color = "black",
-          size = 2,
-          shape = 21,
-          fill = "white"
+          x = value, y = space_maker
+        ),
+        color = "black",
+        size = 2,
+        shape = 21,
+        fill = "white"
       ) +
       theme_minimal() +
       theme(
