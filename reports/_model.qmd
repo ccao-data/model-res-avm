@@ -543,40 +543,53 @@ test_card %>%
 :::
 
 ## Sales Chasing
+This chart looks at if there are significant differences in the median increase (dollar and percentage) for houses which are sold and un-sold in the previous year.
 
-```{r}
+```{r _model_sales_chasing}
 numeric_year <- as.numeric(params$year)
 
-test1 <- assessment_pin %>%
+assessment_pin %>%
   mutate(
     prior_far_yoy_change_pct = as.numeric(prior_far_yoy_change_pct),
     prior_near_yoy_change_nom = as.numeric(prior_near_yoy_change_nom),
     sale_recent_1_date = as.Date(sale_recent_1_date),
     is_recent_sale = if_else(
       !is.na(sale_recent_1_date) &
-      sale_recent_1_date >= as.Date(paste0(numeric_year - 1, "-01-01")) &
-      sale_recent_1_date <= as.Date(paste0(numeric_year, "-12-31")),
+      sale_recent_1_date >= as.Date(paste0(numeric_year - 1, "-01-01")),  
       1,
       0
     )
   ) %>%
+  filter(!is.na(prior_near_yoy_change_pct) | !is.na(prior_near_yoy_change_nom)) %>%
   group_by(meta_township_code) %>%
   summarize(
-    yoy_change_percent = median(prior_near_yoy_change_pct, na.rm = TRUE),
+    no_recent_sale_yoy_change_percent = median(if_else(is_recent_sale == 0, prior_near_yoy_change_pct, NA_real_), na.rm = TRUE),
     recent_sale_yoy_change_percent = median(if_else(is_recent_sale == 1, prior_near_yoy_change_pct, NA_real_), na.rm = TRUE),
-    yoy_change_dollar = median(prior_near_yoy_change_nom, na.rm = TRUE),
+    no_recent_sale_yoy_change_dollars = median(if_else(is_recent_sale == 0, prior_near_yoy_change_nom, NA_real_), na.rm = TRUE),
     recent_sale_yoy_change_dollars = median(if_else(is_recent_sale == 1, prior_near_yoy_change_nom, NA_real_), na.rm = TRUE)
   ) %>%
-  filter(complete.cases(.)) %>%
-  mutate(change_ratio_percent = recent_sale_yoy_change_percent / yoy_change_percent,
-         change_ratio_dollars = recent_sale_yoy_change_dollars / yoy_change_dollar)   %>%
-  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) %>%
-  mutate(
-    change_ratio_percent = cell_spec(change_ratio_percent, color = ifelse(change_ratio_percent > 1, "green", "red")),
-    change_ratio_dollars = cell_spec(change_ratio_dollars, color = ifelse(change_ratio_dollars > 1, "green", "red"))
+    mutate(
+    change_ratio_percent = as.numeric(recent_sale_yoy_change_percent / no_recent_sale_yoy_change_percent),
+    change_ratio_dollars = as.numeric(recent_sale_yoy_change_dollars / no_recent_sale_yoy_change_dollars)
   ) %>%
-  select(township_name, change_ratio_percent, recent_sale_yoy_change_percent, yoy_change_percent, change_ratio_dollars, recent_sale_yoy_change_dollars, yoy_change_dollar) %>%
-  kable("html", escape = F) %>%
-  kable_styling()
+  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) %>%
+  select(township_name, change_ratio_percent, recent_sale_yoy_change_percent, no_recent_sale_yoy_change_percent, change_ratio_dollars, recent_sale_yoy_change_dollars, no_recent_sale_yoy_change_dollars) %>%
+    mutate(
+    change_ratio_dollars = round(change_ratio_dollars, 2),
+    change_ratio_percent = round(change_ratio_percent, 2),
+    recent_sale_yoy_change_percent = paste0(round(recent_sale_yoy_change_percent * 100), "%"),
+    no_recent_sale_yoy_change_percent = paste0(round(no_recent_sale_yoy_change_percent * 100), "%"),
+    recent_sale_yoy_change_dollars = paste0("$", round(recent_sale_yoy_change_dollars)),
+    no_recent_sale_yoy_change_dollars = paste0("$", round(no_recent_sale_yoy_change_dollars))
+  ) %>%
+mutate(
+  change_ratio_percent = cell_spec(change_ratio_percent, color = ifelse(change_ratio_percent > 1, "green", ifelse(change_ratio_percent == 1, "black", "red"))),
+  change_ratio_dollars = cell_spec(change_ratio_dollars, color = ifelse(change_ratio_dollars > 1, "green", ifelse(change_ratio_dollars == 1, "black", "red")))
+) %>%
+  kable("html", escape = F, col.names = rep("", 7)) %>%
+  kable_styling(full_width = F) %>%
+  add_header_above(c("Township" = 1, "Ratio" = 1, "Sold Houses" = 1, "Un-Sold Houses" = 1, "Ratio" = 1, "Sold Houses" = 1, "Un-Sold Houses" = 1)) %>%
+  add_header_above(c(" " = 1, "Percentage Change" = 3, "Dollar Change" = 3)) %>%
+  add_header_above(c("Comparison of YOY Change in Value for Sold and Un-Sold Houses" = 7))
 
 ```
