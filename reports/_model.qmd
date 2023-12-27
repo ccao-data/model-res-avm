@@ -543,7 +543,7 @@ test_card %>%
 :::
 
 ## Sales Chasing
-This chart looks at if there are significant differences in the median increase (dollar and percentage) for houses which are sold and un-sold in the previous year.
+This chart looks at if there are significant differences in the median increase (dollar and percentage) for houses which are sold vis-a-vis not sold in the previous year.
 
 ```{r _model_sales_chasing}
 numeric_year <- as.numeric(params$year)
@@ -588,7 +588,7 @@ assessment_pin %>%
   ) %>%
   kable("html", escape = F, col.names = rep("", 7)) %>%
   kable_styling(full_width = F) %>%
-  add_header_above(c("Township" = 1, "Ratio" = 1, "Sold Houses" = 1, "Un-Sold Houses" = 1, "Ratio" = 1, "Sold Houses" = 1, "Un-Sold Houses" = 1)) %>%
+  add_header_above(c("Township" = 1, "Ratio" = 1, "Sold Houses" = 1, "Not Sold Houses" = 1, "Ratio" = 1, "Sold Houses" = 1, "Not Sold Houses" = 1)) %>%
   add_header_above(c(" " = 1, "Percentage Change" = 3, "Dollar Change" = 3)) %>%
-  add_header_above(c("Comparison of YOY Change in Value for Sold and Un-Sold Houses" = 7))
+  add_header_above(c("Comparison of YOY Change in Value for Sold and Not Sold Houses" = 7))
 ```
