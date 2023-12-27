@@ -373,7 +373,6 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
            # Set for legend re-ordering
            color_class = factor(color_class, levels = c("Sale", "Estimate"))) 
   
-  
   print(
     ggplot() +
       geom_segment(data = line_ends, 
@@ -394,7 +393,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
             axis.title.y = element_text(color = "darkblue", size = 12),
             legend.position = c(.9, .9)) +
       labs(x = "Value", 
-           y = "Township", 
+           y = "Class", 
            title = "Sales vs Estimates by Township",
            subtitle = "25th percentile, median, 75th percentile",
            color = "") +
