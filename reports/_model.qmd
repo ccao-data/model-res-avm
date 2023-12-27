@@ -259,17 +259,17 @@ for (township in townships_to_iterate) {
 sales_vs_estimates <- model_performance_test %>%
   filter(
     triad_code == run_triad_code,
-    geography_type == 'township_code',
+    geography_type == "township_code",
     by_class == FALSE
-  ) %>% 
+  ) %>%
   select(
     geography_type,
     geography_id,
     sale_fmv_q25,
-    sale_fmv_median, 
-    sale_fmv_q75, 
-    estimate_fmv_q25, 
-    estimate_fmv_median, 
+    sale_fmv_median,
+    sale_fmv_q75,
+    estimate_fmv_q25,
+    estimate_fmv_median,
     estimate_fmv_q75
   )
 
@@ -304,21 +304,21 @@ line_ends <- reshaped_data %>%
 
 ggplot() +
   geom_segment(
-    data = line_ends, 
+    data = line_ends,
     aes(
-      x = Start, 
-      xend = End, 
-      y = space_maker, 
+      x = Start,
+      xend = End,
+      y = space_maker,
       yend = space_maker,
       color = color_class
     ), 
     size = 1.2) +
   geom_point(
-    data = reshaped_data, 
-    aes(x = value, y = space_maker), 
-    color = "black", 
-    size = 2, 
-    shape = 21, 
+    data = reshaped_data,
+    aes(x = value, y = space_maker),
+    color = "black",
+    size = 2,
+    shape = 21,
     fill = "white"
   ) +
   theme_minimal() +
@@ -334,8 +334,10 @@ ggplot() +
     subtitle = "25th percentile, median, 75th percentile",
     color = ""
   ) +
-  scale_color_manual(values = c( "Sale" = "darkolivegreen3",
-                                 "Estimate" = "cadetblue4")) +
+  scale_color_manual(values = c(
+    "Sale" = "darkolivegreen3",
+    "Estimate" = "cadetblue4")
+  ) +
   scale_y_continuous(
     breaks = line_ends$space_maker,
     labels = line_ends$category
@@ -345,7 +347,6 @@ ggplot() +
     # Prevents last x axis tick mark from being cut off
     limits = c(NA, max(reshaped_data$value) * 1.04)
   )
-
 ```
 
 
@@ -353,21 +354,21 @@ ggplot() +
 
 ```{r _sales_vs_estimates_graph, fig.width=8, fig.height=9, fig.align='center'}
 sale_vs_estimate_by_class <- function(township_to_graph, data) {
-  sales_vs_estimates_by_class <- data %>% 
+  sales_vs_estimates_by_class <- data %>%
     dplyr::filter(
       triad_code == run_triad_code,
-      geography_type == 'township_code',
+      geography_type == "township_code",
       by_class == TRUE
-    ) %>% 
+    ) %>%
     select(
       geography_type,
       geography_id,
       class,
       sale_fmv_q25,
-      sale_fmv_median, 
-      sale_fmv_q75, 
-      estimate_fmv_q25, 
-      estimate_fmv_median, 
+      sale_fmv_median,
+      sale_fmv_q75,
+      estimate_fmv_q25,
+      estimate_fmv_median,
       estimate_fmv_q75
     )
   
@@ -382,7 +383,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
     mutate(
       category = ifelse(
         grepl("sale", type),
-        paste(class, " - Sale"),     
+        paste(class, " - Sale"), 
         paste(class, " - Estimate")
       )
     ) %>%
@@ -394,7 +395,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
   
   line_ends <- reshaped_data %>%
     group_by(space_maker, category) %>%
-    summarize(Start = min(value), End = max(value))%>%
+    summarize(Start = min(value), End = max(value)) %>%
     mutate(
       color_class = ifelse(grepl("Sale", category), "Sale", "Estimate"),
       # Set for legend re-ordering
@@ -404,23 +405,23 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
   print(
     ggplot() +
       geom_segment(
-        data = line_ends, 
+        data = line_ends,
         aes(
-          x = Start, 
-          xend = End, 
-          y = space_maker, 
+          x = Start,
+          xend = End,
+          y = space_maker,
           yend = space_maker,
           color = color_class
-        ), 
+        ),
         size = 1.2
       ) +
       geom_point(
-        data = reshaped_data, 
+        data = reshaped_data,
         aes(
-          x = value, y = space_maker), 
-          color = "black", 
-          size = 2, 
-          shape = 21, 
+          x = value, y = space_maker),
+          color = "black",
+          size = 2,
+          shape = 21,
           fill = "white"
       ) +
       theme_minimal() +
@@ -430,18 +431,20 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
         legend.position = c(.9, .9)
       ) +
       labs(
-        x = "Value", 
-        y = "Class", 
+        x = "Value",
+        y = "Class",
         title = "Sales vs Estimates by Township",
         subtitle = "25th percentile, median, 75th percentile",
         color = ""
       ) +
       scale_color_manual(
-        values = c( "Sale" = "darkolivegreen3",
-        "Estimate" = "cadetblue4")
+        values = c(
+          "Sale" = "darkolivegreen3",
+          "Estimate" = "cadetblue4"
+        )
       ) +
       scale_y_continuous(
-        breaks = line_ends$space_maker, 
+        breaks = line_ends$space_maker,
         labels = line_ends$category
       ) +
       scale_x_continuous(
@@ -456,10 +459,10 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
 ```{r}
 # Collect townships to iterate over
 townships_to_iterate <- model_performance_test %>%
-  mutate(township = ccao::town_convert(geography_id)) %>% 
+  mutate(township = ccao::town_convert(geography_id)) %>%
   filter(
     triad_code == run_triad_code,
-    geography_type == 'township_code'
+    geography_type == "township_code"
   ) %>%
   select(township) %>%
   unique() %>%
