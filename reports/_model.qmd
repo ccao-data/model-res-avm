@@ -126,7 +126,7 @@ data_to_plot <- model_performance_quantile_test %>%
   )
 
 ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.9, ymax = 1.1),
     fill = "#D3F2C2",
     alpha = 0.1
   ) +
@@ -194,7 +194,7 @@ make_township_ratio_decile_graph <- function(data, township) {
 
   print(
     ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
-      geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
+      geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.9, ymax = 1.1),
         fill = "#D3F2C2",
         alpha = 0.1
       ) +
@@ -255,7 +255,7 @@ for (township in townships_to_iterate) {
 
 ## How do Sales Compare to Estimates?
 
-```{r _model_sales_vs_estimates_township, fig.width=8, fig.height=14, fig.align='center'}
+```{r _model_sales_vs_estimates_township, fig.width=8, fig.height=14}
 sales_vs_estimates <- model_performance_test %>% 
   filter(triad_code == run_triad_code,
          geography_type == 'township_code',
@@ -318,8 +318,8 @@ ggplot() +
        title = "Sales vs Estimates by Township",
        subtitle = "25th percentile, median, 75th percentile",
        color = "") +
-  scale_color_manual(values = c( "Sale" = "darkolivegreen",
-                                 "Estimate" = "darkgoldenrod3")) +
+  scale_color_manual(values = c( "Sale" = "darkolivegreen3",
+                                 "Estimate" = "cadetblue4")) +
   scale_y_continuous(breaks = line_ends$space_maker, 
                      labels = line_ends$category) +
   scale_x_continuous(labels = label_dollar(),
@@ -329,12 +329,9 @@ ggplot() +
 ```
 
 
-
-
 ## How do Sales Compare to Estimates by Class per Township?
 
 ```{r _sales_vs_estimates_graph, fig.width=8, fig.height=9, fig.align='center'}
-
 sale_vs_estimate_by_class <- function(township_to_graph, data) {
   sales_vs_estimates_by_class <- data %>% 
     dplyr::filter(triad_code == run_triad_code,
@@ -377,43 +374,63 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
            color_class = factor(color_class, levels = c("Sale", "Estimate"))) 
   
   
-  ggplot() +
-    geom_segment(data = line_ends, 
-                 aes(x = Start, 
-                     xend = End, 
-                     y = space_maker, 
-                     yend = space_maker,
-                     color = color_class), 
-                 size = 1.2) +
-    geom_point(data = reshaped_data, 
-               aes(x = value, y = space_maker), 
-               color = "black", 
-               size = 2, 
-               shape = 21, 
-               fill = "white") +
-    theme_minimal() +
-    theme(axis.title.x = element_text(color = "darkblue", size = 12),
-          axis.title.y = element_text(color = "darkblue", size = 12),
-          legend.position = c(.9, .9)) +
-    labs(x = "Value", 
-         y = "Township", 
-         title = "Sales vs Estimates by Township",
-         subtitle = "25th percentile, median, 75th percentile",
-         color = "") +
-    scale_color_manual(values = c( "Sale" = "darkolivegreen",
-                                   "Estimate" = "darkgoldenrod3")) +
-    scale_y_continuous(breaks = line_ends$space_maker, 
-                       labels = line_ends$category) +
-    scale_x_continuous(labels = label_dollar(),
-                       # Prevents last x axis tick mark from being cut off
-                       limits = c(NA, max(reshaped_data$value) * 1.04))
+  print(
+    ggplot() +
+      geom_segment(data = line_ends, 
+                   aes(x = Start, 
+                       xend = End, 
+                       y = space_maker, 
+                       yend = space_maker,
+                       color = color_class), 
+                   size = 1.2) +
+      geom_point(data = reshaped_data, 
+                 aes(x = value, y = space_maker), 
+                 color = "black", 
+                 size = 2, 
+                 shape = 21, 
+                 fill = "white") +
+      theme_minimal() +
+      theme(axis.title.x = element_text(color = "darkblue", size = 12),
+            axis.title.y = element_text(color = "darkblue", size = 12),
+            legend.position = c(.9, .9)) +
+      labs(x = "Value", 
+           y = "Township", 
+           title = "Sales vs Estimates by Township",
+           subtitle = "25th percentile, median, 75th percentile",
+           color = "") +
+      scale_color_manual(values = c( "Sale" = "darkolivegreen3",
+                                     "Estimate" = "cadetblue4")) +
+      scale_y_continuous(breaks = line_ends$space_maker, 
+                         labels = line_ends$category) +
+      scale_x_continuous(labels = label_dollar(),
+                         # Prevents last x axis tick mark from being cut off
+                         limits = c(NA, max(reshaped_data$value) * 1.04))
+  )
 }
 ```
 
 ```{r}
-sale_vs_estimate_by_class("Berwyn", model_performance_test)
+# Collect townships to iterate over
+townships_to_iterate <- model_performance_test %>%
+  mutate(township = ccao::town_convert(geography_id)) %>% 
+  filter(triad_code == run_triad_code,
+         geography_type == 'township_code') %>%
+  select(township) %>%
+  unique() %>%
+  pull(township)
 ```
 
+::: {.panel-tabset}
+
+```{r _model_iterate_sale_vs_estimate_by_class, results='asis', fig.width=8, fig.height=10}
+# Dynamically produce tabset
+for (township in townships_to_iterate) {
+  cat("##", township, "\n")
+  sale_vs_estimate_by_class(township, model_performance_test)
+  cat("\n\n")
+}
+```
+:::
 
 ## Feature Importance Metrics
 
