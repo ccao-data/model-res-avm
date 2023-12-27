@@ -555,7 +555,7 @@ assessment_pin %>%
     sale_recent_1_date = as.Date(sale_recent_1_date),
     is_recent_sale = if_else(
       !is.na(sale_recent_1_date) &
-        sale_recent_1_date >= as.Date(paste0(numeric_year - 1, "-01-01")),
+        sale_recent_1_date >= as.Date(paste0(numeric_year - 3, "-01-01")),
       1,
       0
     )
