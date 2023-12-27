@@ -584,11 +584,11 @@ assessment_pin %>%
   ) %>%
   mutate(
     change_ratio_percent = cell_spec(
-      change_ratio_percent, 
+      change_ratio_percent,
       color = ifelse(change_ratio_percent < 1.05 & change_ratio_percent > 0.95, "green", "red")
     ),
     change_ratio_dollars = cell_spec(
-      change_ratio_dollars, 
+      change_ratio_dollars,
       color = ifelse(change_ratio_dollars < 1.05 & change_ratio_dollars > 0.95, "green", "red")
     )
   ) %>%
@@ -596,5 +596,6 @@ assessment_pin %>%
   kable_styling(full_width = F) %>%
   add_header_above(c("Township" = 1, "Ratio" = 1, "Sold Houses" = 1, "Not Sold Houses" = 1, "Ratio" = 1, "Sold Houses" = 1, "Not Sold Houses" = 1)) %>%
   add_header_above(c(" " = 1, "Percentage Change" = 3, "Dollar Change" = 3)) %>%
-  add_header_above(c("Comparison of YOY Change in Value for Sold and Not Sold Houses" = 7))
+  add_header_above(c("Comparison of YOY Change in Value for Sold and Not Sold Houses" = 7)) %>%
+  add_footnote("Ratios in green are > 0.95 and < 1.05")
 ```
