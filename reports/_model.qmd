@@ -350,7 +350,6 @@ ggplot() +
   )
 ```
 
-
 ## How do Sales Compare to Estimates by Class per Township?
 
 ```{r _sales_vs_estimates_graph, fig.width=8, fig.height=9, fig.align='center'}
@@ -456,19 +455,6 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       )
   )
 }
-```
-
-```{r}
-# Collect townships to iterate over
-townships_to_iterate <- model_performance_test %>%
-  mutate(township = ccao::town_convert(geography_id)) %>%
-  filter(
-    triad_code == run_triad_code,
-    geography_type == "township_code"
-  ) %>%
-  select(township) %>%
-  unique() %>%
-  pull(township)
 ```
 
 ::: {.panel-tabset}
