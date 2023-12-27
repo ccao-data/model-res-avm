@@ -305,7 +305,14 @@ complex_id_map <- complex_id_data %>%
   left_join(
     chars_data %>%
       filter(meta_year == "2022") %>%
-      select(meta_pin, loc_longitude, loc_latitude),
+      select(
+        meta_pin,
+        loc_longitude,
+        loc_latitude,
+        char_rooms,
+        char_bldg_sf,
+        char_yrblt
+      ),
     by = "meta_pin"
   ) %>%
   filter(meta_township_code == 35)
@@ -320,7 +327,13 @@ leaflet(complex_id_map) %>%
   addCircleMarkers(
     ~loc_longitude,
     ~loc_latitude,
-    popup = ~ as.character(meta_complex_id),
+    popup = ~ paste0(
+      "<b>Complex ID</b> ", as.character(meta_complex_id),
+      "<hr>",
+      "<b>Rooms</b> ", char_rooms,
+      "<br><b>Building SF</b> ", scales::comma(char_bldg_sf),
+      "<br><b>Year Built</b> ", char_yrblt
+    ),
     radius = 5,
     weight = 1,
     color = "darkgrey",
