@@ -311,7 +311,7 @@ ggplot() +
       y = space_maker,
       yend = space_maker,
       color = color_class
-    ), 
+    ),
     size = 1.2
   ) +
   geom_point(
@@ -384,7 +384,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
     mutate(
       category = ifelse(
         grepl("sale", type),
-        paste(class, " - Sale"), 
+        paste(class, " - Sale"),
         paste(class, " - Estimate")
       )
     ) %>%
@@ -401,8 +401,8 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       color_class = ifelse(grepl("Sale", category), "Sale", "Estimate"),
       # Set for legend re-ordering
       color_class = factor(color_class, levels = c("Sale", "Estimate"))
-    ) 
-  
+    )
+
   print(
     ggplot() +
       geom_segment(
