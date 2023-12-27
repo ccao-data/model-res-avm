@@ -560,7 +560,7 @@ assessment_pin %>%
       0
     )
   ) %>%
-  filter(!is.na(prior_near_yoy_change_pct) | !is.na(prior_near_yoy_change_nom)) %>%
+  filter(!is.na(prior_near_yoy_change_pct) & !is.na(prior_near_yoy_change_nom)) %>%
   group_by(meta_township_code) %>%
   summarize(
     no_recent_sale_yoy_change_percent = median(if_else(is_recent_sale == 0, prior_near_yoy_change_pct, NA_real_), na.rm = TRUE),
