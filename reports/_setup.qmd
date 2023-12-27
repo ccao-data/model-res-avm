@@ -61,6 +61,11 @@ if (!exists("chars_data")) {
   chars_data <- read_parquet(paths$input$char$local)
 }
 
+# Load characteristics data
+if (!exists("complex_id_data")) {
+  complex_id_data <- read_parquet(paths$input$complex_id$local)
+}
+
 
 ## Output data -----------------------------------------------------------------
 
