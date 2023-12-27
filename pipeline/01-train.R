@@ -310,7 +310,8 @@ message("Finalizing and saving trained model")
 # Keep only the variables necessary for evaluation
 test %>%
   mutate(
-    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred)
+    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred),
+    meta_sale_price = exp(meta_sale_price)
   ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
