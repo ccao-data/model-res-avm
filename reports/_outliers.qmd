@@ -372,13 +372,13 @@ qnt_df %>%
 
 ## Increase in Housing Value
 
-This section looks at the year_over_year change in assessed housing values. It separates the data into individual observations, identifying the 10 PINs which grew at the fastest rate as well as the median rate of change for each neighborhood. 
+This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying 10 PINs in each neighborhood which grew at the fastest rate as well as the median rate of change for each neighborhood. 
 
 ::: panel-tabset
 
 ## Map of Largest YOY Changes
 
-This map caps the rate of legend at a 300% to increase legibility and plots the 10 largest year over year increases in assessed values by neighborhod. 
+This map caps the legend at a 300% to increase legibility. It then plots the 10 largest year over year increases in assessed values by neighborhood. 
 
 ```{r _outliers_map_of_largest_change}
 largest_increases <- assessment_pin %>%
