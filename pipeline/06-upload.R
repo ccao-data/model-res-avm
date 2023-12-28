@@ -112,7 +112,7 @@ if (upload_enable) {
         tidyr::unnest(cols = .extracts) %>%
         dplyr::select(num_iterations = .extracts)
     ) %>%
-      dplyr::select(-any_of(c("estimator")), -extracts) %>%
+      dplyr::select(-any_of(c("estimator", "trees")), -extracts) %>%
       write_parquet(paths$output$parameter_search$s3)
   }
 
