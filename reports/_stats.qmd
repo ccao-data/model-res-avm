@@ -362,3 +362,79 @@ for (i in seq(1, length(grobs), by = 6)) {
 ```
 
 :::
+
+## Change In and Out-of-Sample
+
+If the training sample is representative of the housing stock at large we should
+see similar changes in AVs between the previous year and predictions regardless
+of whether a home has sold recently. This chart compares the median change in AV
+(dollar and percentage) for homes which have sold in the previous three years to
+those which have not.
+
+```{r _model_sales_chasing}
+median_yoy_delta <- assessment_pin %>%
+  mutate(
+    Township = ccao::town_convert(meta_township_code),
+    prior_far_yoy_change_pct = as.numeric(prior_far_yoy_change_pct),
+    prior_near_yoy_change_nom = as.numeric(prior_near_yoy_change_nom),
+    is_recent_sale = case_when(
+      lubridate::year(sale_recent_1_date) >= as.numeric(params$year) - 3 ~ TRUE,
+      TRUE ~ FALSE
+    )
+  ) %>%
+  filter(
+    !is.na(prior_near_yoy_change_pct),
+    !is.na(prior_near_yoy_change_nom)
+  ) %>%
+  summarize(
+    yoy_change_percent = median(prior_near_yoy_change_pct, na.rm = TRUE),
+    yoy_change_dollars = median(prior_near_yoy_change_nom, na.rm = TRUE),
+    .by = c(Township, is_recent_sale)
+  ) %>%
+  pivot_wider(
+    id_cols = Township,
+    names_from = is_recent_sale,
+    values_from = c(yoy_change_percent, yoy_change_dollars)
+  ) %>%
+  mutate(
+    change_percent_ratio = round(yoy_change_percent_TRUE / yoy_change_percent_FALSE, 2),
+    change_dollars_ratio = round(yoy_change_dollars_TRUE / yoy_change_dollars_FALSE, 2),
+    yoy_change_percent_TRUE = scales::percent(yoy_change_percent_TRUE, accuracy = 2),
+    yoy_change_percent_FALSE = scales::percent(yoy_change_percent_FALSE, accuracy = 2),
+    yoy_change_dollars_TRUE = scales::dollar(yoy_change_dollars_TRUE),
+    yoy_change_dollars_FALSE = scales::dollar(yoy_change_dollars_FALSE)
+  ) %>%
+  select(
+    Township,
+    change_percent_ratio, yoy_change_percent_TRUE, yoy_change_percent_FALSE,
+    change_dollars_ratio, yoy_change_dollars_TRUE, yoy_change_dollars_FALSE,
+  )
+
+median_yoy_delta %>%
+  mutate(
+    change_percent_ratio = cell_spec(
+      change_percent_ratio,
+      color = ifelse(between(change_percent_ratio, 0.95, 1.0), "green", "red")
+    ),
+    change_dollars_ratio = cell_spec(
+      change_dollars_ratio,
+      color = ifelse(between(change_dollars_ratio, 0.95, 1.0), "green", "red")
+    )
+  ) %>%
+  kable("html", escape = F, col.names = rep("", 7)) %>%
+  kable_styling(full_width = F) %>%
+  add_header_above(c(
+    "Township" = 1,
+    "Ratio" = 1,
+    "Sold" = 1,
+    "Unsold" = 1,
+    "Ratio" = 1,
+    "Sold" = 1,
+    "Unsold" = 1
+  )) %>%
+  add_header_above(c(" " = 1, "Percentage Change" = 3, "Dollar Change" = 3)) %>%
+  add_header_above(
+    c("Comparison of YOY Change in AV for Sold and Unsold Houses" = 7)
+  ) %>%
+  add_footnote("Ratios in green are > 0.95 and < 1.05")
+```
