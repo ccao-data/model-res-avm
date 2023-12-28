@@ -303,7 +303,7 @@ y_lim_axis_outlier_by_decile <-
   summarise(percent = mean(
     case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)
   )) %>%
-  ungroup() %>% 
+  ungroup() %>%
   slice_max(percent, n = 1) %>%
   pull(percent)
 
