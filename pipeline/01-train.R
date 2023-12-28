@@ -28,7 +28,9 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date)
+  arrange(meta_sale_date) %>%
+  # Log the outcome variable to lower the importance of extreme values
+  mutate(meta_sale_price = log(meta_sale_price))
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -307,7 +309,10 @@ message("Finalizing and saving trained model")
 # predictions are used to evaluate model performance on the unseen test set.
 # Keep only the variables necessary for evaluation
 test %>%
-  mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
+  mutate(
+    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred),
+    meta_sale_price = exp(meta_sale_price)
+  ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
     all_of(params$ratio_study$geographies), char_bldg_sf,
