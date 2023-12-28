@@ -59,7 +59,7 @@ temp_sales %>%
 ## Outlier Types
 
 ```{r _outliers_type_breakdown}
-y_lim_axis <- training_data %>%
+y_lim_axis_outlier_breakdown <- training_data %>%
   filter(!sv_outlier_type %in% c("Not outlier", NA)) %>%
   count(sv_outlier_type) %>%
   summarise(max_value = max(n)) %>%
@@ -81,7 +81,7 @@ ggplot(
   geom_text(aes(
     label = count
   ), vjust = -0.5) +
-  ylim(0, 1.03 * (y_lim_axis)) +
+  ylim(0, 1.03 * (y_lim_axis_outlier_breakdown)) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
@@ -125,6 +125,14 @@ ggplot(
 ## Township
 
 ```{r _outliers_townships}
+y_lim_axis_outlier_townships <- 
+  training_data %>%
+  group_by(meta_township_name) %>%
+  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+  ungroup() %>%
+  top_n(1, percent) %>%
+  pull(percent)
+
 ggplot(
   training_data %>%
     group_by(meta_township_name) %>%
@@ -139,7 +147,10 @@ ggplot(
     label = scales::percent(percent, accuracy = .1)
   ), hjust = -0.1, angle = 90) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.05)) +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 1.15 * y_lim_axis_outlier_townships)
+  ) +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
     axis.title.y = element_blank(),
