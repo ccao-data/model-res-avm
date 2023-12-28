@@ -370,35 +370,28 @@ qnt_df %>%
 ```
 ## Map of Outliers
 
-This map looks at if when grouped by township, are the highest and lowest 1% outliers distributed in a meaningful way.
-
+This map identifies the ratio of sale price to the initial fair market value. It filters the the data to where our estimate is abnormally high (>99th percentile) and abnormally low (<1st percentile).
 ```{r outlier_map, message=FALSE}
+
 outlier_dist <- test_card %>%
   group_by(meta_township_code) %>%
-  mutate(ratio = meta_sale_price / pred_card_initial_fmv)
-
-# Find 1st and 99th percentile for trimmed and untrimmed ratios
-quantiles <- outlier_dist %>%
-  summarize(q01 = quantile(ratio, 0.01), q99 = quantile(ratio, 0.99))
-
-outlier_dist <- outlier_dist %>%
-  mutate(
+  mutate(ratio = meta_sale_price / pred_card_initial_fmv,
     quantile_category = case_when(
-      ratio <= quantiles$q01 ~ "< 1st Percentile",
-      ratio >= quantiles$q99 ~ "> 99th Percentile",
+      ratio <= quantiles$q01 ~ "Abnormally High Valuation",
+      ratio >= quantiles$q99 ~ "Abnormally Low Valuation",
       TRUE ~ "1st-99th Percentile"
     )
   )
 
 outlier_dist %>%
-  filter(meta_triad_code == triad_code) %>%
+  filter(meta_triad_code == as.numeric(run_triad_code)) %>%
   filter(quantile_category != "1st-99th Percentile") %>%
   left_join(training_data, by = "meta_pin") %>%
   filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
   st_as_sf(coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
   ggplot() +
   geom_sf(data = town_shp %>%
-    filter(triad_name == "South")) +
+    filter(triad_name == run_triad)) +
   geom_sf(aes(geometry = geometry, color = quantile_category)) +
   guides(color = guide_legend(title = "Outlier Type")) +
   theme_void() +
