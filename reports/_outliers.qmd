@@ -337,7 +337,7 @@ y_lim_axis_outlier_top_decile <-
   filter(decile == 10 & sv_outlier_type != "Not outlier") %>%
   group_by(sv_outlier_type) %>%
   summarise(count = n()) %>%
-  ungroup() %>% 
+  ungroup() %>%
   slice_max(count, n = 1) %>%
   pull(count)
 
