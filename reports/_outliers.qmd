@@ -397,24 +397,46 @@ largest_increases <- assessment_pin %>%
 nbhd_increases <- st_as_sf(largest_increases) %>%
   distinct(meta_nbhd_code, .keep_all = TRUE)
 
-color_palette <- colorNumeric(palette = c("white", "red"), domain = c(0, 300))
+color_palette <-
+  colorNumeric(palette = c("white", "red"), domain = c(0, 300))
 
 leaflet() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
-  addPolygons(data = nbhd_increases, fillColor = "white", weight = 1, color = "black", opacity = 1, fillOpacity = 0.5) %>%
+  addPolygons(
+    data = nbhd_increases,
+    fillColor = "white",
+    weight = 1,
+    color = "black",
+    opacity = 1,
+    fillOpacity = 0.5
+  ) %>%
   addCircleMarkers(
     data = largest_increases,
-    ~loc_longitude, ~loc_latitude,
+    ~loc_longitude,
+    ~loc_latitude,
     color = ~ color_palette(capped_yoy_change),
-    opacity = 0.7, fillOpacity = 0.7, radius = 1,
-    popup = ~ paste("Neighborhood:", meta_nbhd_code, "<br>Change:", prior_near_yoy_change_pct, "%")
+    opacity = 0.7,
+    fillOpacity = 0.7,
+    radius = 1,
+    popup = ~ paste(
+      "Neighborhood:",
+      meta_nbhd_code,
+      "<br>Change:",
+      prior_near_yoy_change_pct,
+      "%"
+    )
   ) %>%
-  addLegend("bottomright",
+  addLegend(
+    "bottomright",
     pal = color_palette,
     values = c(0, 300),
     title = "Year-over-Year Change (%)"
   ) %>%
-  setView(lng = mean(largest_increases$loc_longitude), lat = mean(largest_increases$loc_latitude), zoom = 10)
+  setView(
+    lng = mean(largest_increases$loc_longitude),
+    lat = mean(largest_increases$loc_latitude),
+    zoom = 10
+  )
 ```
 
 ## Table of Largest YOY Changes
@@ -454,7 +476,11 @@ datatable(
 
 ```{r _outliers_map_of_neighborhood_change}
 ggplot() +
-  geom_sf(data = nbhd_increases, aes(fill = neighborhod_median_change), color = "black") +
+  geom_sf(
+    data = nbhd_increases,
+    aes(fill = neighborhod_median_change),
+    color = "black"
+  ) +
   scale_fill_gradient(low = "white", high = "red") +
   labs(
     title = "Median Year-over-Year Change by Neighborhood",
