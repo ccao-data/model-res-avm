@@ -450,6 +450,7 @@ datatable(
     ) %>%
     select(
       meta_pin,
+      meta_township_code,
       meta_nbhd_code,
       meta_class,
       loc_property_address,
