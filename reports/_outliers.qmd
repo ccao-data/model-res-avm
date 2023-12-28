@@ -59,6 +59,12 @@ temp_sales %>%
 ## Outlier Types
 
 ```{r _outliers_type_breakdown}
+y_lim_axis <- training_data %>%
+  filter(!sv_outlier_type %in% c("Not outlier", NA)) %>%
+  count(sv_outlier_type) %>%
+  summarise(max_value = max(n)) %>%
+  pull(max_value)
+
 ggplot(
   training_data %>%
     filter(sv_outlier_type != "Not outlier") %>%
@@ -75,7 +81,7 @@ ggplot(
   geom_text(aes(
     label = count
   ), vjust = -0.5) +
-  ylim(0, 3300) +
+  ylim(0, 1.03 * (y_lim_axis)) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
@@ -343,36 +349,36 @@ ggplot(
 What are the sales with the largest miss relative to town and price quartile?
 
 ```{r _outliers_big_misses}
-qnt_df <- assessment_pin %>%
-  mutate(Town = ccao::town_convert(meta_township_code)) %>%
-  filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
-    !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
-  ) %>%
-  mutate(pred_pin_final_fmv_round) %>%
-  select(
-    PIN = meta_pin, Town, Class = meta_class,
-    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
-    `Sale 1 Date` = sale_recent_2_date, `Sale 1 Price` = sale_recent_2_price,
-    `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price,
-    `Est. FMV` = pred_pin_final_fmv_round
-  ) %>%
-  group_by(Town) %>%
-  mutate(
-    diff = abs(`Sale 2 Price` - `Est. FMV`),
-    `Qnt.` = cut(
-      `Sale 2 Price`,
-      breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
-      labels = c("Q1", "Q2", "Q3", "Q4"),
-      include.lowest = TRUE
-    )
-  ) %>%
-  group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
-  relocate(`Qnt.`, .after = "Town")
-
-qnt_df %>%
-  datatable(rownames = FALSE)
+# qnt_df <- assessment_pin %>%
+#   mutate(Town = ccao::town_convert(meta_township_code)) %>%
+#   filter(
+#     Town %in% c("Calumet", "Thornton", "Bloom"),
+#     !is.na(sale_recent_1_price),
+#     sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
+#   ) %>%
+#   mutate(pred_pin_final_fmv_round) %>%
+#   select(
+#     PIN = meta_pin, Town, Class = meta_class,
+#     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
+#     `Sale 1 Date` = sale_recent_2_date, `Sale 1 Price` = sale_recent_2_price,
+#     `Sale 2 Date` = sale_recent_1_date, `Sale 2 Price` = sale_recent_1_price,
+#     `Est. FMV` = pred_pin_final_fmv_round
+#   ) %>%
+#   group_by(Town) %>%
+#   mutate(
+#     diff = abs(`Sale 2 Price` - `Est. FMV`),
+#     `Qnt.` = cut(
+#       `Sale 2 Price`,
+#       breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
+#       labels = c("Q1", "Q2", "Q3", "Q4"),
+#       include.lowest = TRUE
+#     )
+#   ) %>%
+#   group_by(Town, `Qnt.`) %>%
+#   slice_max(diff, n = 1) %>%
+#   select(-diff) %>%
+#   relocate(`Qnt.`, .after = "Town")
+# 
+# qnt_df %>%
+#   datatable(rownames = FALSE)
 ```
