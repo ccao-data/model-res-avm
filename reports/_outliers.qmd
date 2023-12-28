@@ -356,8 +356,11 @@ ggplot(
     subtitle = "by Type, Top Decile"
   ) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = count), vjust = -0.5) +
-  ylim(0, 1.05 * y_lim_axis_outlier_top_decile) +
+  geom_text(aes(label = comma(count)), vjust = -0.5) +
+  scale_y_continuous(
+    labels = comma,
+    limits = c(0, 1.05 * y_lim_axis_outlier_top_decile)
+  )
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
