@@ -1,6 +1,6 @@
 ---
 params:
-  run_id: "2023-12-19-recursing-jacob"
+  run_id: "2023-12-21-xenodochial-eric"
   year: "2023"
 ---
 
@@ -59,6 +59,11 @@ if (!exists("hie_data")) {
 # Load characteristics data
 if (!exists("chars_data")) {
   chars_data <- read_parquet(paths$input$char$local)
+}
+
+# Load characteristics data
+if (!exists("complex_id_data")) {
+  complex_id_data <- read_parquet(paths$input$complex_id$local)
 }
 
 
