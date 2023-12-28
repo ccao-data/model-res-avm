@@ -78,6 +78,62 @@ vars <- names(sf_parcels) %>%
 ```
 
 
+## Final Hyperparameters
+```{r _stats_hyperparameters}
+# Custom headers for parameter results table, purely aesthetic
+param_headers <- withTags(table(
+  class = "display",
+  thead(
+    tr(
+      th("run id"),
+      th("config"),
+      th("engine"),
+      th("seed"),
+      th("objective"),
+      th("iterations"),
+      th("learning rate"),
+      th("val prop"),
+      th("val type"),
+      th("val metric"),
+      th("link max depth"),
+      th("max bin"),
+      th("stop iter"),
+      th("num leaves"),
+      th("add linked depth"),
+      th("feature fraction"),
+      th("min gain to split"),
+      th("min data in leaf"),
+      th("max cat"),
+      th("min data in group"),
+      th("cat smooth"),
+      th("cat l2"),
+      th("lamdal1"),
+      th("lamdal2"),
+      th("max depth")
+    )
+  )
+))
+
+# Table of all final model hyperparameters that were used
+model_parameter_final %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    container = param_headers,
+    escape = FALSE,
+    options = list(
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c(7:8), digits = 4)
+
+```
+
+
 ## Logit Regressions
 
 All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
