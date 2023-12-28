@@ -391,7 +391,7 @@ outlier_dist <- outlier_dist %>%
   )
 
 outlier_dist %>%
-  filter(meta_triad_code == 3) %>%
+  filter(meta_triad_code == triad_code) %>%
   filter(quantile_category != "1st-99th Percentile") %>%
   left_join(training_data, by = "meta_pin") %>%
   filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
