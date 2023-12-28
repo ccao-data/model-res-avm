@@ -397,10 +397,14 @@ median_yoy_delta <- assessment_pin %>%
     values_from = c(yoy_change_percent, yoy_change_dollars)
   ) %>%
   mutate(
-    change_percent_ratio = round(yoy_change_percent_TRUE / yoy_change_percent_FALSE, 2),
-    change_dollars_ratio = round(yoy_change_dollars_TRUE / yoy_change_dollars_FALSE, 2),
-    yoy_change_percent_TRUE = scales::percent(yoy_change_percent_TRUE, accuracy = 2),
-    yoy_change_percent_FALSE = scales::percent(yoy_change_percent_FALSE, accuracy = 2),
+    change_percent_ratio =
+      round(yoy_change_percent_TRUE / yoy_change_percent_FALSE, 2),
+    change_dollars_ratio =
+      round(yoy_change_dollars_TRUE / yoy_change_dollars_FALSE, 2),
+    yoy_change_percent_TRUE =
+      scales::percent(yoy_change_percent_TRUE, accuracy = 2),
+    yoy_change_percent_FALSE =
+      scales::percent(yoy_change_percent_FALSE, accuracy = 2),
     yoy_change_dollars_TRUE = scales::dollar(yoy_change_dollars_TRUE),
     yoy_change_dollars_FALSE = scales::dollar(yoy_change_dollars_FALSE)
   ) %>%
@@ -421,7 +425,9 @@ median_yoy_delta %>%
       color = ifelse(between(change_dollars_ratio, 0.95, 1.0), "green", "red")
     )
   ) %>%
-  kable("html", escape = F, col.names = rep("", 7)) %>%
+  kable(
+    "html", escape = F, col.names = rep("", 7), align = c('l', rep('c',6))
+    ) %>%
   kable_styling(full_width = F) %>%
   add_header_above(c(
     "Township" = 1,
