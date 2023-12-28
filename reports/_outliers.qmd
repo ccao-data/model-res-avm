@@ -368,3 +368,105 @@ qnt_df <- assessment_pin %>%
 qnt_df %>%
   datatable(rownames = FALSE)
 ```
+
+
+## Increase in Housing Value
+
+This section looks at the year_over_year change in assessed housing values. It separates the data into individual observations, identifying the 10 PINs which grew at the fastest rate as well as the median rate of change for each neighborhood. 
+
+::: panel-tabset
+
+## Map of Largest YOY Changes
+
+This map caps the rate of legend at a 300% to increase legibility and plots the 10 largest year over year increases in assessed values by neighborhod. 
+
+```{r _outliers_map_of_largest_change}
+largest_increases <- assessment_pin %>%
+  group_by(meta_nbhd_code) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  filter(!is.na(prior_near_yoy_change_pct)) %>%
+  mutate(neighborhod_median_change = median(prior_near_yoy_change_pct * 100),) %>%
+  arrange(desc(prior_near_yoy_change_pct)) %>%
+  slice(1:10) %>%
+  mutate(
+    prior_near_yoy_change_pct = prior_near_yoy_change_pct * 100,
+    capped_yoy_change = pmin(prior_near_yoy_change_pct, 300)
+  )
+
+
+nbhd_increases <- st_as_sf(largest_increases) %>%
+  distinct(meta_nbhd_code, .keep_all = TRUE)
+
+color_palette <- colorNumeric(palette = c("white", "red"), domain = c(0, 300))
+
+leaflet() %>%
+addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = nbhd_increases, fillColor = "white", weight = 1, color = "black", opacity = 1, fillOpacity = 0.5) %>%
+  addCircleMarkers(data = largest_increases, 
+                   ~loc_longitude, ~loc_latitude, 
+                   color = ~color_palette(capped_yoy_change), 
+                   opacity = 0.7, fillOpacity = 0.7, radius = 1,
+                   popup = ~paste("Neighborhood:", meta_nbhd_code, "<br>Change:", prior_near_yoy_change_pct, "%")) %>%
+  addLegend("bottomright", 
+            pal = color_palette, 
+            values = c(0, 300), 
+            title = "Year-over-Year Change (%)") %>%
+  setView(lng = mean(largest_increases$loc_longitude), lat = mean(largest_increases$loc_latitude), zoom = 10)
+
+
+
+```
+
+## Table of Largest YOY Changes
+
+```{r _outliers_table_of_largest_change}
+datatable(
+  largest_increases %>%
+    left_join(
+      select(chars_data, meta_pin, char_beds, char_rooms, char_fbath),
+      by = "meta_pin"
+    ) %>%
+    select(
+      meta_pin,
+      meta_nbhd_code,
+      meta_class,
+      loc_property_address,
+      pred_pin_final_fmv_round,
+      prior_far_tot,
+      prior_near_yoy_change_nom,
+      prior_near_yoy_change_pct,
+      sale_recent_1_date,
+      sale_recent_1_price,
+      flag_char_missing_critical_value,
+      char_yrblt,
+      char_total_bldg_sf,
+      char_beds,
+      char_rooms,
+      char_fbath,
+      neighborhod_median_change
+    ),
+  options = list(pageLength = 10, scrollX = TRUE),
+  filter = 'top',
+  rownames = FALSE
+)
+
+```
+## Median Rate of Change by Neighborhod
+
+```{r _outliers_map_of_neighborhood_change}
+ggplot() +
+  geom_sf(data = nbhd_increases, aes(fill = neighborhod_median_change), color = "black") +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(
+    title = "Median Year-over-Year Change by Neighborhood",
+    fill = "% Increase in Assessed Value"
+  ) +
+  theme_minimal() +
+  coord_sf() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+:::
