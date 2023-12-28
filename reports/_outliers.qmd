@@ -125,7 +125,7 @@ ggplot(
 ## Township
 
 ```{r _outliers_townships}
-y_lim_axis_outlier_townships <- 
+y_lim_axis_outlier_townships <-
   training_data %>%
   group_by(meta_township_name) %>%
   summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
@@ -295,7 +295,7 @@ training_data %>%
   kable(caption = "Top Decile") %>%
   kable_styling(full_width = TRUE)
 
-y_lim_axis_outlier_by_decile <- 
+y_lim_axis_outlier_by_decile <-
   training_data %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
@@ -304,7 +304,7 @@ y_lim_axis_outlier_by_decile <-
     case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)
   )) %>%
   ungroup() %>% 
-  slice_max(percent, n = 1) %>% 
+  slice_max(percent, n = 1) %>%
   pull(percent)
 
 ggplot(
@@ -330,7 +330,6 @@ ggplot(
   scale_x_continuous(breaks = seq(1, 10, 1)) +
   theme(axis.title.y = element_blank())
 
-
 y_lim_axis_outlier_top_decile <-
   training_data %>%
   arrange(meta_sale_price) %>%
@@ -339,7 +338,7 @@ y_lim_axis_outlier_top_decile <-
   group_by(sv_outlier_type) %>%
   summarise(count = n()) %>%
   ungroup() %>% 
-  slice_max(count, n = 1) %>% 
+  slice_max(count, n = 1) %>%
   pull(count)
 
 ggplot(
