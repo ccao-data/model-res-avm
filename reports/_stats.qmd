@@ -427,7 +427,7 @@ median_yoy_delta %>%
   ) %>%
   kable(
     "html", escape = F, col.names = rep("", 7), align = c('l', rep('c',6))
-    ) %>%
+  ) %>%
   kable_styling(full_width = F) %>%
   add_header_above(c(
     "Township" = 1,
