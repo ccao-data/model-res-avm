@@ -54,7 +54,6 @@ model_parameter_final %>%
     )
   ) %>%
   formatRound(c(7:8), digits = 4)
-
 ```
 
 # Statistical tests
