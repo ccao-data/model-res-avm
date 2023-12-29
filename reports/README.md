@@ -2,9 +2,10 @@
 
 ## Overview
 
-This directory contains Quarto diagnostic documents for the residential model. These documents are built and saved automatically for each model run. They contain model performance statistics, diagnostic visualizations, debugging/quality control tables, and more.
+This directory contains Quarto diagnostic documents for the residential model. These documents are built and saved automatically for each model run. They are intended to help refine, examine, and diagnose *individual models*. Cross-model comparison is performed via separate Tableau dashboards. The two document types currently available are:
 
-These documents are intended to help refine, examine, and diagnose *individual models*. Cross-model comparison is performed via separate Tableau dashboards.
+1. `performance.qmd` - Overall look at model performance containing ratio statistics, diagnostic visualizations, debugging/quality control tables, etc.
+2. `pin.qmd` - Detailed diagnostic document for a *single* PIN
 
 ## Structure
 
