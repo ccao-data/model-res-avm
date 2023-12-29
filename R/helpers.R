@@ -105,7 +105,6 @@ model_fetch_run <- function(run_id, year) {
   tictoc::toc()
 }
 
-
 # Extract the number of iterations that occurred before early stopping during
 # cross-validation. See the tune::tune_bayes() argument `extract`
 extract_num_iterations <- function(x) {
@@ -113,7 +112,6 @@ extract_num_iterations <- function(x) {
   evals <- purrr::pluck(fit, "record_evals", "validation", 1, "eval")
   length(evals)
 }
-
 
 # Extract weights for model features based on feature importance. Assumes that
 # the model was trained with the `valids` parameter set such that error metrics
@@ -139,65 +137,31 @@ extract_weights <- function(model, train, outcome_col, metric = "rmse") {
   return(weights)
 }
 
-
-# Given the result of a CV search, get the max number of iterations from the
+# Given the result of a CV search, get the number of iterations from the
 # result set with the best performing hyperparameters
-select_max_iterations <- function(tune_results, metric) {
-  dplyr::bind_cols(
-    tune_results %>%
-      dplyr::select(id, .metrics, .extracts) %>%
-      tidyr::unnest(cols = .metrics) %>%
-      dplyr::filter(.metric == params$cv$best_metric) %>%
-      dplyr::select(-.extracts),
-    tune_results %>%
-      tidyr::unnest(cols = .extracts) %>%
-      tidyr::unnest(cols = .extracts) %>%
-      dplyr::select(.extracts)
-  ) %>%
-    dplyr::inner_join(
-      tune::select_best(tune_results, metric = metric),
-      by = ".config"
+select_iterations <- function(tune_results, metric, type = "mean") {
+  stopifnot(type %in% c("mean", "median", "max"))
+  func <- switch(type,
+    mean = mean,
+    median = median,
+    max = max
+  )
+
+  tune_results %>%
+    dplyr::select(id, .metrics, .extracts) %>%
+    tidyr::unnest(cols = .metrics) %>%
+    dplyr::filter(.metric == params$cv$best_metric) %>%
+    dplyr::select(-.extracts) %>%
+    dplyr::left_join(
+      tune_results %>%
+        tidyr::unnest(cols = .extracts) %>%
+        tidyr::unnest(cols = .extracts) %>%
+        dplyr::select(!dplyr::where(is.list), -.config, -.iter)
     ) %>%
-    dplyr::summarize(num_iterations = max(.extracts))
+    dplyr::inner_join(tune::select_best(tune_results, metric = metric)) %>%
+    suppressMessages() %>%
+    dplyr::summarize(num_iterations = ceiling(func(.extracts)))
 }
-
-
-# Modified rolling origin forecast split function. Splits the training data into
-# a cumulatively expanding time window. The window contains the training data
-# and the most recent X% of the window is validation data (they overlap! see
-# issue #82). See README for more information
-rolling_origin_pct_split <- function(data,
-                                     order_col,
-                                     split_col,
-                                     assessment_pct) {
-  data <- dplyr::arrange(data, {{ order_col }})
-  split_sc <- data %>%
-    dplyr::group_by({{ split_col }}) %>%
-    dplyr::group_size() %>%
-    cumsum()
-  starts <- rep(1, length(split_sc))
-  in_idx <- mapply(seq, starts, split_sc, SIMPLIFY = FALSE)
-  out_idx <- lapply(in_idx, function(x) {
-    n <- length(x)
-    m <- min(n - floor(n * assessment_pct), n - 1) + 1
-    seq(max(m, 3), n)
-  })
-  indices <- mapply(rsample:::merge_lists, in_idx, out_idx, SIMPLIFY = FALSE)
-  split_objs <- purrr::map(
-    indices, rsample::make_splits,
-    data = data, class = "rof_split"
-  )
-  split_objs <- list(
-    splits = split_objs,
-    id = recipes::names0(length(split_objs), "Slice")
-  )
-  new_rset(
-    splits = split_objs$splits,
-    ids = split_objs$id,
-    subclass = c("rolling_origin", "rset")
-  )
-}
-
 
 # Silly copy of ccao::vars_recode to convert text versions of categoricals back
 # to numbers

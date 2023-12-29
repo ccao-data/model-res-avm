@@ -532,7 +532,8 @@ assessment_pin_data_final %>%
   # Coerce columns to their expected Athena output type
   mutate(
     land_rate_per_pin = as.numeric(land_rate_per_pin),
-    meta_complex_id = as.numeric(meta_complex_id)
+    meta_complex_id = as.numeric(meta_complex_id),
+    flag_hie_num_expired = as.numeric(flag_hie_num_expired)
   ) %>%
   # Reorder columns into groups by prefix
   select(

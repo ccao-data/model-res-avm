@@ -68,26 +68,26 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography,
                           class, col_dict, min_n) {
   # Helper function to return NA when sale sample size is too small
-  gte_n <- \(n_sales, min_n, fn) {
-    ifelse(sum(!is.na(n_sales)) >= min_n, fn, NA_real_)
+  gte_n <- \(n_sales, min_n, fn, na_type) {
+    ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
   }
 
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
   # the left
   rs_fns_list <- list(
-    cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE)),
-    prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE)),
-    prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE)),
-    mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE)),
-    cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE)),
-    cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE))),
-    prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE)),
-    prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE))),
-    prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE)),
-    prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE))),
-    mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE)),
-    mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)))
+    cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE), NA_real_),
+    prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE), NA_real_),
+    prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE), NA_real_),
+    mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE), NA_real_),
+    cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE), NA_real_),
+    cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE)), NA),
+    prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE), NA_real_),
+    prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE)), NA),
+    prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE), NA_real_),
+    prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE)), NA),
+    mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE), NA_real_),
+    mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)), NA)
   )
   ys_fns_list <- list(
     rmse        = rmse_vec,

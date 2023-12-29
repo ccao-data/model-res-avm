@@ -2,42 +2,17 @@
 
 # Statistical tests
 
-```{r}
+```{r _stats_gather_data}
 # This script runs balance tests comparing the universe of residential parcels
 # to the sample of residential parcels with sales in the previous 8 years
 # that are used to train the data department's CAMA.
 
-# Declare time frame for study
-time_frame <-
-  c("min" = as.character(as.numeric(params$year) - 1), "max" = params$year)
-
 # GATHER DATA ----
-
-# All residential parcel characteristics from time frame, with a sale indicator
-res_chars <- chars_data %>%
-  filter(!meta_class %in% c("211", "212"))
-
-sf_parcels <- res_chars %>%
-  # Join on sales indicator for most recent sale in the last two years -
-  # if there is one
-  left_join(
-    training_data %>%
-      filter(
-        dplyr::between(meta_year, time_frame["min"], time_frame["max"]) &
-          sv_is_outlier == FALSE
-      ) %>%
-      select(meta_pin, meta_sale_date, meta_year) %>%
-      group_by(meta_pin) %>%
-      filter(meta_sale_date == max(meta_sale_date, na.rm = TRUE)) %>%
-      ungroup()
-  ) %>%
-  mutate(sale = as.numeric(!is.na(meta_sale_date)))
-
 
 # Vars to test across
 vars <-
   grep("char_|3435|acs5_median|township_name",
-    names(sf_parcels),
+    names(chars_data),
     value = TRUE
   ) %>%
   grep("percentile|_apts|_ncu|_use|_qlty",
@@ -46,23 +21,37 @@ vars <-
     invert = TRUE
   )
 
-sf_parcels <- sf_parcels %>%
-  mutate(char_recent_renovation = case_when(
-    char_recent_renovation == 0 ~ "No",
-    TRUE ~ "Yes"
-  )) %>%
+# All residential parcel characteristics from time frame, with a sale indicator
+sf_parcels <- chars_data %>%
+  filter(!meta_class %in% c("211", "212")) %>%
+  # Join on sales indicator for most recent sale in the last two years -
+  # if there is one
+  left_join(
+    training_data %>%
+      filter(
+        year >= as.numeric(params$year) - 1,
+        !sv_is_outlier,
+        meta_sale_date == max(meta_sale_date, na.rm = TRUE),
+        .by = meta_pin
+      ) %>%
+      # We apply distinct here to remove duplicate sales that are a result of
+      # multicard and multiland sales, otherwise we'll get many-to-many joins.
+      distinct() %>%
+      select(meta_pin, meta_sale_date, meta_year)
+  ) %>%
   mutate(
     sale = factor(
-      sale,
+      as.numeric(!is.na(meta_sale_date)),
       levels = c(0, 1),
       labels = c("No Sale", "Sale")
     ),
-    across(starts_with("char_") &
-      where(is.character), ~ as.factor(.x)),
+    char_recent_renovation = case_when(
+      char_recent_renovation == 0 ~ "No",
+      TRUE ~ "Yes"
+    ),
     across(
-      c(
-        loc_tax_municipality_name,
-        loc_ward_num,
+      (starts_with("char_") &
+        where(is.character)) | c(
         char_recent_renovation,
         char_type_resd
       ),
@@ -93,7 +82,7 @@ vars <- names(sf_parcels) %>%
 
 All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
 
-```{r logit}
+```{r _stats_logit}
 remove <-
   names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>%
     select(where(is.factor))) %>%
@@ -104,7 +93,9 @@ remove <-
     value = TRUE
   )
 
-fmla <- as.formula(paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+")))
+fmla <- as.formula(
+  paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
+)
 
 logit <- glm(fmla,
   data = logit_parcels %>%
@@ -131,7 +122,8 @@ county_logit <- logit %>%
     align = c("l", "r", "c", "r", "l"),
     padding = 5L
   ) %>%
-  add_footnote("p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+  add_footnote(
+    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
     notation = "none"
   ) %>%
   kable_styling("striped",
@@ -183,7 +175,7 @@ logits <- logit_parcels %>%
           padding = 5L
         ) %>%
         add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
           notation = "none"
         ) %>%
         kable_styling(
@@ -193,7 +185,9 @@ logits <- logit_parcels %>%
           html_font = "Consolas"
         )
     } else {
-      fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+")))
+      fmla <- as.formula(
+        paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+"))
+      )
 
       glm(fmla,
         data = x %>%
@@ -212,7 +206,7 @@ logits <- logit_parcels %>%
           padding = 5L
         ) %>%
         add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .",
+          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
           notation = "none"
         ) %>%
         kable_styling(
@@ -225,251 +219,36 @@ logits <- logit_parcels %>%
   }, simplify = FALSE)
 ```
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ## County
 
-```{r}
+```{r _stats_county_regression}
 county_logit
 ```
 
-## Barrington
+```{r _stats_township_regressions, results = 'asis'}
+iwalk(logits, ~ {
+  cat("## ", .y, "\n\n")
 
-```{r}
-logits[["Barrington"]]
-```
+  print(.x)
 
-## Berwyn
-
-```{r}
-logits[["Berwyn"]]
-```
-
-## Bloom
-
-```{r}
-logits[["Bloom"]]
-```
-
-## Bremen
-
-```{r}
-logits[["Bremen"]]
-```
-
-## Calumet
-
-```{r}
-logits[["Calumet"]]
-```
-
-## Cicero
-
-```{r}
-logits[["Cicero"]]
-```
-
-## Elk Grove
-
-```{r}
-logits[["Elk Grove"]]
-```
-
-## Evanston
-
-```{r}
-logits[["Evanston"]]
-```
-
-## Hanover
-
-```{r}
-logits[["Hanover"]]
-```
-
-## Hyde Park
-
-```{r}
-logits[["Hyde Park"]]
-```
-
-## Jefferson
-
-```{r}
-logits[["Jefferson"]]
-```
-
-## Lake
-
-```{r}
-logits[["Lake"]]
-```
-
-## Lake View
-
-```{r}
-logits[["Lake View"]]
-```
-
-## Lemont
-
-```{r}
-logits[["Lemont"]]
-```
-
-## Leyden
-
-```{r}
-logits[["Leyden"]]
-```
-
-## Lyons
-
-```{r}
-logits[["Lyons"]]
-```
-
-## Maine
-
-```{r}
-logits[["Maine"]]
-```
-
-## New Trier
-
-```{r}
-logits[["New Trier"]]
-```
-
-## Niles
-
-```{r}
-logits[["Niles"]]
-```
-
-## North Chicago
-
-```{r}
-logits[["North Chicago"]]
-```
-
-## Northfield
-
-```{r}
-logits[["Northfield"]]
-```
-
-## Norwood Park
-
-```{r}
-logits[["Norwood Park"]]
-```
-
-## Oak Park
-
-```{r}
-logits[["Oak Park"]]
-```
-
-## Orland
-
-```{r}
-logits[["Orland"]]
-```
-
-## Palatine
-
-```{r}
-logits[["Palatine"]]
-```
-
-## Palos
-
-```{r}
-logits[["Palos"]]
-```
-
-## Proviso
-
-```{r}
-logits[["Proviso"]]
-```
-
-## Rich
-
-```{r}
-logits[["Rich"]]
-```
-
-## River Forest
-
-```{r}
-logits[["River Forest"]]
-```
-
-## Riverside
-
-```{r}
-logits[["Riverside"]]
-```
-
-## Rogers Park
-
-```{r}
-logits[["Rogers Park"]]
-```
-
-## Schaumburg
-
-```{r}
-logits[["Schaumburg"]]
-```
-
-## South Chicago
-
-```{r}
-logits[["South Chicago"]]
-```
-
-## Stickney
-
-```{r}
-logits[["Stickney"]]
-```
-
-## Thornton
-
-```{r}
-logits[["Thornton"]]
-```
-
-## West Chicago
-
-```{r}
-logits[["West Chicago"]]
-```
-
-## Wheeling
-
-```{r}
-logits[["Wheeling"]]
-```
-
-## Worth
-
-```{r}
-logits[["Worth"]]
+  cat("\n\n")
+})
 ```
 :::
 
 ## Standardized mean differences
 
-The standardized (mean) difference is a measure of distance between two group means in terms of one or more variables.
+The standardized (mean) difference is a measure of distance between two group
+means in terms of one or more variables.
 
-$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard deviation of outcome among participants}}$$
+$$SMD = {\text{Difference in mean outcome between groups} \over \text{Standard
+deviation of outcome among participants}}$$
 
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
-```{r SMDs}
+```{r _stats_smds}
 smd_table <- CreateTableOne(
   vars = vars %>% grep("Median", ., invert = TRUE, value = TRUE),
   strata = "Sale",
@@ -483,12 +262,13 @@ print(smd_table, smd = TRUE)
 
 ## Empirical Cumulative Distributions
 
-For the empirical cumulative distributions, we are looking for overlap/similar distributions. Numeric variables scaled and centered.
+For the empirical cumulative distributions, we are looking for overlap/similar
+distributions. Numeric variables scaled and centered.
 
 ::: panel-tabset
 ## Numeric columns:
 
-```{r ECDFs1}
+```{r _stats_ecdfs1}
 grobs <-
   lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
     data <- sf_parcels %>% select(Sale, any_of(x))
@@ -537,7 +317,7 @@ for (i in seq(1, length(grobs), by = 6)) {
 
 ## Factor columns:
 
-```{r ECDFs2}
+```{r _stats_ecdfs2}
 grobs <-
   lapply(names(sf_parcels %>% select(where(is.factor) &
     any_of(vars))), function(x) {
@@ -582,3 +362,86 @@ for (i in seq(1, length(grobs), by = 6)) {
 ```
 
 :::
+
+## Change In and Out-of-Sample
+
+If the training sample is representative of the housing stock at large we should
+see similar changes in AVs between the previous year and predictions regardless
+of whether a home has sold recently. This chart compares the median change in AV
+(dollar and percentage) for homes which have sold in the previous three years to
+those which have not.
+
+```{r _model_sales_chasing}
+median_yoy_delta <- assessment_pin %>%
+  mutate(
+    Township = ccao::town_convert(meta_township_code),
+    prior_far_yoy_change_pct = as.numeric(prior_far_yoy_change_pct),
+    prior_near_yoy_change_nom = as.numeric(prior_near_yoy_change_nom),
+    is_recent_sale = case_when(
+      lubridate::year(sale_recent_1_date) >= as.numeric(params$year) - 3 ~ TRUE,
+      TRUE ~ FALSE
+    )
+  ) %>%
+  filter(
+    !is.na(prior_near_yoy_change_pct),
+    !is.na(prior_near_yoy_change_nom)
+  ) %>%
+  summarize(
+    yoy_change_percent = median(prior_near_yoy_change_pct, na.rm = TRUE),
+    yoy_change_dollars = median(prior_near_yoy_change_nom, na.rm = TRUE),
+    .by = c(Township, is_recent_sale)
+  ) %>%
+  pivot_wider(
+    id_cols = Township,
+    names_from = is_recent_sale,
+    values_from = c(yoy_change_percent, yoy_change_dollars)
+  ) %>%
+  mutate(
+    change_percent_ratio =
+      round(yoy_change_percent_TRUE / yoy_change_percent_FALSE, 2),
+    change_dollars_ratio =
+      round(yoy_change_dollars_TRUE / yoy_change_dollars_FALSE, 2),
+    yoy_change_percent_TRUE =
+      scales::percent(yoy_change_percent_TRUE, accuracy = 2),
+    yoy_change_percent_FALSE =
+      scales::percent(yoy_change_percent_FALSE, accuracy = 2),
+    yoy_change_dollars_TRUE = scales::dollar(yoy_change_dollars_TRUE),
+    yoy_change_dollars_FALSE = scales::dollar(yoy_change_dollars_FALSE)
+  ) %>%
+  select(
+    Township,
+    change_percent_ratio, yoy_change_percent_TRUE, yoy_change_percent_FALSE,
+    change_dollars_ratio, yoy_change_dollars_TRUE, yoy_change_dollars_FALSE,
+  )
+
+median_yoy_delta %>%
+  mutate(
+    change_percent_ratio = cell_spec(
+      change_percent_ratio,
+      color = ifelse(between(change_percent_ratio, 0.95, 1.0), "green", "red")
+    ),
+    change_dollars_ratio = cell_spec(
+      change_dollars_ratio,
+      color = ifelse(between(change_dollars_ratio, 0.95, 1.0), "green", "red")
+    )
+  ) %>%
+  kable(
+    "html",
+    escape = F, col.names = rep("", 7), align = c("l", rep("c", 6))
+  ) %>%
+  kable_styling(full_width = F) %>%
+  add_header_above(c(
+    "Township" = 1,
+    "Ratio" = 1,
+    "Sold" = 1,
+    "Unsold" = 1,
+    "Ratio" = 1,
+    "Sold" = 1,
+    "Unsold" = 1
+  )) %>%
+  add_header_above(c(" " = 1, "Percentage Change" = 3, "Dollar Change" = 3)) %>%
+  add_header_above(
+    c("Comparison of YOY Change in AV for Sold and Unsold Houses" = 7)
+  ) %>%
+  add_footnote("Ratios in green are > 0.95 and < 1.05")
+```
