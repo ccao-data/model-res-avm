@@ -167,10 +167,13 @@ tryCatch(
 
 # Generate an individual Quarto report for requested PINs. If rendering fails
 # a warning is thrown and no output file is created
-for (pin in report_pins) {
+purrr::iwalk(report_pins, \(pin, i) {
   tryCatch(
     {
-      message("Generating report for PIN ", pin)
+      message(
+        "Generating report for PIN ", i, " / ",
+        length(report_pins), ": ", pin
+      )
 
       here("reports", "pin", "pin.qmd") %>%
         quarto_render(
@@ -192,7 +195,7 @@ for (pin in report_pins) {
       message(conditionMessage(func))
     }
   )
-}
+})
 
 
 
