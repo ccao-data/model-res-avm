@@ -15,11 +15,11 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: "2023-12-21-xenodochial-eric"
+  run_id: "2023-12-27-pedantic-billy"
   year: "2023"
 ---
 
-{{< include _setup.qmd >}}
+{{< include ../_setup.qmd >}}
 
 {{< include _model.qmd >}}
 
