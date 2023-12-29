@@ -1,0 +1,37 @@
+---
+title: "PIN: `r params$pin`"
+subtitle: "Run ID: `r params$run_id`"
+date: "`r Sys.Date()`"
+author: "Cook County Assessor's Office Data Department"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+editor: source
+params:
+  run_id: "2023-12-27-pedantic-billy"
+  year: "2023"
+  pin: "13253180150000"
+---
+
+{{< include ../_setup.qmd >}}
+
+```{r pin_checks}
+target_pin <- ccao::pin_clean(params$pin)
+
+if (nchar(target_pin) != 14) {
+  stop("Invalid PIN: must be 14 characters long")
+}
+
+if (!target_pin %in% assessment_card$meta_pin) {
+  stop("Invalid PIN: not found in assessment data")
+}
+```
+
+This is a stub report for the PIN `r target_pin` and run ID `r params$run_id`!

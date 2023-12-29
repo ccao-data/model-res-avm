@@ -73,3 +73,13 @@ upload_enable <- as.logical(Sys.getenv(
   "UPLOAD_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$upload_enable
 ))
+
+# Load any additional PINs to generate reports for from environment
+report_pins <- c(
+  params$ratio_study$pins,
+  Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
+    str_split(" ") %>%
+    unlist() %>%
+    str_trim() %>%
+    discard(~ .x == "")
+)
