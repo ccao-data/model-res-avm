@@ -385,6 +385,13 @@ ratio_study:
     - "loc_school_secondary_district_geoid"
     - "loc_school_unified_district_geoid"
 
+  # Pins for which to generate Quarto reports using reports/pin/pin.qmd. Can
+  # also be appended to using the environmental variable REPORT_ADDITIONAL_PINS
+  pins:
+    - "13253180150000"
+    - "17321110470000"
+    - "05174150240000"
+
 
 # Export -----------------------------------------------------------------------
 
