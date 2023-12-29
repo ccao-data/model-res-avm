@@ -113,25 +113,30 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
-# Given the result of a CV search, get the max number of iterations from the
+# Given the result of a CV search, get the number of iterations from the
 # result set with the best performing hyperparameters
-select_max_iterations <- function(tune_results, metric) {
-  dplyr::bind_cols(
-    tune_results %>%
-      dplyr::select(id, .metrics, .extracts) %>%
-      tidyr::unnest(cols = .metrics) %>%
-      dplyr::filter(.metric == params$cv$best_metric) %>%
-      dplyr::select(-.extracts),
-    tune_results %>%
-      tidyr::unnest(cols = .extracts) %>%
-      tidyr::unnest(cols = .extracts) %>%
-      dplyr::select(.extracts)
-  ) %>%
-    dplyr::inner_join(
-      tune::select_best(tune_results, metric = metric),
-      by = ".config"
+select_iterations <- function(tune_results, metric, type = "mean") {
+  stopifnot(type %in% c("mean", "median", "max"))
+  func <- switch(type,
+    mean = mean,
+    median = median,
+    max = max
+  )
+
+  tune_results %>%
+    dplyr::select(id, .metrics, .extracts) %>%
+    tidyr::unnest(cols = .metrics) %>%
+    dplyr::filter(.metric == params$cv$best_metric) %>%
+    dplyr::select(-.extracts) %>%
+    dplyr::left_join(
+      tune_results %>%
+        tidyr::unnest(cols = .extracts) %>%
+        tidyr::unnest(cols = .extracts) %>%
+        dplyr::select(!dplyr::where(is.list), -.config, -.iter)
     ) %>%
-    dplyr::summarize(num_iterations = max(.extracts))
+    dplyr::inner_join(tune::select_best(tune_results, metric = metric)) %>%
+    suppressMessages() %>%
+    dplyr::summarize(num_iterations = ceiling(func(.extracts)))
 }
 
 # Silly copy of ccao::vars_recode to convert text versions of categoricals back
