@@ -3,7 +3,7 @@ import numba as nb
 import pandas as pd
 
 
-def get_comps(leaf_node_df, weights, n=5):
+def get_comps(leaf_node_df, weights, n=20):
     """Fast algorithm to get the top `n` comps from a dataframe of lightgbm
     leaf node assignments (`leaf_node_df`), weighted according to a feature
     importance vector `weights`. More details on the underlying algorithm here:
