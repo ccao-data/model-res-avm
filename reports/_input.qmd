@@ -304,7 +304,7 @@ townhome_preds %>%
 complex_id_map <- complex_id_data %>%
   left_join(
     chars_data %>%
-      filter(meta_year == "2022") %>%
+      filter(as.numeric(meta_year) == as.numeric(params$year) - 1) %>%
       select(
         meta_pin,
         loc_longitude,
