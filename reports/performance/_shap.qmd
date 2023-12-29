@@ -2,14 +2,14 @@
 
 # SHAP Values
 
-::: {.panel-tabset}
-
 SHAP values are a way to explain the importance of specific features within the model.
 They represent both the direction and magnitude of a feature's impact on the prediciton.
 
+::: {.panel-tabset}
+
 ## SHAP Summary
 
-```{r _shap_filtering, eval=shap_exists}
+```{r _shap_filtering}
 shap_df_filtered <- shap_df %>%
   left_join(
     assessment_card %>%
@@ -21,7 +21,7 @@ shap_df_filtered <- shap_df %>%
   arrange(meta_pin, meta_card_num)
 ```
 
-```{r _shap_table, eval=shap_exists}
+```{r _shap_table}
 shap_df_filtered %>%
   select(
     where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)
@@ -55,7 +55,7 @@ shap_df_filtered %>%
   )
 ```
 
-```{r _shap_function, eval=shap_exists}
+```{r _shap_function}
 shap_predictors <- names(shap_df_filtered)
 shap_predictors <- shap_predictors[!shap_predictors %in% c(
   "meta_year",
@@ -94,9 +94,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 }
 ```
 
-```{r _shap_riverside_header, results='asis', eval=shap_exists}
-cat("## Riverside Beeswarm")
-```
+## Riverside Beeswarm
 
 ```{r _shap_riverside_beeswarm, eval=shap_exists}
 shap_riverside_idx <- which(
@@ -107,11 +105,9 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %
   theme_minimal()
 ```
 
-```{r _shap_riverside_footer, results='asis', eval=shap_exists}
 cat("## Calumet Beeswarm")
-```
 
-```{r _shap_calumet_beeswarm, eval=shap_exists}
+```{r _shap_calumet_beeswarm}
 shap_calumet_idx <- which(
   assessment_card_filtered$meta_township_code == ccao::town_convert("Calumet")
 )
@@ -120,9 +116,7 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_calumet_idx) %>%
   theme_minimal()
 ```
 
-```{r _shap_thornton_header, results='asis', eval=shap_exists}
-cat("## Thornton Beeswarm")
-```
+## Thornton Beeswarm
 
 ```{r _shap_thornton_beeswarm, eval=shap_exists}
 shap_thornton_idx <- which(
@@ -133,6 +127,4 @@ create_shapviz(shap_df_filtered, assessment_card_filtered, shap_thornton_idx) %>
   theme_minimal()
 ```
 
-```{r _shap_thornton_footer, results='asis', eval=shap_exists}
-cat(":::")
-```
+:::
