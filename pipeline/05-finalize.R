@@ -155,7 +155,7 @@ tryCatch(
     # Save an empty report so that this pipeline step produces the required
     # output even in cases of failure
     message("Saving an empty report file in order to continue execution")
-    sink(here("reports", "performance", "performance.html"))
+    sink(paths$output$report_performance$local)
     cat("Encountered error in report generation:\n\n")
     cat(conditionMessage(func))
     sink()
