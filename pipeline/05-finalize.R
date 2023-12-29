@@ -140,7 +140,7 @@ tryCatch(
 
     message("Generating performance report")
 
-    here("reports", "performance.qmd") %>%
+    here("reports", "performance", "performance.qmd") %>%
       quarto_render(
         execute_params = list(
           run_id = run_id,
@@ -155,7 +155,7 @@ tryCatch(
     # Save an empty report so that this pipeline step produces the required
     # output even in cases of failure
     message("Saving an empty report file in order to continue execution")
-    sink(here("reports", "performance.html"))
+    sink(here("reports", "performance", "performance.html"))
     cat("Encountered error in report generation:\n\n")
     cat(conditionMessage(func))
     sink()
