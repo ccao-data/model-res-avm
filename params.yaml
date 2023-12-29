@@ -289,8 +289,9 @@ model:
     default:
       # Total number of iterations. Usually changed in tandem with learning_rate
       # NOTE: When early stopping is enabled, num_iterations is effectively the
-      # MAXIMUM possible number of iterations
-      num_iterations: 2000
+      # MAXIMUM possible number of iterations. It does not need to be tuned as
+      # the model will always train until the error stops decreasing
+      num_iterations: 2500
       learning_rate: 0.025
 
       # Maximum number of bins for discretizing continuous features. Lower uses
