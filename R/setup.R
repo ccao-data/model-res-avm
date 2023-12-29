@@ -75,11 +75,11 @@ upload_enable <- as.logical(Sys.getenv(
 ))
 
 # Load any additional PINs to generate reports for from environment
-report_pins <- c(
+report_pins <- unique(c(
   params$ratio_study$pins,
   Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
     str_split(" ") %>%
     unlist() %>%
     str_trim() %>%
     discard(~ .x == "")
-)
+))
