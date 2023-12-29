@@ -26,4 +26,3 @@ output,report_pin,5,finalize,ccao-model-results-us-east-1,reports/pin/,report/ye
 output,metadata,5,finalize,ccao-model-results-us-east-1,output/metadata/model_metadata.parquet,metadata/year={year}/{run_id}.parquet,metadata,model run,"year, run_id","Information about each run, including parameters, run ID, git info, etc.",
 intermediate,timing,,all,,output/intermediate/timing/,,,model stage,"year, msg",Parquet files for each stage containing the stage time elapsed,Converted into a one-row data frame in the finalize stage
 output,timing,,all,ccao-model-results-us-east-1,output/timing/model_timing.parquet,timing/year={year}/{run_id}.parquet,timing,model run,"year, run_id",Finalized time elapsed for each stage of the run,"Each row represents one run, while columns represent the stages"
-
