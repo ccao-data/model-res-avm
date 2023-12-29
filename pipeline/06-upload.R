@@ -212,8 +212,8 @@ if (upload_enable) {
 
   # Upload performance report
   aws.s3::put_object(
-    paths$output$report$local,
-    paths$output$report$s3
+    paths$output$report_performance$local,
+    paths$output$report_performance$s3
   )
 }
 
@@ -265,7 +265,10 @@ if (upload_enable) {
       paste0(collapse = "\n")
 
     # Get a link to the uploaded Quarto report
-    report_path_parts <- strsplit(paths$output$report$s3[1], "/")[[1]]
+    report_path_parts <- strsplit(
+      paths$output$report_performance$s3[1],
+      "/"
+    )[[1]]
     report_bucket <- report_path_parts[3]
     report_path <- report_path_parts[4:length(report_path_parts)] %>%
       paste(collapse = "/")
