@@ -289,8 +289,9 @@ model:
     default:
       # Total number of iterations. Usually changed in tandem with learning_rate
       # NOTE: When early stopping is enabled, num_iterations is effectively the
-      # MAXIMUM possible number of iterations
-      num_iterations: 2000
+      # MAXIMUM possible number of iterations. It does not need to be tuned as
+      # the model will always train until the error stops decreasing
+      num_iterations: 2500
       learning_rate: 0.025
 
       # Maximum number of bins for discretizing continuous features. Lower uses
@@ -383,6 +384,13 @@ ratio_study:
     - "loc_school_elementary_district_geoid"
     - "loc_school_secondary_district_geoid"
     - "loc_school_unified_district_geoid"
+
+  # Pins for which to generate Quarto reports using reports/pin/pin.qmd. Can
+  # also be appended to using the environmental variable REPORT_ADDITIONAL_PINS
+  pins:
+    - "13253180150000"
+    - "17321110470000"
+    - "05174150240000"
 
 
 # Export -----------------------------------------------------------------------

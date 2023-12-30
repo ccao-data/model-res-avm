@@ -70,7 +70,7 @@ message("Initializing LightGBM model")
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
   stop_iter = params$model$parameter$stop_iter,
-  trees = tune()
+  trees = params$model$hyperparameter$default$num_iterations
 ) %>%
   set_mode("regression") %>%
   set_engine(
@@ -169,7 +169,6 @@ if (cv_enable) {
     hardhat::extract_parameter_set_dials() %>%
     update(
       # nolint start
-      trees               = dials::trees(lgbm_range$num_iterations),
       learning_rate       = lightsnip::learning_rate(lgbm_range$learning_rate),
       max_bin             = lightsnip::max_bin(lgbm_range$max_bin),
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
@@ -233,7 +232,7 @@ if (cv_enable) {
         select(-any_of("num_iterations"))
     ) %>%
     bind_cols(
-      select_max_iterations(lgbm_search, metric = params$cv$best_metric)
+      select_iterations(lgbm_search, metric = params$cv$best_metric)
     ) %>%
     bind_cols(
       select_best(lgbm_search, metric = params$cv$best_metric) %>%

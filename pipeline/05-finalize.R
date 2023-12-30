@@ -140,7 +140,7 @@ tryCatch(
 
     message("Generating performance report")
 
-    here("reports", "performance.qmd") %>%
+    here("reports", "performance", "performance.qmd") %>%
       quarto_render(
         execute_params = list(
           run_id = run_id,
@@ -155,12 +155,47 @@ tryCatch(
     # Save an empty report so that this pipeline step produces the required
     # output even in cases of failure
     message("Saving an empty report file in order to continue execution")
-    sink(here("reports", "performance.html"))
+    sink(paths$output$report_performance$local)
     cat("Encountered error in report generation:\n\n")
     cat(conditionMessage(func))
     sink()
   }
 )
+
+
+## 3.2. PIN Report(s) ----------------------------------------------------------
+
+# Generate an individual Quarto report for requested PINs. If rendering fails
+# a warning is thrown and no output file is created
+purrr::iwalk(report_pins, \(pin, i) {
+  tryCatch(
+    {
+      message(
+        "Generating report for PIN ", i, " / ",
+        length(report_pins), ": ", pin
+      )
+
+      here("reports", "pin", "pin.qmd") %>%
+        quarto_render(
+          execute_params = list(
+            run_id = run_id,
+            year = params$assessment$year,
+            pin = pin
+          )
+        )
+
+      # Name the rendered file after each PIN
+      file.rename(
+        here("reports", "pin", "pin.html"),
+        here("reports", "pin", paste0(pin, ".html"))
+      )
+    },
+    error = function(func) {
+      message("Encountered error during report generation:")
+      message(conditionMessage(func))
+    }
+  )
+})
 
 
 
