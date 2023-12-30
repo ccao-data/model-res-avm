@@ -1,6 +1,6 @@
 ---
 params:
-  run_id: "2023-12-21-xenodochial-eric"
+  run_id: "2023-12-27-pedantic-billy"
   year: "2023"
 ---
 
@@ -139,11 +139,9 @@ if (!exists("model_parameter_final")) {
 }
 
 # Load SHAP data if it exists (only exists for important runs)
-if (file.exists(paths$output$shap$local)) {
-  if (!exists("shap_df")) {
-    shap_df <- read_parquet(paths$output$shap$local)
-    shap_exists <- nrow(shap_df) > 0
-  }
+if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
+  shap_df <- read_parquet(paths$output$shap$local)
+  shap_exists <- nrow(shap_df) > 0
 } else {
   shap_exists <- FALSE
 }
