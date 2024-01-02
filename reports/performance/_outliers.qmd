@@ -412,5 +412,4 @@ outlier_dist %>%
     legend.title = element_blank()
   ) +
   ggtitle("Map of Outliers")
-
 ```
