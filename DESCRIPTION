@@ -59,6 +59,7 @@ Config/renv/profiles/reporting/dependencies:
     gmodels,
     grid,
     gridExtra,
+    gt,
     gtools,
     htmltools,
     htmlwidgets,
