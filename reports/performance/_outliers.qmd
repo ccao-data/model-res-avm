@@ -379,7 +379,7 @@ outlier_dist <- test_card %>%
     q01 = quantile(ratio, 0.01, na.rm = TRUE),
     q99 = quantile(ratio, 0.99, na.rm = TRUE),
     .by = meta_township_code
-    ) %>%
+  ) %>%
   # Calculating quantiles for each group
   mutate(
     quantile_category = case_when(
@@ -392,12 +392,12 @@ outlier_dist <- test_card %>%
     training_data %>%
       select(meta_pin, loc_latitude, loc_longitude),
     by = "meta_pin"
-    ) %>%
+  ) %>%
   filter(
     meta_triad_code == as.numeric(run_triad_code),
     quantile_category != "1st-99th Percentile",
     !is.na(loc_longitude) & !is.na(loc_latitude)
-    ) %>%
+  ) %>%
   st_as_sf(coords = c("loc_longitude", "loc_latitude"), crs = 4326)
 
 outlier_dist %>%
@@ -408,6 +408,6 @@ outlier_dist %>%
   theme_void() +
   theme(
     strip.text = element_text(size = 12),
-    legend.title =  element_blank()
+    legend.title = element_blank()
   )
 ```
