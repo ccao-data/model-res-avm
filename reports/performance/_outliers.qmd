@@ -372,21 +372,27 @@ qnt_df %>%
 
 This map identifies the ratio of sale price to the initial fair market value. It filters the the data to where our estimate is abnormally high (>99th percentile) and abnormally low (<1st percentile).
 ```{r outlier_map, message=FALSE}
+# Calculating the ratio
 outlier_dist <- test_card %>%
   group_by(meta_township_code) %>%
   mutate(ratio = meta_sale_price / pred_card_initial_fmv)
 
+# Calculating quantiles for each group
 quantiles <- outlier_dist %>%
-  summarize(q01 = quantile(ratio, 0.01), q99 = quantile(ratio, 0.99))
+  group_by(meta_township_code) %>%
+  summarize(q01 = quantile(ratio, 0.01, na.rm = TRUE), q99 = quantile(ratio, 0.99, na.rm = TRUE))
 
+# Joining the quantiles back to outlier_dist
 outlier_dist <- outlier_dist %>%
+  left_join(quantiles, by = "meta_township_code") %>%
   mutate(
     quantile_category = case_when(
-      ratio <= quantiles$q01 ~ "Abnormally Low Outlier",
-      ratio >= quantiles$q99 ~ "Abnormally High Outlier",
+      ratio <= q01 ~ "Abnormally Low Outlier",
+      ratio >= q99 ~ "Abnormally High Outlier",
       TRUE ~ "1st-99th Percentile"
     )
   )
+
 
 outlier_dist %>%
   filter(meta_triad_code == as.numeric(run_triad_code)) %>%
