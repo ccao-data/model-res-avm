@@ -374,6 +374,10 @@ qnt_df %>%
 
 This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying 10 PINs in each neighborhood which grew at the fastest rate as well as the median rate of change for each neighborhood. 
 
+## Increase in Housing Value
+
+This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying 10 PINs in each neighborhood which grew at the fastest rate as well as the median rate of change for each neighborhood. 
+
 ::: panel-tabset
 
 ## Map of Largest YOY Changes
@@ -384,8 +388,9 @@ This map caps the legend at a 300% to increase legibility. It then plots the 10 
 largest_increases <- assessment_pin %>%
   group_by(meta_nbhd_code) %>%
   left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
   filter(!is.na(prior_near_yoy_change_pct)) %>%
-  mutate(neighborhod_median_change = median(prior_near_yoy_change_pct * 100), ) %>%
+  mutate(neighborhood_median_change = median(prior_near_yoy_change_pct * 100), ) %>%
   arrange(desc(prior_near_yoy_change_pct)) %>%
   slice(1:10) %>%
   mutate(
@@ -398,7 +403,7 @@ nbhd_increases <- st_as_sf(largest_increases) %>%
   distinct(meta_nbhd_code, .keep_all = TRUE)
 
 color_palette <-
-  colorNumeric(palette = c("white", "red"), domain = c(0, 300))
+  colorNumeric(palette = c("white", "red"), domain = c(min(largest_increases$prior_near_yoy_change_pct), 300))
 
 leaflet() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
@@ -421,15 +426,18 @@ leaflet() %>%
     popup = ~ paste(
       "Neighborhood:",
       meta_nbhd_code,
-      "<br>Change:",
-      prior_near_yoy_change_pct,
-      "%"
+      "<br>Current year fair market value rounded:",
+      pred_pin_final_fmv_round,
+      "<br>Previous reassessed value:",
+      prior_near_tot,
+      "<br>% Change:",
+      round(prior_near_yoy_change_pct, 2), "%"
     )
   ) %>%
   addLegend(
     "bottomright",
     pal = color_palette,
-    values = c(0, 300),
+    values = c(min(largest_increases$prior_near_yoy_change_pct), 300),
     title = "Year-over-Year Change (%)"
   ) %>%
   setView(
@@ -444,56 +452,106 @@ leaflet() %>%
 ```{r _outliers_table_of_largest_change}
 datatable(
   largest_increases %>%
-    left_join(
-      select(chars_data, meta_pin, char_beds, char_rooms, char_fbath),
+    distinct(meta_pin, .keep_all = TRUE) %>%
+    group_by(meta_township_code) %>%
+    slice_max(order_by = prior_near_yoy_change_nom, n = 10) %>%
+    ungroup() %>% left_join(
+      select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
       by = "meta_pin"
     ) %>%
+    filter(meta_year.y == 2022) %>%
+    distinct(meta_pin, .keep_all = TRUE) %>%
+    mutate(
+      Pin = meta_pin,
+      Township = meta_township_code,
+      Neighborhood = meta_nbhd_code,
+      Class = meta_class,
+      Address = loc_property_address,
+      "Predicted Value" = pred_pin_final_fmv_round,
+      "Previous Value" = prior_near_tot,
+      "Nominal Change" = prior_near_yoy_change_nom,
+      "Percent Change" = round(prior_near_yoy_change_pct, 2),
+      "Recent Sale Date" = sale_recent_1_date,
+      "Recent Sale Price" = sale_recent_1_price,
+      "Missing Critical Value" = flag_char_missing_critical_value,
+      "Year Built" = char_yrblt,
+      "Total Building SF" = char_total_bldg_sf,
+      Bedrooms = char_beds,
+      Rooms = char_rooms,
+      "Full Bathrooms" = char_fbath,
+      "Median Neighborhood Change" = round(neighborhood_median_change, 2)
+    ) %>%
     select(
-      meta_pin,
-      meta_township_code,
-      meta_nbhd_code,
-      meta_class,
-      loc_property_address,
-      pred_pin_final_fmv_round,
-      prior_far_tot,
-      prior_near_yoy_change_nom,
-      prior_near_yoy_change_pct,
-      sale_recent_1_date,
-      sale_recent_1_price,
-      flag_char_missing_critical_value,
-      char_yrblt,
-      char_total_bldg_sf,
-      char_beds,
-      char_rooms,
-      char_fbath,
-      neighborhod_median_change
+      Pin,
+      Township,
+      Neighborhood,
+      Class,
+      Address,
+      `Predicted Value`,
+      `Previous Value`,
+      `Nominal Change`,
+      `Percent Change`,
+      `Recent Sale Date`,
+      `Recent Sale Price`,
+      `Missing Critical Value`,
+      `Year Built`,
+      `Total Building SF`,
+      Bedrooms,
+      Rooms,
+      `Full Bathrooms`,
+      `Median Neighborhood Change`
     ),
   options = list(pageLength = 10, scrollX = TRUE),
   filter = "top",
   rownames = FALSE
 )
 ```
-## Median Rate of Change by Neighborhod
+## Median Rate of Change by Neighborhood
 
 ```{r _outliers_map_of_neighborhood_change}
-ggplot() +
-  geom_sf(
-    data = nbhd_increases,
-    aes(fill = neighborhod_median_change),
-    color = "black"
-  ) +
-  scale_fill_gradient(low = "white", high = "red") +
-  labs(
-    title = "Median Year-over-Year Change by Neighborhood",
-    fill = "% Increase in Assessed Value"
-  ) +
-  theme_minimal() +
-  coord_sf() +
-  theme(
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank(),
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank()
+breaks <- c(-Inf, 0, 50, 100, 150, 200, 250, 300, Inf)
+labels <- c("< 0%", "0% - 50%", "50% - 100%", "100% - 150%", "150% - 200%", "200% - 250%", "250% - 300%", "> 300%")
+
+nbhd_increases <- nbhd_increases %>%
+  mutate(
+    change_category = cut(
+      neighborhood_median_change,
+      breaks = breaks,
+      labels = labels,
+      include.lowest = TRUE
+    )
+  )
+
+
+# Define a set of discrete colors
+palette <- colorFactor(
+  palette = brewer.pal(8, "Set1"),
+  domain = nbhd_increases$change_category
+)
+
+
+leaflet(data = nbhd_increases) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~ palette(change_category),
+    color = "black",
+    weight = 1,
+    opacity = 1,
+    fillOpacity = 0.7,
+    smoothFactor = 0.5,
+    label = ~ paste0("Change: ", neighborhood_median_change, "% (Category ", change_category, ")"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    )
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    pal = palette,
+    values = ~change_category,
+    title = "Neighborhood Level Change",
+    opacity = 1
   )
 ```
 
