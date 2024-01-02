@@ -339,9 +339,9 @@ What are the sales with the largest miss relative to town and price quartile?
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
     !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
   ) %>%
   select(
     PIN = meta_pin, Town, Class = meta_class,
@@ -351,7 +351,7 @@ qnt_df <- assessment_pin %>%
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    diff = abs(`Sale 2 Price` - `Est. FMV`),
+    Difference = abs(`Sale 2 Price` - `Est. FMV`),
     `Qnt.` = cut(
       `Sale 2 Price`,
       breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
@@ -361,8 +361,8 @@ qnt_df <- assessment_pin %>%
     .by = Town
   ) %>%
   group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
   relocate(`Qnt.`, .after = "Town")
 
 qnt_df %>%
@@ -374,39 +374,40 @@ This map identifies the ratio of sale price to the initial fair market value. It
 ```{r outlier_map, message=FALSE}
 # Calculating the ratio
 outlier_dist <- test_card %>%
-  group_by(meta_township_code) %>%
-  mutate(ratio = meta_sale_price / pred_card_initial_fmv)
-
-# Calculating quantiles for each group
-quantiles <- outlier_dist %>%
-  group_by(meta_township_code) %>%
-  summarize(q01 = quantile(ratio, 0.01, na.rm = TRUE), q99 = quantile(ratio, 0.99, na.rm = TRUE))
-
-# Joining the quantiles back to outlier_dist
-outlier_dist <- outlier_dist %>%
-  left_join(quantiles, by = "meta_township_code") %>%
+  mutate(
+    ratio = meta_sale_price / pred_card_initial_fmv,
+    q01 = quantile(ratio, 0.01, na.rm = TRUE),
+    q99 = quantile(ratio, 0.99, na.rm = TRUE),
+    .by = meta_township_code
+    ) %>%
+  # Calculating quantiles for each group
   mutate(
     quantile_category = case_when(
       ratio <= q01 ~ "Abnormally Low Outlier",
       ratio >= q99 ~ "Abnormally High Outlier",
       TRUE ~ "1st-99th Percentile"
     )
-  )
-
+  ) %>%
+  left_join(
+    training_data %>%
+      select(meta_pin, loc_latitude, loc_longitude),
+    by = "meta_pin"
+    ) %>%
+  filter(
+    meta_triad_code == as.numeric(run_triad_code),
+    quantile_category != "1st-99th Percentile",
+    !is.na(loc_longitude) & !is.na(loc_latitude)
+    ) %>%
+  st_as_sf(coords = c("loc_longitude", "loc_latitude"), crs = 4326)
 
 outlier_dist %>%
-  filter(meta_triad_code == as.numeric(run_triad_code)) %>%
-  filter(quantile_category != "1st-99th Percentile") %>%
-  left_join(training_data, by = "meta_pin") %>%
-  filter(!is.na(loc_longitude) & !is.na(loc_latitude)) %>%
-  st_as_sf(coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
   ggplot() +
   geom_sf(data = town_shp %>%
     filter(triad_name == run_triad)) +
   geom_sf(aes(geometry = geometry, color = quantile_category)) +
-  guides(color = guide_legend(title = "Outlier Type")) +
   theme_void() +
   theme(
-    strip.text = element_text(size = 12)
+    strip.text = element_text(size = 12),
+    legend.title =  element_blank()
   )
 ```
