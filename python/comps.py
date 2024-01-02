@@ -9,6 +9,7 @@ def get_comps(leaf_node_df, weights, n=20):
     importance vector `weights`. More details on the underlying algorithm here:
     https://sno.ws/big-data-table
     """
+    raise ValueError("testing error message")
     # Convert the input dataframe to a matrix so that we can take advantage
     # of numba acceleration
     leaf_node_matrix = leaf_node_df.values

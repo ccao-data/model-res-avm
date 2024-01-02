@@ -160,7 +160,7 @@ if (comp_enable) {
     },
     error = function(e) {
       # Log the full Python traceback in case of an error
-      py_last_error()
+      print(py_last_error())
     }
   )
   # Correct for the fact that Python is 0-indexed
