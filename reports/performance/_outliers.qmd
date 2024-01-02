@@ -371,6 +371,7 @@ qnt_df %>%
 ## Map of Outliers
 
 This map identifies the ratio of sale price to the initial fair market value. It filters the the data to where our estimate is abnormally high (>99th percentile) and abnormally low (<1st percentile).
+
 ```{r outlier_map, message=FALSE}
 # Calculating the ratio
 outlier_dist <- test_card %>%
@@ -409,5 +410,7 @@ outlier_dist %>%
   theme(
     strip.text = element_text(size = 12),
     legend.title = element_blank()
-  )
+  ) +
+  ggtitle("Map of Outliers")
+
 ```
