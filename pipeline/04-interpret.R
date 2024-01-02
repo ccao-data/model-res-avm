@@ -26,8 +26,7 @@ if (shap_enable || comp_enable) {
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
-  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local)) %>%
-    head(1000)
+  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
@@ -138,10 +137,7 @@ if (comp_enable) {
   # leaf node assignments based on the most important features.
   # To do this, we need the training data so that we can compute base model
   # error
-  training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-    as_tibble() %>%
-    head(1000)
+  training_data <- read_parquet(paths$input$training$local) %>% as_tibble()
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
