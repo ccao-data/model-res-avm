@@ -161,6 +161,7 @@ if (comp_enable) {
     error = function(e) {
       # Log the full Python traceback in case of an error
       print(py_last_error())
+      stop("Encountered error in python/comps.py")
     }
   )
   # Correct for the fact that Python is 0-indexed
