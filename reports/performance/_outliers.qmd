@@ -370,7 +370,7 @@ qnt_df %>%
 ```
 ## Map of Outliers
 
-This map identifies the ratio of sale price to the initial fair market value. It filters the the data to where our estimate is abnormally high (>99th percentile) and abnormally low (<1st percentile).
+This map uses the test_card dataset to calcualte the ratio of sale price to the initial fair market value. It filters the the data to where our estimate is abnormally high (>99th percentile) and abnormally low (<1st percentile).
 
 ```{r outlier_map, message=FALSE}
 # Calculating the ratio
