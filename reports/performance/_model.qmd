@@ -337,7 +337,90 @@ ggplot() +
     # Prevents last x axis tick mark from being cut off
     limits = c(NA, max(reshaped_data$value) * 1.04)
   )
+
 ```
+
+
+
+```{r,fig.width=8, fig.height=14}
+# Make facet style graph
+sales_vs_estimates <- model_performance_test %>%
+  filter(
+    triad_code == run_triad_code,
+    geography_type == "township_code",
+    by_class == FALSE
+  ) %>%
+  select(
+    geography_type,
+    geography_id,
+    sale_fmv_q25,
+    sale_fmv_median,
+    sale_fmv_q75,
+    estimate_fmv_q25,
+    estimate_fmv_median,
+    estimate_fmv_q75
+  )
+
+reshaped_data <- sales_vs_estimates %>%
+  mutate(township = ccao::town_convert(geography_id)) %>%
+  pivot_longer(
+    cols = -c(geography_type, geography_id, township),
+    names_to = "type",
+    values_to = "value"
+  ) %>%
+  mutate(
+    category = ifelse(
+      grepl("sale", type),
+      paste(township, "- Sale"),
+      paste(township, "- Estimate")
+    )
+  ) %>%
+  select(category, value) %>%
+  separate(category, into = c("township", "type"), sep = " - ") %>%
+  mutate(type_factor = factor(type, levels = c("Sale", "Estimate")))
+
+# Prepare a data frame for segments
+segment_data <- reshaped_data %>%
+  group_by(township, type) %>%
+  arrange(township, type, value) %>%
+  mutate(xend = lead(value)) %>%
+  filter(!is.na(xend))
+
+ggplot() +
+  geom_segment(
+    data = segment_data, 
+    aes(
+      x = value, 
+      xend = xend, 
+      y = type_factor, 
+      yend = type_factor, 
+      color = type_factor
+    )
+  ) +
+  geom_point(
+    data = reshaped_data, 
+    aes(x = value,
+        y = type_factor,
+        group = type), 
+    color = "black",
+    size = 2,
+    shape = 21,
+    fill = "white"
+  ) +
+  facet_grid(township ~ ., scales = "free_x", space = "free") +
+  labs(x = "Dollar Value", y = "Type", color = "Type") +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("Sale" = "darkolivegreen3", 
+               "Estimate" = "cadetblue4")
+  ) +
+  scale_x_continuous(
+    labels = label_dollar()
+  )
+
+```
+
+
 
 ## How do Sales Compare to Estimates by Class per Township?
 
