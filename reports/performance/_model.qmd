@@ -310,7 +310,12 @@ ggplot() +
     fill = "white"
   ) +
   facet_grid(township ~ ., scales = "free_x", space = "free") +
-  labs(x = "Dollar Value", y = "Type", color = "Type") +
+  labs(
+    x = "Dollar Value",
+    y = "Type",
+    color = "Type",
+    title = "25th percentile, median, 75th percentile"
+  ) +
   theme_minimal() +
   scale_color_manual(
     values = c(
@@ -397,7 +402,12 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
         fill = "white"
       ) +
       facet_grid(class ~ ., scales = "free_x", space = "free") +
-      labs(x = "Dollar Value", y = "Type", color = "Type") +
+      labs(
+        x = "Dollar Value",
+        y = "Type",
+        color = "Type",
+        title = "25th percentile, median, 75th percentile"
+      ) +
       theme_minimal() +
       scale_color_manual(
         values = c(
