@@ -242,7 +242,7 @@ for (township in townships_to_iterate) {
 ```
 :::
 
-## How do Sales Compare to Estimates?
+## How do Sales Compare to Estimates by Township?
 
 ```{r _model_sales_vs_estimates_township, fig.width=8, fig.height=14}
 # Make facet style graph
@@ -326,7 +326,7 @@ ggplot() +
   )
 ```
 
-## How do Sales Compare to Estimates by Class per Township?
+## How do Sales Compare to Estimates by Township per Class?
 
 ```{r _sales_vs_estimates_graph}
 # Make class breakout function with facet
