@@ -245,7 +245,6 @@ for (township in townships_to_iterate) {
 ## How do Sales Compare to Estimates by Township?
 
 ```{r _model_sales_vs_estimates_township, fig.width=8, fig.height=14}
-# Make facet style graph
 sales_vs_estimates <- model_performance_test %>%
   filter(
     triad_code == run_triad_code,
@@ -281,7 +280,6 @@ reshaped_data <- sales_vs_estimates %>%
   separate(category, into = c("township", "type"), sep = " - ") %>%
   mutate(type_factor = factor(type, levels = c("Estimate", "Sale")))
 
-# Prepare a data frame for segments
 segment_data <- reshaped_data %>%
   group_by(township, type) %>%
   arrange(township, type, value) %>%
@@ -368,7 +366,6 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
     separate(category, into = c("class", "type"), sep = " - ") %>%
     mutate(type_factor = factor(type, levels = c("Estimate", "Sale")))
 
-  # Prepare a data frame for segments
   segment_data <- reshaped_data %>%
     group_by(class, type) %>%
     arrange(class, type, value) %>%
