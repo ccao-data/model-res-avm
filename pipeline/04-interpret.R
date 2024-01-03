@@ -145,12 +145,19 @@ if (comp_enable) {
     outcome_col = "meta_sale_price",
   )
 
+  # Get leaf node assignments for the training data. Assume that the training
+  # data is a subset of the assessment data
+  assessment_train_idxs <- which(
+    assessment_data$meta_pin %in% training_data$meta_pin
+  )
+  training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
+
   # Do the comps calculation in Python because the code is simpler and faster
   comps_module <- import("python.comps")
   tryCatch(
     {
       comps <- comps_module$get_comps(
-        leaf_nodes, tree_weights,
+        leaf_nodes, training_leaf_nodes, tree_weights,
         n = as.integer(20)
       )
     },
@@ -166,7 +173,7 @@ if (comp_enable) {
 
   # Translate comp indexes to PINs
   comps[[1]] <- comps[[1]] %>%
-    mutate_all(\(idx_row) assessment_data$meta_pin[idx_row]) %>%
+    mutate_all(\(idx_row) assessment_data[assessment_train_idxs[idx_row], ]$meta_pin) %>%
     cbind(pin = assessment_data$meta_pin) %>%
     relocate(pin) %>%
     rename_with(\(colname) gsub("comp_idx_", "comp_pin_", colname))

@@ -3,19 +3,22 @@ import numba as nb
 import pandas as pd
 
 
-def get_comps(leaf_node_df, weights, n=20):
+def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     """Fast algorithm to get the top `n` comps from a dataframe of lightgbm
     leaf node assignments (`leaf_node_df`), weighted according to a tree
     importance vector `weights`. More details on the underlying algorithm here:
     https://ccao-data.github.io/lightsnip/articles/finding-comps.html
     """
-    # Convert the input dataframe to a matrix and the weights list to an array
+    # Convert the input dataframes and lists to numpy arrays
     # so that we can take advantage of numba acceleration
     leaf_node_matrix = leaf_node_df.values
+    comparison_leaf_node_matrix = comparison_leaf_node_df.values
     weights_arr = np.asarray(weights, dtype=np.float64)
 
     # Get the indexes and scores of the top N comps
-    indexes, scores = _get_top_n_comps(leaf_node_matrix, weights_arr, n)
+    indexes, scores = _get_top_n_comps(
+      leaf_node_matrix, comparison_leaf_node_matrix, weights_arr, n
+    )
 
     # Turn the comps matrices into pandas dataframes to match the input
     indexes_df = pd.DataFrame(
@@ -38,14 +41,15 @@ def get_comps(leaf_node_df, weights, n=20):
     return indexes_df, scores_df
 
 
-@nb.njit(fastmath=True)
-def _get_top_n_comps(leaf_node_matrix, weights, n):
-    """Helper function that takes a matrix of leaf node assignments for each
-    observation in a tree model, an array of weights for each tree, and an
+@nb.njit(fastmath=True, parallel=True)
+def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
+    """Helper function that takes matrices of leaf node assignments for
+    observations in a tree model, an array of weights for each tree, and an
     integer N, and returns a matrix where each observation is scored by
-    similarity to every other observation and the top N scores are returned
-    in a tuple along with the index of the observation."""
+    similarity to observations in the comparison matrix and the top N scores
+    are returned along with the indexes of the comparison observations."""
     num_observations = len(leaf_node_matrix)
+    num_comparisons = len(comparison_leaf_node_matrix)
     idx_dtype = np.int64
     score_dtype = np.float64
 
@@ -58,15 +62,12 @@ def _get_top_n_comps(leaf_node_matrix, weights, n):
         top_n_idxs = np.zeros(n, dtype=idx_dtype)
         top_n_scores = np.zeros(n, dtype=score_dtype)
 
-        # Compare x_i to every other observation and save the top N highest
-        # scores and observation indexes for those scores.
-        # We can safely skip comparing observations with indexes including and
-        # before x_i, since we don't want to compare x_i to itself and any
-        # observations before that will have already been compared to x_i
-        # in a previous iteration of the outer loop
-        for y_i in range(x_i+1, num_observations):
+        # TODO: We could probably speed this up by skipping comparisons we've
+        # already made; we just need to do it in a way that will have a
+        # low memory footprint
+        for y_i in range(num_comparisons):
             leaf_node_match_arr = (
-              leaf_node_matrix[x_i] == leaf_node_matrix[y_i]
+              leaf_node_matrix[x_i] == comparison_leaf_node_matrix[y_i]
             ).astype(np.int64)
             similarity_score = np.sum(leaf_node_match_arr * weights)
             # See if the score is higher than any of the top N
@@ -90,7 +91,7 @@ def _get_top_n_comps(leaf_node_matrix, weights, n):
     return all_top_n_idxs, all_top_n_scores
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, parallel=True)
 def _insert_at_idx_and_shift(arr, elem, idx):
   """Helper function to insert an element `elem` into a sorted numpy array `arr`
   at a given index `idx` and shift the subsequent elements down one index."""
