@@ -522,13 +522,10 @@ nbhd_increases <- nbhd_increases %>%
     )
   )
 
-
-# Define a set of discrete colors
 palette <- colorFactor(
   palette = brewer.pal(8, "Set1"),
   domain = nbhd_increases$change_category
 )
-
 
 leaflet(data = nbhd_increases) %>%
   addTiles() %>%
