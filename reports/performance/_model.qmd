@@ -301,9 +301,11 @@ ggplot() +
   ) +
   geom_point(
     data = reshaped_data,
-    aes(x = value,
-        y = type_factor,
-        group = type),
+    aes(
+      x = value,
+      y = type_factor,
+      group = type
+    ),
     color = "black",
     size = 2,
     shape = 21,
@@ -313,8 +315,10 @@ ggplot() +
   labs(x = "Dollar Value", y = "Type", color = "Type") +
   theme_minimal() +
   scale_color_manual(
-    values = c("Sale" = "darkolivegreen3",
-               "Estimate" = "cadetblue4"),
+    values = c(
+      "Sale" = "darkolivegreen3",
+      "Estimate" = "cadetblue4"
+    ),
     breaks = c("Sale", "Estimate")
   ) +
   scale_x_continuous(
@@ -363,14 +367,14 @@ sales_vs_estimates <- data %>%
     select(category, value) %>%
     separate(category, into = c("class", "type"), sep = " - ") %>%
     mutate(type_factor = factor(type, levels = c("Estimate", "Sale")))
-  
+
   # Prepare a data frame for segments
   segment_data <- reshaped_data %>%
     group_by(class, type) %>%
     arrange(class, type, value) %>%
     mutate(xend = lead(value)) %>%
     filter(!is.na(xend))
-  
+
   print(
     ggplot() +
       geom_segment(
@@ -385,9 +389,11 @@ sales_vs_estimates <- data %>%
       ) +
       geom_point(
         data = reshaped_data,
-        aes(x = value,
-            y = type_factor,
-            group = type),
+        aes(
+          x = value,
+          y = type_factor,
+          group = type
+          ),
         color = "black",
         size = 2,
         shape = 21,
@@ -397,8 +403,10 @@ sales_vs_estimates <- data %>%
       labs(x = "Dollar Value", y = "Type", color = "Type") +
       theme_minimal() +
       scale_color_manual(
-        values = c("Sale" = "darkolivegreen3",
-                   "Estimate" = "cadetblue4"),
+        values = c(
+          "Sale" = "darkolivegreen3",
+          "Estimate" = "cadetblue4"
+        ),
         breaks = c("Sale", "Estimate")
       ) +
       scale_x_continuous(
