@@ -1,0 +1,536 @@
+{{< include ../_setup.qmd >}}
+
+# Model
+
+```{r _model_setup}
+training_data_pred <- training_data %>%
+  mutate(
+    pred_card_initial_fmv = predict(
+      model_fit,
+      new_data = bake(model_recipe, new_data = ., all_predictors())
+    )$.pred
+  )
+```
+
+## Township Level Stats
+
+```{r _model_township_level_stats_table}
+# Make join for township name
+model_performance_test_w_township_name <- model_performance_test %>%
+  mutate(township_name = ccao::town_convert(geography_id))
+
+township_level <- model_performance_test_w_township_name %>%
+  filter(
+    geography_type == "township_code",
+    by_class == FALSE,
+    triad_code == run_triad_code
+  )
+
+test_summary_township <- township_level %>%
+  select(
+    township_name,
+    sale_fmv_median,
+    cod,
+    prd,
+    prb,
+    median_ratio,
+    cod_met,
+    prd_met,
+    prb_met
+  ) %>%
+  mutate(
+    ratio_met = between(median_ratio, 0.95, 1.05),
+    sale_fmv_median = dollar_format()(sale_fmv_median)
+  ) %>%
+  relocate(township_name, .before = sale_fmv_median, )
+
+# Create a container with custom column headers for model summary table. This
+# is purely aesthetic
+headers <- htmltools::withTags(table(
+  class = "display",
+  thead(
+    tr(
+      th("Township"),
+      th("Median Sale Price"),
+      th("COD"),
+      th("PRD"),
+      th("PRB"),
+      th("Median Ratio"),
+      th("COD Met"),
+      th("PRD Met"),
+      th("PRB Met"),
+      th("Ratio Met")
+    )
+  )
+))
+
+# Create an interactive table of the test set results by township
+test_summary_township %>%
+  datatable(
+    rownames = FALSE,
+    filter = "none",
+    selection = "none",
+    container = headers,
+    escape = FALSE,
+    options = list(
+      autoWidth = TRUE,
+      paging = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  ) %>%
+  formatRound(c("cod", "prd", "prb", "median_ratio"), digits = 2) %>%
+  formatStyle(
+    c("cod_met", "prd_met", "prb_met", "ratio_met"),
+    backgroundColor = styleEqual(
+      c(0, 1),
+      c("transparent", "#D3F2C2")
+    )
+  )
+```
+
+## Overall Ratio Distribution
+
+```{r _model_overall_ratio_distribution_decile, fig.width=10, fig.height=6}
+# Helper function to help with x-axis tick labels
+shorten_number <- function(num) {
+  if (num >= 1000) {
+    return(paste(format(round(num / 1000), nsmall = 0)))
+  }
+  return(as.character(num))
+}
+
+data_to_plot <- model_performance_quantile_test %>%
+  filter(
+    geography_type == "triad_code",
+    by_class == FALSE,
+    triad_code == run_triad_code,
+    num_quantile == "10"
+  ) %>%
+  mutate(
+    lower_bound_short = sapply(lower_bound, shorten_number),
+    upper_bound_short = sapply(upper_bound, shorten_number),
+    custom_label = paste(quantile,
+      "\n[$",
+      lower_bound_short,
+      "K",
+      "-\n",
+      "$",
+      upper_bound_short,
+      "K",
+      "]",
+      sep = ""
+    )
+  )
+
+ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
+    fill = "#D3F2C2",
+    alpha = 0.1
+  ) +
+  geom_line(aes(group = 1),
+    color = "#2C3E50"
+  ) +
+  geom_point(color = "deepskyblue4", size = 3) +
+  geom_text(aes(label = round(median_ratio, 2)),
+    vjust = -0.55,
+    color = "#34495E",
+    size = 3.9
+  ) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
+  theme_minimal() +
+  labs(
+    title = "Overall Median Ratio by Decile",
+    x = "Decile", y = "Median Ratio"
+  ) +
+  scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
+  theme(axis.text.x = element_text(size = 10))
+```
+
+## Ratio Distribution by Township by Sale Price Decile
+
+```{r _model_ratio_distribution_township_decile}
+# Make graph function to iterate through for tabset
+make_township_ratio_decile_graph <- function(data, township) {
+  # Manually set axes to highest and lowest contained in the data
+  y_axis_values <- data %>%
+    filter(
+      geography_type == "township_code",
+      by_class == FALSE,
+      triad_code == run_triad_code,
+      num_quantile == "10"
+    ) %>%
+    summarise(
+      min_value = min(median_ratio),
+      max_value = max(median_ratio)
+    )
+
+  data_to_plot <- data %>%
+    filter(
+      geography_type == "township_code",
+      by_class == FALSE,
+      triad_code == run_triad_code,
+      num_quantile == "10",
+      township_name == township
+    ) %>%
+    select(township_name, quantile, median_ratio, lower_bound, upper_bound) %>%
+    mutate(
+      lower_bound_short = sapply(lower_bound, shorten_number),
+      upper_bound_short = sapply(upper_bound, shorten_number),
+      custom_label = paste(quantile,
+        "\n[$",
+        lower_bound_short,
+        "K",
+        "-\n",
+        "$",
+        upper_bound_short,
+        "K",
+        "]",
+        sep = ""
+      )
+    )
+
+  print(
+    ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
+      geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
+        fill = "#D3F2C2",
+        alpha = 0.1
+      ) +
+      geom_line(aes(group = 1), color = "#2C3E50") +
+      geom_point(color = "deepskyblue4", size = 3) +
+      geom_text(aes(label = round(median_ratio, 2)),
+        vjust = -0.55,
+        color = "#34495E",
+        size = 3.9
+      ) +
+      geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
+      theme_minimal() +
+      labs(
+        title = township,
+        x = "Decile", y = "Median Ratio"
+      ) +
+      # 0.08 is appended to the y_axis value so that the
+      # highest value label for the point isn't cut off
+      coord_cartesian(ylim = c(
+        y_axis_values$min_value,
+        y_axis_values$max_value + 0.08
+      )) +
+      scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
+      theme(axis.text.x = element_text(size = 10))
+  )
+}
+
+# Get township name for graphs
+data_for_tabset <- model_performance_quantile_test %>%
+  mutate(township_name = ccao::town_convert(geography_id))
+
+# Collect townships to iterate over
+townships_to_iterate <- ccao::town_dict %>%
+  filter(triad_name == run_triad) %>%
+  pull(township_name)
+```
+
+::: {.panel-tabset}
+
+```{r _model_iterate_township_decile_tabset, results='asis'}
+# Dynamically produce tabset
+for (township in townships_to_iterate) {
+  cat("##", township, "\n")
+  make_township_ratio_decile_graph(data_for_tabset, township)
+  cat("\n\n")
+}
+```
+:::
+
+## Feature Importance Metrics
+
+```{r _model_feature_importance_function}
+# Feature importance bar chart function
+plot_feature_importance <- function(data, gain_column, color) {
+  # Clean up name of column for ggplot
+  name_labs <- strsplit(gain_column, "_")[[1]][1] %>% str_to_title()
+
+  # Wrap Names
+  data <- data %>%
+    mutate(
+      model_predictor_all_name_wrapped =
+        gsub("(.{20})", "\\1\n", model_predictor_all_name, perl = TRUE)
+    )
+
+  # Use !!sym to unquote and convert the column name into a symbol for dynamic
+  # ggplot evaluation and .data[[gain_column]] is used to reference the gain
+  # column dynamically in the aes() function.
+  ggplot(data, aes(
+    x = reorder(
+      model_predictor_all_name_wrapped,
+      !!sym(gain_column)
+    ),
+    y = .data[[gain_column]]
+  )) +
+    geom_bar(
+      stat = "identity",
+      position = position_dodge(),
+      fill = color
+    ) +
+    coord_flip() +
+    theme_minimal() +
+    labs(
+      title = paste(name_labs, "Score"),
+      y = paste(name_labs, "Score"),
+      x = "Predictor"
+    ) +
+    theme(axis.text.y = element_text(size = 8))
+}
+```
+
+::: {.panel-tabset}
+
+#### Gain
+
+```{r _model_gain_score, fig.width=8, fig.height=30, fig.align='center'}
+plot_feature_importance(
+  feat_imp_df,
+  "gain_value",
+  color = "darkseagreen"
+)
+```
+
+#### Cover
+
+```{r _model_cover_score, fig.width=8, fig.height=30, fig.align='center'}
+plot_feature_importance(
+  feat_imp_df,
+  "cover_value",
+  "darkslategray"
+)
+```
+
+#### Frequency
+
+```{r _model_frequency_score, fig.width=8, fig.height=30, fig.align='center'}
+plot_feature_importance(
+  feat_imp_df,
+  "frequency_value",
+  "chocolate3"
+)
+```
+:::
+
+## Per Township Accuracy
+
+::: panel-tabset
+
+## MAPE by Quintile
+
+How does accuracy as measured by MAPE (Mean Absolute Percentage Error) change by
+quintile for each tri-town (`r max(training_data_pred$year)` only)?
+
+```{r _model_mape_by_quintile}
+mape <- training_data_pred %>%
+  # Remove outliers, limit to current tri and year
+  filter(
+    !sv_is_outlier,
+    meta_triad_name == run_triad,
+    meta_year == max(meta_year)
+  ) %>%
+  arrange(meta_sale_price) %>%
+  mutate(Quintile = ntile(meta_sale_price, 5), .by = meta_township_name) %>%
+  summarise(
+    median_sale_price = median(meta_sale_price, na.rm = TRUE),
+    median_predicted_fmv = median(pred_card_initial_fmv, na.rm = TRUE),
+    MAPE = yardstick::mape_vec(meta_sale_price, pred_card_initial_fmv),
+    .by = c(meta_township_name, Quintile)
+  ) %>%
+  rename(Township = meta_township_name)
+
+ggplotly(
+  mape %>%
+    ggplot(aes(x = Quintile, y = MAPE, color = Township)) +
+    geom_line() +
+    theme_minimal()
+)
+```
+
+## Predicted v Actual By Town
+
+```{r _model_predicted_vs_actual_town}
+pred_v_actual_town <- test_card %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  rename(
+    `Sale Price` = meta_sale_price,
+    `Predicted FMV` = pred_card_initial_fmv,
+    PIN = meta_pin
+  ) %>%
+  ggplot() +
+  geom_point(aes(
+    group = PIN,
+    x = `Predicted FMV`,
+    y = `Sale Price`,
+    color = Township
+  )) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_x_continuous(
+    name = "Predicted FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  scale_y_continuous(
+    name = "Actual FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  theme_minimal()
+
+ggplotly(pred_v_actual_town)
+```
+
+## Predicted v Actual By Class
+
+```{r _model_predicted_vs_actual_class}
+pred_v_actual_class <- test_card %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  rename(
+    `Sale Price` = meta_sale_price,
+    `Predicted FMV` = pred_card_initial_fmv,
+    PIN = meta_pin,
+    Class = meta_class
+  ) %>%
+  ggplot() +
+  geom_point(aes(
+    group = PIN,
+    x = `Predicted FMV`,
+    y = `Sale Price`,
+    color = Class
+  )) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_x_continuous(
+    name = "Predicted FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  scale_y_continuous(
+    name = "Actual FMV",
+    labels = scales::label_dollar(
+      accuracy = 1,
+      scale = 1 / 1000,
+      suffix = "K"
+    ),
+    n.breaks = 5,
+    limits = c(1e4, 1.5e6)
+  ) +
+  theme_minimal()
+
+ggplotly(pred_v_actual_class)
+```
+:::
+
+## Model Time Tracking
+
+::: panel-tabset
+
+## Training Data (Seen)
+
+Here the chart demonstrates if the model's median sale price reflects the time
+trends for the data it has already seen.
+
+```{r _model_time_trends_seen, fig.height=8, fig.width=7, out.width="100%"}
+training_data_pred %>%
+  filter(
+    !sv_is_outlier,
+    meta_triad_name == run_triad,
+    !ind_pin_is_multicard
+  ) %>%
+  mutate(
+    time_interval = lubridate::interval(
+      lubridate::make_date(metadata$input_min_sale_year, 1, 1),
+      lubridate::ymd(meta_sale_date)
+    ),
+    time_sale_month = as.numeric(time_interval %/%
+      lubridate::dmonths(1)) + 1
+  ) %>%
+  summarize(
+    `Median Prediction` = median(pred_card_initial_fmv),
+    `Median Sale Price` = median(meta_sale_price),
+    .by = c(meta_township_name, time_sale_month)
+  ) %>%
+  tidyr::pivot_longer(cols = starts_with("Median")) %>%
+  ggplot() +
+  geom_line(aes(x = time_sale_month, y = value, color = name)) +
+  scale_color_manual(
+    name = "",
+    values = c(
+      "Median Prediction" = "red",
+      "Median Sale Price" = "blue"
+    )
+  ) +
+  scale_y_continuous(
+    labels = scales::label_dollar(scale = 1e-3, suffix = "K")
+  ) +
+  facet_wrap(vars(meta_township_name), scales = "free_y", ncol = 3) +
+  theme_minimal() +
+  xlab("Time in Months, (0 = Jan 1, 2014)") +
+  theme(
+    legend.position = "bottom",
+    axis.title.y = element_blank()
+  )
+```
+
+## Test Data (Unseen)
+
+This chart looks at sales slightly in the future to see if the model tracks
+trends which it has not yet seen. 
+
+```{r _model_time_trends_unseen, fig.height=8, fig.width=7, out.width="100%"}
+test_card %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(
+    time_interval = lubridate::interval(
+      lubridate::make_date(metadata$input_min_sale_year, 1, 1),
+      lubridate::ymd(meta_sale_date)
+    ),
+    time_sale_month = as.numeric(time_interval %/% lubridate::dmonths(1)) + 1,
+    meta_township_name = ccao::town_convert(meta_township_code)
+  ) %>%
+  group_by(meta_township_name, time_sale_month) %>%
+  summarize(
+    `Median Prediction` = median(pred_card_initial_fmv),
+    `Median Sale Price` = median(meta_sale_price)
+  ) %>%
+  tidyr::pivot_longer(cols = starts_with("Median")) %>%
+  ggplot() +
+  geom_line(aes(x = time_sale_month, y = value, color = name)) +
+  scale_color_manual(
+    name = "",
+    values = c("Median Prediction" = "red", "Median Sale Price" = "blue")
+  ) +
+  scale_y_continuous(
+    labels = scales::label_dollar(scale = 1e-3, suffix = "K")
+  ) +
+  facet_wrap(vars(meta_township_name),
+    scales = "free_y", ncol = 3
+  ) +
+  theme_minimal() +
+  xlab("Time in Months (0 = Jan 1, 2014)") +
+  theme(
+    legend.position = "bottom",
+    axis.title.y = element_blank()
+  )
+```
+:::

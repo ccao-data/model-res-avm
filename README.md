@@ -1112,7 +1112,8 @@ following stages:
 The entire end-to-end pipeline can also be run using
 [DVC](https://dvc.org/). DVC will track the dependencies and parameters
 required to run each stage, cache intermediate files, and store
-versioned input data on S3.
+versioned input data on S3. The packages `dvc` and `dvc[s3]` are required
+for the following commands.
 
 To pull all the necessary input data based on the information in
 `dvc.lock`, run:

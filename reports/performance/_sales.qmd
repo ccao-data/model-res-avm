@@ -1,4 +1,4 @@
-{{< include _setup.qmd >}}
+{{< include ../_setup.qmd >}}
 
 # Sales
 
@@ -14,8 +14,7 @@
 township <- training_data %>%
   filter(!sv_is_outlier, meta_triad_name == run_triad) %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
-  group_by(meta_township_name, meta_year) %>%
-  summarise(sales = n()) %>%
+  summarise(sales = n(), .by = c(meta_township_name, meta_year)) %>%
   select(
     Sales = sales,
     Year = meta_year,
@@ -36,7 +35,9 @@ ggplotly(township)
 
 ## By Quarter
 
-Sales by bin by by quarter for the previous 4 years. The goal is to see how different segments of the market are changing as a proportion in each tri-town.
+Sales by by quarter for the previous 4 years. The goal is to see how different
+segments of the market are changing as a proportion in each tri-town. Sales are
+binned into 4 different groups based on price.
 
 *NOTE: Outliers are removed*
 
@@ -62,9 +63,7 @@ training_data %>%
     Quarter = lubridate::quarter(meta_sale_date) + 4 *
       (as.numeric(meta_year) - as.numeric(params$year))
   ) %>%
-  group_by(meta_township_name, Quarter, Bin) %>%
-  summarise(Sales = n()) %>%
-  ungroup() %>%
+  summarise(Sales = n(), .by = c(meta_township_name, Quarter, Bin)) %>%
   select(Sales, Bin, Township = meta_township_name, Quarter) %>%
   ggplot(aes(
     x = Quarter,
@@ -92,12 +91,10 @@ training_data %>%
 class <- training_data %>%
   filter(
     !sv_is_outlier,
-    meta_triad_name == run_triad,
-    !ind_pin_is_multicard
+    meta_triad_name == run_triad
   ) %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
-  group_by(meta_class, meta_year) %>%
-  summarise(sales = n()) %>%
+  summarise(sales = n(), .by = c(meta_class, meta_year)) %>%
   rename(Class = meta_class) %>%
   pivot_wider(
     id_cols = Class,
@@ -116,9 +113,10 @@ class %>%
 
 ## Removed Outliers
 
-These are outliers that were removed via the sale validation process in the ingest stage. The goal is to confirm that these were reasonable sales to remove.
+These are outliers that were removed via the sale validation process in the
+ingest stage. The goal is to confirm that these were reasonable sales to remove.
 
-```{r}
+```{r _sales_removed_outliers}
 rbind(
   training_data %>%
     filter(
@@ -140,9 +138,11 @@ rbind(
 
 ## Kept Outliers
 
-These are the top and bottom 25 sales from the training data that are *still* in the sample. The goal is to gauge whether or not outlier removal is being too strict (or not strict enough).
+These are the top and bottom 25 sales from the training data that are *still* in
+the sample. The goal is to gauge whether or not outlier removal is being too
+strict (or not strict enough).
 
-```{r}
+```{r _sales_kept_outliers}
 rbind(
   training_data %>%
     filter(
@@ -173,14 +173,17 @@ rbind(
 ```{r _sales_median_price}
 ggplot(
   training_data %>%
-    group_by(meta_year, sv_is_outlier) %>%
-    summarise(median_price = median(meta_sale_price)) %>%
-    ungroup(),
+    summarise(
+      median_price = median(meta_sale_price),
+      .by = c(meta_year, sv_is_outlier)
+    ),
   aes(x = meta_year, y = median_price, group = sv_is_outlier)
 ) +
   geom_line(aes(color = sv_is_outlier)) +
   scale_y_continuous(labels = scales::dollar_format()) +
-  labs(y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status") +
+  labs(
+    y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status"
+  ) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
@@ -189,12 +192,10 @@ ggplot(
     axis.title.x = element_blank()
   )
 
-year_minus_4 <- as.numeric(params$year) - 4
-
-temp <- ggplot(
+price_change <- ggplot(
   training_data %>%
     filter(sv_is_outlier == FALSE &
-      meta_year >= year_minus_4) %>%
+      meta_year >= as.numeric(params$year) - 4) %>%
     group_by(meta_year, meta_township_name, meta_triad_name) %>%
     summarise(median_price = median(meta_sale_price)) %>%
     group_by(meta_township_name, meta_triad_name) %>%
@@ -209,7 +210,9 @@ temp <- ggplot(
   labs(
     y = "Median Sale Price",
     x = "Year",
-    title = paste("Price / Price of", year_minus_4, ", Outliers Excluded"),
+    title = paste(
+      "Price / Price of", as.numeric(params$year) - 4, ", Outliers Excluded"
+    ),
   ) +
   theme_minimal() +
   theme(
@@ -220,18 +223,20 @@ temp <- ggplot(
   ) +
   facet_wrap(vars(meta_triad_name), scales = "free")
 
-ggplotly(temp)
+ggplotly(price_change)
 ```
 
-```{r}
-temp <- training_data %>%
+```{r _sales_price_week}
+tri_sales <- training_data %>%
   filter(sv_is_outlier == FALSE) %>%
   mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
   group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
   summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
   split(.$meta_triad_name)
 
-temp_graph <- function(x, title, limits = NULL) {
+map2(tri_sales, names(tri_sales), function(x, title) {
+  limits <- if (title == "South") c(100000, 300000) else NULL
+
   x %>%
     ggplot() +
     geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
@@ -251,13 +256,7 @@ temp_graph <- function(x, title, limits = NULL) {
       axis.text.x = element_blank()
     ) +
     facet_wrap(vars(time_sale_year))
-}
-
-temp[["City"]] %>% temp_graph(title = "City")
-
-temp[["North"]] %>% temp_graph(title = "North")
-
-temp[["South"]] %>% temp_graph(title = "South", limits = c(100000, 300000))
+})
 ```
 
 ## Number of Sales
@@ -271,7 +270,9 @@ ggplot(
   geom_text(aes(
     label = format(after_stat(count), big.mark = ",")
   ), stat = "count", vjust = -1) +
-  labs(y = "Number of Sales", x = "Year", title = "By Year and Outlier Status") +
+  labs(
+    y = "Number of Sales", x = "Year", title = "By Year and Outlier Status"
+  ) +
   theme_minimal() +
   scale_y_continuous(
     labels = scales::comma,

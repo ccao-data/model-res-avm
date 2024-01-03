@@ -43,7 +43,7 @@ train <- training(split_data)
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
-  data = training_data_full %>% select(-time_split),
+  data = training_data_full %>% select(-any_of("time_split")),
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -84,7 +84,7 @@ message("Initializing LightGBM model")
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
   stop_iter = params$model$parameter$stop_iter,
-  trees = params$model$parameter$num_iterations
+  trees = params$model$hyperparameter$default$num_iterations
 ) %>%
   set_mode("regression") %>%
   set_engine(
@@ -107,17 +107,14 @@ lgbm_model <- parsnip::boost_tree(
     # Set the objective function. This is what lightgbm will try to minimize
     objective = params$model$objective,
 
-    # Typically set manually along with the number of iterations (trees)
-    learning_rate = params$model$parameter$learning_rate,
-
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
     categorical_feature = params$model$predictor$categorical,
 
     # Enable early stopping using a proportion of each training sample as a
     # validation set. If lgb.train goes `stop_iter` rounds without improvement
-    # in the chosen metric, then it will end training early. This saves an
-    # immense amount of time during CV. WARNING: See issue #82 for more info
+    # in the chosen metric, then it will end training early. Saves an immense
+    # amount of time during CV. WARNING: See GitLab issue #82 for more info
     validation = params$model$parameter$validation_prop,
     sample_type = params$model$parameter$validation_type,
     metric = params$model$parameter$validation_metric,
@@ -127,14 +124,16 @@ lgbm_model <- parsnip::boost_tree(
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
 
-    # Max number of bins that feature values will be bucketed in
-    max_bin = params$model$parameter$max_bin,
-
 
     ### 3.1.2. Tuned Parameters ------------------------------------------------
 
-    # These are parameters that are tuned using cross-validation. These are the
-    # main parameters determining model complexity
+    # Typically set manually along with the number of iterations (trees)
+    learning_rate = tune(),
+
+    # Max number of bins that feature values will be bucketed in
+    max_bin = tune(),
+
+    # Main parameters determining model complexity
     num_leaves = tune(),
     add_to_linked_depth = tune(),
     feature_fraction = tune(),
@@ -170,19 +169,10 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
   message("Starting cross-validation")
 
-  # Using rolling origin resampling to create a cumulative, sliding time window
-  # training set, where the validation set is always the X% of sales following
-  # the training set in time. See https://www.tmwr.org/resampling.html#rolling
-
-  # CRITICAL NOTE: In the folds created here, the validation set is the last X%
-  # of the training set, meaning they overlap! This is because Lightsnip cuts
-  # out the last X% of each training set to use as a validation set for early
-  # stopping. See issue #82 for more information
-  train_folds <- rolling_origin_pct_split(
+  # Create the cross-validation folds
+  train_folds <- vfold_cv(
     data = train,
-    order_col = meta_sale_date,
-    split_col = time_split,
-    assessment_pct = params$model$parameter$validation_prop
+    v = params$cv$num_folds
   )
 
   # Create the parameter search space for hyperparameter optimization
@@ -193,6 +183,8 @@ if (cv_enable) {
     hardhat::extract_parameter_set_dials() %>%
     update(
       # nolint start
+      learning_rate       = lightsnip::learning_rate(lgbm_range$learning_rate),
+      max_bin             = lightsnip::max_bin(lgbm_range$max_bin),
       num_leaves          = lightsnip::num_leaves(lgbm_range$num_leaves),
       add_to_linked_depth = lightsnip::add_to_linked_depth(lgbm_range$add_to_linked_depth),
       feature_fraction    = lightsnip::feature_fraction(lgbm_range$feature_fraction),
@@ -218,7 +210,8 @@ if (cv_enable) {
     metrics = metric_set(rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
-      uncertain = params$cv$no_improve - 2,
+      verbose_iter = TRUE,
+      uncertain = params$cv$uncertain,
       no_improve = params$cv$no_improve,
       extract = extract_num_iterations,
       seed = params$model$seed
@@ -249,13 +242,15 @@ if (cv_enable) {
     objective = params$model$objective
   ) %>%
     bind_cols(
-      select_max_iterations(lgbm_search, metric = params$cv$best_metric)
+      as_tibble(params$model$parameter) %>%
+        select(-any_of("num_iterations"))
     ) %>%
     bind_cols(
-      as_tibble(params$model$parameter) %>% select(-num_iterations)
+      select_iterations(lgbm_search, metric = params$cv$best_metric)
     ) %>%
     bind_cols(
-      select_best(lgbm_search, metric = params$cv$best_metric)
+      select_best(lgbm_search, metric = params$cv$best_metric) %>%
+        select(-any_of("trees"))
     ) %>%
     select(configuration = .config, everything()) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
@@ -265,7 +260,7 @@ if (cv_enable) {
   lgbm_missing_params <- names(params$model$hyperparameter$default)
   lgbm_missing_params <- lgbm_missing_params[
     !lgbm_missing_params %in%
-      hardhat::extract_parameter_set_dials(lgbm_wflow)$name
+      c(hardhat::extract_parameter_set_dials(lgbm_wflow)$name, "num_iterations")
   ]
   lgbm_final_params <- tibble(
     configuration = "Default",
