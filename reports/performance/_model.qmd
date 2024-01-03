@@ -331,7 +331,7 @@ ggplot() +
 ```{r _sales_vs_estimates_graph}
 # Make class breakout function with facet
 sale_vs_estimate_by_class <- function(township_to_graph, data) {
-sales_vs_estimates <- data %>%
+  sales_vs_estimates <- data %>%
     filter(
       triad_code == run_triad_code,
       geography_type == "township_code",
@@ -393,7 +393,7 @@ sales_vs_estimates <- data %>%
           x = value,
           y = type_factor,
           group = type
-          ),
+        ),
         color = "black",
         size = 2,
         shape = 21,
