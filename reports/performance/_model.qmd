@@ -254,6 +254,7 @@ sales_vs_estimates <- model_performance_test %>%
   select(
     geography_type,
     geography_id,
+    num_sale,
     sale_fmv_q25,
     sale_fmv_median,
     sale_fmv_q75,
@@ -265,7 +266,7 @@ sales_vs_estimates <- model_performance_test %>%
 reshaped_data <- sales_vs_estimates %>%
   mutate(township = ccao::town_convert(geography_id)) %>%
   pivot_longer(
-    cols = -c(geography_type, geography_id, township),
+    cols = -c(geography_type, geography_id, township, num_sale),
     names_to = "type",
     values_to = "value"
   ) %>%
@@ -276,7 +277,7 @@ reshaped_data <- sales_vs_estimates %>%
       paste(township, "- Estimate")
     )
   ) %>%
-  select(category, value) %>%
+  select(category, value, num_sale) %>%
   separate(category, into = c("township", "type"), sep = " - ") %>%
   mutate(type_factor = factor(type, levels = c("Estimate", "Sale")))
 
@@ -285,6 +286,14 @@ segment_data <- reshaped_data %>%
   arrange(township, type, value) %>%
   mutate(xend = lead(value)) %>%
   filter(!is.na(xend))
+
+summary_data <- reshaped_data %>%
+  filter(type_factor == "Sale") %>%
+  group_by(township) %>%
+  summarize(
+    max_value = max(value),
+    num_sale = first(num_sale)
+  )
 
 ggplot() +
   geom_segment(
@@ -308,6 +317,15 @@ ggplot() +
     size = 2,
     shape = 21,
     fill = "white"
+  ) +
+  geom_text(
+    data = summary_data,
+    aes(x = max_value, y = "Sale", label = num_sale),
+    size = 3.2,
+    hjust = -0.15,  # Right align the text
+    vjust = 1.25,  # Center align vertically relative to the y-axis tick
+    color = "black",
+    check_overlap = TRUE
   ) +
   facet_grid(township ~ ., scales = "free_x", space = "free") +
   labs(
@@ -344,6 +362,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       geography_type,
       geography_id,
       class,
+      num_sale,
       sale_fmv_q25,
       sale_fmv_median,
       sale_fmv_q75,
@@ -356,7 +375,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
     mutate(township = ccao::town_convert(geography_id)) %>%
     dplyr::filter(township == township_to_graph) %>%
     pivot_longer(
-      cols = -c(geography_type, geography_id, township, class),
+      cols = -c(geography_type, geography_id, township, class, num_sale),
       names_to = "type",
       values_to = "value"
     ) %>%
@@ -367,7 +386,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
         paste(class, "- Estimate")
       )
     ) %>%
-    select(category, value) %>%
+    select(category, value, num_sale) %>%
     separate(category, into = c("class", "type"), sep = " - ") %>%
     mutate(type_factor = factor(type, levels = c("Estimate", "Sale")))
 
@@ -376,6 +395,14 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
     arrange(class, type, value) %>%
     mutate(xend = lead(value)) %>%
     filter(!is.na(xend))
+
+  summary_data <- reshaped_data %>%
+    filter(type_factor == "Sale") %>%
+    group_by(class) %>%
+    summarize(
+      max_value = max(value),
+      num_sale = first(num_sale)  
+    )
 
   print(
     ggplot() +
@@ -400,6 +427,15 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
         size = 2,
         shape = 21,
         fill = "white"
+      ) +
+       geom_text(
+        data = summary_data,
+        aes(x = max_value, y = "Sale", label = num_sale),
+        size = 3.2,
+        hjust = -0.15,  # Right align the text
+        vjust = 1.25,  # Center align vertically relative to the y-axis tick
+        color = "black",
+        check_overlap = TRUE
       ) +
       facet_grid(class ~ ., scales = "free_x", space = "free") +
       labs(
