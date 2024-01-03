@@ -160,15 +160,19 @@ if (comp_enable) {
       stop("Encountered error in python/comps.py")
     }
   )
-  # Correct for the fact that Python is 0-indexed
-  comps <- comps + 1
+  # Correct for the fact that Python is 0-indexed by incrementing the
+  # comp indexes by 1
+  comps[[1]] <- comps[[1]] + 1
 
-  # Translate comps to PINs before writing them out to a file
-  comps %>%
+  # Translate comp indexes to PINs
+  comps[[1]] <- comps[[1]] %>%
     mutate_all(\(idx_row) assessment_data$meta_pin[idx_row]) %>%
     cbind(pin = assessment_data$meta_pin) %>%
     relocate(pin) %>%
-    rename_with(\(colname) gsub("comp_", "comp_pin_", colname)) %>%
+    rename_with(\(colname) gsub("comp_idx_", "comp_pin_", colname))
+
+  # Combine the comp indexes and scores into one dataframe and write to a file
+  cbind(comps[[1]], comps[[2]]) %>%
     write_parquet(paths$output$comp$local)
 } else {
   # If comp creation is disabled, we still need to write an empty stub file
