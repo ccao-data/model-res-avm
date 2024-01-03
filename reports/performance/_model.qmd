@@ -24,65 +24,64 @@ Gini coefficient for sale price is going to be higher than the Gini coefficient 
 
 In this situation, the graph shows slightly regressive property valuations. This is not immediately intuitive, but to conceptualize this, think of an exaggerated “progressive” policy, where all houses were valued at $0 with one house responsible for all the assessed value. In this distribution, curve would be at 0 until the final house, where it would jump to 100% of the cumulative value (a Gini of 1). Thus, a higher Gini represents more progressive assessments, where tax assessments become larger as property value increases.
 
-::: panel-tabset
 
 ```{r _model_lorenz_curve}
+
 gini_data <- assessment_pin %>%
   filter(!is.na(sale_recent_1_price) & sale_recent_1_date > as.numeric(params$year) - 1) %>%
   select(pred_pin_final_fmv_round_no_prorate, sale_recent_1_price, meta_township_code) %>%
   arrange(sale_recent_1_price) %>%
-  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code"))
+  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) %>%
+  filter(triad_code == run_triad_code)
 
-create_lorenz_curve <- function(data, township) {
+
+create_lorenz_curve <- function(data, township_name) {
   sale_price <- data$sale_recent_1_price
   assessed <- data$pred_pin_final_fmv_round_no_prorate
 
-  gini_sale_price <- gini(sale_price)
-  gini_assessed <- gini(assessed)
-
   lorenz_data_price <- data.frame(
     pct = c(0, cumsum(sale_price) / sum(sale_price)),
-    cum_pct = c(0, seq_along(sale_price)) / length(sale_price),
-    type = "Sale GINI"
+    cum_pct = c(0, seq_along(sale_price)) / length(sale_price)
   )
 
   lorenz_data_assessed <- data.frame(
     pct = c(0, cumsum(assessed) / sum(assessed)),
-    cum_pct = c(0, seq_along(assessed)) / length(assessed),
-    type = "Assessed GINI"
+    cum_pct = c(0, seq_along(assessed)) / length(assessed)
   )
 
-  lorenz_data <- rbind(lorenz_data_price, lorenz_data_assessed)
-
-  ggplot(lorenz_data, aes(x = cum_pct, y = pct, color = type)) +
-    geom_line() +
+  ggplot() +
+    geom_line(data = lorenz_data_price, aes(x = cum_pct, y = pct), color = "blue") +
+    geom_line(data = lorenz_data_assessed, aes(x = cum_pct, y = pct), color = "red") +
     geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "green") +
-    scale_color_manual(values = c("Sale GINI" = "red", "Assessed GINI" = "blue")) +
     scale_x_continuous(labels = scales::label_percent()) +
     scale_y_continuous(labels = scales::label_percent()) +
-    labs(
-      title = paste("Lorenz Curve for", township),
-      x = "Percent of Properties",
-      y = "Percent of Value",
-      color = "Value Type"
-    ) +
+    labs(title = paste("Lorenz Curve for", township_name),
+         x = "Percent of Properties",
+         y = "Percent of Value") +
     theme_minimal()
 }
 
 plots <- gini_data %>%
   group_by(township_name) %>%
   group_nest() %>%
-  mutate(plot = map2(data, township_name, ~ create_lorenz_curve(.x, .y))) %>%
+  mutate(plot = map2(data, township_name, create_lorenz_curve)) %>%
   pull(plot)
-
-iwalk(plots, ~ {
-  cat("## ", .y, "\n\n")
-
-  print(.x)
-
-  cat("\n\n")
-})
 ```
+::: {.panel-tabset}
+
+```{r _model_lorenz_curve_results, results = 'asis'}
+
+
+# Iterate over the plots and print headers with township names
+plots %>%
+  imap(~ {
+    cat("## ", .y, "\n\n")
+    print(.x)
+    cat("\n\n")
+  })
+```
+
+:::
 
 
 ## Township Level Stats
