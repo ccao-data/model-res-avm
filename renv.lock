@@ -367,14 +367,14 @@
     },
     "cli": {
       "Package": "cli",
-      "Version": "3.6.1",
+      "Version": "3.6.2",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "utils"
       ],
-      "Hash": "89e6d8219950eac806ae0c489052048a"
+      "Hash": "1216ac65ac55ec0058a6f75d7ca0fd52"
     },
     "clock": {
       "Package": "clock",
@@ -672,7 +672,7 @@
     },
     "future": {
       "Package": "future",
-      "Version": "1.33.0",
+      "Version": "1.33.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -683,11 +683,11 @@
         "parallelly",
         "utils"
       ],
-      "Hash": "8e92c7bc53e91b9bb1faf9a6ef0e8514"
+      "Hash": "e57e292737f7a4efa9d8a91c5908222c"
     },
     "future.apply": {
       "Package": "future.apply",
-      "Version": "1.11.0",
+      "Version": "1.11.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -697,7 +697,7 @@
         "parallel",
         "utils"
       ],
-      "Hash": "ba4be138fe47eac3e16a6deaa4da106e"
+      "Hash": "455e00c16ec193c8edcf1b2b522b3288"
     },
     "generics": {
       "Package": "generics",
@@ -1112,7 +1112,7 @@
     },
     "mgcv": {
       "Package": "mgcv",
-      "Version": "1.9-0",
+      "Version": "1.9-1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1125,7 +1125,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "086028ca0460d0c368028d3bda58f31b"
+      "Hash": "110ee9d83b496279960e162ac97764ce"
     },
     "mime": {
       "Package": "mime",
@@ -1780,9 +1780,9 @@
     },
     "timeDate": {
       "Package": "timeDate",
-      "Version": "4022.108",
+      "Version": "4032.109",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "R",
         "graphics",
@@ -1790,7 +1790,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "3f7918d2b36c17ffe07cddba6458453e"
+      "Hash": "fa276a2ec2555d74b4eabf56fba3d209"
     },
     "timechange": {
       "Package": "timechange",
