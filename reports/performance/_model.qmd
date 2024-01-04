@@ -322,8 +322,8 @@ ggplot() +
     data = summary_data,
     aes(x = max_value, y = "Sale", label = num_sale),
     size = 3.2,
-    hjust = -0.15,  # Right align the text
-    vjust = 1.25,  # Center align vertically relative to the y-axis tick
+    hjust = -0.15,
+    vjust = 1.25,
     color = "black",
     check_overlap = TRUE
   ) +
@@ -401,7 +401,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
     group_by(class) %>%
     summarize(
       max_value = max(value),
-      num_sale = first(num_sale)  
+      num_sale = first(num_sale)
     )
 
   print(
@@ -429,13 +429,13 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
         fill = "white"
       ) +
        geom_text(
-        data = summary_data,
-        aes(x = max_value, y = "Sale", label = num_sale),
-        size = 3.2,
-        hjust = -0.15,  # Right align the text
-        vjust = 1.25,  # Center align vertically relative to the y-axis tick
-        color = "black",
-        check_overlap = TRUE
+         data = summary_data,
+         aes(x = max_value, y = "Sale", label = num_sale),
+         size = 3.2,
+         hjust = -0.15,
+         vjust = 1.25,
+         color = "black",
+         check_overlap = TRUE
       ) +
       facet_grid(class ~ ., scales = "free_x", space = "free") +
       labs(
