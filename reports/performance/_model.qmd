@@ -356,7 +356,7 @@ ggplotly(
 )
 ```
 
-## Predicted v Actual By Town
+## Predicted vs Actual by Town
 
 ```{r _model_predicted_vs_actual_town}
 pred_v_actual_town <- test_card %>%
@@ -400,7 +400,7 @@ pred_v_actual_town <- test_card %>%
 ggplotly(pred_v_actual_town)
 ```
 
-## Predicted v Actual By Class
+## Predicted vs Actual by Class
 
 ```{r _model_predicted_vs_actual_class}
 pred_v_actual_class <- test_card %>%
