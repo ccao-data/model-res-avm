@@ -94,66 +94,6 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 }
 ```
 
-```{r}
-#Troublshoot NA error
-
-#
-# test first arg
-#
-shap_riverside_idx <- which(
-  assessment_card_filtered$meta_township_code == "33")
-
-
-shap_predictors <- names(shap_df)
-shap_predictors <- shap_predictors[!shap_predictors %in% c(
-    "meta_year",
-    "meta_pin",
-    "meta_card_num",
-    "pred_card_shap_baseline_fmv",
-    "township_code",
-    "meta_triad")]
-
-shap_df_riverside <- shap_df_filtered %>%
-  select(all_of(shap_predictors)) %>%
-  slice(shap_riverside_idx)
-
-
-
-shap_df_riverside_na_count <-
-  shap_df_riverside %>%
-  filter(meta_township_code == "33") %>%
-  summarise_all(~sum(is.na(.))) %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = "Column",
-    values_to = "NA_Count"
-  ) 
-
-
-#
-# Test second arg
-#
-
-shap_riverside_idx <- which(
-  assessment_card_filtered$meta_township_code == "37")
-
-assessment_card_filtered_riverside <- 
-  assessment_card_filtered %>%
-        select(all_of(shap_predictors)) %>%
-        slice(shap_riverside_idx)
-
-
-assessment_card_filtered %>%
-        select(all_of(shap_predictors)) %>%
-        slice(shap_riverside_idx) %>%
-  summarise_all(~sum(is.na(.))) %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = "Column",
-    values_to = "NA_Count"
-  ) 
-
-```
 
 ```{r}
 townships_to_iterate <- shap_df_filtered %>%
@@ -162,21 +102,10 @@ townships_to_iterate <- shap_df_filtered %>%
   as.character()
 
 ```
-::: {.panel-tabset}
-
-```{r _model_iterate_township_decile_tabset, results='asis', eval=F}
-# Dynamically produce tabset
-for (township in townships_to_iterate) {
-  cat("##", township, "\n")
-   make_township_ratio_decile_graph(data_for_tabset, township)
-   cat("\n\n")
-}
-```
-:::
 
 ::: {.panel-tabset}
 
-```{r _shap_beeswarm_iterate_township, results='asis'}
+```{r _shap_beeswarm_iterate_township, results='asis', warning=F}
 # Dynamically produce tabset
 for (township in townships_to_iterate) {
   cat("##", ccao::town_convert(township), "\n")
@@ -204,20 +133,42 @@ for (township in townships_to_iterate) {
 
 
 ```{r}
-shap_idx_riverside <- which(
-    assessment_card_filtered$meta_township_code == "33"
-  )
+make_township_beeswarm_graph <- function(township_to_iterate) {
 
-  print(
-    create_shapviz(
-      shap_df_filtered,
-      assessment_card_filtered,
-      shap_idx_riverside
-    ) %>%
-      shapviz::sv_importance("beeswarm",
-                             max_display = 20L) +
-      theme_minimal() +
-      coord_cartesian(xlim = c(-100000, 1000000))
-  )
+  shap_idx_riverside <- which(
+      assessment_card_filtered$meta_township_code == township_to_iterate
+    )
+  
+    print(
+      create_shapviz(
+        shap_df_filtered,
+        assessment_card_filtered,
+        shap_idx_riverside
+      ) %>%
+        shapviz::sv_importance("beeswarm",
+                               max_display = 20L) +
+        theme_minimal() +
+        coord_cartesian(xlim = c(-100000, 1000000))
+      
+    )
+}
+
+make_township_beeswarm_graph("33")
 ```
+
+
+<!-- ::: {.panel-tabset} -->
+
+<!-- ```{r _shap_beeswarm_iterate_township_test, results='asis'} -->
+<!-- # Dynamically produce tabset -->
+
+<!-- for (township in townships_to_iterate) { -->
+<!--   cat("##", ccao::town_convert(township), "\n") -->
+<!--   make_township_beeswarm_graph(township) -->
+<!--   cat("\n\n") -->
+<!-- } -->
+<!-- ``` -->
+
+<!-- ::: -->
+
 
