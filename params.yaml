@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Test run for updated 2024 model pipeline with V-fold cross-validation
+  Cutover to 2024 model (Chicago reassessment) using 2023 data
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -33,18 +33,18 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to pull land rates, HIEs, and other information
-  year: "2023"
+  year: "2024"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2023-01-01"
+  date: "2023-10-01"
 
   # Added context for model artifacts stored in S3. Does not change behavior
-  triad: "south"
+  triad: "city"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2022"
+  data_year: "2023"
 
   # Year used to partition data on S3. Working year in this case means the year
   # the Data Department is currently creating models for
@@ -53,8 +53,8 @@ assessment:
 # Parameters used to define the input/training data
 input:
   # The min and max year of sales to use for the training data sample
-  min_sale_year: "2014"
-  max_sale_year: "2022"
+  min_sale_year: "2015"
+  max_sale_year: "2023"
 
   # Time window (in months) used for rolling origin cross-validation
   time_split: 15
@@ -125,7 +125,7 @@ model:
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
-  seed: 2023
+  seed: 2024
   deterministic: TRUE
   force_row_wise: TRUE
 
@@ -358,10 +358,10 @@ pv:
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
 ratio_study:
-  far_year: "2020"
+  far_year: "2021"
   far_stage: "board"
   far_column: "meta_2yr_pri_board_tot"
-  near_year: "2022"
+  near_year: "2023"
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
