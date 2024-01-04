@@ -448,7 +448,7 @@ leaflet() %>%
 ```
 
 ## Table of Largest YOY Changes
-This table excludes any PINs which had a prior year assessed value of less than $35,000. It then identifies the 5 PINs in each neighborhood which had the largest year over year increase in assessed value.
+This table excludes any PINs which had a prior year assessed value of less than $25,000. It then identifies the 5 PINs in each neighborhood which had the largest year over year increase in assessed value.
 
 ```{r _outliers_table_of_largest_change}
 datatable(
