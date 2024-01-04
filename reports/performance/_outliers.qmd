@@ -422,9 +422,9 @@ leaflet() %>%
     popup = ~ paste(
       "Neighborhood:",
       meta_nbhd_code,
-      "<br>Current year fair market value rounded:",
+      "<br>Current year fmv rounded:",
       pred_pin_final_fmv_round,
-      "<br>Previous reassessed value:",
+      "<br>Previous year final assessed value:",
       prior_near_tot,
       "<br>% Change:",
       round(prior_near_yoy_change_pct, 2), "%"
