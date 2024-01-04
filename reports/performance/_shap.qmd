@@ -90,7 +90,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
       select(all_of(shap_predictors)) %>%
       slice(idx),
     baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
-    )
+  )
 }
 ```
 
@@ -122,8 +122,8 @@ shapviz::shapviz(
     slice(shap_idx_full_model) %>%
     as.matrix(),
   X = assessment_card_filtered %>%
-    select(all_of(shap_predictors)) %>% 
-      slice(shap_idx_full_model),
+    select(all_of(shap_predictors)) %>%
+    slice(shap_idx_full_model),
   baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
   ) %>%
   shapviz::sv_importance(
