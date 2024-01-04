@@ -531,7 +531,6 @@ palette <- colorFactor(
   palette = my_colors,
   domain = nbhd_increases$change_category
 )
-
 leaflet(data = nbhd_increases) %>%
   addTiles() %>%
   addPolygons(
@@ -541,11 +540,10 @@ leaflet(data = nbhd_increases) %>%
     opacity = 1,
     fillOpacity = 0.7,
     smoothFactor = 0.5,
-    label = ~ paste0("Change: ", round(neighborhood_median_change, 2), "% (Category ", change_category, ")"),
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
+    popup = ~ paste0(
+      "Township: ", township_name,
+      "<br>Neighborhood: ", meta_nbhd_code,
+      "<br>Change: ", round(neighborhood_median_change, 2), "%"
     )
   ) %>%
   addLegend(
