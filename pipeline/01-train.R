@@ -355,6 +355,20 @@ lgbm_wflow_final_full_fit %>%
   workflows::extract_fit_parsnip() %>%
   lightsnip::lgbm_save(paths$output$workflow_fit$local)
 
+lgbm_final_full_fit <- lgbm_wflow_final_full_fit %>%
+  workflows::extract_fit_parsnip()
+
+message("Checking record_evals")
+if (is.null(lgbm_final_full_fit$fit$record_evals)) {
+  stop("Trained model is missing required record_evals")
+}
+
+loaded_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
+
+if (is.null(loaded_fit$fit$record_evals)) {
+  stop("Saved model is missing required record_evals")
+}
+
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data. This is critical since it saves the factor levels used to integer-
 # encode any categorical columns

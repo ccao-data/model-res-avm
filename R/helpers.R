@@ -126,7 +126,11 @@ extract_weights <- function(model, train, outcome_col, metric = "rmse") {
   init_score <- mean(initial_predictions)
 
   # Index into the errors list, and un-list so it is a flat/1dim list
-  errors <- unlist(model$record_evals$valids[[metric]]$eval)
+  record_evals <- model$record_evals
+  if (is.null(record_evals)) {
+    stop("Model is missing required record_evals; was it trained with valids?")
+  }
+  errors <- unlist(record_evals$valids[[metric]]$eval)
   errors <- c(init_score, errors)
   diff_in_errors <- diff(errors, 1, 1)
 
