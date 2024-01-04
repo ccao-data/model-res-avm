@@ -106,7 +106,7 @@ test_summary_table("test")
 
 ## Linear Baseline
 
-```{r _model_township_level_stats_table_test}
+```{r _model_township_level_stats_table_test_linear}
 test_summary_table("test_linear")
 ```
 
@@ -164,7 +164,8 @@ ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
     color = "#2C3E50"
   ) +
   geom_point(aes(color = stage), size = 3) +
-  geom_text_repel(aes(label = round(median_ratio, 2), color = stage),
+  geom_text_repel(
+    aes(label = round(median_ratio, 2), color = stage),
     size = 3.9
   ) +
   geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
@@ -207,7 +208,10 @@ make_township_ratio_decile_graph <- function(data, township) {
       num_quantile == "10",
       township_name == township
     ) %>%
-    select(township_name, quantile, median_ratio, lower_bound, upper_bound) %>%
+    select(
+      stage, township_name, quantile,
+      median_ratio, lower_bound, upper_bound
+    ) %>%
     mutate(
       lower_bound_short = sapply(lower_bound, shorten_number),
       upper_bound_short = sapply(upper_bound, shorten_number),
@@ -224,17 +228,20 @@ make_township_ratio_decile_graph <- function(data, township) {
       )
     )
 
+  data_to_plot_labels <- data_to_plot %>%
+    filter(stage == "LightGBM") %>%
+    pull(custom_label)
+
   print(
     ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
       geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 0.95, ymax = 1.05),
         fill = "#D3F2C2",
         alpha = 0.1
       ) +
-      geom_line(aes(group = 1), color = "#2C3E50") +
-      geom_point(color = "deepskyblue4", size = 3) +
-      geom_text(aes(label = round(median_ratio, 2)),
-        vjust = -0.55,
-        color = "#34495E",
+      geom_line(aes(group = stage), color = "#2C3E50") +
+      geom_point(aes(color = stage), size = 3) +
+      geom_text_repel(
+        aes(label = round(median_ratio, 2), color = stage),
         size = 3.9
       ) +
       geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
@@ -249,14 +256,24 @@ make_township_ratio_decile_graph <- function(data, township) {
         y_axis_values$min_value,
         y_axis_values$max_value + 0.08
       )) +
-      scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
-      theme(axis.text.x = element_text(size = 10))
+      scale_x_continuous(breaks = 1:10, labels = data_to_plot_labels) +
+      labs(color = "Model Type") +
+      theme(
+        axis.text.x = element_text(size = 10),
+        legend.position = "bottom"
+      )
   )
 }
 
 # Get township name for graphs
 data_for_tabset <- model_performance_quantile_test %>%
+  mutate(stage = "LightGBM") %>%
+  bind_rows(
+    model_performance_quantile_test_linear %>%
+      mutate(stage = "Linear Baseline")
+  ) %>%
   mutate(township_name = ccao::town_convert(geography_id))
+
 
 # Collect townships to iterate over
 townships_to_iterate <- ccao::town_dict %>%
@@ -389,91 +406,112 @@ ggplotly(
 ## Predicted v Actual By Town
 
 ```{r _model_predicted_vs_actual_town}
-pred_v_actual_town <- test_card %>%
-  filter(meta_triad_code == run_triad_code) %>%
-  mutate(Township = ccao::town_convert(meta_township_code)) %>%
-  rename(
-    `Sale Price` = meta_sale_price,
-    `Predicted FMV` = pred_card_initial_fmv,
-    PIN = meta_pin
-  ) %>%
-  ggplot() +
-  geom_point(aes(
-    group = PIN,
-    x = `Predicted FMV`,
-    y = `Sale Price`,
-    color = Township
-  )) +
-  geom_abline(slope = 1, intercept = 0) +
-  scale_x_continuous(
-    name = "Predicted FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  scale_y_continuous(
-    name = "Actual FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  theme_minimal()
+predicted_v_actual <- function(x) {
+  pred_v_actual_plot <- test_card %>%
+    filter(meta_triad_code == run_triad_code) %>%
+    mutate(Township = ccao::town_convert(meta_township_code)) %>%
+    rename(
+      `Sale Price` = meta_sale_price,
+      `Predicted FMV` = {{ x }},
+      PIN = meta_pin
+    ) %>%
+    ggplot() +
+    geom_point(aes(
+      group = PIN,
+      x = `Predicted FMV`,
+      y = `Sale Price`,
+      color = Township
+    )) +
+    geom_abline(slope = 1, intercept = 0) +
+    scale_x_continuous(
+      name = "Predicted FMV",
+      labels = scales::label_dollar(
+        accuracy = 1,
+        scale = 1 / 1000,
+        suffix = "K"
+      ),
+      n.breaks = 5,
+      limits = c(1e4, 1.5e6)
+    ) +
+    scale_y_continuous(
+      name = "Actual FMV",
+      labels = scales::label_dollar(
+        accuracy = 1,
+        scale = 1 / 1000,
+        suffix = "K"
+      ),
+      n.breaks = 5,
+      limits = c(1e4, 1.5e6)
+    ) +
+    theme_minimal()
 
-ggplotly(pred_v_actual_town)
+  ggplotly(pred_v_actual_plot)
+}
+
+predicted_v_actual(pred_card_initial_fmv)
 ```
 
 ## Predicted v Actual By Class
 
 ```{r _model_predicted_vs_actual_class}
-pred_v_actual_class <- test_card %>%
-  filter(meta_triad_code == run_triad_code) %>%
-  mutate(Township = ccao::town_convert(meta_township_code)) %>%
-  rename(
-    `Sale Price` = meta_sale_price,
-    `Predicted FMV` = pred_card_initial_fmv,
-    PIN = meta_pin,
-    Class = meta_class
-  ) %>%
-  ggplot() +
-  geom_point(aes(
-    group = PIN,
-    x = `Predicted FMV`,
-    y = `Sale Price`,
-    color = Class
-  )) +
-  geom_abline(slope = 1, intercept = 0) +
-  scale_x_continuous(
-    name = "Predicted FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  scale_y_continuous(
-    name = "Actual FMV",
-    labels = scales::label_dollar(
-      accuracy = 1,
-      scale = 1 / 1000,
-      suffix = "K"
-    ),
-    n.breaks = 5,
-    limits = c(1e4, 1.5e6)
-  ) +
-  theme_minimal()
+pred_v_actual_class <- function(x) {
+  pred_v_actual_plot <- test_card %>%
+    filter(meta_triad_code == run_triad_code) %>%
+    mutate(Township = ccao::town_convert(meta_township_code)) %>%
+    rename(
+      `Sale Price` = meta_sale_price,
+      `Predicted FMV` = {{ x }},
+      PIN = meta_pin,
+      Class = meta_class
+    ) %>%
+    ggplot() +
+    geom_point(aes(
+      group = PIN,
+      x = `Predicted FMV`,
+      y = `Sale Price`,
+      color = Class
+    )) +
+    geom_abline(slope = 1, intercept = 0) +
+    scale_x_continuous(
+      name = "Predicted FMV",
+      labels = scales::label_dollar(
+        accuracy = 1,
+        scale = 1 / 1000,
+        suffix = "K"
+      ),
+      n.breaks = 5,
+      limits = c(1e4, 1.5e6)
+    ) +
+    scale_y_continuous(
+      name = "Actual FMV",
+      labels = scales::label_dollar(
+        accuracy = 1,
+        scale = 1 / 1000,
+        suffix = "K"
+      ),
+      n.breaks = 5,
+      limits = c(1e4, 1.5e6)
+    ) +
+    theme_minimal()
 
-ggplotly(pred_v_actual_class)
+  ggplotly(pred_v_actual_plot)
+}
+
+pred_v_actual_class(pred_card_initial_fmv)
 ```
+
+## Predicted v Actual By Town (Linear)
+
+```{r _model_predicted_vs_actual_town_linear}
+predicted_v_actual(pred_card_initial_fmv_lin)
+```
+
+## Predicted v Actual By Class (Linear)
+
+```{r _model_predicted_vs_actual_class_linear}
+pred_v_actual_class(pred_card_initial_fmv_lin)
+```
+
 :::
 
 ## Model Time Tracking
