@@ -321,55 +321,77 @@ geographies_list_quantile <- tidyr::expand_grid(
 
 ## 4.1. Test Set ---------------------------------------------------------------
 
-# Use parallel map to calculate aggregate stats for every geography level and
-# class combination for the test set
+# Use parallel map to calculate aggregate stats for every geography level,
+# class combination, and model type for the test set
 message("Calculating test set aggregate statistics")
-future_pmap(
-  geographies_list,
-  function(geo, cls) {
-    gen_agg_stats(
-      data = test_data_card,
-      truth = meta_sale_price,
-      estimate = pred_card_initial_fmv,
-      bldg_sqft = char_bldg_sf,
-      rsn_col = prior_near_tot,
-      rsf_col = prior_far_tot,
-      triad = meta_triad_code,
-      geography = !!geo,
-      class = !!cls,
-      col_dict = col_rename_dict,
-      min_n = params$ratio_study$min_n_sales
+pwalk(
+  list(
+    rlang::quos(pred_card_initial_fmv, pred_card_initial_fmv_lin),
+    list(
+      paths$output$performance_test$local,
+      paths$output$performance_test_linear$local
     )
-  },
-  .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = FALSE
-) %>%
-  purrr::list_rbind() %>%
-  write_parquet(paths$output$performance_test$local)
+  ),
+  function(pred, path) {
+    future_pmap(
+      geographies_list,
+      function(geo, cls) {
+        gen_agg_stats(
+          data = test_data_card,
+          truth = meta_sale_price,
+          estimate = !!pred,
+          bldg_sqft = char_bldg_sf,
+          rsn_col = prior_near_tot,
+          rsf_col = prior_far_tot,
+          triad = meta_triad_code,
+          geography = !!geo,
+          class = !!cls,
+          col_dict = col_rename_dict,
+          min_n = params$ratio_study$min_n_sales
+        )
+      },
+      .options = furrr_options(seed = TRUE, stdout = FALSE),
+      .progress = FALSE
+    ) %>%
+      purrr::list_rbind() %>%
+      write_parquet(path)
+  }
+)
 
 # Same as above, but calculate stats per quantile of sale price
 message("Calculating test set quantile statistics")
-future_pmap(
-  geographies_list_quantile,
-  function(geo, cls, qnt) {
-    gen_agg_stats_quantile(
-      data = test_data_card,
-      truth = meta_sale_price,
-      estimate = pred_card_initial_fmv,
-      rsn_col = prior_near_tot,
-      rsf_col = prior_far_tot,
-      triad = meta_triad_code,
-      geography = !!geo,
-      class = !!cls,
-      col_dict = col_rename_dict,
-      num_quantile = qnt
+pwalk(
+  list(
+    rlang::quos(pred_card_initial_fmv, pred_card_initial_fmv_lin),
+    list(
+      paths$output$performance_quantile_test$local,
+      paths$output$performance_quantile_test_linear$local
     )
-  },
-  .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = FALSE
-) %>%
-  purrr::list_rbind() %>%
-  write_parquet(paths$output$performance_quantile_test$local)
+  ),
+  function(pred, path) {
+    future_pmap(
+      geographies_list_quantile,
+      function(geo, cls, qnt) {
+        gen_agg_stats_quantile(
+          data = test_data_card,
+          truth = meta_sale_price,
+          estimate = !!pred,
+          rsn_col = prior_near_tot,
+          rsf_col = prior_far_tot,
+          triad = meta_triad_code,
+          geography = !!geo,
+          class = !!cls,
+          col_dict = col_rename_dict,
+          num_quantile = qnt
+        )
+      },
+      .options = furrr_options(seed = TRUE, stdout = FALSE),
+      .progress = FALSE
+    ) %>%
+      purrr::list_rbind() %>%
+      write_parquet(path)
+  }
+)
 
 
 ## 4.2. Assessment Set ---------------------------------------------------------
