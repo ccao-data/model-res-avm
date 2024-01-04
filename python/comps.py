@@ -9,6 +9,7 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     importance vector `weights`. More details on the underlying algorithm here:
     https://ccao-data.github.io/lightsnip/articles/finding-comps.html
     """
+    print("Starting get_comps", flush=True)
     # Convert the input dataframes and lists to numpy arrays
     # so that we can take advantage of numba acceleration
     leaf_node_matrix = leaf_node_df.values
@@ -21,6 +22,10 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     )
 
     # Turn the comps matrices into pandas dataframes to match the input
+    print(
+        "Transforming comps matrices into pandas dataframes for output",
+        flush=True
+    )
     indexes_df = pd.DataFrame(
         indexes,
         columns=[f"comp_idx_{idx}" for idx in range(1, n+1)]
@@ -41,13 +46,13 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     return indexes_df, scores_df
 
 
-@nb.njit(fastmath=True, parallel=True)
 def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     """Helper function that takes matrices of leaf node assignments for
     observations in a tree model, an array of weights for each tree, and an
     integer N, and returns a matrix where each observation is scored by
     similarity to observations in the comparison matrix and the top N scores
     are returned along with the indexes of the comparison observations."""
+    print(f"Getting top {n} comps", flush=True)
     num_observations = len(leaf_node_matrix)
     num_comparisons = len(comparison_leaf_node_matrix)
     idx_dtype = np.int64
@@ -55,10 +60,17 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
 
     # Store scores and indexes in two separate arrays rather than a 3d matrix
     # for simplicity (array of tuples does not convert to pandas properly)
+    print("Allocating output arrays", flush=True)
     all_top_n_idxs = np.zeros((num_observations, n), dtype=idx_dtype)
     all_top_n_scores = np.zeros((num_observations, n), dtype=score_dtype)
 
     for x_i in range(num_observations):
+        if (
+            (x_i < 10000 and x_i % 100 == 0) or
+            (x_i >= 10000 and x_i % 10000 == 0)
+        ):
+            print(f"Finding comps for observation {x_i}", flush=True)
+
         top_n_idxs = np.zeros(n, dtype=idx_dtype)
         top_n_scores = np.zeros(n, dtype=score_dtype)
 
@@ -91,7 +103,7 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     return all_top_n_idxs, all_top_n_scores
 
 
-@nb.njit(fastmath=True, parallel=True)
+@nb.njit(fastmath=True)
 def _insert_at_idx_and_shift(arr, elem, idx):
   """Helper function to insert an element `elem` into a sorted numpy array `arr`
   at a given index `idx` and shift the subsequent elements down one index."""
