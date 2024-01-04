@@ -81,16 +81,16 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
     "township_code",
     "meta_triad"
   )]
-shapviz::shapviz(
-  object = shap_df_filtered %>%
-    select(all_of(shap_predictors)) %>%
-    slice(idx) %>%
-    as.matrix(),
-  X = assessment_df %>%
-    select(all_of(shap_predictors)) %>%
-    slice(idx),
-  baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
-  )
+  shapviz::shapviz(
+    object = shap_df_filtered %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx) %>%
+      as.matrix(),
+    X = assessment_df %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx),
+    baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
+    )
 }
 ```
 
@@ -98,14 +98,14 @@ shapviz::shapviz(
 
 ```{r}
 shap_predictors <- names(shap_df_filtered)
-  shap_predictors <- shap_predictors[!shap_predictors %in% c(
-    "meta_year",
-    "meta_pin",
-    "meta_card_num",
-    "pred_card_shap_baseline_fmv",
-    "township_code",
-    "meta_triad"
-  )]
+shap_predictors <- shap_predictors[!shap_predictors %in% c(
+  "meta_year",
+  "meta_pin",
+  "meta_card_num",
+  "pred_card_shap_baseline_fmv",
+  "township_code",
+  "meta_triad"
+)]
 
 townships_to_iterate <- shap_df_filtered %>%
   distinct(township_code) %>%
@@ -115,11 +115,11 @@ townships_to_iterate <- shap_df_filtered %>%
 shap_idx_full_model <- which(
   assessment_card_filtered$meta_township_code %in% townships_to_iterate
 )
-  
+
 shapviz::shapviz(
   object = shap_df_filtered %>%
     select(all_of(shap_predictors)) %>%
-    slice(shap_idx_full_model) %>% 
+    slice(shap_idx_full_model) %>%
     as.matrix(),
   X = assessment_card_filtered %>%
     select(all_of(shap_predictors)) %>% 
