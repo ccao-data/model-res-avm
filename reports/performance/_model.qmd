@@ -29,7 +29,7 @@ The curves show that for the vast majority of the income distribution, assessed 
 ```{r _model_lorenz_curve, results = 'asis'}
 gini_data <- assessment_pin %>%
   filter(!is.na(sale_recent_1_price) &
-    sale_recent_1_date > as.numeric(params$year) - 1) %>%
+    sale_recent_1_date >= as.numeric(params$year) - 1) %>%
   select(
     pred_pin_final_fmv_round_no_prorate,
     sale_recent_1_price,
