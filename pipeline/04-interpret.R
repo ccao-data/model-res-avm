@@ -89,18 +89,18 @@ if (shap_enable) {
 message("Calculating feature importance metrics")
 
 # Calculate feature importance using LightGBM's built-in method
-lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
-  as_tibble() %>%
-  rename(model_predictor_all_name = Feature) %>%
-  rename_with(tolower, Gain:Frequency) %>%
-  mutate(across(
-    gain:frequency,
-    ~ order(order(.x, decreasing = TRUE)),
-    .names = "{.col}_rank"
-  )) %>%
-  rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
-  write_parquet(paths$output$feature_importance$local)
-
+# lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
+#   as_tibble() %>%
+#   rename(model_predictor_all_name = Feature) %>%
+#   rename_with(tolower, Gain:Frequency) %>%
+#   mutate(across(
+#     gain:frequency,
+#     ~ order(order(.x, decreasing = TRUE)),
+#     .names = "{.col}_rank"
+#   )) %>%
+#   rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
+#  write_parquet(paths$output$feature_importance$local)
+arrow::write_parquet(data.frame(), paths$output$feature_importance$local)
 
 
 
@@ -115,6 +115,7 @@ if (comp_enable) {
   # Due to integer overflow problems with leaf node assignment, we need to
   # chunk our data such that they are strictly less than the limit of 1073742
   # rows. More detail here: https://github.com/microsoft/LightGBM/issues/1884
+  message("Predicting leaf nodes for all parcels")
   chunk_size <- 500000
   chunks <- split(
     assessment_data_prepped,
@@ -137,6 +138,7 @@ if (comp_enable) {
   # leaf node assignments based on the most important features.
   # To do this, we need the training data so that we can compute base model
   # error
+  message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>% as_tibble()
 
   tree_weights <- extract_weights(
@@ -153,6 +155,7 @@ if (comp_enable) {
   training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
 
   # Do the comps calculation in Python because the code is simpler and faster
+  message("Calling out to python/comps.py to perform comps calculation")
   comps_module <- import("python.comps")
   tryCatch(
     {
