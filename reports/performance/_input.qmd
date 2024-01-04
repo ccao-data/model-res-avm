@@ -163,7 +163,7 @@ assessment_pin %>%
 
 :::
 
-## Multi-family and townhomes
+## Multi-Family and Townhomes
 
 ::: panel-tabset
 
