@@ -27,13 +27,14 @@ The curves show that for the vast majority of the income distribution, assessed 
 ::: {.panel-tabset}
 
 ```{r _model_lorenz_curve, results = 'asis'}
-
 gini_data <- assessment_pin %>%
   filter(!is.na(sale_recent_1_price) &
-           sale_recent_1_date > as.numeric(params$year) - 1) %>%
-  select(pred_pin_final_fmv_round_no_prorate,
-         sale_recent_1_price,
-         meta_township_code) %>%
+    sale_recent_1_date > as.numeric(params$year) - 1) %>%
+  select(
+    pred_pin_final_fmv_round_no_prorate,
+    sale_recent_1_price,
+    meta_township_code
+  ) %>%
   arrange(sale_recent_1_price) %>%
   left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) %>%
   filter(triad_code == run_triad_code)
@@ -41,28 +42,28 @@ gini_data <- assessment_pin %>%
 create_lorenz_curve <- function(data, township_name) {
   sale_price <- data$sale_recent_1_price
   assessed <- data$pred_pin_final_fmv_round_no_prorate
-  
+
   # Lorenz curve data for sale_price and assessed
   lorenz_data_price <- data.frame(
     pct = c(0, cumsum(sale_price) / sum(sale_price)),
     cum_pct = c(0, seq_along(sale_price)) / length(sale_price)
   )
-  
+
   lorenz_data_assessed <- data.frame(
     pct = c(0, cumsum(assessed) / sum(assessed)),
     cum_pct = c(0, seq_along(assessed)) / length(assessed)
   )
-  
+
   calculate_gini <- function(lorenz_data) {
     sum_area <-
       sum(with(lorenz_data, base::diff(cum_pct) * (pct[-length(pct)] + pct[-1]) / 2))
     gini_coefficient <- 1 - 2 * sum_area
     return(gini_coefficient)
   }
-  
+
   gini_price <- calculate_gini(lorenz_data_price)
   gini_assessed <- calculate_gini(lorenz_data_assessed)
-  
+
   ggplot() +
     geom_line(data = lorenz_data_assessed, aes(x = cum_pct, y = pct, color = "Assessed Values")) +
     geom_line(data = lorenz_data_price, aes(x = cum_pct, y = pct, color = "Sale Values")) +
@@ -102,8 +103,6 @@ iwalk(plots, ~ {
   print(.x)
   cat("\n\n")
 })
-
-
 ```
 
 :::
