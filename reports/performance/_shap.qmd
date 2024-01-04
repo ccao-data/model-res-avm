@@ -81,27 +81,59 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
     "township_code",
     "meta_triad"
   )]
-    shapviz::shapviz(
-      object = shap_df %>%
-        select(all_of(shap_predictors)) %>%
-        slice(idx) %>%
-        as.matrix(),
-      X = assessment_df %>%
-        select(all_of(shap_predictors)) %>%
-        slice(idx),
-      baseline = shap_df$pred_card_shap_baseline_fmv[1]
-    )
+shapviz::shapviz(
+  object = shap_df_filtered %>%
+    select(all_of(shap_predictors)) %>%
+    slice(idx) %>%
+    as.matrix(),
+  X = assessment_df %>%
+    select(all_of(shap_predictors)) %>%
+    slice(idx),
+  baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
+  )
 }
 ```
 
+## Beeswarm Plot
 
 ```{r}
+shap_predictors <- names(shap_df_filtered)
+  shap_predictors <- shap_predictors[!shap_predictors %in% c(
+    "meta_year",
+    "meta_pin",
+    "meta_card_num",
+    "pred_card_shap_baseline_fmv",
+    "township_code",
+    "meta_triad"
+  )]
+
 townships_to_iterate <- shap_df_filtered %>%
   distinct(township_code) %>%
   pull() %>%
   as.character()
 
+shap_idx_full_model <- which(
+  assessment_card_filtered$meta_township_code %in% townships_to_iterate
+)
+  
+shapviz::shapviz(
+  object = shap_df_filtered %>%
+    select(all_of(shap_predictors)) %>%
+    slice(shap_idx_full_model) %>% 
+    as.matrix(),
+  X = assessment_card_filtered %>%
+    select(all_of(shap_predictors)) %>% 
+      slice(shap_idx_full_model),
+  baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
+  ) %>%
+  shapviz::sv_importance(
+    "beeswarm",
+    max_display = 20L
+  ) +
+  theme_minimal()
 ```
+
+## Beeswarm Plot per Township
 
 ::: {.panel-tabset}
 
@@ -118,8 +150,10 @@ for (township in townships_to_iterate) {
       assessment_card_filtered,
       shap_idx
     ) %>%
-      shapviz::sv_importance("beeswarm",
-                             max_display = 20L) +
+      shapviz::sv_importance(
+        "beeswarm",
+        max_display = 20L
+      ) +
       theme_minimal() +
       coord_cartesian(xlim = c(-100000, 1000000))
   )
@@ -128,47 +162,3 @@ for (township in townships_to_iterate) {
 ```
 
 :::
-
-
-
-
-```{r}
-make_township_beeswarm_graph <- function(township_to_iterate) {
-
-  shap_idx_riverside <- which(
-      assessment_card_filtered$meta_township_code == township_to_iterate
-    )
-  
-    print(
-      create_shapviz(
-        shap_df_filtered,
-        assessment_card_filtered,
-        shap_idx_riverside
-      ) %>%
-        shapviz::sv_importance("beeswarm",
-                               max_display = 20L) +
-        theme_minimal() +
-        coord_cartesian(xlim = c(-100000, 1000000))
-      
-    )
-}
-
-make_township_beeswarm_graph("33")
-```
-
-
-<!-- ::: {.panel-tabset} -->
-
-<!-- ```{r _shap_beeswarm_iterate_township_test, results='asis'} -->
-<!-- # Dynamically produce tabset -->
-
-<!-- for (township in townships_to_iterate) { -->
-<!--   cat("##", ccao::town_convert(township), "\n") -->
-<!--   make_township_beeswarm_graph(township) -->
-<!--   cat("\n\n") -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- ::: -->
-
-
