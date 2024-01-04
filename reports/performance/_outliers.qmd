@@ -374,10 +374,6 @@ qnt_df %>%
 
 This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying PINs in each neighborhood/township which grew at the fastest rate as well as the median rate of change for each neighborhood. 
 
-## Increase in Housing Value
-
-This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying 10 PINs in each neighborhood which grew at the fastest rate as well as the median rate of change for each neighborhood. 
-
 ::: panel-tabset
 
 ## Map of Largest YOY Changes
