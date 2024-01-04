@@ -221,7 +221,7 @@ ggplot(
   )
 ```
 
-## Price Per SQFT
+## Price per SQFT
 
 ```{r _outliers_ppsft}
 ppsf <- training_data %>%
