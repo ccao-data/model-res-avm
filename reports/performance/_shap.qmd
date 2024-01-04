@@ -125,7 +125,7 @@ shapviz::shapviz(
     select(all_of(shap_predictors)) %>%
     slice(shap_idx_full_model),
   baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
-  ) %>%
+) %>%
   shapviz::sv_importance(
     "beeswarm",
     max_display = 20L
