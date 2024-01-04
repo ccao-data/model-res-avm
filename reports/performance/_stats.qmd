@@ -1,6 +1,6 @@
 {{< include ../_setup.qmd >}}
 
-# Statistical tests
+# Statistical Tests
 
 ```{r _stats_gather_data}
 # This script runs balance tests comparing the universe of residential parcels
@@ -238,7 +238,7 @@ iwalk(logits, ~ {
 ```
 :::
 
-## Standardized mean differences
+## Standardized Mean Differences
 
 The standardized (mean) difference is a measure of distance between two group
 means in terms of one or more variables.
@@ -266,7 +266,7 @@ For the empirical cumulative distributions, we are looking for overlap/similar
 distributions. Numeric variables scaled and centered.
 
 ::: panel-tabset
-## Numeric columns:
+## Numeric Columns:
 
 ```{r _stats_ecdfs1}
 grobs <-
@@ -315,7 +315,7 @@ for (i in seq(1, length(grobs), by = 6)) {
 }
 ```
 
-## Factor columns:
+## Factor Columns:
 
 ```{r _stats_ecdfs2}
 grobs <-
