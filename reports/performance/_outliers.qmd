@@ -339,9 +339,9 @@ What are the sales with the largest miss relative to town and price quartile?
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
     !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
   ) %>%
   select(
     PIN = meta_pin, Town, Class = meta_class,
@@ -351,7 +351,7 @@ qnt_df <- assessment_pin %>%
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    diff = abs(`Sale 2 Price` - `Est. FMV`),
+    Difference = abs(`Sale 2 Price` - `Est. FMV`),
     `Qnt.` = cut(
       `Sale 2 Price`,
       breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
@@ -361,8 +361,8 @@ qnt_df <- assessment_pin %>%
     .by = Town
   ) %>%
   group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
   relocate(`Qnt.`, .after = "Town")
 
 qnt_df %>%
@@ -448,13 +448,15 @@ leaflet() %>%
 ```
 
 ## Table of Largest YOY Changes
+This table excludes any PINs which had a prior year assessed value of less than $35,000. It then identifies the 5 PINs in each neighborhood which had the largest year over year increase in assessed value.
 
 ```{r _outliers_table_of_largest_change}
 datatable(
   largest_increases %>%
     distinct(meta_pin, .keep_all = TRUE) %>%
+    filter(prior_near_tot > 35000) %>%
     group_by(meta_township_code) %>%
-    slice_max(order_by = prior_near_yoy_change_nom, n = 10) %>%
+    slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
     ungroup() %>% left_join(
       select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
       by = "meta_pin"
@@ -506,6 +508,7 @@ datatable(
   rownames = FALSE
 )
 ```
+
 ## Median Rate of Change by Neighborhood
 
 ```{r _outliers_map_of_neighborhood_change}
@@ -522,8 +525,10 @@ nbhd_increases <- nbhd_increases %>%
     )
   )
 
+my_colors <- c("red", "green", "blue", "orange", "yellow", "pink", "purple", "grey")
+
 palette <- colorFactor(
-  palette = brewer.pal(8, "Set1"),
+  palette = my_colors,
   domain = nbhd_increases$change_category
 )
 
@@ -536,7 +541,7 @@ leaflet(data = nbhd_increases) %>%
     opacity = 1,
     fillOpacity = 0.7,
     smoothFactor = 0.5,
-    label = ~ paste0("Change: ", neighborhood_median_change, "% (Category ", change_category, ")"),
+    label = ~ paste0("Change: ", round(neighborhood_median_change, 2), "% (Category ", change_category, ")"),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
