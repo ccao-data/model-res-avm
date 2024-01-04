@@ -1,6 +1,6 @@
 ---
 params:
-  run_id: "2023-12-27-pedantic-billy"
+  run_id: "2024-01-04-nifty-tristan"
   year: "2023"
 ---
 
@@ -93,7 +93,7 @@ comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
 # Check if all hashes match between metadata and dvc.lock
 if (!all(comparison_results)) {
   stop(
-    "Hash values between the dvc.lock file and the metadata",
+    "Hash values between the dvc.lock file and the metadata ",
     "do not match. Potential mismatch in input and output data."
   )
 }
@@ -123,9 +123,17 @@ if (!exists("model_performance_test")) {
   model_performance_test <-
     arrow::read_parquet(paths$output$performance_test$local)
 }
+if (!exists("model_performance_test_linear")) {
+  model_performance_test_linear <-
+    arrow::read_parquet(paths$output$performance_test_linear$local)
+}
 if (!exists("model_performance_quantile_test")) {
   model_performance_quantile_test <-
     arrow::read_parquet(paths$output$performance_quantile_test$local)
+}
+if (!exists("model_performance_quantile_test_linear")) {
+  model_performance_quantile_test_linear <-
+    arrow::read_parquet(paths$output$performance_quantile_test_linear$local)
 }
 
 # Load feature importance data
