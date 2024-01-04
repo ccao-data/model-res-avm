@@ -19,9 +19,9 @@ In this graphic, the green line (Line of Equality) represents a hypothetical env
 
 The curves show that for the vast majority of the income distribution, assessed values are closer to the Line of Equality. This can be interpreted two ways:
 
-When the assessed value curve is above the sale price curve, the gap between the the two lines at any individual point, represents the cumulative over-assessment for all houses at that value or below.
+* When the assessed value curve is above the sale price curve, the gap between the the two lines at any individual point, represents the cumulative over-assessment for all houses at that value or below.
 
-Gini coefficient for sale price is going to be higher than the Gini coefficient for assessed price (larger area between the the curve and the Line of Equality).
+* Gini coefficient for sale price is going to be higher than the Gini coefficient for assessed price (larger area between the the curve and the Line of Equality).
 
 
 ::: {.panel-tabset}
