@@ -290,7 +290,7 @@ plot_feature_importance <- function(data, gain_column, color) {
 
 ::: {.panel-tabset}
 
-#### Gain
+## Gain
 
 ```{r _model_gain_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
@@ -300,7 +300,7 @@ plot_feature_importance(
 )
 ```
 
-#### Cover
+## Cover
 
 ```{r _model_cover_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
@@ -310,7 +310,7 @@ plot_feature_importance(
 )
 ```
 
-#### Frequency
+## Frequency
 
 ```{r _model_frequency_score, fig.width=8, fig.height=30, fig.align='center'}
 plot_feature_importance(
