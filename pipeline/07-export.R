@@ -166,6 +166,7 @@ land_nbhd_rate <- dbGetQuery(
   conn = AWS_ATHENA_CONN_JDBC, glue("
   SELECT
       town_nbhd AS meta_nbhd_code,
+      class AS meta_class,
       land_rate_per_sqft
   FROM ccao.land_nbhd_rate
   WHERE year = '{params$assessment$year}'
@@ -176,7 +177,7 @@ land_nbhd_rate <- dbGetQuery(
 # assessment_pin. Carry over improvement values from prior years
 vacant_land_merged <- vacant_land_trans %>%
   left_join(vacant_land_sales_trans, by = "meta_pin") %>%
-  left_join(land_nbhd_rate, by = "meta_nbhd_code") %>%
+  left_join(land_nbhd_rate, by = c("meta_nbhd_code", "meta_class")) %>%
   left_join(
     land %>%
       group_by(meta_pin) %>%
