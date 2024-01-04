@@ -454,7 +454,7 @@ This table excludes any PINs which had a prior year assessed value of less than 
 datatable(
   largest_increases %>%
     distinct(meta_pin, .keep_all = TRUE) %>%
-    filter(prior_near_tot > 35000) %>%
+    filter(prior_near_tot > 25000) %>%
     group_by(meta_township_code) %>%
     slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
     ungroup() %>% left_join(
