@@ -304,37 +304,43 @@ ggplot() +
       y = type_factor,
       yend = type_factor,
       color = type_factor
-    )
+    ),
+    linewidth = 1
   ) +
   geom_point(
     data = reshaped_data,
     aes(
       x = value,
       y = type_factor,
-      group = type
+      group = type,
+      color = type_factor
     ),
-    color = "black",
-    size = 2,
-    shape = 21,
+    size = 2.2,
     fill = "white"
   ) +
   geom_text(
     data = summary_data,
-    aes(x = max_value, y = "Sale", label = num_sale),
+    aes(x = max(reshaped_data$value) * 1.05, y = "Sale", label = num_sale),
     size = 3.2,
-    hjust = -0.15,
-    vjust = 1.25,
+    hjust = "left",
+    vjust = 1.75,
     color = "black",
-    check_overlap = TRUE
+    check_overlap = TRUE,
   ) +
-  facet_grid(township ~ ., scales = "free_x", space = "free") +
+  facet_grid(township ~ ., scales = "free_x", space = "free", switch = "y") +
   labs(
     x = "Dollar Value",
-    y = "Type",
+    y = "Township",
     color = "Type",
     title = "25th percentile, median, 75th percentile"
   ) +
   theme_minimal() +
+  theme(
+    strip.text.y.left = element_text(angle = 0),
+    legend.position = "bottom",
+    legend.justification = "right"
+  ) +
+  coord_cartesian(clip = "off") +
   scale_color_manual(
     values = c(
       "Sale" = "darkolivegreen3",
@@ -343,8 +349,9 @@ ggplot() +
     breaks = c("Sale", "Estimate")
   ) +
   scale_x_continuous(
-    labels = label_dollar()
-  )
+    labels = label_dollar(),
+  ) + 
+  scale_y_discrete(labels = function(x) rep("", length(x)))
 ```
 
 ## How do Sales Compare to Estimates by Township per Class?
