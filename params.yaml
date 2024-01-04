@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Test adding linear baseline model output and plots
+  Test run for updated 2024 model pipeline with V-fold cross-validation
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -25,7 +25,7 @@ toggle:
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
-  upload_enable: FALSE
+  upload_enable: TRUE
 
 
 # Data/Ingest ------------------------------------------------------------------
