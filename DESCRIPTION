@@ -57,6 +57,7 @@ Config/renv/profiles/reporting/dependencies:
     digest,
     fastmap,
     ggplot2,
+    ggrepel,
     gmodels,
     grid,
     gridExtra,
