@@ -358,14 +358,52 @@ lgbm_wflow_final_full_fit %>%
 lgbm_final_full_fit <- lgbm_wflow_final_full_fit %>%
   workflows::extract_fit_parsnip()
 
+lgbm_final_full_recipe <- lgbm_wflow_final_full_fit %>%
+  workflows::extract_recipe() %>%
+  lightsnip::axe_recipe()
+
+message("Model specs:")
+print(lgbm_final_full_fit)
+
+test_preds_data_prepped <- recipes::bake(
+  object = lgbm_final_full_recipe,
+  new_data = head(training_data_full, 10),
+  all_predictors()
+)
+sample_preds <- predict(
+  object = lgbm_final_full_fit$fit,
+  newdata = as.matrix(test_preds_data_prepped),
+  type = "leaf",
+)
+message("Sample predictions shape:")
+print(dim(sample_preds))
+
+message("Sample predictions content:")
+print(sample_preds %>% as_tibble())
+
 message("Checking record_evals")
 if (is.null(lgbm_final_full_fit$fit$record_evals)) {
   stop("Trained model is missing required record_evals")
 }
 trained_record_evals_len <- length(lgbm_final_full_fit$fit$record_evals$valids$rmse$eval)
 message(glue::glue("Trained record_evals length: {trained_record_evals_len}"))
+message("Trained record_evals preview:")
+lgbm_final_full_fit$fit$record_evals$valids$rmse$eval %>%
+  head(10) %>%
+  print()
 
 loaded_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
+
+print("Saved model specs:")
+print(loaded_fit)
+
+loaded_sample_preds <- predict(
+  object = loaded_fit$fit,
+  newdata = as.matrix(test_preds_data_prepped),
+  type = "leaf",
+)
+message("Loaded sample predictions shape:")
+print(dim(loaded_sample_preds))
 
 if (is.null(loaded_fit$fit$record_evals)) {
   stop("Saved model is missing required record_evals")
