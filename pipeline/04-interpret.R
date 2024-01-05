@@ -146,7 +146,6 @@ if (comp_enable) {
     train = training_data,
     outcome_col = "meta_sale_price",
   )
-  message(glue::glue("Length of weights vector: {length(tree_weights)}"))
 
   # Get leaf node assignments for the training data. Assume that the training
   # data is a subset of the assessment data
