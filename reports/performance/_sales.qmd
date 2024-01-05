@@ -234,7 +234,8 @@ tri_sales <- training_data %>%
   summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
   split(.$meta_triad_name)
 
-map2(tri_sales, names(tri_sales), function(x, title) {
+
+plots <- map2(tri_sales, names(tri_sales), function(x, title) {
   limits <- if (title == "South") c(100000, 300000) else NULL
 
   x %>%
@@ -257,6 +258,16 @@ map2(tri_sales, names(tri_sales), function(x, title) {
     ) +
     facet_wrap(vars(time_sale_year))
 })
+
+extract_and_print_plots <- function(plots) {
+  num_plots <- length(plots)
+
+  for (i in 1:num_plots) {
+    print(plots[[i]])
+  }
+}
+
+extract_and_print_plots(plots)
 ```
 
 ## Number of Sales
