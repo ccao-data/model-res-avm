@@ -5,15 +5,15 @@ stages:
     params:
       params.yaml:
         assessment:
-          year: '2023'
-          date: '2023-01-01'
-          triad: south
+          year: '2024'
+          date: '2023-10-01'
+          triad: city
           group: residential
-          data_year: '2022'
+          data_year: '2023'
           working_year: '2024'
         input:
-          min_sale_year: '2014'
-          max_sale_year: '2022'
+          min_sale_year: '2015'
+          max_sale_year: '2023'
           time_split: 15
           complex:
             match_exact:
@@ -33,31 +33,31 @@ stages:
     outs:
     - path: input/assessment_data.parquet
       hash: md5
-      md5: 434de8f14bbb68609130edab657904fb
-      size: 327275411
+      md5: db59a233b10ab98c63a8fbbb8de1ba8d
+      size: 316470920
     - path: input/char_data.parquet
       hash: md5
-      md5: f78b883902f2eb582168fce31edc8074
-      size: 659165587
+      md5: 6a4a5f430edbb2b1c25047a34e53d03b
+      size: 643060817
     - path: input/complex_id_data.parquet
       hash: md5
-      md5: 1d4ac94e5a6a81fd1295d83f336cd74c
-      size: 723193
+      md5: c8e4df5a35cf3a25e6825e6cc8f6d683
+      size: 725216
     - path: input/hie_data.parquet
       hash: md5
-      md5: 284e1e97f51dc5eb511bd66c7b54c41b
-      size: 1925140
+      md5: 2411a87609cb0b3455cc604a78ebbcd7
+      size: 1928522
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
-      md5: 9068415d8a360a708f6b0866d2a8338c
-      size: 6313
+      md5: a082573c6bd6a0d9ef0d2b1ac621cb4e
+      size: 4410
     - path: input/land_site_rate_data.parquet
       md5: 7c6d3de25d8ec0d523e2ffd8f7b4e542
       size: 2109
     - path: input/training_data.parquet
       hash: md5
-      md5: 0fe46c9dfbb3062ce655be149f8fbd5b
-      size: 154250728
+      md5: cef00633df5734a22450f2ded134b500
+      size: 147425203
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
