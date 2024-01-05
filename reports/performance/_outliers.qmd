@@ -339,9 +339,10 @@ What are the sales with the largest miss relative to town and price quartile?
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
+    meta_triad_code == run_triad_code,
     !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
   ) %>%
   select(
     PIN = meta_pin, Town, Class = meta_class,
@@ -351,7 +352,7 @@ qnt_df <- assessment_pin %>%
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    diff = abs(`Sale 2 Price` - `Est. FMV`),
+    Difference = abs(`Sale 2 Price` - `Est. FMV`),
     `Qnt.` = cut(
       `Sale 2 Price`,
       breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
@@ -361,8 +362,8 @@ qnt_df <- assessment_pin %>%
     .by = Town
   ) %>%
   group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
   relocate(`Qnt.`, .after = "Town")
 
 qnt_df %>%
