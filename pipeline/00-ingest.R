@@ -274,8 +274,11 @@ training_data_clean <- training_data_w_hie %>%
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
   )) %>%
+  # Only exclude explicit outliers from training. Sales with missing validation
+  # outcomes will be considered non-outliers
+  mutate(sv_is_outlier = replace_na(sv_is_outlier, FALSE)) %>%
   # Create time/date features using lubridate
-  dplyr::mutate(
+  mutate(
     # Calculate interval periods and time since the start of the sales sample
     time_interval = interval(
       make_date(params$input$min_sale_year, 1, 1),
@@ -442,7 +445,7 @@ land_site_rate_data %>%
   select(meta_pin = pin, meta_class = class, land_rate_per_pin, year) %>%
   write_parquet(paths$input$land_site_rate$local)
 land_nbhd_rate_data %>%
-  select(meta_nbhd = town_nbhd, land_rate_per_sqft) %>%
+  select(meta_nbhd = town_nbhd, meta_class = class, land_rate_per_sqft) %>%
   write_parquet(paths$input$land_nbhd_rate$local)
 
 # Reminder to upload to DVC store
