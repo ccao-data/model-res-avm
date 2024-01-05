@@ -809,7 +809,7 @@ training_data_pred %>%
 ## Test Data (Unseen)
 
 This chart looks at sales slightly in the future to see if the model tracks
-trends which it has not yet seen. 
+trends which it has not yet seen.
 
 ```{r _model_time_trends_unseen, fig.height=8, fig.width=7, out.width="100%"}
 test_card %>%
@@ -847,4 +847,106 @@ test_card %>%
     axis.title.y = element_blank()
   )
 ```
+:::
+
+## Lorenz Curves
+
+See the [assessr package documentation](https://ccao-data.github.io/assessr/articles/example-ratio-study.html#lorenz-curves) for more information on how to interpret these plots.
+
+::: {.panel-tabset}
+
+```{r _model_lorenz_curve, results = 'asis'}
+gini_data <- test_card %>%
+  select(
+    pred_card_initial_fmv,
+    meta_sale_price,
+    meta_township_code
+  ) %>%
+  arrange(meta_sale_price) %>%
+  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) %>%
+  filter(triad_code == run_triad_code)
+
+create_lorenz_curve <- function(data, township_name) {
+  sale_price <- data$meta_sale_price
+  assessed <- data$pred_card_initial_fmv
+
+  # Lorenz curve data for sale_price and assessed
+  lorenz_data_price <- data.frame(
+    pct = c(0, cumsum(sale_price) / sum(sale_price)),
+    cum_pct = c(0, seq_along(sale_price)) / length(sale_price)
+  )
+
+  lorenz_data_assessed <- data.frame(
+    pct = c(0, cumsum(assessed) / sum(assessed)),
+    cum_pct = c(0, seq_along(assessed)) / length(assessed)
+  )
+
+  calculate_gini <- function(lorenz_data) {
+    sum_area <-
+      sum(with(
+        lorenz_data,
+        base::diff(cum_pct) * (pct[-length(pct)] + pct[-1]) / 2
+      ))
+    gini_coefficient <- 1 - 2 * sum_area
+    return(gini_coefficient)
+  }
+
+  gini_price <- calculate_gini(lorenz_data_price)
+  gini_assessed <- calculate_gini(lorenz_data_assessed)
+
+  ggplot() +
+    geom_line(
+      data = lorenz_data_assessed,
+      aes(x = cum_pct, y = pct, color = "Assessed Values")
+    ) +
+    geom_line(
+      data = lorenz_data_price,
+      aes(x = cum_pct, y = pct, color = "Sale Values")
+    ) +
+    geom_abline(
+      intercept = 0,
+      slope = 1,
+      linetype = "dashed",
+      color = "green"
+    ) +
+    scale_color_manual(values = c(
+      "Assessed Values" = "red",
+      "Sale Values" = "blue"
+    )) +
+    scale_x_continuous(labels = scales::label_percent()) +
+    scale_y_continuous(labels = scales::label_percent()) +
+    labs(
+      title = paste("Lorenz Curve for", township_name),
+      caption = paste(
+        "GINI Coefficient for Assessed Value",
+        "is Sorted by Sale Price\nAssessed GINI:",
+        round(gini_assessed, 3), "- Sale GINI:",
+        round(gini_price, 3)
+      ),
+      x = "Percent of Properties",
+      y = "Percent of Value",
+      color = "Inequality of:"
+    ) +
+    guides(color = guide_legend(reverse = TRUE)) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom"
+    )
+}
+
+plots <- gini_data %>%
+  group_by(township_name) %>%
+  group_nest() %>%
+  mutate(plot = map2(data, township_name, create_lorenz_curve)) %>%
+  pull(plot)
+
+township_sorted <- sort(unique(gini_data$township_name))
+
+iwalk(plots, ~ {
+  cat("## ", township_sorted[.y], "\n\n")
+  print(.x)
+  cat("\n\n")
+})
+```
+
 :::
