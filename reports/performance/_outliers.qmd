@@ -416,6 +416,7 @@ What are the sales with the largest miss relative to town and price quartile?
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(
+    meta_triad_code == run_triad_code,
     !is.na(sale_recent_1_price),
     !is.na(pred_pin_final_fmv_round),
     year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
