@@ -169,7 +169,10 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
   ) %>%
   ungroup() %>%
   left_join(land_site_rate, by = "meta_pin") %>%
-  left_join(land_nbhd_rate, by = c("meta_nbhd_code" = "meta_nbhd")) %>%
+  left_join(
+    land_nbhd_rate,
+    by = c("meta_nbhd_code" = "meta_nbhd", "meta_class")
+  ) %>%
   mutate(
     pred_pin_final_fmv_land = ceiling(case_when(
       # nolint start

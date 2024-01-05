@@ -157,6 +157,16 @@ if (upload_enable) {
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test$s3)
 
+  message("Uploading test linear baseline")
+  read_parquet(paths$output$performance_test_linear$local) %>%
+    mutate(run_id = run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_test_linear$s3)
+  read_parquet(paths$output$performance_quantile_test_linear$local) %>%
+    mutate(run_id = run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_quantile_test_linear$s3)
+
   # Upload assessment set performance
   message("Uploading assessment set evaluation")
   read_parquet(paths$output$performance_assessment$local) %>%

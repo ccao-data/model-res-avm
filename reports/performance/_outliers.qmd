@@ -59,6 +59,12 @@ price_outlier_type %>%
 ## Outlier Types
 
 ```{r _outliers_type_breakdown}
+y_lim_axis_outlier_breakdown <- training_data %>%
+  filter(!sv_outlier_type %in% c("Not outlier", NA)) %>%
+  count(sv_outlier_type) %>%
+  summarise(max_value = max(n)) %>%
+  pull(max_value)
+
 ggplot(
   training_data %>%
     filter(sv_is_outlier) %>%
@@ -73,7 +79,7 @@ ggplot(
   geom_text(aes(
     label = comma(count)
   ), vjust = -0.5) +
-  scale_y_continuous(labels = comma, limits = c(0, 20000)) +
+  ylim(0, 1.03 * (y_lim_axis_outlier_breakdown)) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
@@ -119,6 +125,14 @@ ggplot(
 ## Township
 
 ```{r _outliers_townships}
+y_lim_axis_outlier_townships <-
+  training_data %>%
+  group_by(meta_township_name) %>%
+  summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
+  ungroup() %>%
+  slice_max(percent, n = 1) %>%
+  pull(percent)
+
 ggplot(
   training_data %>%
     summarise(
@@ -133,7 +147,10 @@ ggplot(
     label = scales::percent(percent, accuracy = .1)
   ), hjust = -0.1, angle = 90) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.12)) +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 1.15 * y_lim_axis_outlier_townships)
+  ) +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
     axis.title.y = element_blank(),
@@ -278,6 +295,18 @@ training_data %>%
   kable(caption = "Top Decile") %>%
   kable_styling(full_width = TRUE)
 
+y_lim_axis_outlier_by_decile <-
+  training_data %>%
+  arrange(meta_sale_price) %>%
+  mutate(decile = ntile(meta_sale_price, 10)) %>%
+  group_by(decile) %>%
+  summarise(percent = mean(
+    case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)
+  )) %>%
+  ungroup() %>%
+  slice_max(percent, n = 1) %>%
+  pull(percent)
+
 ggplot(
   training_data %>%
     arrange(meta_sale_price) %>%
@@ -291,17 +320,26 @@ ggplot(
   labs(title = "Share of Outliers", x = "Quantile") +
   geom_bar(stat = "identity") +
   geom_text(aes(label = scales::percent(percent, accuracy = .1)),
-    hjust = -0.1,
-    angle = 90
+    vjust = -0.1
   ) +
   theme_minimal() +
   scale_y_continuous(
     labels = scales::percent_format(),
-    limits = c(0, 0.09),
-    breaks = seq(0, 0.1, 0.02)
+    limits = c(0, 1.05 * y_lim_axis_outlier_by_decile)
   ) +
   scale_x_continuous(breaks = seq(1, 10, 1)) +
   theme(axis.title.y = element_blank())
+
+y_lim_axis_outlier_top_decile <-
+  training_data %>%
+  arrange(meta_sale_price) %>%
+  mutate(decile = ntile(meta_sale_price, 10)) %>%
+  filter(decile == 10 & sv_outlier_type != "Not outlier") %>%
+  group_by(sv_outlier_type) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  slice_max(count, n = 1) %>%
+  pull(count)
 
 ggplot(
   training_data %>%
@@ -319,7 +357,10 @@ ggplot(
   ) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = comma(count)), vjust = -0.5) +
-  scale_y_continuous(labels = comma, limits = c(0, 2000)) +
+  scale_y_continuous(
+    labels = comma,
+    limits = c(0, 1.05 * y_lim_axis_outlier_top_decile)
+  ) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
