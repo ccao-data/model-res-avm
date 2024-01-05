@@ -87,18 +87,7 @@ test_summary_table <- function(x) {
         paging = FALSE,
         searching = FALSE,
         info = FALSE
-      )
-    ) %>%
-    formatRound(c("cod", "prd", "prb", "median_ratio"), digits = 2) %>%
-    formatStyle(
-      c("cod_met", "prd_met", "prb_met", "ratio_met"),
-      backgroundColor = styleEqual(
-        c(0, 1),
-        c("transparent", "#D3F2C2")
-      )
-    )
-<<<<<<< HEAD
-  ) %>%
+      )) %>%
   formatRound(c("cod", "prd", "prb", "median_ratio", "mki"), digits = 2) %>%
   formatStyle(
     c("cod_met", "prd_met", "prb_met", "ratio_met", "mki_met"),
@@ -107,12 +96,10 @@ test_summary_table <- function(x) {
       c("transparent", "#D3F2C2")
     )
   )
+}
 ```
 
 ## Overall Median Ratio by Decile
-=======
-}
-```
 
 ::: {.panel-tabset}
 
@@ -131,7 +118,6 @@ test_summary_table("test_linear")
 :::
 
 ## Overall Ratio Distribution
->>>>>>> master
 
 ```{r _model_overall_ratio_distribution_decile, fig.width=10, fig.height=6}
 # Helper function to help with x-axis tick labels
