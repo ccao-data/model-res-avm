@@ -52,11 +52,11 @@ price_outlier_type %>%
 
 :::
 
-## Outlier Breakdown
+## Counts and Percentages of Outliers
 
 ::: panel-tabset
 
-## Outlier Types
+## Count of Outliers by Type
 
 ```{r _outliers_type_breakdown}
 ggplot(
@@ -66,9 +66,7 @@ ggplot(
   aes(x = reorder(sv_outlier_type, -count), y = count)
 ) +
   labs(
-    y = "Number of Sales", x = "Outlier Types",
-    title = "Count", subtitle = "by Type"
-  ) +
+    y = "Number of Sales", x = "Outlier Types") +
   geom_bar(stat = "identity") +
   geom_text(aes(
     label = comma(count)
@@ -92,7 +90,7 @@ training_data %>%
   kable_styling("striped")
 ```
 
-## Class
+## Share of Outliers by Class
 
 ```{r _outliers_classes}
 ggplot(
@@ -103,11 +101,7 @@ ggplot(
     ),
   aes(x = meta_class, y = percent)
 ) +
-  labs(title = "Share of Outliers", subtitle = "by Class") +
   geom_bar(stat = "identity") +
-  geom_text(aes(
-    label = scales::percent(percent, accuracy = .1)
-  ), vjust = -0.5) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format()) +
   theme(
@@ -116,7 +110,7 @@ ggplot(
   )
 ```
 
-## Township
+## Share of Outliers by Township
 
 ```{r _outliers_townships}
 ggplot(
@@ -127,7 +121,6 @@ ggplot(
     ),
   aes(x = reorder(meta_township_name, -percent), y = percent)
 ) +
-  labs(title = "Share of Outliers", subtitle = "by Township") +
   geom_bar(stat = "identity") +
   geom_text(aes(
     label = scales::percent(percent, accuracy = .1)
@@ -141,7 +134,14 @@ ggplot(
   )
 ```
 
-## Price
+:::
+
+
+## Outlier Distributions
+
+::: panel-tabset
+
+## Cumulative Price Distribution
 
 ```{r _outliers_price}
 training_data %>%
@@ -163,7 +163,6 @@ ggplot(training_data, aes(
   fill = sv_is_outlier
 )) +
   geom_density(alpha = 0.5) +
-  labs(title = "Cumulative Distribution") +
   theme_minimal() +
   labs(x = "log(price)") +
   scale_y_continuous(labels = scales::percent_format()) +
@@ -177,51 +176,7 @@ ggplot(training_data, aes(
   )
 ```
 
-```{r _outliers_median_price_outliers, fig.height=6}
-outlier_vs_nonoutlier <- training_data %>%
-  summarise(
-    median_sale_price = median(meta_sale_price),
-    .by = c(sv_is_outlier, meta_township_name)
-  ) %>%
-  pivot_wider(
-    id_cols = meta_township_name,
-    names_from = sv_is_outlier,
-    values_from = median_sale_price
-  ) %>%
-  mutate(
-    percent = `TRUE` / `FALSE`,
-    above_below = ifelse(percent > 1,
-      "Outlier > Not Outlier", "Not Outlier > Outlier"
-    ),
-    above_below = factor(above_below,
-      levels =
-        c("Outlier > Not Outlier", "Not Outlier > Outlier")
-    )
-  )
-
-ggplot(
-  outlier_vs_nonoutlier,
-  aes(x = reorder(meta_township_name, percent), y = percent)
-) +
-  labs(
-    title = "Median Outlier Price / Median Not outlier Price",
-    subtitle = "by Township",
-    fill = "Median Price"
-  ) +
-  geom_bar(stat = "identity", aes(fill = above_below)) +
-  coord_flip() +
-  geom_text(aes(
-    label = round(percent, 2)
-  ), hjust = -0.2) +
-  scale_y_continuous(limits = c(0, 5.5)) +
-  theme_minimal() +
-  theme(
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
-  )
-```
-
-## Price per SQFT
+## Cumulative Distribution of Price per Sq Ft
 
 ```{r _outliers_ppsft}
 ppsf <- training_data %>%
@@ -257,10 +212,89 @@ ggplot(ppsf, aes(log(ppsf), fill = sv_is_outlier)) +
     axis.ticks.y = element_blank()
   )
 ```
+:::
 
-## Decile Breakout
 
-```{r _outliers_decile_breakout}
+##  Median Outlier Price / Median Not Outlier Price by Township
+
+```{r _outliers_median_price_outliers, fig.height=6}
+outlier_vs_nonoutlier <- training_data %>%
+  summarise(
+    median_sale_price = median(meta_sale_price),
+    .by = c(sv_is_outlier, meta_township_name)
+  ) %>%
+  pivot_wider(
+    id_cols = meta_township_name,
+    names_from = sv_is_outlier,
+    values_from = median_sale_price
+  ) %>%
+  mutate(
+    percent = `TRUE` / `FALSE`,
+    above_below = ifelse(percent > 1,
+      "Outlier > Not Outlier", "Not Outlier > Outlier"
+    ),
+    above_below = factor(above_below,
+      levels =
+        c("Outlier > Not Outlier", "Not Outlier > Outlier")
+    )
+  )
+
+ggplot(
+  outlier_vs_nonoutlier,
+  aes(x = reorder(meta_township_name, percent), y = percent)
+) +
+  labs(
+    fill = "Median Price"
+  ) +
+  geom_bar(stat = "identity", aes(fill = above_below)) +
+  coord_flip() +
+  geom_text(aes(
+    label = round(percent, 2)
+  ), hjust = -0.2) +
+  scale_y_continuous(limits = c(0, 5.5)) +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+  )
+```
+
+
+## Share of Outliers by Decile
+
+::: panel-tabset
+
+
+## Share of Outliers by Decile
+```{r _outliers_share_of_outliers_by_decile}
+ggplot(
+  training_data %>%
+    arrange(meta_sale_price) %>%
+    mutate(decile = ntile(meta_sale_price, 10)) %>%
+    summarise(
+      percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
+      .by = decile
+    ),
+  aes(x = decile, y = percent)
+) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = scales::percent(percent, accuracy = .1)),
+    hjust = -0.1,
+    angle = 90
+  ) +
+  theme_minimal() +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 0.09),
+    breaks = seq(0, 0.1, 0.02)
+  ) +
+  scale_x_continuous(breaks = seq(1, 10, 1)) +
+  theme(axis.title.y = element_blank())
+```
+
+
+## Top Decile Statistics
+```{r _outliers_top_decile_statistics}
 training_data %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
@@ -275,34 +309,12 @@ training_data %>%
   ) %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
-  kable(caption = "Top Decile") %>%
+  kable() %>%
   kable_styling(full_width = TRUE)
+```
 
-ggplot(
-  training_data %>%
-    arrange(meta_sale_price) %>%
-    mutate(decile = ntile(meta_sale_price, 10)) %>%
-    summarise(
-      percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
-      .by = decile
-    ),
-  aes(x = decile, y = percent)
-) +
-  labs(title = "Share of Outliers", x = "Quantile") +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = scales::percent(percent, accuracy = .1)),
-    hjust = -0.1,
-    angle = 90
-  ) +
-  theme_minimal() +
-  scale_y_continuous(
-    labels = scales::percent_format(),
-    limits = c(0, 0.09),
-    breaks = seq(0, 0.1, 0.02)
-  ) +
-  scale_x_continuous(breaks = seq(1, 10, 1)) +
-  theme(axis.title.y = element_blank())
-
+## Outlier Count in Top Decile
+```{r _outlier_count_by_decile}
 ggplot(
   training_data %>%
     arrange(meta_sale_price) %>%
@@ -313,9 +325,7 @@ ggplot(
 ) +
   labs(
     y = "Number of Sales",
-    x = "Outlier Types",
-    title = "Outlier Count",
-    subtitle = "by Type, Top Decile"
+    x = "Outlier Types"
   ) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = comma(count)), vjust = -0.5) +
@@ -339,9 +349,9 @@ What are the sales with the largest miss relative to town and price quartile?
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
     !is.na(sale_recent_1_price),
-    sale_recent_1_date >= lubridate::make_date(as.numeric(params$year) - 1)
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
   ) %>%
   select(
     PIN = meta_pin, Town, Class = meta_class,
@@ -351,7 +361,7 @@ qnt_df <- assessment_pin %>%
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    diff = abs(`Sale 2 Price` - `Est. FMV`),
+    Difference = abs(`Sale 2 Price` - `Est. FMV`),
     `Qnt.` = cut(
       `Sale 2 Price`,
       breaks = quantile(`Sale 2 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
@@ -361,8 +371,8 @@ qnt_df <- assessment_pin %>%
     .by = Town
   ) %>%
   group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
   relocate(`Qnt.`, .after = "Town")
 
 qnt_df %>%
