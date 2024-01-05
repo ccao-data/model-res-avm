@@ -272,7 +272,7 @@ extract_and_print_plots <- function(plots) {
 extract_and_print_plots(plots)
 ```
 
-## Number of Sales By Year, Month, and Outlier Status
+## Number of Sales by Year, Month, and Outlier Status
 
 ```{r _sales_volume1}
 ggplot(
