@@ -278,10 +278,9 @@ ggplot(
 ```
 
 
-## Share of Outliers by Decile
+## Outliers Grouped by Decile
 
 ::: panel-tabset
-
 
 ## Share of Outliers by Decile
 ```{r _outliers_share_of_outliers_by_decile}
