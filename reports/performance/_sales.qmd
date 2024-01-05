@@ -168,7 +168,7 @@ rbind(
 
 ::: panel-tabset
 
-## Median Sale Price
+## Median Sale Price By Year and Outlier Status
 
 ```{r _sales_median_price}
 ggplot(
@@ -180,17 +180,18 @@ ggplot(
   aes(x = meta_year, y = median_price, group = sv_is_outlier)
 ) +
   geom_line(aes(color = sv_is_outlier)) +
-  scale_y_continuous(labels = scales::dollar_format()) +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_color_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
   labs(
-    y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status"
+    y = "Median Sale Price", x = "Year"
   ) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
-    legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
   )
+
 
 price_change <- ggplot(
   training_data %>%
@@ -226,6 +227,7 @@ price_change <- ggplot(
 ggplotly(price_change)
 ```
 
+## Sale Price by Year and Week
 ```{r _sales_price_week}
 tri_sales <- training_data %>%
   filter(sv_is_outlier == FALSE) %>%
@@ -244,7 +246,7 @@ plots <- map2(tri_sales, names(tri_sales), function(x, title) {
     labs(
       y = "Median Sale Price",
       x = "Week",
-      title = paste(title, "Tri, By Year and Week"),
+      title = paste(title, "Tri"),
       subtitle = "Outliers excluded"
     ) +
     theme_minimal() +
@@ -270,7 +272,7 @@ extract_and_print_plots <- function(plots) {
 extract_and_print_plots(plots)
 ```
 
-## Number of Sales
+## Number of Sales By Year, Month, and Outlier Status
 
 ```{r _sales_volume1}
 ggplot(
@@ -282,16 +284,16 @@ ggplot(
     label = format(after_stat(count), big.mark = ",")
   ), stat = "count", vjust = -1) +
   labs(
-    y = "Number of Sales", x = "Year", title = "By Year and Outlier Status"
+    y = "Number of Sales", x = "Year"
   ) +
+  scale_fill_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
   theme_minimal() +
   scale_y_continuous(
-    labels = scales::comma,
+    labels = comma,
     limits = c(0, 60000)
   ) +
   theme(
     legend.position = "bottom",
-    legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
   )
@@ -302,20 +304,20 @@ ggplot(
 ) +
   geom_bar(aes(fill = sv_is_outlier)) +
   labs(
-    y = "Number of Sales", x = "Year",
-    title = "By Month and Outlier Status"
+    y = "Number of Sales", x = "Year"
   ) +
+  scale_fill_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::comma, limits = c(0, 6000)) +
+  scale_y_continuous(labels = comma, limits = c(0, 6000)) +
   scale_x_continuous(breaks = 1:12, labels = month.name) +
   theme(
     legend.position = "bottom",
-    legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)
   ) +
   facet_wrap(vars(meta_year))
+
 ```
 
 :::
