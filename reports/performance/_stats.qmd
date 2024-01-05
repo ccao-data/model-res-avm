@@ -272,20 +272,20 @@ distributions. Numeric variables scaled and centered.
 num_plots <- length(sf_parcels %>% select(where(is.numeric)))
 
 grobs <- lapply(1:num_plots, function(index) {
-    x <- names(sf_parcels %>% select(where(is.numeric)))[index]
-    data <- sf_parcels %>% select(Sale, any_of(x))
-    ggplot(data, aes(scale(sf_parcels %>% pull(x)), color = Sale)) +
-      stat_ecdf(geom = "step") +
-      labs(x = str_wrap(x, width = 25)) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = if(index == num_plots) "bottom" else "none"
-      )
+  x <- names(sf_parcels %>% select(where(is.numeric)))[index]
+  data <- sf_parcels %>% select(Sale, any_of(x))
+  ggplot(data, aes(scale(sf_parcels %>% pull(x)), color = Sale)) +
+    stat_ecdf(geom = "step") +
+    labs(x = str_wrap(x, width = 25)) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.position = if (index == num_plots) "bottom" else "none"
+    )
 })
 
 for (i in seq(1, length(grobs), by = 6)) {
@@ -313,8 +313,6 @@ for (i in seq(1, length(grobs), by = 6)) {
     )
   }
 }
-
-
 ```
 
 ## Factor Columns:
@@ -323,19 +321,19 @@ for (i in seq(1, length(grobs), by = 6)) {
 num_plots <- length(sf_parcels %>% select(where(is.factor) & any_of(vars)))
 
 grobs <- lapply(1:num_plots, function(index) {
-    x <- names(sf_parcels %>% select(where(is.factor) & any_of(vars)))[index]
-    ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)), color = Sale)) +
-      stat_ecdf(geom = "step") +
-      labs(x = str_wrap(x, width = 25)) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = if(index == num_plots) "bottom" else "none"
-      )
+  x <- names(sf_parcels %>% select(where(is.factor) & any_of(vars)))[index]
+  ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)), color = Sale)) +
+    stat_ecdf(geom = "step") +
+    labs(x = str_wrap(x, width = 25)) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.position = if (index == num_plots) "bottom" else "none"
+    )
 })
 
 for (i in seq(1, length(grobs), by = 6)) {
@@ -360,7 +358,6 @@ for (i in seq(1, length(grobs), by = 6)) {
     )
   }
 }
-
 ```
 
 :::
