@@ -140,7 +140,7 @@ rbind(
     starts_with("loc_school"),
     sv_is_outlier,
     sv_outlier_type
-  ) %>% 
+  ) %>%
   datatable(rownames = FALSE)
 ```
 
@@ -174,7 +174,7 @@ rbind(
     starts_with("loc_school"),
     sv_is_outlier,
     sv_outlier_type
-  ) %>% 
+  ) %>%
   datatable(rownames = FALSE)
 ```
 
