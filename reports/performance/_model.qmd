@@ -388,8 +388,7 @@ ggplot() +
   theme_minimal() +
   theme(
     strip.text.y.left = element_text(angle = 0),
-    legend.position = "bottom",
-    legend.justification = "right"
+    legend.position = "bottom"
   ) +
   coord_cartesian(clip = "off") +
   scale_color_manual(
