@@ -93,7 +93,7 @@ test_summary_township %>%
   )
 ```
 
-## Overall Ratio Distribution
+## Overall Median Ratio by Decile
 
 ```{r _model_overall_ratio_distribution_decile, fig.width=10, fig.height=6}
 # Helper function to help with x-axis tick labels
@@ -144,7 +144,6 @@ ggplot(data_to_plot, aes(x = quantile, y = median_ratio)) +
   geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
   theme_minimal() +
   labs(
-    title = "Overall Median Ratio by Decile",
     x = "Decile", y = "Median Ratio"
   ) +
   scale_x_continuous(breaks = 1:10, labels = data_to_plot$custom_label) +
@@ -210,7 +209,6 @@ make_township_ratio_decile_graph <- function(data, township) {
       geom_hline(yintercept = 1, linetype = "dashed", color = "darkgray") +
       theme_minimal() +
       labs(
-        title = township,
         x = "Decile", y = "Median Ratio"
       ) +
       # 0.08 is appended to the y_axis value so that the
@@ -279,7 +277,6 @@ plot_feature_importance <- function(data, gain_column, color) {
     coord_flip() +
     theme_minimal() +
     labs(
-      title = paste(name_labs, "Score"),
       y = paste(name_labs, "Score"),
       x = "Predictor"
     ) +
