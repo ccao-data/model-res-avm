@@ -269,12 +269,12 @@ distributions. Numeric variables scaled and centered.
 ## Numeric Columns:
 
 ```{r _stats_ecdfs1}
-grobs <-
-  lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
+num_plots <- length(sf_parcels %>% select(where(is.numeric)))
+
+grobs <- lapply(1:num_plots, function(index) {
+    x <- names(sf_parcels %>% select(where(is.numeric)))[index]
     data <- sf_parcels %>% select(Sale, any_of(x))
-    ggplot(data, aes(scale(sf_parcels %>% pull(x)),
-      color = Sale
-    )) +
+    ggplot(data, aes(scale(sf_parcels %>% pull(x)), color = Sale)) +
       stat_ecdf(geom = "step") +
       labs(x = str_wrap(x, width = 25)) +
       theme_minimal() +
@@ -284,9 +284,9 @@ grobs <-
         axis.ticks.x = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(),
-        legend.position = "none"
+        legend.position = if(index == num_plots) "bottom" else "none"
       )
-  })
+})
 
 for (i in seq(1, length(grobs), by = 6)) {
   if (i == 13) {
@@ -313,17 +313,18 @@ for (i in seq(1, length(grobs), by = 6)) {
     )
   }
 }
+
+
 ```
 
 ## Factor Columns:
 
 ```{r _stats_ecdfs2}
-grobs <-
-  lapply(names(sf_parcels %>% select(where(is.factor) &
-    any_of(vars))), function(x) {
-    ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)),
-      color = Sale
-    )) +
+num_plots <- length(sf_parcels %>% select(where(is.factor) & any_of(vars)))
+
+grobs <- lapply(1:num_plots, function(index) {
+    x <- names(sf_parcels %>% select(where(is.factor) & any_of(vars)))[index]
+    ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)), color = Sale)) +
       stat_ecdf(geom = "step") +
       labs(x = str_wrap(x, width = 25)) +
       theme_minimal() +
@@ -333,9 +334,9 @@ grobs <-
         axis.ticks.x = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(),
-        legend.position = "none"
+        legend.position = if(index == num_plots) "bottom" else "none"
       )
-  })
+})
 
 for (i in seq(1, length(grobs), by = 6)) {
   if (i == 13) {
@@ -359,6 +360,7 @@ for (i in seq(1, length(grobs), by = 6)) {
     )
   }
 }
+
 ```
 
 :::
