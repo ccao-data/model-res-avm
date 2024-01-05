@@ -373,7 +373,7 @@ ggplot() +
     data = summary_data,
     aes(x = max(reshaped_data$value) * 1.05, y = "Sale", label = num_sale),
     size = 3.2,
-    hjust = "left",
+    hjust = 1,
     vjust = 1.75,
     color = "black",
     check_overlap = TRUE,
