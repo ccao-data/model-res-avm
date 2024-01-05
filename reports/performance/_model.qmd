@@ -505,8 +505,7 @@ sale_vs_estimate_by_class <- function(township_to_graph, data) {
       theme_minimal() +
       theme(
         strip.text.y.left = element_text(angle = 0),
-        legend.position = "bottom",
-        legend.justification = "right"
+        legend.position = "bottom"
       ) +
       coord_cartesian(clip = "off") +
       scale_color_manual(
