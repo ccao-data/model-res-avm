@@ -331,10 +331,8 @@ training_data %>%
   kable_styling(full_width = TRUE)
 ```
 
-<<<<<<< HEAD
 ## Outlier Count in Top Decile
 ```{r _outlier_count_by_decile}
-=======
 y_lim_axis_outlier_by_decile <-
   training_data %>%
   arrange(meta_sale_price) %>%
@@ -381,7 +379,6 @@ y_lim_axis_outlier_top_decile <-
   slice_max(count, n = 1) %>%
   pull(count)
 
->>>>>>> master
 ggplot(
   training_data %>%
     arrange(meta_sale_price) %>%
