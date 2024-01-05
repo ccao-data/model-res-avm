@@ -168,7 +168,7 @@ rbind(
 
 ::: panel-tabset
 
-## Median Sale Price By Year and Outlier Status
+## Median Sale Price by Year and Outlier Status
 
 ```{r _sales_median_price}
 ggplot(
@@ -272,9 +272,9 @@ extract_and_print_plots <- function(plots) {
 extract_and_print_plots(plots)
 ```
 
-## Number of Sales by Year, Month, and Outlier Status
+## Sales by Year, Month, and Outlier Status
 
-```{r _sales_volume1}
+```{r _sales_volume_by_year_month_outlier}
 ggplot(
   training_data,
   aes(x = meta_year, group = sv_is_outlier)
