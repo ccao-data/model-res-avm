@@ -50,6 +50,8 @@ paths <- model_file_dict()
 # instead, since `params` is a reserved variable name in Quarto
 if (knitr::is_html_output() || knitr::is_latex_output()) {
   params_obj_name <- "model_params"
+} else if (exists("params")) {
+  if (exists("run_id", where = params)) params_obj_name <- "model_params"
 } else {
   params_obj_name <- "params"
 }
