@@ -133,12 +133,14 @@ rbind(
     ) %>%
     slice_min(order_by = meta_sale_price, n = 25)
 ) %>%
-  select(meta_sale_price:meta_tieback_proration_rate,
-         loc_property_address:loc_property_zip,
-         char_yrblt:char_beds,
-         starts_with("loc_school"),
-         sv_is_outlier,
-         sv_outlier_type) %>% 
+  select(
+    meta_sale_price:meta_tieback_proration_rate,
+    loc_property_address:loc_property_zip,
+    char_yrblt:char_beds,
+    starts_with("loc_school"),
+    sv_is_outlier,
+    sv_outlier_type
+  ) %>% 
   datatable(rownames = FALSE)
 ```
 
@@ -165,12 +167,14 @@ rbind(
     ) %>%
     slice_min(order_by = meta_sale_price, n = 25)
 ) %>%
-  select(meta_sale_price:meta_tieback_proration_rate,
-         loc_property_address:loc_property_zip,
-         char_yrblt:char_beds,
-         starts_with("loc_school"),
-         sv_is_outlier,
-         sv_outlier_type) %>% 
+  select(
+    meta_sale_price:meta_tieback_proration_rate,
+    loc_property_address:loc_property_zip,
+    char_yrblt:char_beds,
+    starts_with("loc_school"),
+    sv_is_outlier,
+    sv_outlier_type
+  ) %>% 
   datatable(rownames = FALSE)
 ```
 
