@@ -123,20 +123,34 @@ extract_weights <- function(model, train, outcome_col, metric = "rmse") {
   # Get the initial error for base model before the first tree
   set_field(train_lgb, "init_score", as.matrix(train[[outcome_col]]))
   initial_predictions <- get_field(train_lgb, "init_score")
+  message("initial_predictions length:")
+  message(length(initial_predictions))
   init_score <- mean(initial_predictions)
+  message("init_score:")
+  message(init_score)
 
   # Index into the errors list, and un-list so it is a flat/1dim list
   record_evals <- model$record_evals
   if (is.null(record_evals)) {
     stop("Model is missing required record_evals; was it trained with valids?")
   }
+  message("record_evals names:")
+  message(names(record_evals$valids))
+  message(glue::glue("record_evals {metric} length:"))
+  message(length(record_evals$valids[[metric]]$eval))
   errors <- unlist(record_evals$valids[[metric]]$eval)
+  message("errors length:")
+  message(length(errors))
   errors <- c(init_score, errors)
   diff_in_errors <- diff(errors, 1, 1)
+  message("diff_in_errors length:")
+  message(length(diff_in_errors))
 
   # Take proportion of diff in errors over total diff in
   # errors from all trees
   weights <- diff_in_errors / sum(diff_in_errors)
+  message("weights length:")
+  message(length(weights))
 
   return(weights)
 }
