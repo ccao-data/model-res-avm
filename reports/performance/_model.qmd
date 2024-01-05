@@ -87,15 +87,16 @@ test_summary_table <- function(x) {
         paging = FALSE,
         searching = FALSE,
         info = FALSE
-      )) %>%
-  formatRound(c("cod", "prd", "prb", "median_ratio", "mki"), digits = 2) %>%
-  formatStyle(
-    c("cod_met", "prd_met", "prb_met", "ratio_met", "mki_met"),
-    backgroundColor = styleEqual(
-      c(0, 1),
-      c("transparent", "#D3F2C2")
+      )
+    ) %>%
+    formatRound(c("cod", "prd", "prb", "median_ratio", "mki"), digits = 2) %>%
+    formatStyle(
+      c("cod_met", "prd_met", "prb_met", "ratio_met", "mki_met"),
+      backgroundColor = styleEqual(
+        c(0, 1),
+        c("transparent", "#D3F2C2")
+      )
     )
-  )
 }
 ```
 
