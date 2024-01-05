@@ -362,12 +362,16 @@ message("Checking record_evals")
 if (is.null(lgbm_final_full_fit$fit$record_evals)) {
   stop("Trained model is missing required record_evals")
 }
+trained_record_evals_len <- length(lgbm_final_full_fit$fit$record_evals$valids$rmse$eval)
+message(glue::glue("Trained record_evals length: {trained_record_evals_len}"))
 
 loaded_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 
 if (is.null(loaded_fit$fit$record_evals)) {
   stop("Saved model is missing required record_evals")
 }
+saved_record_evals_len <- length(loaded_fit$fit$record_evals$valids$rmse$eval)
+message(glue::glue("Saved record_evals length: {trained_record_evals_len}"))
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data. This is critical since it saves the factor levels used to integer-
