@@ -84,7 +84,6 @@ test_summary_township %>%
     )
   ) %>%
   formatRound(c("cod", "prd", "prb", "median_ratio", "mki"), digits = 2) %>%
-  
   formatStyle(
     c("cod_met", "prd_met", "prb_met", "ratio_met", "mki_met"),
     backgroundColor = styleEqual(
