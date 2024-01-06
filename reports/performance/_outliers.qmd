@@ -380,8 +380,9 @@ What are the sales with the largest miss relative to town and price quartile?
 qnt_df <- assessment_pin %>%
   mutate(Town = ccao::town_convert(meta_township_code)) %>%
   filter(
-    Town %in% c("Calumet", "Thornton", "Bloom"),
-    !is.na(sale_ratio_study_price)
+    !is.na(sale_recent_1_price),
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
   ) %>%
   select(
     PIN = meta_pin, Town, Class = meta_class,
@@ -391,7 +392,7 @@ qnt_df <- assessment_pin %>%
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    diff = abs(`Sale 1 Price` - `Est. FMV`),
+    Difference = abs(`Sale 1 Price` - `Est. FMV`),
     `Qnt.` = cut(
       `Sale 1 Price`,
       breaks = quantile(`Sale 1 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
@@ -401,10 +402,201 @@ qnt_df <- assessment_pin %>%
     .by = Town
   ) %>%
   group_by(Town, `Qnt.`) %>%
-  slice_max(diff, n = 1) %>%
-  select(-diff) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
   relocate(`Qnt.`, .after = "Town")
 
 qnt_df %>%
   datatable(rownames = FALSE)
 ```
+
+## Increase in Housing Value
+
+This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying the PINs in each neighborhood/township which grew at the fastest rate. It also identifies the median rate of change for each neighborhood.
+
+::: panel-tabset
+
+## Map of Largest YOY Changes
+
+This map caps the legend at a 300% to increase legibility. It then plots the 10 largest year over year increases in assessed values by neighborhood.
+
+```{r _outliers_map_of_largest_change}
+largest_increases <- assessment_pin %>%
+  group_by(meta_nbhd_code) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  filter(!is.na(prior_near_yoy_change_pct)) %>%
+  mutate(
+    prior_near_yoy_change_pct = prior_near_yoy_change_pct * 100,
+    neighborhood_median_change = median(prior_near_yoy_change_pct)
+  ) %>%
+  slice_max(prior_near_yoy_change_pct, n = 10) %>%
+  mutate(capped_yoy_change = pmin(prior_near_yoy_change_pct, 300))
+
+nbhd_increases <- st_as_sf(largest_increases) %>%
+  distinct(meta_nbhd_code, .keep_all = TRUE)
+
+color_palette <-
+  colorNumeric(
+    palette = "PuRd",
+    domain = c(min(largest_increases$prior_near_yoy_change_pct), 300)
+  )
+
+leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    data = nbhd_increases,
+    fillColor = "white",
+    weight = 1,
+    color = "black",
+    opacity = 1,
+    fillOpacity = 0.5
+  ) %>%
+  addCircleMarkers(
+    data = largest_increases,
+    ~loc_longitude,
+    ~loc_latitude,
+    color = ~ color_palette(capped_yoy_change),
+    opacity = 0.7,
+    fillOpacity = 0.7,
+    radius = 1,
+    popup = ~ paste0(
+      "PIN: ", meta_pin,
+      "<br>Class: ", meta_class,
+      "<br><br>",
+      "Neighborhood: ",
+      meta_nbhd_code,
+      "<br>Prior year (near) FMV: ",
+      scales::dollar(prior_near_tot),
+      "<br>Cur. year (rounded) FMV: ",
+      scales::dollar(pred_pin_final_fmv_round),
+      "<br>YoY Change: ",
+      round(prior_near_yoy_change_pct, 2), "%"
+    )
+  ) %>%
+  addLegend(
+    "bottomright",
+    pal = color_palette,
+    values = c(min(largest_increases$prior_near_yoy_change_pct), 300),
+    title = "YoY Change",
+    labFormat = labelFormat(suffix = "%")
+  ) %>%
+  setView(
+    lng = mean(largest_increases$loc_longitude),
+    lat = mean(largest_increases$loc_latitude),
+    zoom = 10
+  )
+```
+
+## Table of Largest YOY Changes
+
+This table excludes any PINs which had a prior year assessed value of less than $25,000. It then identifies the 5 PINs in each neighborhood which had the largest year over year increase in assessed value.
+
+```{r _outliers_table_of_largest_change}
+datatable(
+  largest_increases %>%
+    distinct(meta_pin, .keep_all = TRUE) %>%
+    filter(prior_near_tot > 25000) %>%
+    group_by(meta_township_code) %>%
+    slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
+    ungroup() %>%
+    left_join(
+      select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
+      by = "meta_pin"
+    ) %>%
+    filter(meta_year.y == 2022) %>%
+    distinct(meta_pin, .keep_all = TRUE) %>%
+    mutate(
+      Pin = meta_pin,
+      Township = meta_township_code,
+      Neighborhood = meta_nbhd_code,
+      Class = meta_class,
+      Address = loc_property_address,
+      "Predicted Value" = pred_pin_final_fmv_round,
+      "Previous Value" = prior_near_tot,
+      "Nominal Change" = prior_near_yoy_change_nom,
+      "Percent Change" = round(prior_near_yoy_change_pct, 2),
+      "Recent Sale Date" = sale_recent_1_date,
+      "Recent Sale Price" = sale_recent_1_price,
+      "Missing Critical Value" = flag_char_missing_critical_value,
+      "Year Built" = char_yrblt,
+      "Total Building SF" = char_total_bldg_sf,
+      Bedrooms = char_beds,
+      Rooms = char_rooms,
+      "Full Bathrooms" = char_fbath,
+      "Median Neighborhood Change" = round(neighborhood_median_change, 2)
+    ) %>%
+    select(
+      Pin,
+      Township,
+      Neighborhood,
+      Class,
+      Address,
+      `Predicted Value`,
+      `Previous Value`,
+      `Nominal Change`,
+      `Percent Change`,
+      `Recent Sale Date`,
+      `Recent Sale Price`,
+      `Missing Critical Value`,
+      `Year Built`,
+      `Total Building SF`,
+      Bedrooms,
+      Rooms,
+      `Full Bathrooms`,
+      `Median Neighborhood Change`
+    ),
+  options = list(pageLength = 10, scrollX = TRUE),
+  filter = "top",
+  rownames = FALSE
+)
+```
+
+## Median Rate of Change by Neighborhood
+
+```{r _outliers_map_of_neighborhood_change}
+breaks <- c(-Inf, 0, 20, 40, 60, 80, 100, Inf)
+labels <- c(
+  "< 0%", "0% - 20%", "20% - 40%", "40% - 60%",
+  "60% - 80%", "80% - 100%", "> 100%"
+)
+
+nbhd_increases <- nbhd_increases %>%
+  mutate(
+    change_category = cut(
+      neighborhood_median_change,
+      breaks = breaks,
+      labels = labels,
+      include.lowest = TRUE
+    )
+  )
+
+palette <- colorFactor(
+  palette = c("#e34a33", "#ffffff", RColorBrewer::brewer.pal(6, "BuPu")),
+  domain = nbhd_increases$change_category
+)
+leaflet(data = nbhd_increases) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    fillColor = ~ palette(change_category),
+    color = "black",
+    weight = 1,
+    opacity = 1,
+    fillOpacity = 0.7,
+    smoothFactor = 0.5,
+    popup = ~ paste0(
+      "Township: ", township_name,
+      "<br>Neighborhood: ", meta_nbhd_code,
+      "<br>Change: ", round(neighborhood_median_change, 2), "%"
+    )
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    pal = palette,
+    values = ~change_category,
+    title = "Median YoY Change",
+    opacity = 1
+  )
+```
+
+:::
