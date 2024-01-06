@@ -129,7 +129,8 @@ shapviz::shapviz(
     max_display = 15L
   ) +
   theme_minimal() +
-  coord_cartesian(xlim = c(-100000, 200000))
+  coord_cartesian(xlim = c(-100000, 200000)) +
+  scale_x_continuous(labels = scales::dollar)
 ```
 
 ## Beeswarm Plot per Township
@@ -154,7 +155,8 @@ for (township in townships_to_iterate) {
         max_display = 15L
       ) +
       theme_minimal() +
-      coord_cartesian(xlim = c(-100000, 200000))
+      coord_cartesian(xlim = c(-100000, 200000)) +
+      scale_x_continuous(labels = scales::dollar)
   )
   cat("\n\n")
 }
