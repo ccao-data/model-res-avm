@@ -52,11 +52,11 @@ price_outlier_type %>%
 
 :::
 
-## Outlier Breakdown
+## Counts and Percentages of Outliers
 
 ::: panel-tabset
 
-## Outlier Types
+## Count of Outliers by Type
 
 ```{r _outliers_type_breakdown}
 y_lim_axis_outlier_breakdown <- training_data %>%
@@ -72,8 +72,7 @@ ggplot(
   aes(x = reorder(sv_outlier_type, -count), y = count)
 ) +
   labs(
-    y = "Number of Sales", x = "Outlier Types",
-    title = "Count", subtitle = "by Type"
+    y = "Number of Sales", x = "Outlier Types"
   ) +
   geom_bar(stat = "identity") +
   geom_text(aes(
@@ -98,7 +97,7 @@ training_data %>%
   kable_styling("striped")
 ```
 
-## Class
+## Share of Outliers by Class
 
 ```{r _outliers_classes}
 ggplot(
@@ -109,11 +108,7 @@ ggplot(
     ),
   aes(x = meta_class, y = percent)
 ) +
-  labs(title = "Share of Outliers", subtitle = "by Class") +
   geom_bar(stat = "identity") +
-  geom_text(aes(
-    label = scales::percent(percent, accuracy = .1)
-  ), vjust = -0.5) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format()) +
   theme(
@@ -122,7 +117,7 @@ ggplot(
   )
 ```
 
-## Township
+## Share of Outliers by Township
 
 ```{r _outliers_townships}
 y_lim_axis_outlier_townships <-
@@ -141,7 +136,6 @@ ggplot(
     ),
   aes(x = reorder(meta_township_name, -percent), y = percent)
 ) +
-  labs(title = "Share of Outliers", subtitle = "by Township") +
   geom_bar(stat = "identity") +
   geom_text(aes(
     label = scales::percent(percent, accuracy = .1)
@@ -158,7 +152,14 @@ ggplot(
   )
 ```
 
-## Price
+:::
+
+
+## Outlier Distributions
+
+::: panel-tabset
+
+## Cumulative Price Distribution
 
 ```{r _outliers_price}
 training_data %>%
@@ -180,7 +181,6 @@ ggplot(training_data, aes(
   fill = sv_is_outlier
 )) +
   geom_density(alpha = 0.5) +
-  labs(title = "Cumulative Distribution") +
   theme_minimal() +
   labs(x = "log(price)") +
   scale_y_continuous(labels = scales::percent_format()) +
@@ -194,51 +194,7 @@ ggplot(training_data, aes(
   )
 ```
 
-```{r _outliers_median_price_outliers, fig.height=6}
-outlier_vs_nonoutlier <- training_data %>%
-  summarise(
-    median_sale_price = median(meta_sale_price),
-    .by = c(sv_is_outlier, meta_township_name)
-  ) %>%
-  pivot_wider(
-    id_cols = meta_township_name,
-    names_from = sv_is_outlier,
-    values_from = median_sale_price
-  ) %>%
-  mutate(
-    percent = `TRUE` / `FALSE`,
-    above_below = ifelse(percent > 1,
-      "Outlier > Not Outlier", "Not Outlier > Outlier"
-    ),
-    above_below = factor(above_below,
-      levels =
-        c("Outlier > Not Outlier", "Not Outlier > Outlier")
-    )
-  )
-
-ggplot(
-  outlier_vs_nonoutlier,
-  aes(x = reorder(meta_township_name, percent), y = percent)
-) +
-  labs(
-    title = "Median Outlier Price / Median Not outlier Price",
-    subtitle = "by Township",
-    fill = "Median Price"
-  ) +
-  geom_bar(stat = "identity", aes(fill = above_below)) +
-  coord_flip() +
-  geom_text(aes(
-    label = round(percent, 2)
-  ), hjust = -0.2) +
-  scale_y_continuous(limits = c(0, 5.5)) +
-  theme_minimal() +
-  theme(
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
-  )
-```
-
-## Price Per SQFT
+## Cumulative Distribution of Price per Sq Ft
 
 ```{r _outliers_ppsft}
 ppsf <- training_data %>%
@@ -274,10 +230,88 @@ ggplot(ppsf, aes(log(ppsf), fill = sv_is_outlier)) +
     axis.ticks.y = element_blank()
   )
 ```
+:::
 
-## Decile Breakout
 
-```{r _outliers_decile_breakout}
+##  Median Outlier Price / Median Not Outlier Price by Township
+
+```{r _outliers_median_price_outliers, fig.height=6}
+outlier_vs_nonoutlier <- training_data %>%
+  summarise(
+    median_sale_price = median(meta_sale_price),
+    .by = c(sv_is_outlier, meta_township_name)
+  ) %>%
+  pivot_wider(
+    id_cols = meta_township_name,
+    names_from = sv_is_outlier,
+    values_from = median_sale_price
+  ) %>%
+  mutate(
+    percent = `TRUE` / `FALSE`,
+    above_below = ifelse(percent > 1,
+      "Outlier > Not Outlier", "Not Outlier > Outlier"
+    ),
+    above_below = factor(above_below,
+      levels =
+        c("Outlier > Not Outlier", "Not Outlier > Outlier")
+    )
+  )
+
+ggplot(
+  outlier_vs_nonoutlier,
+  aes(x = reorder(meta_township_name, percent), y = percent)
+) +
+  labs(
+    fill = "Median Price"
+  ) +
+  geom_bar(stat = "identity", aes(fill = above_below)) +
+  coord_flip() +
+  geom_text(aes(
+    label = round(percent, 2)
+  ), hjust = -0.2) +
+  scale_y_continuous(limits = c(0, 5.5)) +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+  )
+```
+
+
+## Outliers Grouped by Decile
+
+::: panel-tabset
+
+## Share of Outliers by Decile
+```{r _outliers_share_of_outliers_by_decile}
+ggplot(
+  training_data %>%
+    arrange(meta_sale_price) %>%
+    mutate(decile = ntile(meta_sale_price, 10)) %>%
+    summarise(
+      percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
+      .by = decile
+    ),
+  aes(x = decile, y = percent)
+) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = scales::percent(percent, accuracy = .1)),
+    hjust = -0.1,
+    angle = 90
+  ) +
+  theme_minimal() +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 0.09),
+    breaks = seq(0, 0.1, 0.02)
+  ) +
+  scale_x_continuous(breaks = seq(1, 10, 1)) +
+  theme(axis.title.y = element_blank())
+```
+
+
+## Top Decile Statistics
+```{r _outliers_top_decile_statistics}
 training_data %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
@@ -292,9 +326,12 @@ training_data %>%
   ) %>%
   rename("Sale category" = sv_is_outlier) %>%
   mutate(across(Min:`Std dev`, dollar)) %>%
-  kable(caption = "Top Decile") %>%
+  kable() %>%
   kable_styling(full_width = TRUE)
+```
 
+## Outlier Count in Top Decile
+```{r _outlier_count_by_decile}
 y_lim_axis_outlier_by_decile <-
   training_data %>%
   arrange(meta_sale_price) %>%
@@ -351,9 +388,7 @@ ggplot(
 ) +
   labs(
     y = "Number of Sales",
-    x = "Outlier Types",
-    title = "Outlier Count",
-    subtitle = "by Type, Top Decile"
+    x = "Outlier Types"
   ) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = comma(count)), vjust = -0.5) +
