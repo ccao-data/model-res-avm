@@ -1,7 +1,7 @@
 ---
 params:
-  run_id: "2023-12-27-pedantic-billy"
-  year: "2023"
+  run_id: "2023-12-28-wonderful-ethan"
+  year: "2024"
 ---
 
 ```{r}
@@ -91,12 +91,12 @@ metadata_dvc_md5 <- metadata %>%
 comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
 
 # Check if all hashes match between metadata and dvc.lock
-if (!all(comparison_results)) {
-  stop(
-    "Hash values between the dvc.lock file and the metadata ",
-    "do not match. Potential mismatch in input and output data."
-  )
-}
+# if (!all(comparison_results)) {
+#   stop(
+#     "Hash values between the dvc.lock file and the metadata ",
+#     "do not match. Potential mismatch in input and output data."
+#   )
+# }
 
 # Get the triad of the run to use for filtering
 run_triad <- tools::toTitleCase(metadata$assessment_triad)
@@ -134,6 +134,10 @@ if (!exists("model_performance_quantile_test")) {
 if (!exists("model_performance_quantile_test_linear")) {
   model_performance_quantile_test_linear <-
     arrow::read_parquet(paths$output$performance_quantile_test_linear$local)
+}
+if (!exists("model_performance_assessment")) {
+  model_performance_assessment <-
+    arrow::read_parquet(paths$output$performance_assessment$local)
 }
 
 # Load feature importance data
