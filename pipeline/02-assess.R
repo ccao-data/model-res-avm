@@ -163,7 +163,7 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
   # PIN rather than card
   group_by(meta_year, meta_pin) %>%
   distinct(
-    meta_nbhd_code, meta_complex_id,
+    meta_nbhd_code, meta_class, meta_complex_id,
     meta_tieback_key_pin, meta_tieback_proration_rate,
     char_land_sf, pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate
   ) %>%
