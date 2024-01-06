@@ -5,8 +5,6 @@
 SHAP values are a way to explain the importance of specific features within the model.
 They represent both the direction and magnitude of a feature's impact on the prediciton.
 
-
-
 ## SHAP Summary
 
 ```{r _shap_filtering}
@@ -96,7 +94,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 
 ## Beeswarm Plot
 
-```{r}
+```{r _shap_beeswarm_overall, warning=FALSE}
 shap_predictors <- names(shap_df_filtered)
 shap_predictors <- shap_predictors[!shap_predictors %in% c(
   "meta_year",
@@ -128,16 +126,17 @@ shapviz::shapviz(
 ) %>%
   shapviz::sv_importance(
     "beeswarm",
-    max_display = 20L
+    max_display = 15L
   ) +
-  theme_minimal()
+  theme_minimal() +
+  coord_cartesian(xlim = c(-100000, 200000))
 ```
 
 ## Beeswarm Plot per Township
 
 ::: {.panel-tabset}
 
-```{r _shap_beeswarm_iterate_township, results='asis', warning=F}
+```{r _shap_beeswarm_iterate_township, results='asis', warning=FALSE}
 # Dynamically produce tabset
 for (township in townships_to_iterate) {
   cat("##", ccao::town_convert(township), "\n")
@@ -152,10 +151,10 @@ for (township in townships_to_iterate) {
     ) %>%
       shapviz::sv_importance(
         "beeswarm",
-        max_display = 20L
+        max_display = 15L
       ) +
       theme_minimal() +
-      coord_cartesian(xlim = c(-100000, 1000000))
+      coord_cartesian(xlim = c(-100000, 200000))
   )
   cat("\n\n")
 }
