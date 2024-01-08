@@ -34,10 +34,6 @@ params:
 
 {{< include _input.qmd >}}
 
-```{r}
-knitr::knit_exit()
-```
-
 ```{r, results='asis'}
 # Dynamically render shap code based on whether they are enabled for model run
 # https://www.harveyl888.com/post/2022-05-12-knit_child_quarto/
@@ -47,4 +43,4 @@ if (shap_exists) {
 }
 ```
 
-{{< include _stats.qmd >}}
+<!-- {{< include _stats.qmd >}} -->

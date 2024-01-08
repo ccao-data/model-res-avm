@@ -3,11 +3,11 @@
 # SHAP Values
 
 SHAP values are a way to explain the importance of specific features within the model.
-They represent both the direction and magnitude of a feature's impact on the prediciton.
+They represent both the direction and magnitude of a feature's impact on an individual prediction.
 
-## SHAP Summary
+## Summary Table
 
-```{r _shap_filtering}
+```{r _shap_filtering, warning=FALSE}
 shap_df_filtered <- shap_df %>%
   left_join(
     assessment_card %>%
@@ -28,29 +28,19 @@ shap_df_filtered %>%
   rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
   select(-c(type, n_missing, complete_rate, p25, p75)) %>%
   rename(histogram = hist, median = p50, min = p0, max = p100) %>%
-  mutate(
-    variable = str_replace_all(variable, "_", " "),
-    across(where(is.numeric), ~ round(.x, 1)),
-    `mean direction` = case_when(
-      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
-    ),
-    `median direction` = case_when(
-      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
-    ),
-    mean = abs(mean),
-    median = abs(median)
+  mutate(across(where(is.numeric), ~ round(.x, 1))) %>%
+  left_join(feat_imp_df, by = c("variable" = "model_predictor_all_name")) %>%
+  arrange(desc(gain_value)) %>%
+  select(
+    "Variable" = variable,
+    "Mean" = mean,
+    "Median" = median,
+    "SD" = sd,
+    "Min" = min,
+    "Max" = max,
+    "Histogram" = histogram
   ) %>%
-  relocate(`mean direction`, .before = mean) %>%
-  relocate(`median direction`, .before = median) %>%
-  datatable(
-    rownames = FALSE,
-    height = "500px",
-    options = list(
-      columnDefs = list(
-        list(className = "dt-center", targets = c(1:7))
-      )
-    )
-  )
+  datatable(rownames = FALSE)
 ```
 
 ```{r _shap_function}
@@ -92,7 +82,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 }
 ```
 
-## Beeswarm Plot
+## Overall Beeswarm
 
 ```{r _shap_beeswarm_overall, warning=FALSE}
 shap_predictors <- names(shap_df_filtered)
@@ -133,7 +123,7 @@ shapviz::shapviz(
   scale_x_continuous(labels = scales::dollar)
 ```
 
-## Beeswarm Plot per Township
+## Beeswarm Per Township
 
 ::: {.panel-tabset}
 
