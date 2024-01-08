@@ -24,9 +24,17 @@ params:
 
 {{< include ../_setup.qmd >}}
 
+{{< include _model.qmd >}}
+
+{{< include _outcomes.qmd >}}
+
 {{< include _sales.qmd >}}
 
 {{< include _outliers.qmd >}}
+
+```{r}
+knitr::knit_exit()
+```
 
 {{< include _input.qmd >}}
 

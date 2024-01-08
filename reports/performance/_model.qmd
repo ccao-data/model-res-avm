@@ -177,11 +177,6 @@ model_township_stats_assessment_df %>%
 ::: {.panel-tabset}
 
 ```{r _model_ratio_curve_triad, results='asis'}
-# Helper function to help with x-axis tick labels
-shorten_number <- function(x) {
-  scales::dollar(x, accuracy = 1, scale = 1 / 1000, suffix = "K")
-}
-
 model_ratio_distribution_df <- model_performance_test_quantile_merged %>%
   filter(
     geography_type == "triad_code",
@@ -1011,6 +1006,52 @@ iwalk(model_lorenz_curve_plots, ~ {
   print(.x)
   cat("\n\n")
 })
+```
+
+:::
+
+## Big Misses
+
+::: {.panel-tabset}
+
+### Assessment Set
+
+The following table shows shows the largest misses from the **assessment set**. It finds four sales (one per quartile of price) for each township where the model's estimate was the furthest from the actual sale price.
+
+```{r _model_big_misses_assessment}
+model_big_misses_assessment <- assessment_pin %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(
+    meta_triad_code == run_triad_code,
+    !is.na(sale_recent_1_price),
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
+  ) %>%
+  select(
+    Town = township_name, PIN = meta_pin, Class = meta_class,
+    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
+    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
+    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
+    `Est. FMV` = pred_pin_final_fmv_round
+  ) %>%
+  mutate(
+    Difference = abs(`Sale 1 Price` - `Est. FMV`),
+    `Qnt.` = cut(
+      `Sale 1 Price`,
+      breaks = quantile(`Sale 1 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
+      labels = c("Q1", "Q2", "Q3", "Q4"),
+      include.lowest = TRUE
+    ),
+    .by = Town
+  ) %>%
+  group_by(Town, `Qnt.`) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
+  relocate(`Qnt.`, .after = "Town") %>%
+  arrange(Town, `Qnt.`)
+
+model_big_misses_assessment %>%
+  datatable(rownames = FALSE)
 ```
 
 :::

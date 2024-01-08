@@ -88,7 +88,11 @@ metadata_dvc_md5 <- metadata %>%
   select(starts_with("dvc_md5"))
 
 # Compare hash for each metadata value with the corresponding dvc.lock value
-comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
+comparison_results <- purrr::map2_lgl(
+  metadata_dvc_md5,
+  dvc_lock_values,
+  ~ .x == .y
+)
 
 # Check if all hashes match between metadata and dvc.lock
 # if (!all(comparison_results)) {
@@ -161,4 +165,9 @@ plot_colors <- list(
   "met" = "#d3f2c2",
   "bg_line" = "#2C3E50"
 )
+
+# Helper function to help with x-axis tick labels
+shorten_number <- function(x) {
+  scales::dollar(x, accuracy = 1, scale = 1 / 1000, suffix = "K")
+}
 ```
