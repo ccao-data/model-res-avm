@@ -1,6 +1,6 @@
 ---
 params:
-  run_id: "2023-12-28-wonderful-ethan"
+  run_id: "2024-01-07-great-ida"
   year: "2024"
 ---
 
@@ -152,4 +152,13 @@ if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
 } else {
   shap_exists <- FALSE
 }
+
+# Add colors to re-use across plots
+plot_colors <- list(
+  "sales" = "#66c2a5",
+  "main" = "#5773b3",
+  "linear" = "#fc8d62",
+  "met" = "#d3f2c2",
+  "bg_line" = "#2C3E50"
+)
 ```
