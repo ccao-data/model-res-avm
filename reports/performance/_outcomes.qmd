@@ -8,7 +8,7 @@ This section looks at the year-over-year change in assessed values. It separates
 
 ::: panel-tabset
 
-## Map of Largest YoY Changes
+### Map of Largest YoY Changes
 
 This map caps the legend at a 300% to increase legibility. It plots the 10 largest year-over-year increases in assessed value by neighborhood.
 
@@ -80,7 +80,7 @@ leaflet() %>%
   )
 ```
 
-## Table of Largest YoY Changes
+### Table of Largest YoY Changes
 
 This table excludes any PINs which had a prior year assessed value of less than $25,000. It then identifies the 5 PINs in each neighborhood which had the largest year-over-year increase in assessed value.
 

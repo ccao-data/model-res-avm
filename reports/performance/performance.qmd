@@ -32,11 +32,11 @@ params:
 
 {{< include _outliers.qmd >}}
 
+{{< include _input.qmd >}}
+
 ```{r}
 knitr::knit_exit()
 ```
-
-{{< include _input.qmd >}}
 
 ```{r, results='asis'}
 # Dynamically render shap code based on whether they are enabled for model run
