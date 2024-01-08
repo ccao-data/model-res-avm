@@ -18,6 +18,11 @@ on:
         type: string
         description: Note to include with run
         required: true
+      report_additional_pins:
+        type: string
+        description: Create reports for additional PINs
+        default: '13253180150000 05174150240000'
+        required: false
       upload_enable:
         type: boolean
         description: Upload results to S3
@@ -70,3 +75,4 @@ jobs:
         CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
+        REPORT_ADDITIONAL_PINS=${{ inputs.report_additional_pins }}

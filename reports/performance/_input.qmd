@@ -1,4 +1,4 @@
-{{< include _setup.qmd >}}
+{{< include ../_setup.qmd >}}
 
 # Input data
 
@@ -152,7 +152,7 @@ land_valuation %>%
   theme_minimal()
 ```
 
-### PINs With 0 Land Sqft.
+## PINs With 0 Land Sqft.
 
 ```{r _input_pins_with_0_sq_ft}
 assessment_pin %>%
@@ -163,7 +163,7 @@ assessment_pin %>%
 
 :::
 
-## Multi-family and townhomes
+## Multi-Family and Townhomes
 
 ::: panel-tabset
 

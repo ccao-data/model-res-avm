@@ -13,13 +13,16 @@ format:
     toc_float: true
     fig-align: center
     fontsize: 12pt
+knitr:
+  opts_chunk:
+    out.width: "100%"
 editor: source
 params:
-  run_id: "2023-12-21-xenodochial-eric"
+  run_id: "2023-12-27-pedantic-billy"
   year: "2023"
 ---
 
-{{< include _setup.qmd >}}
+{{< include ../_setup.qmd >}}
 
 {{< include _model.qmd >}}
 
@@ -29,6 +32,13 @@ params:
 
 {{< include _outliers.qmd >}}
 
-{{< include _shap.qmd >}}
+```{r, results='asis'}
+# Dynamically render shap code based on whether they are enabled for model run
+# https://www.harveyl888.com/post/2022-05-12-knit_child_quarto/
+if (shap_exists) {
+  shap_qmd <- knitr::knit_child("_shap.qmd", quiet = TRUE)
+  cat(shap_qmd, sep = "\n")
+}
+```
 
 {{< include _stats.qmd >}}

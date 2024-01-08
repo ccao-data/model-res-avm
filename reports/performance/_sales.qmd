@@ -1,4 +1,4 @@
-{{< include _setup.qmd >}}
+{{< include ../_setup.qmd >}}
 
 # Sales
 
@@ -133,6 +133,14 @@ rbind(
     ) %>%
     slice_min(order_by = meta_sale_price, n = 25)
 ) %>%
+  select(
+    meta_sale_price:meta_tieback_proration_rate,
+    loc_property_address:loc_property_zip,
+    char_yrblt:char_beds,
+    starts_with("loc_school"),
+    sv_is_outlier,
+    sv_outlier_type
+  ) %>%
   datatable(rownames = FALSE)
 ```
 
@@ -159,6 +167,14 @@ rbind(
     ) %>%
     slice_min(order_by = meta_sale_price, n = 25)
 ) %>%
+  select(
+    meta_sale_price:meta_tieback_proration_rate,
+    loc_property_address:loc_property_zip,
+    char_yrblt:char_beds,
+    starts_with("loc_school"),
+    sv_is_outlier,
+    sv_outlier_type
+  ) %>%
   datatable(rownames = FALSE)
 ```
 
@@ -168,7 +184,7 @@ rbind(
 
 ::: panel-tabset
 
-## Median Sale Price
+## Median Sale Price by Year and Outlier Status
 
 ```{r _sales_median_price}
 ggplot(
@@ -180,17 +196,18 @@ ggplot(
   aes(x = meta_year, y = median_price, group = sv_is_outlier)
 ) +
   geom_line(aes(color = sv_is_outlier)) +
-  scale_y_continuous(labels = scales::dollar_format()) +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_color_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
   labs(
-    y = "Median Sale Price", x = "Year", title = "By Year and Outlier Status"
+    y = "Median Sale Price", x = "Year"
   ) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
-    legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
   )
+
 
 price_change <- ggplot(
   training_data %>%
@@ -226,6 +243,7 @@ price_change <- ggplot(
 ggplotly(price_change)
 ```
 
+## Sale Price by Year and Week
 ```{r _sales_price_week}
 tri_sales <- training_data %>%
   filter(sv_is_outlier == FALSE) %>%
@@ -234,7 +252,8 @@ tri_sales <- training_data %>%
   summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
   split(.$meta_triad_name)
 
-map2(tri_sales, names(tri_sales), function(x, title) {
+
+plots <- map2(tri_sales, names(tri_sales), function(x, title) {
   limits <- if (title == "South") c(100000, 300000) else NULL
 
   x %>%
@@ -243,7 +262,7 @@ map2(tri_sales, names(tri_sales), function(x, title) {
     labs(
       y = "Median Sale Price",
       x = "Week",
-      title = paste(title, "Tri, By Year and Week"),
+      title = paste(title, "Tri"),
       subtitle = "Outliers excluded"
     ) +
     theme_minimal() +
@@ -257,11 +276,21 @@ map2(tri_sales, names(tri_sales), function(x, title) {
     ) +
     facet_wrap(vars(time_sale_year))
 })
+
+extract_and_print_plots <- function(plots) {
+  num_plots <- length(plots)
+
+  for (i in 1:num_plots) {
+    print(plots[[i]])
+  }
+}
+
+extract_and_print_plots(plots)
 ```
 
-## Number of Sales
+## Sales by Year, Month, and Outlier Status
 
-```{r _sales_volume1}
+```{r _sales_volume_by_year_month_outlier}
 ggplot(
   training_data,
   aes(x = meta_year, group = sv_is_outlier)
@@ -271,16 +300,16 @@ ggplot(
     label = format(after_stat(count), big.mark = ",")
   ), stat = "count", vjust = -1) +
   labs(
-    y = "Number of Sales", x = "Year", title = "By Year and Outlier Status"
+    y = "Number of Sales", x = "Year"
   ) +
+  scale_fill_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
   theme_minimal() +
   scale_y_continuous(
-    labels = scales::comma,
+    labels = comma,
     limits = c(0, 60000)
   ) +
   theme(
     legend.position = "bottom",
-    legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
   )
@@ -291,15 +320,14 @@ ggplot(
 ) +
   geom_bar(aes(fill = sv_is_outlier)) +
   labs(
-    y = "Number of Sales", x = "Year",
-    title = "By Month and Outlier Status"
+    y = "Number of Sales", x = "Year"
   ) +
+  scale_fill_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::comma, limits = c(0, 6000)) +
+  scale_y_continuous(labels = comma, limits = c(0, 6000)) +
   scale_x_continuous(breaks = 1:12, labels = month.name) +
   theme(
     legend.position = "bottom",
-    legend.title = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)

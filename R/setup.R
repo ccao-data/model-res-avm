@@ -26,6 +26,7 @@ conflicts_prefer(
   dplyr::slice,
   glue::glue,
   lubridate::duration,
+  purrr::discard,
   purrr::flatten,
   purrr::is_empty,
   purrr::set_names,
@@ -49,6 +50,8 @@ paths <- model_file_dict()
 # instead, since `params` is a reserved variable name in Quarto
 if (knitr::is_html_output() || knitr::is_latex_output()) {
   params_obj_name <- "model_params"
+} else if (exists("params")) {
+  if (exists("run_id", where = params)) params_obj_name <- "model_params"
 } else {
   params_obj_name <- "params"
 }
@@ -76,4 +79,14 @@ comp_enable <- as.logical(Sys.getenv(
 upload_enable <- as.logical(Sys.getenv(
   "UPLOAD_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$upload_enable
+))
+
+# Load any additional PINs to generate reports for from environment
+report_pins <- unique(c(
+  params$ratio_study$pins,
+  Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
+    str_split(" ") %>%
+    unlist() %>%
+    str_trim() %>%
+    discard(~ .x == "")
 ))

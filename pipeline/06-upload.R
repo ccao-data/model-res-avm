@@ -157,6 +157,16 @@ if (upload_enable) {
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test$s3)
 
+  message("Uploading test linear baseline")
+  read_parquet(paths$output$performance_test_linear$local) %>%
+    mutate(run_id = run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_test_linear$s3)
+  read_parquet(paths$output$performance_quantile_test_linear$local) %>%
+    mutate(run_id = run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_quantile_test_linear$s3)
+
   # Upload assessment set performance
   message("Uploading assessment set evaluation")
   read_parquet(paths$output$performance_assessment$local) %>%
@@ -204,7 +214,7 @@ if (upload_enable) {
 
 
   # 2.5. Finalize --------------------------------------------------------------
-  message("Uploading run metadata, timings, and performance report")
+  message("Uploading run metadata, timings, and reports")
 
   # Upload metadata
   aws.s3::put_object(
@@ -220,9 +230,25 @@ if (upload_enable) {
 
   # Upload performance report
   aws.s3::put_object(
-    paths$output$report$local,
-    paths$output$report$s3
+    paths$output$report_performance$local,
+    paths$output$report_performance$s3
   )
+
+  # Upload PIN report(s)
+  pin_report_files <- list.files(
+    paths$output$report_pin$local,
+    pattern = paste0(report_pins, collapse = "|"),
+    full.names = TRUE
+  )
+  pin_report_files <- gsub("(?<!:)/+", "/", pin_report_files, perl = TRUE)
+
+  for (local_path in pin_report_files) {
+    s3_path <- gsub("(?<!:)/+", "/", file.path(
+      paths$output$report_pin$s3,
+      basename(local_path)
+    ), perl = TRUE)
+    aws.s3::put_object(local_path, s3_path)
+  }
 }
 
 
@@ -273,7 +299,10 @@ if (upload_enable) {
       paste0(collapse = "\n")
 
     # Get a link to the uploaded Quarto report
-    report_path_parts <- strsplit(paths$output$report$s3[1], "/")[[1]]
+    report_path_parts <- strsplit(
+      paths$output$report_performance$s3[1],
+      "/"
+    )[[1]]
     report_bucket <- report_path_parts[3]
     report_path <- report_path_parts[4:length(report_path_parts)] %>%
       paste(collapse = "/")

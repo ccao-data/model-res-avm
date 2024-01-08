@@ -1,6 +1,6 @@
-{{< include _setup.qmd >}}
+{{< include ../_setup.qmd >}}
 
-# Statistical tests
+# Statistical Tests
 
 ```{r _stats_gather_data}
 # This script runs balance tests comparing the universe of residential parcels
@@ -238,7 +238,7 @@ iwalk(logits, ~ {
 ```
 :::
 
-## Standardized mean differences
+## Standardized Mean Differences
 
 The standardized (mean) difference is a measure of distance between two group
 means in terms of one or more variables.
@@ -266,27 +266,27 @@ For the empirical cumulative distributions, we are looking for overlap/similar
 distributions. Numeric variables scaled and centered.
 
 ::: panel-tabset
-## Numeric columns:
+## Numeric Columns:
 
 ```{r _stats_ecdfs1}
-grobs <-
-  lapply(names(sf_parcels %>% select(where(is.numeric))), function(x) {
-    data <- sf_parcels %>% select(Sale, any_of(x))
-    ggplot(data, aes(scale(sf_parcels %>% pull(x)),
-      color = Sale
-    )) +
-      stat_ecdf(geom = "step") +
-      labs(x = str_wrap(x, width = 25)) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = "none"
-      )
-  })
+num_plots <- length(sf_parcels %>% select(where(is.numeric)))
+
+grobs <- lapply(1:num_plots, function(index) {
+  x <- names(sf_parcels %>% select(where(is.numeric)))[index]
+  data <- sf_parcels %>% select(Sale, any_of(x))
+  ggplot(data, aes(scale(sf_parcels %>% pull(x)), color = Sale)) +
+    stat_ecdf(geom = "step") +
+    labs(x = str_wrap(x, width = 25)) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.position = if (index == num_plots) "bottom" else "none"
+    )
+})
 
 for (i in seq(1, length(grobs), by = 6)) {
   if (i == 13) {
@@ -315,27 +315,26 @@ for (i in seq(1, length(grobs), by = 6)) {
 }
 ```
 
-## Factor columns:
+## Factor Columns:
 
 ```{r _stats_ecdfs2}
-grobs <-
-  lapply(names(sf_parcels %>% select(where(is.factor) &
-    any_of(vars))), function(x) {
-    ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)),
-      color = Sale
-    )) +
-      stat_ecdf(geom = "step") +
-      labs(x = str_wrap(x, width = 25)) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = "none"
-      )
-  })
+num_plots <- length(sf_parcels %>% select(where(is.factor) & any_of(vars)))
+
+grobs <- lapply(1:num_plots, function(index) {
+  x <- names(sf_parcels %>% select(where(is.factor) & any_of(vars)))[index]
+  ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)), color = Sale)) +
+    stat_ecdf(geom = "step") +
+    labs(x = str_wrap(x, width = 25)) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.position = if (index == num_plots) "bottom" else "none"
+    )
+})
 
 for (i in seq(1, length(grobs), by = 6)) {
   if (i == 13) {

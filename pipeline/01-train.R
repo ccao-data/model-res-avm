@@ -43,7 +43,7 @@ train <- training(split_data)
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
-  data = training_data_full %>% select(-any_of("time_split")),
+  data = training_data_full,
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -53,7 +53,40 @@ train_recipe <- model_main_recipe(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. LightGBM Model ------------------------------------------------------------
+# 3. Linear Model --------------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+message("Creating and fitting linear baseline model")
+
+# Create a linear model recipe with additional imputation, transformations,
+# and feature interactions
+lin_recipe <- model_lin_recipe(
+  data = training_data_full %>%
+    mutate(meta_sale_price = log(meta_sale_price)),
+  pred_vars = params$model$predictor$all,
+  cat_vars = params$model$predictor$categorical,
+  id_vars = params$model$predictor$id
+)
+
+# Create a linear model specification and workflow
+lin_model <- parsnip::linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+lin_wflow <- workflow() %>%
+  add_model(lin_model) %>%
+  add_recipe(
+    recipe = lin_recipe,
+    blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
+  )
+
+# Fit the linear model on the training data
+lin_wflow_final_fit <- lin_wflow %>%
+  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 4. LightGBM Model ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Initializing LightGBM model")
 
@@ -63,7 +96,7 @@ message("Initializing LightGBM model")
 # See https://lightgbm.readthedocs.io/ for more information
 
 
-## 3.1. Model Initialization ---------------------------------------------------
+## 4.1. Model Initialization ---------------------------------------------------
 
 # Initialize a lightgbm model specification. Most hyperparameters are passed to
 # lightgbm as "engine arguments" i.e. things specific to lightgbm, as opposed to
@@ -83,7 +116,7 @@ lgbm_model <- parsnip::boost_tree(
     force_row_wise = params$model$force_row_wise,
 
 
-    ### 3.1.1. Manual Parameters -----------------------------------------------
+    ### 4.1.1. Manual Parameters -----------------------------------------------
 
     # These are static lightgbm-specific engine parameters passed to lgb.train()
     # See lightsnip::train_lightgbm for details
@@ -120,7 +153,7 @@ lgbm_model <- parsnip::boost_tree(
     # set_engine call if they are to be updated later
     valids = list(),
 
-    ### 3.1.2. Tuned Parameters ------------------------------------------------
+    ### 4.1.2. Tuned Parameters ------------------------------------------------
 
     # Typically set manually along with the number of iterations (trees)
     learning_rate = tune(),
@@ -156,7 +189,7 @@ lgbm_wflow <- workflow() %>%
   )
 
 
-## 3.2. Cross-Validation -------------------------------------------------------
+## 4.2. Cross-Validation -------------------------------------------------------
 
 # Begin CV tuning if enabled. We use Bayesian tuning as grid search or random
 # search take a very long time to produce good results due to the high number
@@ -248,6 +281,7 @@ if (cv_enable) {
         select(-any_of("trees"))
     ) %>%
     select(configuration = .config, everything()) %>%
+    mutate(across(any_of("num_iterations"), as.integer)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
 } else {
   # If CV is disabled, just use the default set of parameters specified in
@@ -266,6 +300,7 @@ if (cv_enable) {
     bind_cols(as_tibble(params$model$parameter)) %>%
     bind_cols(as_tibble(params$model$hyperparameter$default)) %>%
     select(-all_of(lgbm_missing_params)) %>%
+    mutate(across(any_of("num_iterations"), as.integer)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
 
   # If CV is disabled, we still need to write empty stub files for any outputs
@@ -275,7 +310,7 @@ if (cv_enable) {
 }
 
 
-## 3.3. Fit Models -------------------------------------------------------------
+## 4.3. Fit Models -------------------------------------------------------------
 
 # Finalize the model specification by disabling early stopping, instead using
 # the maximum number of iterations used during the best cross-validation round
@@ -321,7 +356,7 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Finalize Models -----------------------------------------------------------
+# 5. Finalize Models -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Finalizing and saving trained model")
 
@@ -329,7 +364,13 @@ message("Finalizing and saving trained model")
 # predictions are used to evaluate model performance on the unseen test set.
 # Keep only the variables necessary for evaluation
 test %>%
-  mutate(pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred) %>%
+  mutate(
+    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
+    pred_card_initial_fmv_lin = exp(predict(
+      lin_wflow_final_fit,
+      test %>% mutate(meta_sale_price = log(meta_sale_price))
+    )$.pred)
+  ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
     all_of(params$ratio_study$geographies), char_bldg_sf,
@@ -337,7 +378,7 @@ test %>%
       "prior_far_tot" = params$ratio_study$far_column,
       "prior_near_tot" = params$ratio_study$near_column
     )),
-    pred_card_initial_fmv,
+    pred_card_initial_fmv, pred_card_initial_fmv_lin,
     meta_sale_price, meta_sale_date, meta_sale_document_num
   ) %>%
   # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential

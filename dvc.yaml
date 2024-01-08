@@ -150,7 +150,7 @@ stages:
         cache: false
     - output/metadata/model_metadata.parquet:
         cache: false
-    - reports/performance.html:
+    - reports/performance/performance.html:
         cache: false
 
   upload:
@@ -178,7 +178,7 @@ stages:
     - output/feature_importance/model_feature_importance.parquet
     - output/metadata/model_metadata.parquet
     - output/timing/model_timing.parquet
-    - reports/performance.html
+    - reports/performance/performance.html
 
   export:
     cmd: Rscript pipeline/07-export.R
