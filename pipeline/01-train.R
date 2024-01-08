@@ -272,6 +272,7 @@ if (cv_enable) {
         select(-any_of("trees"))
     ) %>%
     select(configuration = .config, everything()) %>%
+    mutate(across(any_of("num_iterations"), as.integer)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
 } else {
   # If CV is disabled, just use the default set of parameters specified in
@@ -290,6 +291,7 @@ if (cv_enable) {
     bind_cols(as_tibble(params$model$parameter)) %>%
     bind_cols(as_tibble(params$model$hyperparameter$default)) %>%
     select(-all_of(lgbm_missing_params)) %>%
+    mutate(across(any_of("num_iterations"), as.integer)) %>%
     arrow::write_parquet(paths$output$parameter_final$local)
 
   # If CV is disabled, we still need to write empty stub files for any outputs
