@@ -43,4 +43,4 @@ if (shap_exists) {
 }
 ```
 
-<!-- {{< include _stats.qmd >}} -->
+{{< include _stats.qmd >}}
