@@ -1014,6 +1014,45 @@ iwalk(model_lorenz_curve_plots, ~ {
 
 ::: {.panel-tabset}
 
+### Test Set
+
+```{r _model_big_misses_test}
+model_big_misses_test <- test_card %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  select(
+    Town = township_name, PIN = meta_pin, Class = meta_class,
+    NBHD = meta_nbhd_code, `Bldg Sqft` = char_bldg_sf,
+    `Sale Price` = meta_sale_price, `Sale Date` = meta_sale_date,
+    `Est. FMV` = pred_card_initial_fmv
+  ) %>%
+  mutate(
+    Difference = abs(`Sale Price` - `Est. FMV`),
+    `Qnt.` = cut(
+      `Sale Price`,
+      breaks = quantile(`Sale Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
+      labels = c("Q1", "Q2", "Q3", "Q4"),
+      include.lowest = TRUE
+    ),
+    .by = Town
+  ) %>%
+  group_by(Town, `Qnt.`) %>%
+  slice_max(Difference, n = 1) %>%
+  arrange(-Difference) %>%
+  relocate(`Qnt.`, .after = "Town") %>%
+  mutate(
+    across(
+      c(ends_with("Price"), ends_with("FMV"), Difference),
+      ~ scales::dollar(.x, prefix = "$")
+    ),
+    `Bldg Sqft` = scales::comma(`Bldg Sqft`)
+  ) %>%
+  arrange(Town, `Qnt.`)
+
+model_big_misses_test %>%
+  datatable(rownames = FALSE)
+```
+
 ### Assessment Set
 
 The following table shows shows the largest misses from the **assessment set**. It finds four sales (one per quartile of price) for each township where the model's estimate was the furthest from the actual sale price.
@@ -1048,6 +1087,13 @@ model_big_misses_assessment <- assessment_pin %>%
   slice_max(Difference, n = 1) %>%
   arrange(-Difference) %>%
   relocate(`Qnt.`, .after = "Town") %>%
+  mutate(
+    across(
+      c(ends_with("Price"), ends_with("FMV"), Difference),
+      ~ scales::dollar(.x, prefix = "$")
+    ),
+    `Bldg Sqft` = scales::comma(`Bldg Sqft`)
+  ) %>%
   arrange(Town, `Qnt.`)
 
 model_big_misses_assessment %>%
