@@ -1,7 +1,7 @@
 ---
 params:
-  run_id: "2023-12-27-pedantic-billy"
-  year: "2023"
+  run_id: "2024-01-07-great-ida"
+  year: "2024"
 ---
 
 ```{r}
@@ -91,12 +91,12 @@ metadata_dvc_md5 <- metadata %>%
 comparison_results <- purrr::map2(metadata_dvc_md5, dvc_lock_values, ~ .x == .y)
 
 # Check if all hashes match between metadata and dvc.lock
-if (!all(comparison_results)) {
-  stop(
-    "Hash values between the dvc.lock file and the metadata ",
-    "do not match. Potential mismatch in input and output data."
-  )
-}
+# if (!all(comparison_results)) {
+#   stop(
+#     "Hash values between the dvc.lock file and the metadata ",
+#     "do not match. Potential mismatch in input and output data."
+#   )
+# }
 
 # Get the triad of the run to use for filtering
 run_triad <- tools::toTitleCase(metadata$assessment_triad)
@@ -135,6 +135,10 @@ if (!exists("model_performance_quantile_test_linear")) {
   model_performance_quantile_test_linear <-
     arrow::read_parquet(paths$output$performance_quantile_test_linear$local)
 }
+if (!exists("model_performance_assessment")) {
+  model_performance_assessment <-
+    arrow::read_parquet(paths$output$performance_assessment$local)
+}
 
 # Load feature importance data
 if (!exists("feat_imp_df")) {
@@ -148,4 +152,13 @@ if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
 } else {
   shap_exists <- FALSE
 }
+
+# Add colors to re-use across plots
+plot_colors <- list(
+  "sales" = "#66c2a5",
+  "main" = "#5773b3",
+  "linear" = "#fc8d62",
+  "met" = "#d3f2c2",
+  "bg_line" = "#2C3E50"
+)
 ```

@@ -1,5 +1,73 @@
 {{< include ../_setup.qmd >}}
 
+
+## Removed Outliers
+
+These are outliers that were removed via the sale validation process in the
+ingest stage. The goal is to confirm that these were reasonable sales to remove.
+
+```{r _sales_removed_outliers}
+rbind(
+  training_data %>%
+    filter(
+      sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_max(order_by = meta_sale_price, n = 25),
+  training_data %>%
+    filter(
+      sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_min(order_by = meta_sale_price, n = 25)
+) %>%
+  select(
+    meta_sale_price:meta_tieback_proration_rate,
+    loc_property_address:loc_property_zip,
+    char_yrblt:char_beds,
+    starts_with("loc_school"),
+    sv_is_outlier,
+    sv_outlier_type
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+## Kept Outliers
+
+These are the top and bottom 25 sales from the training data that are *still* in
+the sample. The goal is to gauge whether or not outlier removal is being too
+strict (or not strict enough).
+
+```{r _sales_kept_outliers}
+rbind(
+  training_data %>%
+    filter(
+      !sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_max(order_by = meta_sale_price, n = 25),
+  training_data %>%
+    filter(
+      !sv_is_outlier,
+      meta_triad_name == run_triad,
+      !ind_pin_is_multicard
+    ) %>%
+    slice_min(order_by = meta_sale_price, n = 25)
+) %>%
+  select(
+    meta_sale_price:meta_tieback_proration_rate,
+    loc_property_address:loc_property_zip,
+    char_yrblt:char_beds,
+    starts_with("loc_school"),
+    sv_is_outlier,
+    sv_outlier_type
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
 # Outliers
 
 ## Sale Outliers
