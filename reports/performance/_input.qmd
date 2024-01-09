@@ -333,16 +333,49 @@ assessment_pin %>%
 ### Map of Townhome Complex IDs
 
 ```{r _input_complex_id_map, warning=FALSE}
-input_complex_id_map <- complex_id_data %>%
+# Self-join to find 5 random complex IDs from each township + their nearest
+# neighboring complex IDs
+input_complex_id_locs <- complex_id_data %>%
+  left_join(
+    assessment_card %>%
+      select(meta_pin, meta_card_num, loc_longitude, loc_latitude),
+    by = "meta_pin"
+  ) %>%
+  group_by(meta_complex_id) %>%
+  summarise(
+    mean_lat = mean(loc_latitude, na.rm = TRUE),
+    mean_lon = mean(loc_longitude, na.rm = TRUE)
+  ) %>%
+  mutate(
+    targ_lat_low = mean_lat - 0.001,
+    targ_lat_high = mean_lat + 0.001,
+    targ_lon_low = mean_lon - 0.001,
+    targ_lon_high = mean_lon + 0.001
+  )
+
+input_complex_id_targets <- complex_id_data %>%
   mutate(
     township_name = ccao::town_convert(meta_township_code),
     triad = ccao::town_get_triad(meta_township_code, name = TRUE)
   ) %>%
   mutate(complex_id_cnt = n(), .by = meta_complex_id) %>%
   filter(triad == run_triad, complex_id_cnt >= 6) %>%
+  distinct(township_name, meta_complex_id) %>%
   group_by(township_name) %>%
-  sample_n(5) %>%
+  slice_sample(n = 5) %>%
+  ungroup() %>%
   select(meta_complex_id) %>%
+  left_join(input_complex_id_locs, by = "meta_complex_id") %>%
+  left_join(
+    input_complex_id_locs %>% select(-starts_with("targ_")),
+    by = join_by(
+      between(y$mean_lat, x$targ_lat_low, x$targ_lat_high),
+      between(y$mean_lon, x$targ_lon_low, x$targ_lon_high)
+    )
+  ) %>%
+  distinct(meta_complex_id = meta_complex_id.y)
+
+input_complex_id_map <- input_complex_id_targets %>%
   left_join(complex_id_data, by = "meta_complex_id") %>%
   left_join(
     chars_data %>%
