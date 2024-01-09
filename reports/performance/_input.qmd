@@ -289,7 +289,7 @@ assessment_pin %>%
 
 ### Map of Townhome Complex IDs
 
-```{r _input_complex_id_map}
+```{r _input_complex_id_map, warning=FALSE}
 input_complex_id_map <- complex_id_data %>%
   mutate(
     township_name = ccao::town_convert(meta_township_code),
@@ -315,9 +315,9 @@ input_complex_id_map <- complex_id_data %>%
     by = "meta_pin"
   )
 
-input_complex_id_palette <- colorspace::qualitative_hcl(
-  length(unique(input_complex_id_map$meta_complex_id)),
-  palette = "Dark 3"
+input_complex_id_palette <- colorFactor(
+  palette = "Set1",
+  domain = unique(input_complex_id_map$meta_complex_id)
 )
 
 leaflet(input_complex_id_map) %>%
@@ -334,9 +334,9 @@ leaflet(input_complex_id_map) %>%
     ),
     radius = 5,
     weight = 1,
-    color = "darkgrey",
+    color = ~ input_complex_id_palette(meta_complex_id),
     opacity = 1,
-    fillColor = input_complex_id_palette,
+    fillColor = ~ input_complex_id_palette(meta_complex_id),
     fillOpacity = 1
   )
 ```
