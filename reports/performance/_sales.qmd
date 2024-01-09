@@ -2,337 +2,336 @@
 
 # Sales
 
-## Sales Data
+This section contains volume and sale price trends as present in the **training set**. All plots are limited to the triad of interest unless explicitly noted.
+
+## Volume Trends
 
 ::: panel-tabset
 
-## By Year
+### By Township and Year
 
 *NOTE: Outliers are removed*
 
-```{r _sales_town_year}
-township <- training_data %>%
-  filter(!sv_is_outlier, meta_triad_name == run_triad) %>%
+```{r _sales_volume_town_year}
+sales_volume_town_year_plot <- training_data %>%
+  filter(meta_triad_name == run_triad) %>%
   mutate(meta_year = as.numeric(meta_year)) %>%
-  summarise(sales = n(), .by = c(meta_township_name, meta_year)) %>%
-  select(
-    Sales = sales,
-    Year = meta_year,
-    Township = meta_township_name
+  summarise(
+    num_sales = sum(!sv_is_outlier, na.rm = TRUE),
+    num_outliers = sum(sv_is_outlier, na.rm = TRUE),
+    pct_outliers = scales::percent(num_outliers / num_sales, accuracy = 0.1),
+    .by = c(meta_township_name, meta_year)
   ) %>%
+  ungroup() %>%
   ggplot() +
-  geom_line(aes(x = Year, y = Sales, color = Township)) +
-  scale_y_continuous(labels = scales::comma, breaks = seq(0, 6000, 1000)) +
-  scale_x_continuous(breaks = seq(
-    (as.numeric(params$year) - 9),
-    as.numeric(params$year), 1
-  )) +
-  theme_minimal() +
-  theme(axis.title.x = element_blank())
+  geom_line(
+    mapping = aes(
+      x = meta_year,
+      y = num_sales,
+      color = meta_township_name,
+      group = meta_township_name,
+      text = paste0(
+        "Township: ", meta_township_name,
+        "\nYear: ", meta_year,
+        "\nNum. Sales: ", num_sales,
+        "\nNum. Outliers: ", num_outliers,
+        "\nPct. Outliers: ", pct_outliers
+      )
+    )
+  ) +
+  labs(x = "Year", y = "Number of Sales", color = "Township") +
+  theme_minimal()
 
-ggplotly(township)
+ggplotly(sales_volume_town_year_plot, tooltip = "text")
 ```
 
-## By Quarter
-
-Sales by by quarter for the previous 4 years. The goal is to see how different
-segments of the market are changing as a proportion in each tri-town. Sales are
-binned into 4 different groups based on price.
+### By Class and Year
 
 *NOTE: Outliers are removed*
 
-```{r _sales_town_bin1, fig.height=8, fig.width=7, out.width="100%"}
+```{r _sales_volume_class_year}
+sales_volume_class_year_plot <- training_data %>%
+  filter(meta_triad_name == run_triad) %>%
+  mutate(meta_year = as.numeric(meta_year)) %>%
+  summarise(
+    num_sales = sum(!sv_is_outlier, na.rm = TRUE),
+    num_outliers = sum(sv_is_outlier, na.rm = TRUE),
+    pct_outliers = scales::percent(num_outliers / num_sales, accuracy = 0.1),
+    .by = c(meta_class, meta_year)
+  ) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_line(
+    mapping = aes(
+      x = meta_year,
+      y = num_sales,
+      color = meta_class,
+      group = meta_class,
+      text = paste0(
+        "Class: ", meta_class,
+        "\nYear: ", meta_year,
+        "\nNum. Sales: ", num_sales,
+        "\nNum. Outliers: ", num_outliers,
+        "\nPct. Outliers: ", pct_outliers
+      )
+    )
+  ) +
+  labs(x = "Year", y = "Number of Sales", color = "Township") +
+  theme_minimal()
+
+ggplotly(sales_volume_class_year_plot, tooltip = "text")
+```
+
+### By Township and Quarter
+
+*NOTE: Outliers are removed*
+
+Sales by quarter for the previous 4 years. The goal is to see how different
+segments of the market are changing as a proportion in each township. Sales are
+binned into different groups based on price.
+
+```{r _sales_volume_town_quarter, fig.height=8, fig.width=7}
 training_data %>%
   filter(
     !sv_is_outlier,
     meta_triad_name == run_triad,
-    meta_year >= as.numeric(params$year) - 4
+    meta_year >= as.numeric(metadata$input_max_sale_year) - 3
   ) %>%
   mutate(
     Bin = cut(
       meta_sale_price,
       breaks = c(1, 100000, 300000, 600000, 1000000, max(meta_sale_price)),
       labels = c(
-        "$1 - $100,000",
-        "$100,000 - $300,000",
-        "$300,000 - $600,000",
-        "$600,000 - $1,000,000",
-        "$1,000,000+"
+        "$1 - $100K",
+        "$100K - $300K",
+        "$300K - $600K",
+        "$600K - $1M",
+        "$1M+"
       )
     ),
-    Quarter = lubridate::quarter(meta_sale_date) + 4 *
-      (as.numeric(meta_year) - as.numeric(params$year))
+    date = floor_date(meta_sale_date, "quarter")
   ) %>%
-  summarise(Sales = n(), .by = c(meta_township_name, Quarter, Bin)) %>%
-  select(Sales, Bin, Township = meta_township_name, Quarter) %>%
+  summarise(Sales = n(), .by = c(meta_township_name, date, Bin)) %>%
+  select(Sales, Bin, Township = meta_township_name, date) %>%
   ggplot(aes(
-    x = Quarter,
+    x = date,
     y = Sales,
     fill = Bin,
     group = Bin
   )) +
   geom_area() +
   scale_color_brewer(palette = "PuOr") +
+  scale_x_date(date_breaks = "6 months") +
+  labs(x = "Date", y = "Number of Sales", fill = "Price Bin") +
   theme_minimal() +
   theme(
     legend.position = "bottom",
-    axis.text.x = element_text(angle = 90, hjust = 1),
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank()
+    axis.text.x = element_text(angle = 45, hjust = 1)
   ) +
   facet_wrap(vars(Township), scales = "free_y", ncol = 3)
 ```
 
-## By Class and Year
+### By Outlier Status and Year
 
-*NOTE: Outliers are removed*
+_NOTE: Includes sales from all triads_
 
-```{r _sales_class_year}
-class <- training_data %>%
-  filter(
-    !sv_is_outlier,
-    meta_triad_name == run_triad
+```{r _sales_volume_outlier_year}
+training_data %>%
+  mutate(
+    outlier = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    outlier = factor(outlier, c("Outlier", "Not Outlier"))
   ) %>%
-  mutate(meta_year = as.numeric(meta_year)) %>%
-  summarise(sales = n(), .by = c(meta_class, meta_year)) %>%
-  rename(Class = meta_class) %>%
-  pivot_wider(
-    id_cols = Class,
-    names_from = meta_year,
-    values_from = sales
-  )
-
-class %>%
-  kable() %>%
-  kable_styling() %>%
-  row_spec(unique(which(is.na(class), arr.ind = TRUE)[, 1]),
-    bold = TRUE,
-    background = "lightgrey"
-  )
-```
-
-## Removed Outliers
-
-These are outliers that were removed via the sale validation process in the
-ingest stage. The goal is to confirm that these were reasonable sales to remove.
-
-```{r _sales_removed_outliers}
-rbind(
-  training_data %>%
-    filter(
-      sv_is_outlier,
-      meta_triad_name == run_triad,
-      !ind_pin_is_multicard
-    ) %>%
-    slice_max(order_by = meta_sale_price, n = 25),
-  training_data %>%
-    filter(
-      sv_is_outlier,
-      meta_triad_name == run_triad,
-      !ind_pin_is_multicard
-    ) %>%
-    slice_min(order_by = meta_sale_price, n = 25)
-) %>%
-  select(
-    meta_sale_price:meta_tieback_proration_rate,
-    loc_property_address:loc_property_zip,
-    char_yrblt:char_beds,
-    starts_with("loc_school"),
-    sv_is_outlier,
-    sv_outlier_type
-  ) %>%
-  datatable(rownames = FALSE)
-```
-
-## Kept Outliers
-
-These are the top and bottom 25 sales from the training data that are *still* in
-the sample. The goal is to gauge whether or not outlier removal is being too
-strict (or not strict enough).
-
-```{r _sales_kept_outliers}
-rbind(
-  training_data %>%
-    filter(
-      !sv_is_outlier,
-      meta_triad_name == run_triad,
-      !ind_pin_is_multicard
-    ) %>%
-    slice_max(order_by = meta_sale_price, n = 25),
-  training_data %>%
-    filter(
-      !sv_is_outlier,
-      meta_triad_name == run_triad,
-      !ind_pin_is_multicard
-    ) %>%
-    slice_min(order_by = meta_sale_price, n = 25)
-) %>%
-  select(
-    meta_sale_price:meta_tieback_proration_rate,
-    loc_property_address:loc_property_zip,
-    char_yrblt:char_beds,
-    starts_with("loc_school"),
-    sv_is_outlier,
-    sv_outlier_type
-  ) %>%
-  datatable(rownames = FALSE)
-```
-
-:::
-
-## Sales Trends
-
-::: panel-tabset
-
-## Median Sale Price by Year and Outlier Status
-
-```{r _sales_median_price}
-ggplot(
-  training_data %>%
-    summarise(
-      median_price = median(meta_sale_price),
-      .by = c(meta_year, sv_is_outlier)
-    ),
-  aes(x = meta_year, y = median_price, group = sv_is_outlier)
-) +
-  geom_line(aes(color = sv_is_outlier)) +
-  scale_y_continuous(labels = dollar_format()) +
-  scale_color_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
-  labs(
-    y = "Median Sale Price", x = "Year"
+  ggplot(aes(x = meta_year, group = sv_is_outlier)) +
+  geom_bar(aes(fill = outlier)) +
+  geom_text(
+    mapping = aes(label = after_stat(count)),
+    stat = "count",
+    position = "stack",
+    vjust = -0.3
   ) +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom",
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank()
-  )
-
-
-price_change <- ggplot(
-  training_data %>%
-    filter(sv_is_outlier == FALSE &
-      meta_year >= as.numeric(params$year) - 4) %>%
-    group_by(meta_year, meta_township_name, meta_triad_name) %>%
-    summarise(median_price = median(meta_sale_price)) %>%
-    group_by(meta_township_name, meta_triad_name) %>%
-    mutate(median_price_change = (
-      median_price /
-        first(median_price, order_by = meta_year)
-    ) - 1),
-  aes(x = meta_year, y = median_price_change, group = meta_township_name)
-) +
-  geom_line(aes(color = meta_township_name)) +
-  scale_y_continuous(labels = scales::percent_format()) +
-  labs(
-    y = "Median Sale Price",
-    x = "Year",
-    title = paste(
-      "Price / Price of", as.numeric(params$year) - 4, ", Outliers Excluded"
-    ),
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "none",
-    legend.title = element_blank(),
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank()
-  ) +
-  facet_wrap(vars(meta_triad_name), scales = "free")
-
-ggplotly(price_change)
-```
-
-## Sale Price by Year and Week
-```{r _sales_price_week}
-tri_sales <- training_data %>%
-  filter(sv_is_outlier == FALSE) %>%
-  mutate(time_sale_week_of_year = lubridate::week(meta_sale_date)) %>%
-  group_by(time_sale_week_of_year, time_sale_year, meta_triad_name) %>%
-  summarise(median_sale_price = median(meta_sale_price, na.rm = TRUE)) %>%
-  split(.$meta_triad_name)
-
-
-plots <- map2(tri_sales, names(tri_sales), function(x, title) {
-  limits <- if (title == "South") c(100000, 300000) else NULL
-
-  x %>%
-    ggplot() +
-    geom_line(aes(x = time_sale_week_of_year, y = median_sale_price)) +
-    labs(
-      y = "Median Sale Price",
-      x = "Week",
-      title = paste(title, "Tri"),
-      subtitle = "Outliers excluded"
-    ) +
-    theme_minimal() +
-    scale_y_continuous(labels = scales::dollar, limits = limits) +
-    theme(
-      legend.position = "bottom",
-      legend.title = element_blank(),
-      axis.title.y = element_blank(),
-      axis.title.x = element_blank(),
-      axis.text.x = element_blank()
-    ) +
-    facet_wrap(vars(time_sale_year))
-})
-
-extract_and_print_plots <- function(plots) {
-  num_plots <- length(plots)
-
-  for (i in 1:num_plots) {
-    print(plots[[i]])
-  }
-}
-
-extract_and_print_plots(plots)
-```
-
-## Sales by Year, Month, and Outlier Status
-
-```{r _sales_volume_by_year_month_outlier}
-ggplot(
-  training_data,
-  aes(x = meta_year, group = sv_is_outlier)
-) +
-  geom_bar(aes(fill = sv_is_outlier)) +
-  geom_text(aes(
-    label = format(after_stat(count), big.mark = ",")
-  ), stat = "count", vjust = -1) +
-  labs(
-    y = "Number of Sales", x = "Year"
-  ) +
-  scale_fill_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
-  theme_minimal() +
+  scale_fill_discrete(name = "Outlier Status") +
   scale_y_continuous(
     labels = comma,
     limits = c(0, 60000)
   ) +
-  theme(
-    legend.position = "bottom",
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank()
-  )
-
-ggplot(
-  training_data,
-  aes(x = time_sale_month_of_year, group = sv_is_outlier)
-) +
-  geom_bar(aes(fill = sv_is_outlier)) +
-  labs(
-    y = "Number of Sales", x = "Year"
-  ) +
-  scale_fill_discrete(name = "Outlier Status", labels = c("Not Outlier", "Outlier")) +
+  labs(y = "Number of Sales", x = "Year") +
   theme_minimal() +
-  scale_y_continuous(labels = comma, limits = c(0, 6000)) +
-  scale_x_continuous(breaks = 1:12, labels = month.name) +
   theme(
     legend.position = "bottom",
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    panel.grid.major.x = element_blank()
+  )
+```
+
+### By Outlier Status and Month
+
+_NOTE: Includes sales from all triads_
+
+```{r _sales_volume_outlier_month}
+training_data %>%
+  mutate(
+    outlier = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    outlier = factor(outlier, c("Outlier", "Not Outlier"))
+  ) %>%
+  ggplot(aes(x = time_sale_month_of_year, group = sv_is_outlier)) +
+  geom_bar(aes(fill = outlier)) +
+  labs(y = "Number of Sales", x = "Month of Year") +
+  scale_y_continuous(labels = comma) +
+  scale_x_continuous(breaks = 1:12, labels = month.name) +
+  scale_fill_discrete(name = "Outlier Status") +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major.x = element_blank()
   ) +
   facet_wrap(vars(meta_year))
+```
+
+:::
+
+## Price Trends
+
+::: panel-tabset
+
+### By Outlier Status and Year
+
+_NOTE: Includes sales from all triads_
+
+```{r _sales_price_outlier_year}
+training_data %>%
+  mutate(
+    outlier = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    outlier = factor(outlier, c("Outlier", "Not Outlier"))
+  ) %>%
+  summarise(
+    median_price = median(meta_sale_price),
+    .by = c(meta_year, outlier)
+  ) %>%
+  ggplot(aes(x = meta_year, y = median_price, group = outlier)) +
+  geom_line(aes(color = outlier)) +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_color_discrete(name = "Outlier Status") +
+  labs(
+    y = "Median Sale Price", x = "Year"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+### Indexed by Township and Quarter
+
+```{r _sales_price_index_township}
+sales_price_index_nearest_year <- ccao::town_dict %>%
+  filter(triad_name == run_triad) %>%
+  slice(1) %>%
+  pull(township_name) %>%
+  ccao::town_get_assmnt_year(round_type = "floor") - 3
+
+sales_price_index_township <- training_data %>%
+  filter(
+    meta_triad_name == run_triad,
+    sv_is_outlier == FALSE,
+    meta_year >= sales_price_index_nearest_year
+  ) %>%
+  mutate(date = floor_date(meta_sale_date, "quarter")) %>%
+  group_by(date, meta_township_name, meta_triad_name) %>%
+  summarise(
+    median_price = median(meta_sale_price),
+    num_sales = n()
+  ) %>%
+  group_by(meta_township_name, meta_triad_name) %>%
+  mutate(median_price_change = (
+    median_price /
+      first(median_price, order_by = date)
+  ) - 1) %>%
+  ggplot(
+    mapping = aes(
+      x = date,
+      y = median_price_change,
+      group = meta_township_name
+    )
+  ) +
+  geom_line(
+    mapping = aes(
+      color = meta_township_name,
+      text = paste0(
+        "Date: ", date, "\n",
+        "Township: ", meta_township_name, "\n",
+        "Median Price: ", scales::dollar(median_price), "\n",
+        "Num. Sales: ", scales::comma(num_sales), "\n",
+        "Pct. Change: ", scales::percent(median_price_change, accuracy = 0.01)
+      )
+    )
+  ) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_date(date_breaks = "6 months") +
+  labs(
+    y = "Median Sale Price",
+    x = "Year",
+    title = paste0(
+      "Price / Price of ", sales_price_index_nearest_year, ", Outliers Excluded"
+    ),
+    color = "Township"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(sales_price_index_township, tooltip = "text")
+```
+
+### Indexed by Class and Quarter
+
+```{r _sales_price_index_class}
+sales_price_index_class <- training_data %>%
+  filter(
+    meta_triad_name == run_triad,
+    sv_is_outlier == FALSE,
+    meta_year >= sales_price_index_nearest_year
+  ) %>%
+  mutate(date = floor_date(meta_sale_date, "quarter")) %>%
+  group_by(date, meta_class) %>%
+  summarise(
+    median_price = median(meta_sale_price),
+    num_sales = n()
+  ) %>%
+  group_by(meta_class) %>%
+  mutate(median_price_change = (
+    median_price /
+      first(median_price, order_by = date)
+  ) - 1) %>%
+  ggplot(
+    mapping = aes(
+      x = date,
+      y = median_price_change,
+      group = meta_class
+    )
+  ) +
+  geom_line(
+    mapping = aes(
+      color = meta_class,
+      text = paste0(
+        "Date: ", date, "\n",
+        "Class: ", meta_class, "\n",
+        "Median Price: ", scales::dollar(median_price), "\n",
+        "Num. Sales: ", scales::comma(num_sales), "\n",
+        "Pct. Change: ", scales::percent(median_price_change, accuracy = 0.01)
+      )
+    )
+  ) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_date(date_breaks = "6 months") +
+  labs(
+    y = "Median Sale Price",
+    x = "Year",
+    title = paste0(
+      "Price / Price of ", sales_price_index_nearest_year, ", Outliers Excluded"
+    ),
+    color = "Township"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(sales_price_index_class, tooltip = "text")
 ```
 
 :::

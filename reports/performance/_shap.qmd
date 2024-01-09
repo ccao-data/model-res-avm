@@ -3,11 +3,11 @@
 # SHAP Values
 
 SHAP values are a way to explain the importance of specific features within the model.
-They represent both the direction and magnitude of a feature's impact on the prediciton.
+They represent both the direction and magnitude of a feature's impact on an individual prediction.
 
-## SHAP Summary
+## Summary Table
 
-```{r _shap_filtering}
+```{r _shap_filtering, warning=FALSE}
 shap_df_filtered <- shap_df %>%
   left_join(
     assessment_card %>%
@@ -28,26 +28,27 @@ shap_df_filtered %>%
   rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
   select(-c(type, n_missing, complete_rate, p25, p75)) %>%
   rename(histogram = hist, median = p50, min = p0, max = p100) %>%
-  mutate(
-    variable = str_replace_all(variable, "_", " "),
-    across(where(is.numeric), ~ round(.x, 1)),
-    `mean direction` = case_when(
-      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
-    ),
-    `median direction` = case_when(
-      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
-    ),
-    mean = abs(mean),
-    median = abs(median)
+  mutate(across(where(is.numeric), ~ round(.x, 1))) %>%
+  left_join(feat_imp_df, by = c("variable" = "model_predictor_all_name")) %>%
+  arrange(desc(gain_value)) %>%
+  select(
+    "Variable" = variable,
+    "Mean" = mean,
+    "Median" = median,
+    "SD" = sd,
+    "Min" = min,
+    "Max" = max,
+    "Histogram" = histogram
   ) %>%
-  relocate(`mean direction`, .before = mean) %>%
-  relocate(`median direction`, .before = median) %>%
+  mutate(across(Mean:Max, scales::dollar)) %>%
   datatable(
     rownames = FALSE,
-    height = "500px",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(1:7))
+        list(
+          className = "dt-nowrap dt-right",
+          targets = c(1:5)
+        )
       )
     )
   )
@@ -70,15 +71,6 @@ assessment_card_filtered <- assessment_card %>%
   arrange(meta_pin, meta_card_num)
 
 create_shapviz <- function(shap_df, assessment_df, idx) {
-  shap_predictors <- names(shap_df)
-  shap_predictors <- shap_predictors[!shap_predictors %in% c(
-    "meta_year",
-    "meta_pin",
-    "meta_card_num",
-    "pred_card_shap_baseline_fmv",
-    "township_code",
-    "meta_triad"
-  )]
   shapviz::shapviz(
     object = shap_df_filtered %>%
       select(all_of(shap_predictors)) %>%
@@ -92,26 +84,16 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 }
 ```
 
-## Beeswarm Plot
+## Overall Beeswarm
 
 ```{r _shap_beeswarm_overall, warning=FALSE}
-shap_predictors <- names(shap_df_filtered)
-shap_predictors <- shap_predictors[!shap_predictors %in% c(
-  "meta_year",
-  "meta_pin",
-  "meta_card_num",
-  "pred_card_shap_baseline_fmv",
-  "township_code",
-  "meta_triad"
-)]
-
-townships_to_iterate <- shap_df_filtered %>%
+shap_townships_list <- shap_df_filtered %>%
   distinct(township_code) %>%
   pull() %>%
   as.character()
 
 shap_idx_full_model <- which(
-  assessment_card_filtered$meta_township_code %in% townships_to_iterate
+  assessment_card_filtered$meta_township_code %in% shap_townships_list
 )
 
 shapviz::shapviz(
@@ -133,17 +115,15 @@ shapviz::shapviz(
   scale_x_continuous(labels = scales::dollar)
 ```
 
-## Beeswarm Plot per Township
+## Beeswarm Per Township
 
 ::: {.panel-tabset}
 
 ```{r _shap_beeswarm_iterate_township, results='asis', warning=FALSE}
 # Dynamically produce tabset
-for (township in townships_to_iterate) {
+for (township in shap_townships_list) {
   cat("##", ccao::town_convert(township), "\n")
-  shap_idx <- which(
-    assessment_card_filtered$meta_township_code == township
-  )
+  shap_idx <- which(assessment_card_filtered$meta_township_code == township)
   print(
     create_shapviz(
       shap_df_filtered,
