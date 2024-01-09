@@ -3,13 +3,11 @@
 # SHAP Values
 
 SHAP values are a way to explain the importance of specific features within the model.
-They represent both the direction and magnitude of a feature's impact on the prediciton.
+They represent both the direction and magnitude of a feature's impact on an individual prediction.
 
-::: {.panel-tabset}
+## Summary Table
 
-## SHAP Summary
-
-```{r _shap_filtering}
+```{r _shap_filtering, warning=FALSE}
 shap_df_filtered <- shap_df %>%
   left_join(
     assessment_card %>%
@@ -30,26 +28,27 @@ shap_df_filtered %>%
   rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
   select(-c(type, n_missing, complete_rate, p25, p75)) %>%
   rename(histogram = hist, median = p50, min = p0, max = p100) %>%
-  mutate(
-    variable = str_replace_all(variable, "_", " "),
-    across(where(is.numeric), ~ round(.x, 1)),
-    `mean direction` = case_when(
-      mean < 0 ~ "-", mean > 0 ~ "+", TRUE ~ ""
-    ),
-    `median direction` = case_when(
-      median < 0 ~ "-", median > 0 ~ "+", TRUE ~ ""
-    ),
-    mean = abs(mean),
-    median = abs(median)
+  mutate(across(where(is.numeric), ~ round(.x, 1))) %>%
+  left_join(feat_imp_df, by = c("variable" = "model_predictor_all_name")) %>%
+  arrange(desc(gain_value)) %>%
+  select(
+    "Variable" = variable,
+    "Mean" = mean,
+    "Median" = median,
+    "SD" = sd,
+    "Min" = min,
+    "Max" = max,
+    "Histogram" = histogram
   ) %>%
-  relocate(`mean direction`, .before = mean) %>%
-  relocate(`median direction`, .before = median) %>%
+  mutate(across(Mean:Max, scales::dollar)) %>%
   datatable(
     rownames = FALSE,
-    height = "500px",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(1:7))
+        list(
+          className = "dt-nowrap dt-right",
+          targets = c(1:5)
+        )
       )
     )
   )
@@ -72,59 +71,75 @@ assessment_card_filtered <- assessment_card %>%
   arrange(meta_pin, meta_card_num)
 
 create_shapviz <- function(shap_df, assessment_df, idx) {
-  shap_predictors <- names(shap_df)
-  shap_predictors <- shap_predictors[!shap_predictors %in% c(
-    "meta_year",
-    "meta_pin",
-    "meta_card_num",
-    "pred_card_shap_baseline_fmv",
-    "township_code",
-    "meta_triad"
-  )]
   shapviz::shapviz(
-    object = shap_df %>%
+    object = shap_df_filtered %>%
       select(all_of(shap_predictors)) %>%
       slice(idx) %>%
       as.matrix(),
     X = assessment_df %>%
       select(all_of(shap_predictors)) %>%
       slice(idx),
-    baseline = shap_df$pred_card_shap_baseline_fmv[1]
+    baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
   )
 }
 ```
 
-## Riverside Beeswarm
+## Overall Beeswarm
 
-```{r _shap_riverside_beeswarm, eval=shap_exists}
-shap_riverside_idx <- which(
-  assessment_card_filtered$meta_township_code == ccao::town_convert("Riverside")
+```{r _shap_beeswarm_overall, warning=FALSE}
+shap_townships_list <- shap_df_filtered %>%
+  distinct(township_code) %>%
+  pull() %>%
+  as.character()
+
+shap_idx_full_model <- which(
+  assessment_card_filtered$meta_township_code %in% shap_townships_list
 )
-create_shapviz(shap_df_filtered, assessment_card_filtered, shap_riverside_idx) %>%
-  shapviz::sv_importance("beeswarm") +
-  theme_minimal()
+
+shapviz::shapviz(
+  object = shap_df_filtered %>%
+    select(all_of(shap_predictors)) %>%
+    slice(shap_idx_full_model) %>%
+    as.matrix(),
+  X = assessment_card_filtered %>%
+    select(all_of(shap_predictors)) %>%
+    slice(shap_idx_full_model),
+  baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
+) %>%
+  shapviz::sv_importance(
+    "beeswarm",
+    max_display = 15L
+  ) +
+  theme_minimal() +
+  coord_cartesian(xlim = c(-100000, 200000)) +
+  scale_x_continuous(labels = scales::dollar)
 ```
 
-cat("## Calumet Beeswarm")
+## Beeswarm Per Township
 
-```{r _shap_calumet_beeswarm}
-shap_calumet_idx <- which(
-  assessment_card_filtered$meta_township_code == ccao::town_convert("Calumet")
-)
-create_shapviz(shap_df_filtered, assessment_card_filtered, shap_calumet_idx) %>%
-  shapviz::sv_importance("beeswarm") +
-  theme_minimal()
-```
+::: {.panel-tabset}
 
-## Thornton Beeswarm
-
-```{r _shap_thornton_beeswarm, eval=shap_exists}
-shap_thornton_idx <- which(
-  assessment_card_filtered$meta_township_code == ccao::town_convert("Thornton")
-)
-create_shapviz(shap_df_filtered, assessment_card_filtered, shap_thornton_idx) %>%
-  shapviz::sv_importance("beeswarm") +
-  theme_minimal()
+```{r _shap_beeswarm_iterate_township, results='asis', warning=FALSE}
+# Dynamically produce tabset
+for (township in shap_townships_list) {
+  cat("##", ccao::town_convert(township), "\n")
+  shap_idx <- which(assessment_card_filtered$meta_township_code == township)
+  print(
+    create_shapviz(
+      shap_df_filtered,
+      assessment_card_filtered,
+      shap_idx
+    ) %>%
+      shapviz::sv_importance(
+        "beeswarm",
+        max_display = 15L
+      ) +
+      theme_minimal() +
+      coord_cartesian(xlim = c(-100000, 200000)) +
+      scale_x_continuous(labels = scales::dollar)
+  )
+  cat("\n\n")
+}
 ```
 
 :::

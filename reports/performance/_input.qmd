@@ -1,36 +1,36 @@
 {{< include ../_setup.qmd >}}
 
-# Input data
+# Input Data
 
-## Data quality checks
+## Data Process Checks
 
 ::: panel-tabset
 
-## Home Improvement Exemption Spot Check
+### Home Improvement Exemption Spot Check
 
 This tests if our Home Improvement Exemption characteristics are getting
 accurately updated.
 
 ```{r _input_hie_characteristics}
-hie_pins <- training_data %>%
+input_hie_pins <- training_data %>%
   filter(
     hie_num_active == 1,
     meta_triad_code == run_triad_code,
-    meta_year == as.numeric(params$year) - 1
+    meta_year == as.numeric(metadata$assessment_data_year)
   ) %>%
   pull(meta_pin) %>%
   unique()
 
-chars_data_table <- chars_data %>%
+input_hie_chars_df <- chars_data %>%
   filter(
-    meta_year == as.numeric(params$year) - 1,
-    meta_pin %in% hie_pins
+    meta_year == as.numeric(metadata$assessment_data_year),
+    meta_pin %in% input_hie_pins
   ) %>%
   inner_join(
     hie_data %>%
       filter(
-        pin %in% hie_pins,
-        year >= as.numeric(params$year) - 4,
+        pin %in% input_hie_pins,
+        year >= as.numeric(metadata$assessment_data_year) - 4,
         qu_sqft_bld > 0
       ) %>%
       select(-year),
@@ -45,7 +45,7 @@ chars_data_table <- chars_data %>%
     by = join_by(meta_pin, meta_year)
   ) %>%
   select(
-    pin = meta_pin,
+    PIN = meta_pin,
     `OG SQFT` = char_bldg_sf,
     `HIE SQFT` = qu_sqft_bld,
     `NEW SQFT` = train_sqft,
@@ -57,20 +57,20 @@ chars_data_table <- chars_data %>%
     `NEW AIR` = train_air
   )
 
-chars_data_table %>%
+input_hie_chars_df %>%
   datatable(rownames = FALSE)
 ```
 
-## Characteristic Filling
+### Characteristic Filling
 
 This tests if our time filling techniques are working as expected.
 
 ```{r _input_characteristic_filling}
-filling_table <- training_data %>%
+input_char_filling_df <- training_data %>%
   filter(
     !ind_pin_is_multicard,
-    min(meta_sale_date) < lubridate::make_date(as.numeric(params$year) - 3),
-    max(meta_sale_date) > lubridate::make_date(as.numeric(params$year) - 3),
+    min(meta_sale_date) < lubridate::make_date(as.numeric(metadata$input_max_sale_year) - 3),
+    max(meta_sale_date) > lubridate::make_date(as.numeric(metadata$input_max_sale_year) - 3),
     .by = meta_pin
   ) %>%
   filter(n() > 6, .by = meta_pin) %>%
@@ -84,17 +84,17 @@ filling_table <- training_data %>%
   ) %>%
   arrange(PIN, Year)
 
-filling_table %>%
+input_char_filling_df %>%
   datatable(rownames = FALSE)
 ```
 
-## Multi-Card and Multi-PIN Aggregation
+### Multi-Card and Multi-PIN Aggregation
 
 This uses 5 test pins to assess if multi-card parcels successfully aggregate to
 the full pin.
 
 ```{r _input_multicard_sample}
-test_card_pins <- c(
+input_multicard_test_pins <- c(
   "17321110470000",
   "05174150240000",
   "05213220250000",
@@ -102,8 +102,8 @@ test_card_pins <- c(
   "06334030310000"
 )
 
-test_card_pins <- assessment_card %>%
-  filter(meta_pin %in% test_card_pins) %>%
+input_multicard_test_df <- assessment_card %>%
+  filter(meta_pin %in% input_multicard_test_pins) %>%
   arrange(meta_pin, meta_card_num) %>%
   select(
     PIN = meta_pin, Class = meta_class, Card = meta_card_num,
@@ -121,16 +121,35 @@ test_card_pins <- assessment_card %>%
         `PIN Final` = pred_pin_final_fmv_round
       ),
     by = c("PIN")
+  ) %>%
+  mutate(
+    `Card %` = scales::percent(`Card %`, accuracy = 0.01),
+    `SQFT` = scales::comma(`SQFT`),
+    `Card Initial` = scales::dollar(`Card Initial`),
+    across(starts_with("PIN "), scales::dollar)
   )
 
-test_card_pins %>%
-  datatable(rownames = FALSE)
+input_multicard_test_df %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Card %", "SQFT", "Card Initial", "Card Final", "PIN Far",
+            "PIN Near", "PIN Initial", "PIN Final"
+          )
+        )
+      )
+    )
+  )
 ```
 
-## Land Valuation
+### Land Valuation
 
 ```{r, _input_land_valuation, out.width="100%"}
-land_valuation <- assessment_pin %>%
+input_land_valuation <- assessment_pin %>%
   filter(meta_triad_code == run_triad_code) %>%
   mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
   select(
@@ -141,7 +160,7 @@ land_valuation <- assessment_pin %>%
     pred_pin_final_fmv_round
   )
 
-land_valuation %>%
+input_land_valuation %>%
   ggplot() +
   geom_histogram(aes(x = land_pct)) +
   scale_x_continuous(
@@ -152,28 +171,42 @@ land_valuation %>%
   theme_minimal()
 ```
 
-### PINs With 0 Land Sqft.
+### PINs with 0 or Missing Land Values
 
-```{r _input_pins_with_0_sq_ft}
+```{r _input_pins_weird_land}
 assessment_pin %>%
   filter(meta_triad_code == run_triad_code) %>%
-  filter(pred_pin_final_fmv_land == 0) %>%
+  filter(
+    pred_pin_final_fmv_land == 0 |
+      is.infinite(pred_pin_final_fmv_land / pred_pin_final_fmv_round) |
+      is.na(pred_pin_final_fmv_land / pred_pin_final_fmv_round)
+  ) %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  select(
+    `Year` = meta_year,
+    `Township Name` = township_name,
+    `PIN` = meta_pin,
+    `Class` = meta_class,
+    `Land %` = pred_pin_final_fmv_land / pred_pin_final_fmv_round,
+    `Land FMV` = pred_pin_final_fmv_land,
+    `Land Sqft.` = char_land_sf
+  ) %>%
   datatable(rownames = FALSE)
 ```
 
 :::
 
-## Multi-family and townhomes
+## Multi-Family and Townhomes
 
 ::: panel-tabset
 
-## YoY Changes
+### Multi-Family YoY Changes
 
 Where are 211s and 212s increasing a *lot*? Near values are Certified values
-from the current year, and far values are board values from two years ago.
+from the current year, and far values are Board of Review values from two years ago.
 
 ```{r _input_211_and_212_yoy_changes}
-multifamily_change <- assessment_pin %>%
+input_multifamily_change <- assessment_pin %>%
   filter(
     meta_class %in% c("211", "212"),
     meta_triad_code == run_triad_code
@@ -202,25 +235,26 @@ multifamily_change <- assessment_pin %>%
     "% Delta Far > 50%" = big_swings_far
   )
 
-multifamily_change %>%
+input_multifamily_change %>%
   datatable(
     rownames = FALSE,
-    height = "500px",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(1:2))
+        list(
+          className = "dt-right",
+          targets = c(2:3)
+        )
       )
     )
   )
 ```
 
-## Large Sqft. 211s and 212s
+### Large Sqft. 211s and 212s
 
-This creates a subset of 211s and 212s which are three standard deviations above
-the norm in terms of square footage. 
+Table of 211s and 212s which are three standard deviations above the norm in terms of square footage. 
 
 ```{r _input_large_211_212}
-large_sqft <- training_data %>%
+training_data %>%
   filter(
     meta_class %in% c("211", "212"),
     meta_triad_code == run_triad_code,
@@ -233,34 +267,34 @@ large_sqft <- training_data %>%
     .by = meta_class
   ) %>%
   filter(outlier) %>%
+  mutate(across(ends_with("_sf"), scales::comma)) %>%
   select(
     PIN = meta_pin,
-    Township = meta_township_name,
+    `Township Name` = meta_township_name,
     Class = meta_class,
-    "Mean SF" = mean_sf,
-    "Building SF" = char_bldg_sf
-  )
-
-large_sqft %>%
+    `Mean Sqft` = mean_sf,
+    `Building Sqft` = char_bldg_sf
+  ) %>%
   datatable(
     rownames = FALSE,
-    height = "500px",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(1:4))
+        list(
+          className = "dt-right",
+          targets = c(3:4)
+        )
       )
     )
   )
 ```
 
-
-## 210s/295s
+### Townhome Complex Averaging
 
 This takes a sample of 20 observations to see how far apart the initial
 predicted values are for townhomes. Is the average they get assigned reasonable?
 
 ```{r _input_townhomes_210_295}
-townhome_preds <- assessment_pin %>%
+assessment_pin %>%
   filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
   group_by(meta_complex_id) %>%
   mutate(
@@ -282,29 +316,37 @@ townhome_preds <- assessment_pin %>%
     across(contains("%"), ~ percent(.x, accuracy = 0.1))
   ) %>%
   relocate(c(meta_complex_id, n)) %>%
-  rename("Complex ID" = meta_complex_id, "Count" = n)
-
-townhome_preds %>%
+  rename("Complex ID" = meta_complex_id, "Count" = n) %>%
   datatable(
     rownames = FALSE,
-    height = "500px",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(1:6))
+        list(
+          className = "dt-right",
+          targets = c(2:6)
+        )
       )
     )
   )
 ```
 
-:::
+### Map of Townhome Complex IDs
 
-## Map of Townhome Complex IDs
-
-```{r _input_complex_id_map}
-complex_id_map <- complex_id_data %>%
+```{r _input_complex_id_map, warning=FALSE}
+input_complex_id_map <- complex_id_data %>%
+  mutate(
+    township_name = ccao::town_convert(meta_township_code),
+    triad = ccao::town_get_triad(meta_township_code, name = TRUE)
+  ) %>%
+  mutate(complex_id_cnt = n(), .by = meta_complex_id) %>%
+  filter(triad == run_triad, complex_id_cnt >= 6) %>%
+  group_by(township_name) %>%
+  sample_n(5) %>%
+  select(meta_complex_id) %>%
+  left_join(complex_id_data, by = "meta_complex_id") %>%
   left_join(
     chars_data %>%
-      filter(as.numeric(meta_year) == as.numeric(params$year) - 1) %>%
+      filter(meta_year == metadata$assessment_data_year) %>%
       select(
         meta_pin,
         loc_longitude,
@@ -314,15 +356,14 @@ complex_id_map <- complex_id_data %>%
         char_yrblt
       ),
     by = "meta_pin"
-  ) %>%
-  filter(meta_township_code == 35)
+  )
 
-colorPalette <- colorspace::qualitative_hcl(
-  length(unique(complex_id_map$meta_complex_id)),
-  palette = "Dark 3"
+input_complex_id_palette <- colorFactor(
+  palette = "Set1",
+  domain = unique(input_complex_id_map$meta_complex_id)
 )
 
-leaflet(complex_id_map) %>%
+leaflet(input_complex_id_map) %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
   addCircleMarkers(
     ~loc_longitude,
@@ -330,17 +371,17 @@ leaflet(complex_id_map) %>%
     popup = ~ paste0(
       "<b>Complex ID</b> ", as.character(meta_complex_id),
       "<hr>",
-      "<b>Rooms</b> ", char_rooms,
-      "<br><b>Building SF</b> ", scales::comma(char_bldg_sf),
-      "<br><b>Year Built</b> ", char_yrblt
+      "<b>Rooms</b>: ", char_rooms,
+      "<br><b>Building SF</b>: ", scales::comma(char_bldg_sf),
+      "<br><b>Year Built</b>: ", char_yrblt
     ),
     radius = 5,
     weight = 1,
-    color = "darkgrey",
+    color = ~ input_complex_id_palette(meta_complex_id),
     opacity = 1,
-    fillColor = colorPalette,
+    fillColor = ~ input_complex_id_palette(meta_complex_id),
     fillOpacity = 1
   )
 ```
 
-
+:::
