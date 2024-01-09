@@ -66,7 +66,11 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
     # Transforms and imputations
     step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
-    step_mutate_at(starts_with("ind_"), fn = as.numeric) %>%
+    step_mutate_at(
+      starts_with("ind_"),
+      starts_with("ccao_is"),
+      fn = as.numeric
+    ) %>%
     step_impute_median(all_numeric(), -all_outcomes(), -has_role("ID")) %>%
     # Replace novel levels with "new"
     step_novel(all_of(cat_vars), -has_role("ID")) %>%
