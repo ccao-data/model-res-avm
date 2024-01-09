@@ -296,7 +296,7 @@ model:
       # Total number of iterations. Usually changed in tandem with learning_rate
       # NOTE: If cross-validation is not used, then the model will always train
       # to exactly this number of iterations, even if early stopping is enabled
-      num_iterations: 1575
+      num_iterations: 100
       learning_rate: 0.015
 
       # Maximum number of bins for discretizing continuous features. Lower uses

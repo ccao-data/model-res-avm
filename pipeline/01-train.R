@@ -143,15 +143,7 @@ lgbm_model <- parsnip::boost_tree(
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
 
-    # Initialize the validation set to an empty list. Not actually used for
-    # validation; If `validation > 0`, this list will get overridden by a
-    # randomly sampled validation set. Instead, it is used during comps
-    # calculation to instruct lightgbm to save error metrics for every tree
-    # in the model, which allows us to weight the importance of leaf node
-    # assignments for each tree. We initialize to an empty list here, since
-    # parsnip requires all attributes be initialized during the first
-    # set_engine call if they are to be updated later
-    valids = list(),
+    save_tree_error = comp_enable,
 
     ### 4.1.2. Tuned Parameters ------------------------------------------------
 
@@ -330,25 +322,11 @@ lgbm_wflow_final_fit <- lgbm_wflow %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = train)
 
-if (comp_enable) {
-  # Instruct lightgbm to record errors for each tree to the model$record_evals
-  # attribute by setting the `valids` engine argument. Use the full set of
-  # training data so that the error encapsulates all the data
-  valids <- list(valids = lightgbm::lgb.Dataset(
-    data = as.matrix(training_data_full),
-    label = training_data_full[["meta_sale_price"]]
-  ))
-  lgbm_model_final_full_fit <- lgbm_model_final %>%
-    set_args(valids = valids)
-} else {
-  lgbm_model_final_full_fit <- lgbm_model_final
-}
-
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
 message("Fitting final model on full data")
 lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  update_model(lgbm_model_final_full_fit) %>%
+  update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
 
@@ -426,10 +404,10 @@ message("Checking record_evals")
 if (is.null(lgbm_final_full_fit$fit$record_evals)) {
   stop("Trained model is missing required record_evals")
 }
-trained_record_evals_len <- length(lgbm_final_full_fit$fit$record_evals$valids$rmse$eval)
+trained_record_evals_len <- length(lgbm_final_full_fit$fit$record_evals$tree_error$rmse$eval)
 message(glue::glue("Trained record_evals length: {trained_record_evals_len}"))
 message("Trained record_evals preview:")
-lgbm_final_full_fit$fit$record_evals$valids$rmse$eval %>%
+lgbm_final_full_fit$fit$record_evals$tree_error$rmse$eval %>%
   head(10) %>%
   print()
 
@@ -449,7 +427,7 @@ print(dim(loaded_sample_preds))
 if (is.null(loaded_fit$fit$record_evals)) {
   stop("Saved model is missing required record_evals")
 }
-saved_record_evals_len <- length(loaded_fit$fit$record_evals$valids$rmse$eval)
+saved_record_evals_len <- length(loaded_fit$fit$record_evals$tree_error$rmse$eval)
 message(glue::glue("Saved record_evals length: {trained_record_evals_len}"))
 
 # Save the finalized recipe object to file so it can be used to preprocess
