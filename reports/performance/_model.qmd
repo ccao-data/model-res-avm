@@ -103,10 +103,21 @@ generate_model_township_stats <- function(df) {
         paging = FALSE,
         searching = FALSE,
         info = FALSE,
-        columnDefs = list(list(
-          visible = FALSE,
-          targets = c("cod_met", "prd_met", "prb_met", "mki_met", "ratio_met")
-        ))
+        columnDefs = list(
+          list(
+            visible = FALSE,
+            targets = c("cod_met", "prd_met", "prb_met", "mki_met", "ratio_met")
+          ),
+          list(
+            className = "dt-right",
+            targets = c(
+              "sale_fmv_median",
+              "estimate_fmv_median",
+              "rmse",
+              "mdape"
+            )
+          )
+        )
       )
     ) %>%
     formatRound(
@@ -1050,7 +1061,21 @@ model_big_misses_test <- test_card %>%
   arrange(Town, `Qnt.`)
 
 model_big_misses_test %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c("Bldg Sqft", "Sale Price", "Est. FMV", "Difference")
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = c("Sale Date")
+        )
+      )
+    )
+  )
 ```
 
 ### Assessment Set
@@ -1097,7 +1122,25 @@ model_big_misses_assessment <- assessment_pin %>%
   arrange(Town, `Qnt.`)
 
 model_big_misses_assessment %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Bldg Sqft", "Sale 1 Price", "Sale 1 Date",
+            "Sale 2 Price", "Sale 2 Date",
+            "Est. FMV", "Difference"
+          )
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = c("Sale 1 Date", "Sale 2 Date")
+        )
+      )
+    )
+  )
 ```
 
 :::

@@ -345,7 +345,7 @@ outliers_table_township_summary %>%
     filter = "top",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(0:1)),
+        list(className = "dt-center", targets = c(1)),
         list(className = "dt-right", targets = c(2:6))
       )
     )
@@ -390,7 +390,7 @@ outliers_table_class_summary %>%
     filter = "top",
     options = list(
       columnDefs = list(
-        list(className = "dt-center", targets = c(0:1)),
+        list(className = "dt-center", targets = c(1)),
         list(className = "dt-right", targets = c(2:6))
       )
     )

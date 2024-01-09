@@ -85,66 +85,79 @@ leaflet() %>%
 This table excludes any PINs which had a prior year assessed value of less than $25,000. It then identifies the 5 PINs in each neighborhood which had the largest year-over-year increase in assessed value.
 
 ```{r _outcomes_table_of_largest_change}
-datatable(
-  outcomes_map_big_changes %>%
-    distinct(meta_pin, .keep_all = TRUE) %>%
-    filter(prior_near_tot > 25000) %>%
-    group_by(meta_township_code) %>%
-    slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
-    ungroup() %>%
-    left_join(
-      select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
-      by = c("meta_pin", "meta_year")
-    ) %>%
-    distinct(meta_pin, .keep_all = TRUE) %>%
-    mutate(
-      Pin = meta_pin,
-      Township = meta_township_code,
-      Neighborhood = meta_nbhd_code,
-      Class = meta_class,
-      Address = loc_property_address,
-      "Previous Value" = scales::dollar(prior_near_tot),
-      "Predicted Value" = scales::dollar(pred_pin_final_fmv_round),
-      "Nominal Change" = scales::dollar(prior_near_yoy_change_nom),
-      "Percent Change" = scales::percent(
-        round(prior_near_yoy_change_pct, 2) / 100
-      ),
-      "Recent Sale Date" = sale_recent_1_date,
-      "Recent Sale Price" = scales::dollar(sale_recent_1_price),
-      "Missing Critical Value" = flag_char_missing_critical_value,
-      "Year Built" = char_yrblt,
-      "Total Building SF" = scales::comma(char_total_bldg_sf),
-      Bedrooms = char_beds,
-      Rooms = char_rooms,
-      "Full Bathrooms" = char_fbath,
-      "Median Neighborhood Change" = scales::percent(
-        round(neighborhood_median_change, 2) / 100
-      )
-    ) %>%
-    select(
-      Pin,
-      Township,
-      Neighborhood,
-      Class,
-      Address,
-      `Previous Value`,
-      `Predicted Value`,
-      `Nominal Change`,
-      `Percent Change`,
-      `Recent Sale Date`,
-      `Recent Sale Price`,
-      `Missing Critical Value`,
-      `Year Built`,
-      `Total Building SF`,
-      `Bedrooms`,
-      `Rooms`,
-      `Full Bathrooms`,
-      `Median Neighborhood Change`
+outcomes_map_big_changes %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  filter(prior_near_tot > 25000) %>%
+  group_by(meta_township_code) %>%
+  slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
+  ungroup() %>%
+  left_join(
+    select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
+    by = c("meta_pin", "meta_year")
+  ) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  mutate(
+    Pin = meta_pin,
+    Township = meta_township_code,
+    Neighborhood = meta_nbhd_code,
+    Class = meta_class,
+    Address = loc_property_address,
+    "Previous Value" = scales::dollar(prior_near_tot),
+    "Predicted Value" = scales::dollar(pred_pin_final_fmv_round),
+    "Nominal Change" = scales::dollar(prior_near_yoy_change_nom),
+    "Percent Change" = scales::percent(
+      round(prior_near_yoy_change_pct, 2) / 100
     ),
-  options = list(pageLength = 10, scrollX = TRUE),
-  filter = "top",
-  rownames = FALSE
-)
+    "Recent Sale Date" = sale_recent_1_date,
+    "Recent Sale Price" = scales::dollar(sale_recent_1_price),
+    "Missing Critical Value" = flag_char_missing_critical_value,
+    "Year Built" = char_yrblt,
+    "Total Building SF" = scales::comma(char_total_bldg_sf),
+    Bedrooms = char_beds,
+    Rooms = char_rooms,
+    "Full Bathrooms" = char_fbath,
+    "Median Neighborhood Change" = scales::percent(
+      round(neighborhood_median_change, 2) / 100
+    )
+  ) %>%
+  select(
+    Pin,
+    Township,
+    Neighborhood,
+    Class,
+    Address,
+    `Previous Value`,
+    `Predicted Value`,
+    `Nominal Change`,
+    `Percent Change`,
+    `Recent Sale Date`,
+    `Recent Sale Price`,
+    `Missing Critical Value`,
+    `Year Built`,
+    `Total Building SF`,
+    `Bedrooms`,
+    `Rooms`,
+    `Full Bathrooms`,
+    `Median Neighborhood Change`
+  ) %>%
+  datatable(
+    options = list(
+      pageLength = 10,
+      scrollX = TRUE,
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Previous Value", "Predicted Value", "Nominal Change",
+            "Percent Change", "Recent Sale Date", "Recent Sale Price",
+            "Median Neighborhood Change"
+          )
+        )
+      )
+    ),
+    filter = "top",
+    rownames = FALSE
+  )
 ```
 
 :::

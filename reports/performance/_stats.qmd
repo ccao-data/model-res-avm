@@ -73,7 +73,7 @@ stats_logit_vars <- names(stats_sf_parcels) %>%
   grep("Sale|Township", ., value = TRUE, invert = TRUE)
 ```
 
-## Logit Regression
+## Logistic Regression
 
 All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single-family parcels from the past two years, excluding some parcels with incomplete characteristics.
 

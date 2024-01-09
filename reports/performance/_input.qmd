@@ -130,7 +130,20 @@ input_multicard_test_df <- assessment_card %>%
   )
 
 input_multicard_test_df %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Card %", "SQFT", "Card Initial", "Card Final", "PIN Far",
+            "PIN Near", "PIN Initial", "PIN Final"
+          )
+        )
+      )
+    )
+  )
 ```
 
 ### Land Valuation
@@ -187,7 +200,7 @@ assessment_pin %>%
 
 ::: panel-tabset
 
-### Multi-family YoY Changes
+### Multi-Family YoY Changes
 
 Where are 211s and 212s increasing a *lot*? Near values are Certified values
 from the current year, and far values are Board of Review values from two years ago.
@@ -223,7 +236,17 @@ input_multifamily_change <- assessment_pin %>%
   )
 
 input_multifamily_change %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(2:3)
+        )
+      )
+    )
+  )
 ```
 
 ### Large Sqft. 211s and 212s
@@ -252,7 +275,17 @@ training_data %>%
     `Mean Sqft` = mean_sf,
     `Building Sqft` = char_bldg_sf
   ) %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(3:4)
+        )
+      )
+    )
+  )
 ```
 
 ### Townhome Complex Averaging
@@ -284,7 +317,17 @@ assessment_pin %>%
   ) %>%
   relocate(c(meta_complex_id, n)) %>%
   rename("Complex ID" = meta_complex_id, "Count" = n) %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(2:6)
+        )
+      )
+    )
+  )
 ```
 
 ### Map of Townhome Complex IDs

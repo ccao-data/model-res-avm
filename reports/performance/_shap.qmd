@@ -41,7 +41,17 @@ shap_df_filtered %>%
     "Histogram" = histogram
   ) %>%
   mutate(across(Mean:Max, scales::dollar)) %>%
-  datatable(rownames = FALSE)
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-nowrap dt-right",
+          targets = c(1:5)
+        )
+      )
+    )
+  )
 ```
 
 ```{r _shap_function}
