@@ -187,6 +187,58 @@ training_data %>%
   facet_wrap(vars(meta_year))
 ```
 
+### By Quarter (All)
+
+_NOTE: Includes sales from all triads_
+
+```{r _sales_volume_quarter_all}
+training_data %>%
+  mutate(
+    Year = lubridate::year(meta_sale_date),
+    Quarter = paste0("Q", lubridate::quarter(meta_sale_date))
+  ) %>%
+  count(Year, Quarter) %>%
+  tidyr::pivot_wider(names_from = Quarter, values_from = n) %>%
+  mutate(across(starts_with("Q"), scales::comma)) %>%
+  kable(align = c("l", rep("r", 4)))
+```
+
+### By Quarter (Outliers)
+
+_NOTE: Includes sales from all triads_
+
+```{r _sales_volume_quarter_outlier}
+training_data %>%
+  filter(sv_is_outlier) %>%
+  mutate(
+    Year = lubridate::year(meta_sale_date),
+    Quarter = paste0("Q", lubridate::quarter(meta_sale_date))
+  ) %>%
+  count(Year, Quarter) %>%
+  tidyr::pivot_wider(names_from = Quarter, values_from = n) %>%
+  mutate(across(starts_with("Q"), scales::comma)) %>%
+  kable(align = c("l", rep("r", 4)))
+```
+
+### By Quarter (Outlier Percentage)
+
+_NOTE: Includes sales from all triads_
+
+```{r _sales_volume_quarter_outlier_pct}
+training_data %>%
+  mutate(
+    Year = lubridate::year(meta_sale_date),
+    Quarter = paste0("Q", lubridate::quarter(meta_sale_date))
+  ) %>%
+  count(Year, Quarter, sv_is_outlier) %>%
+  group_by(Year, Quarter) %>%
+  mutate(outlier_pct = scales::percent(n / sum(n), accuracy = 0.01)) %>%
+  filter(sv_is_outlier) %>%
+  select(-n, -sv_is_outlier) %>%
+  tidyr::pivot_wider(names_from = Quarter, values_from = outlier_pct) %>%
+  kable(align = c("l", rep("r", 4)))
+```
+
 :::
 
 ## Price Trends
