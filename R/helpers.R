@@ -135,10 +135,10 @@ extract_weights <- function(model, train, outcome_col, metric = "rmse") {
     stop("Model is missing required record_evals; was it trained with valids?")
   }
   message("record_evals names:")
-  message(names(record_evals$valids))
+  message(names(record_evals$tree_errors))
   message(glue::glue("record_evals {metric} length:"))
-  message(length(record_evals$valids[[metric]]$eval))
-  errors <- unlist(record_evals$valids[[metric]]$eval)
+  message(length(record_evals$tree_errors[[metric]]$eval))
+  errors <- unlist(record_evals$tree_errors[[metric]]$eval)
   message("errors length:")
   message(length(errors))
   errors <- c(init_score, errors)

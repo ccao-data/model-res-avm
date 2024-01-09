@@ -83,7 +83,7 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
             # First check if the score is higher than the lowest score,
             # since otherwise we don't need to bother iterating the scores
             if similarity_score > top_n_scores[-1]:
-              for idx, score in zip(top_n_idxs, top_n_scores):
+              for idx, score in enumerate(top_n_scores):
                 if similarity_score > score:
                   top_n_idxs = _insert_at_idx_and_shift(
                     top_n_idxs, y_i, idx
