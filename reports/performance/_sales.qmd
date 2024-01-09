@@ -95,7 +95,7 @@ training_data %>%
   filter(
     !sv_is_outlier,
     meta_triad_name == run_triad,
-    meta_year >= as.numeric(params$year) - 4
+    meta_year >= as.numeric(metadata$input_max_sale_year) - 3
   ) %>%
   mutate(
     Bin = cut(
