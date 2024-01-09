@@ -1041,7 +1041,7 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
       "RemoteRef": "jeancochrane/save-record-evals",
-      "RemoteSha": "770a6eb0af4eb2f5b13aaa6b55b1120961007212",
+      "RemoteSha": "ffd4c265f9c94244d0921359ff92f8aca3cd21cf",
       "Requirements": [
         "butcher",
         "dials",
@@ -1054,7 +1054,7 @@
         "tibble",
         "zip"
       ],
-      "Hash": "88f60ec7ffe9471b282b1416604aa159"
+      "Hash": "58f094b25aaecbb712ca5730398c5137"
     },
     "listenv": {
       "Package": "listenv",
