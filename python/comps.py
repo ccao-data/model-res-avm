@@ -49,7 +49,7 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     return indexes_df, scores_df
 
 
-@nb.njit(fastmath=True)
+@nb.njit(fastmath=True, parallel=True)
 def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     """Helper function that takes matrices of leaf node assignments for
     observations in a tree model, an array of weights for each tree, and an
@@ -66,7 +66,7 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     all_top_n_idxs = np.zeros((num_observations, n), dtype=idx_dtype)
     all_top_n_scores = np.zeros((num_observations, n), dtype=score_dtype)
 
-    for x_i in range(num_observations):
+    for x_i in nb.prange(num_observations):
         top_n_idxs = np.zeros(n, dtype=idx_dtype)
         top_n_scores = np.zeros(n, dtype=score_dtype)
 
