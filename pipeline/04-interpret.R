@@ -133,6 +133,10 @@ if (comp_enable) {
   # not guaranteed to have the same number of rows, and bind_rows() will raise
   # an error in that case
   leaf_nodes <- do.call(rbind, chunked_leaf_nodes) %>% as_tibble()
+  leaf_nodes %>%
+    write_parquet(
+      "s3://ccao-model-results-us-east-1/comp/test_leaf_nodes.parquet"
+    )
 
   # Calculate weights representing feature importance, so that we can weight
   # leaf node assignments based on the most important features.
@@ -147,6 +151,10 @@ if (comp_enable) {
     outcome_col = "meta_sale_price",
   )
   message(glue::glue("Length of weights vector: {length(tree_weights)}"))
+  tree_weights %>% as_tibble() %>%
+    write_parquet(
+      "s3://ccao-model-results-us-east-1/comp/test_tree_weights.parquet"
+    )
 
   # Get leaf node assignments for the training data. Assume that the training
   # data is a subset of the assessment data
@@ -154,6 +162,10 @@ if (comp_enable) {
     assessment_data$meta_pin %in% training_data$meta_pin
   )
   training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
+  training_leaf_nodes %>% as_tibble() %>%
+    write_parquet(
+      "s3://ccao-model-results-us-east-1/comp/test_training_leaf_nodes.parquet"
+    )
 
   # Do the comps calculation in Python because the code is simpler and faster
   message("Calling out to python/comps.py to perform comps calculation")
