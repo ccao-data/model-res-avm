@@ -231,8 +231,6 @@ model:
       - "time_sale_day_of_month"
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
-      - "sv_is_outlier"
-      - "sv_outlier_type"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
@@ -262,7 +260,6 @@ model:
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
       - "time_sale_quarter_of_year"
-      - "sv_outlier_type"
 
     # List of identifiers for each observation, can be ignored
     id:
