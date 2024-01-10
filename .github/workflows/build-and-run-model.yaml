@@ -61,7 +61,7 @@ jobs:
     with:
       backend: "ec2"
       vcpu: "40"
-      memory: "160000"
+      memory: "158000"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
       role-duration-seconds: 21000
