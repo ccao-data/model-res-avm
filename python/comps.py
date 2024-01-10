@@ -77,7 +77,7 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
             leaf_node_match_arr = (
               leaf_node_matrix[x_i] == comparison_leaf_node_matrix[y_i]
             ).astype(np.int64)
-            similarity_score = np.sum(leaf_node_match_arr * weights)
+            similarity_score = np.sum(leaf_node_match_arr * weights.T)
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
             # First check if the score is higher than the lowest score,
@@ -106,3 +106,20 @@ def _insert_at_idx_and_shift(arr, elem, idx):
   return np.concatenate((
     arr[:idx], np.array([(elem)], dtype=arr.dtype), arr[idx:-1]
   ))
+
+
+if __name__ == "__main__":
+    import time
+
+    num_trees = 500
+    num_obs = 10000
+    num_comparisons = 5000
+
+    leaf_nodes = pd.DataFrame(np.random.randint(0, num_obs, size=[num_obs, num_trees]))
+    training_leaf_nodes = pd.DataFrame(np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees]))
+    tree_weights = np.random.dirichlet(np.ones(num_trees), size=1).T
+
+    start = time.time()
+    get_comps(leaf_nodes, training_leaf_nodes, tree_weights)
+    end = time.time()
+    print(f"get_comps runtime: {end - start}")
