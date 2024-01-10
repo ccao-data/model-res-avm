@@ -604,6 +604,8 @@ for (township in model_townships_list) {
 
 #### Main Model
 
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
+
 ```{r _model_est_v_actual_town_indiv_main}
 est_v_actual_plotly_town <- function(data, x) {
   pred_v_actual_plot_df <- data %>%
@@ -670,6 +672,8 @@ est_v_actual_plotly_town(test_card, pred_card_initial_fmv)
 
 #### Linear Baseline
 
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
+
 ```{r _model_est_v_actual_town_indiv_lin}
 est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
 ```
@@ -681,6 +685,8 @@ est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
 ::: panel-tabset
 
 #### Main Model
+
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
 
 ```{r _model_est_v_actual_class_indiv_main}
 est_v_actual_plotly_class <- function(data, x) {
@@ -748,6 +754,8 @@ est_v_actual_plotly_class(test_card, pred_card_initial_fmv)
 ```
 
 #### Linear Baseline
+
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
 
 ```{r _model_est_v_actual_class_indiv_lin}
 est_v_actual_plotly_class(test_card, pred_card_initial_fmv_lin)
