@@ -286,7 +286,9 @@ training_data_clean <- training_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
-    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE)
+    # Miscellanous column-level cleanup
+    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    across(where(is.character), \(x) na_if(x, ""))
   ) %>%
   # Create time/date features using lubridate
   mutate(
@@ -340,7 +342,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
-    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE)
+    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    across(where(is.character), \(x) na_if(x, ""))
   ) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
