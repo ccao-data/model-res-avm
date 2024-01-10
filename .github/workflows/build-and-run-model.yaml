@@ -45,7 +45,6 @@ on:
         required: true
   push:
     branches: [master]
-  delete:
 
 jobs:
   build-and-run-model:
