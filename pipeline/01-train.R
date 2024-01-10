@@ -27,7 +27,7 @@ message("Preparing model training data")
 # there is multiple buildings on a PIN. Since these sales include multiple
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+  filter(!ind_pin_is_multicard) %>%
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
