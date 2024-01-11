@@ -102,7 +102,7 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
     .names = "{.col}_rank"
   )) %>%
   rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
- write_parquet(paths$output$feature_importance$local)
+  write_parquet(paths$output$feature_importance$local)
 
 
 
@@ -178,7 +178,9 @@ if (comp_enable) {
 
   # Translate comp indexes to PINs
   comps[[1]] <- comps[[1]] %>%
-    mutate_all(\(idx_row) assessment_data[assessment_train_idxs[idx_row], ]$meta_pin) %>%
+    mutate_all(\(idx_row) {
+      assessment_data[assessment_train_idxs[idx_row], ]$meta_pin
+    }) %>%
     cbind(pin = assessment_data$meta_pin) %>%
     relocate(pin) %>%
     rename_with(\(colname) gsub("comp_idx_", "comp_pin_", colname))
