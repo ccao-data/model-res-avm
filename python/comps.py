@@ -9,15 +9,11 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     importance vector `weights`. More details on the underlying algorithm here:
     https://ccao-data.github.io/lightsnip/articles/finding-comps.html
     """
-    print("Starting get_comps", flush=True)
     # Convert the input dataframes and lists to numpy arrays
     # so that we can take advantage of numba acceleration
     leaf_node_matrix = leaf_node_df.values
     comparison_leaf_node_matrix = comparison_leaf_node_df.values
     weights_arr = np.asarray(weights, dtype=np.float64)
-    print(f"leaf_node_matrix shape: {leaf_node_matrix.shape}", flush=True)
-    print(f"comparison matrix shape: {comparison_leaf_node_matrix.shape}", flush=True)
-    print(f"weights_arr shape: {weights_arr.shape}", flush=True)
 
     # Get the indexes and scores of the top N comps
     indexes, scores = _get_top_n_comps(
@@ -25,10 +21,6 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     )
 
     # Turn the comps matrices into pandas dataframes to match the input
-    print(
-        "Transforming comps matrices into pandas dataframes for output",
-        flush=True
-    )
     indexes_df = pd.DataFrame(
         indexes,
         columns=[f"comp_idx_{idx}" for idx in range(1, n+1)]
@@ -109,17 +101,23 @@ def _insert_at_idx_and_shift(arr, elem, idx):
 
 
 if __name__ == "__main__":
+    # When this module is run as a script, the following code will test
+    # performance of the script and print the run time to the console
     import time
 
     num_trees = 500
     num_obs = 10000
     num_comparisons = 5000
 
-    leaf_nodes = pd.DataFrame(np.random.randint(0, num_obs, size=[num_obs, num_trees]))
-    training_leaf_nodes = pd.DataFrame(np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees]))
+    leaf_nodes = pd.DataFrame(
+        np.random.randint(0, num_obs, size=[num_obs, num_trees])
+    )
+    training_leaf_nodes = pd.DataFrame(
+        np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
+    )
     tree_weights = np.random.dirichlet(np.ones(num_trees), size=1).T
 
     start = time.time()
     get_comps(leaf_nodes, training_leaf_nodes, tree_weights)
     end = time.time()
-    print(f"get_comps runtime: {end - start}")
+    print(f"get_comps runtime: {end - start}s")

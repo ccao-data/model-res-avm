@@ -24,7 +24,7 @@ toggle:
   shap_enable: FALSE
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: TRUE
+  comp_enable: FALSE
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
@@ -296,7 +296,7 @@ model:
       # Total number of iterations. Usually changed in tandem with learning_rate
       # NOTE: If cross-validation is not used, then the model will always train
       # to exactly this number of iterations, even if early stopping is enabled
-      num_iterations: 10
+      num_iterations: 1575
       learning_rate: 0.015
 
       # Maximum number of bins for discretizing continuous features. Lower uses
@@ -305,7 +305,7 @@ model:
 
       # See docs for details on each of the remaining parameters:
       # https://lightgbm.readthedocs.io/en/latest/Parameters.html
-      num_leaves: 100
+      num_leaves: 185
       add_to_linked_depth: 4
       feature_fraction: 0.61
       min_gain_to_split: 75.5

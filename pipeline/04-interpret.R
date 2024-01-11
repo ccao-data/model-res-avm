@@ -12,6 +12,9 @@ tictoc::tic("Interpret")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
+
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -89,18 +92,18 @@ if (shap_enable) {
 message("Calculating feature importance metrics")
 
 # Calculate feature importance using LightGBM's built-in method
-# lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
-#   as_tibble() %>%
-#   rename(model_predictor_all_name = Feature) %>%
-#   rename_with(tolower, Gain:Frequency) %>%
-#   mutate(across(
-#     gain:frequency,
-#     ~ order(order(.x, decreasing = TRUE)),
-#     .names = "{.col}_rank"
-#   )) %>%
-#   rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
-#  write_parquet(paths$output$feature_importance$local)
-arrow::write_parquet(data.frame(), paths$output$feature_importance$local)
+lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
+  as_tibble() %>%
+  rename(model_predictor_all_name = Feature) %>%
+  rename_with(tolower, Gain:Frequency) %>%
+  mutate(across(
+    gain:frequency,
+    ~ order(order(.x, decreasing = TRUE)),
+    .names = "{.col}_rank"
+  )) %>%
+  rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
+ write_parquet(paths$output$feature_importance$local)
+
 
 
 
@@ -115,7 +118,6 @@ if (comp_enable) {
   # Due to integer overflow problems with leaf node assignment, we need to
   # chunk our data such that they are strictly less than the limit of 1073742
   # rows. More detail here: https://github.com/microsoft/LightGBM/issues/1884
-  message("Predicting leaf nodes for all parcels")
   chunk_size <- 500000
   chunks <- split(
     assessment_data_prepped,
@@ -133,10 +135,6 @@ if (comp_enable) {
   # not guaranteed to have the same number of rows, and bind_rows() will raise
   # an error in that case
   leaf_nodes <- do.call(rbind, chunked_leaf_nodes) %>% as_tibble()
-  leaf_nodes %>%
-    write_parquet(
-      "s3://ccao-model-results-us-east-1/comp/test_leaf_nodes.parquet"
-    )
 
   # Calculate weights representing feature importance, so that we can weight
   # leaf node assignments based on the most important features.
@@ -150,11 +148,6 @@ if (comp_enable) {
     train = training_data,
     outcome_col = "meta_sale_price",
   )
-  message(glue::glue("Length of weights vector: {length(tree_weights)}"))
-  tree_weights %>% as_tibble() %>%
-    write_parquet(
-      "s3://ccao-model-results-us-east-1/comp/test_tree_weights.parquet"
-    )
 
   # Get leaf node assignments for the training data. Assume that the training
   # data is a subset of the assessment data
@@ -162,10 +155,6 @@ if (comp_enable) {
     assessment_data$meta_pin %in% training_data$meta_pin
   )
   training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
-  training_leaf_nodes %>% as_tibble() %>%
-    write_parquet(
-      "s3://ccao-model-results-us-east-1/comp/test_training_leaf_nodes.parquet"
-    )
 
   # Do the comps calculation in Python because the code is simpler and faster
   message("Calling out to python/comps.py to perform comps calculation")
