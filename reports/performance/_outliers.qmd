@@ -270,7 +270,8 @@ outliers_ratio_comparison <- training_data %>%
     values_from = median_sale_price
   ) %>%
   mutate(
-    percent = `TRUE` / `FALSE`,
+    percent = ifelse(is.null(.$`TRUE`), 0, .$`TRUE`) /
+      ifelse(is.null(.$`FALSE`), 0, .$`FALSE`),
     above_below = ifelse(percent > 1,
       "Outlier > Not Outlier", "Not Outlier > Outlier"
     ),
