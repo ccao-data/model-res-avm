@@ -276,7 +276,20 @@ training_data_clean <- training_data_w_hie %>%
   )) %>%
   # Only exclude explicit outliers from training. Sales with missing validation
   # outcomes will be considered non-outliers
-  mutate(sv_is_outlier = replace_na(sv_is_outlier, FALSE)) %>%
+  mutate(
+    sv_is_outlier = replace_na(sv_is_outlier, FALSE),
+    sv_outlier_type = replace_na(sv_outlier_type, "Not outlier")
+  ) %>%
+  # Some Athena columns are stored as arrays but are converted to string on
+  # ingest. In such cases, take the first element and clean the string
+  mutate(
+    across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
+    across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
+    across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    # Miscellanous column-level cleanup
+    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    across(where(is.character), \(x) na_if(x, ""))
+  ) %>%
   # Create time/date features using lubridate
   mutate(
     # Calculate interval periods and time since the start of the sales sample
@@ -309,6 +322,7 @@ training_data_clean <- training_data_w_hie %>%
   ) %>%
   select(-time_interval) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
+  as_tibble() %>%
   write_parquet(paths$input$training$local)
 
 
@@ -323,6 +337,14 @@ assessment_data_clean <- assessment_data_w_hie %>%
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
   )) %>%
+  # Same Athena string cleaning and feature cleanup as the training data
+  mutate(
+    across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
+    across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
+    across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    across(where(is.character), \(x) na_if(x, ""))
+  ) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
@@ -341,6 +363,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
+  as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 
 

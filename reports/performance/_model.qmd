@@ -604,17 +604,20 @@ for (township in model_townships_list) {
 
 #### Main Model
 
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
+
 ```{r _model_est_v_actual_town_indiv_main}
 est_v_actual_plotly_town <- function(data, x) {
-  pred_v_actual_plot <- data %>%
+  pred_v_actual_plot_df <- data %>%
     filter(meta_triad_code == run_triad_code) %>%
     mutate(Township = ccao::town_convert(meta_township_code)) %>%
     rename(
       PIN = meta_pin,
       `Sale Price` = meta_sale_price,
       `Predicted FMV` = {{ x }}
-    ) %>%
-    ggplot() +
+    )
+
+  pred_v_actual_plot <- ggplot(pred_v_actual_plot_df) +
     geom_point(aes(
       group = PIN,
       y = `Predicted FMV`,
@@ -650,13 +653,26 @@ est_v_actual_plotly_town <- function(data, x) {
     ) +
     theme_minimal()
 
-  ggplotly(pred_v_actual_plot, tooltip = "text")
+  gplt <- ggplotly(pred_v_actual_plot, tooltip = "text")
+
+  click_handler_javascript <- HTML(paste0("
+    var gplt = document.getElementsByClassName('js-plotly-plot')[0];
+    gplt.on('plotly_click', function(data){
+      const re = /PIN\\: ([0-9]{14})/;
+      var pin = re.exec(data.points[0].text)[1];
+      var url = 'https://www.cookcountyassessor.com/pin/' + pin;
+      window.open(url,'_blank');
+    });"))
+
+  prependContent(gplt, onStaticRenderComplete(click_handler_javascript))
 }
 
 est_v_actual_plotly_town(test_card, pred_card_initial_fmv)
 ```
 
 #### Linear Baseline
+
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
 
 ```{r _model_est_v_actual_town_indiv_lin}
 est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
@@ -670,9 +686,11 @@ est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
 
 #### Main Model
 
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
+
 ```{r _model_est_v_actual_class_indiv_main}
 est_v_actual_plotly_class <- function(data, x) {
-  pred_v_actual_plot <- data %>%
+  pred_v_actual_plot_df <- data %>%
     filter(meta_triad_code == run_triad_code) %>%
     mutate(Township = ccao::town_convert(meta_township_code)) %>%
     rename(
@@ -680,8 +698,9 @@ est_v_actual_plotly_class <- function(data, x) {
       Class = meta_class,
       `Sale Price` = meta_sale_price,
       `Predicted FMV` = {{ x }}
-    ) %>%
-    ggplot() +
+    )
+
+  pred_v_actual_plot <- ggplot(pred_v_actual_plot_df) +
     geom_point(aes(
       group = PIN,
       y = `Predicted FMV`,
@@ -717,13 +736,26 @@ est_v_actual_plotly_class <- function(data, x) {
     ) +
     theme_minimal()
 
-  ggplotly(pred_v_actual_plot, tooltip = "text")
+  gplt <- ggplotly(pred_v_actual_plot, tooltip = "text")
+
+  click_handler_javascript <- HTML(paste0("
+    var gplt = document.getElementsByClassName('js-plotly-plot')[0];
+    gplt.on('plotly_click', function(data){
+      const re = /PIN\\: ([0-9]{14})/;
+      var pin = re.exec(data.points[0].text)[1];
+      var url = 'https://www.cookcountyassessor.com/pin/' + pin;
+      window.open(url,'_blank');
+    });"))
+
+  prependContent(gplt, onStaticRenderComplete(click_handler_javascript))
 }
 
 est_v_actual_plotly_class(test_card, pred_card_initial_fmv)
 ```
 
 #### Linear Baseline
+
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
 
 ```{r _model_est_v_actual_class_indiv_lin}
 est_v_actual_plotly_class(test_card, pred_card_initial_fmv_lin)
