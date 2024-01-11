@@ -46,21 +46,36 @@ model_get_s3_artifacts_for_run <- function(run_id, year) {
   # Next get the prefix of anything partitioned by year and run_id
   s3_objs_dir_path <- file.path(
     grep(
-      ".parquet$|.zip$|.rds$",
-      s3_objs,
-      value = TRUE, invert = TRUE
+      paste0(run_id, "/$"),
+      grep(".*/$", s3_objs, value = TRUE, invert = FALSE),
+      value = TRUE,
+      invert = TRUE
     ),
     glue::glue("year={year}"),
     glue::glue("run_id={run_id}")
   )
   s3_objs_dir_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_dir_path)
   s3_objs_dir_path <- gsub("//", "/", s3_objs_dir_path)
-  s3_objs_w_run_id <- s3_objs_dir_path %>%
+  s3_objs_dir_w_run_id <- s3_objs_dir_path %>%
     purrr::map(~ aws.s3::get_bucket_df(bucket, .x)$Key) %>%
     unlist() %>%
     purrr::map_chr(~ glue::glue("s3://{bucket}/{.x}"))
 
-  return(c(s3_objs_limited, s3_objs_w_run_id))
+  # Finally, get anything with specific built-in partitions
+  s3_objs_blt_path <- grep(
+    paste0(run_id, "/$"),
+    grep(".*/$", s3_objs, value = TRUE, invert = FALSE),
+    value = TRUE,
+    invert = FALSE
+  )
+  s3_objs_blt_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_blt_path)
+  s3_objs_blt_path <- gsub("//", "/", s3_objs_blt_path)
+  s3_objs_blt_full <- s3_objs_blt_path %>%
+    purrr::map(~ aws.s3::get_bucket_df(bucket, .x)$Key) %>%
+    unlist() %>%
+    purrr::map_chr(~ glue::glue("s3://{bucket}/{.x}"))
+
+  return(c(s3_objs_limited, s3_objs_dir_w_run_id, s3_objs_blt_full))
 }
 
 # Used to delete erroneous, incomplete, or otherwise unwanted runs
