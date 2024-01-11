@@ -13,12 +13,6 @@ tictoc::tic("Train")
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
-### WARNING: This is test code to reset the sales validation output, such that
-# all sales are considered valid. This is for testing purposes only and should
-# be removed before running the pipeline in production
-read_parquet(paths$input$training$local) %>%
-  mutate(sv_is_outlier = FALSE) %>%
-  write_parquet(paths$input$training$local)
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

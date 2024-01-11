@@ -19,7 +19,8 @@ rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
 # Load the training data to use as a source of sales. These will be attached to
 # PIN-level output (for comparison) and used as the basis for a sales ratio
 # analysis on the assessment data
-sales_data <- read_parquet(paths$input$training$local)
+sales_data <- read_parquet(paths$input$training$local) %>%
+  filter(!sv_is_outlier)
 
 # Load land rates from file
 land_site_rate <- read_parquet(
