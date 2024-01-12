@@ -15,18 +15,40 @@ def get_comps(leaf_node_df, comparison_leaf_node_df, weights, n=20):
     comparison_leaf_node_matrix = comparison_leaf_node_df.values
     weights_arr = np.asarray(weights, dtype=np.float64)
 
+    # Chunk the input matrix so that we can report on progress between
+    # processing each chunk. This is necessary to do outside of the main
+    # computation loop because compiled numba code does not support flushing
+    # print statements to stdout, which is necessary in order for reticulate
+    # (which runs this code) to log print statements in real time
+    num_leaf_node_chunks = 100
+    leaf_node_chunks = np.array_split(leaf_node_matrix, num_leaf_node_chunks)
+    index_chunks, score_chunks = [], []
+
     # Get the indexes and scores of the top N comps
-    indexes, scores = _get_top_n_comps(
-      leaf_node_matrix, comparison_leaf_node_matrix, weights_arr, n
-    )
+    for chunk_idx, leaf_node_chunk in enumerate(leaf_node_chunks, 1):
+        print(
+            (
+                f"Getting top {n} comps for leaf node chunk {chunk_idx} of "
+                f"{num_leaf_node_chunks} "
+                f"({leaf_node_chunk.shape[0]} observations)"
+            ),
+            # Flush statement to stdout so that reticulate will print it
+            # in real time
+            flush=True
+        )
+        index_chunk, score_chunk = _get_top_n_comps(
+            leaf_node_chunk, comparison_leaf_node_matrix, weights_arr, n
+        )
+        index_chunks.append(index_chunk)
+        score_chunks.append(score_chunk)
 
     # Turn the comps matrices into pandas dataframes to match the input
     indexes_df = pd.DataFrame(
-        indexes,
+        np.concatenate(index_chunks),
         columns=[f"comp_idx_{idx}" for idx in range(1, n+1)]
     )
     scores_df = pd.DataFrame(
-        scores,
+        np.concatenate(score_chunks),
         columns=[f"comp_score_{idx}" for idx in range(1, n+1)]
     )
 
@@ -106,8 +128,8 @@ if __name__ == "__main__":
     import time
 
     num_trees = 500
-    num_obs = 10000
-    num_comparisons = 5000
+    num_obs = 20001
+    num_comparisons = 10000
 
     leaf_nodes = pd.DataFrame(
         np.random.randint(0, num_obs, size=[num_obs, num_trees])
