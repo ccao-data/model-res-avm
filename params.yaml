@@ -391,7 +391,6 @@ ratio_study:
   # also be appended to using the environmental variable REPORT_ADDITIONAL_PINS
   pins:
     - "13253180150000"
-    - "17321110470000"
     - "05174150240000"
 
 
