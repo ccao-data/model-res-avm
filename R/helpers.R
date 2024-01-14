@@ -54,28 +54,28 @@ model_get_s3_artifacts_for_run <- function(run_id, year) {
     glue::glue("year={year}"),
     glue::glue("run_id={run_id}")
   )
-  s3_objs_dir_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_dir_path)
-  s3_objs_dir_path <- gsub("//", "/", s3_objs_dir_path)
-  s3_objs_dir_w_run_id <- s3_objs_dir_path %>%
-    purrr::map(~ aws.s3::get_bucket_df(bucket, .x)$Key) %>%
-    unlist() %>%
-    purrr::map_chr(~ glue::glue("s3://{bucket}/{.x}"))
 
-  # Finally, get anything with specific built-in partitions
+  # Get anything with specific built-in partitions
   s3_objs_blt_path <- grep(
     paste0(run_id, "/$"),
     grep(".*/$", s3_objs, value = TRUE, invert = FALSE),
     value = TRUE,
     invert = FALSE
   )
-  s3_objs_blt_path <- gsub(paste0("s3://", bucket, "/"), "", s3_objs_blt_path)
-  s3_objs_blt_path <- gsub("//", "/", s3_objs_blt_path)
-  s3_objs_blt_full <- s3_objs_blt_path %>%
+
+  # Cleanup and add full path
+  s3_objs_dir_merged <- gsub(
+    paste0("s3://", bucket, "/"),
+    "",
+    c(s3_objs_dir_path, s3_objs_blt_path)
+  )
+  s3_objs_dir_merged <- unname(gsub("//", "/", s3_objs_dir_merged))
+  s3_objs_dir_w_run_id <- s3_objs_dir_merged %>%
     purrr::map(~ aws.s3::get_bucket_df(bucket, .x)$Key) %>%
     unlist() %>%
     purrr::map_chr(~ glue::glue("s3://{bucket}/{.x}"))
 
-  return(c(s3_objs_limited, s3_objs_dir_w_run_id, s3_objs_blt_full))
+  return(c(s3_objs_limited, s3_objs_dir_w_run_id))
 }
 
 # Used to delete erroneous, incomplete, or otherwise unwanted runs
@@ -88,6 +88,7 @@ model_delete_run <- function(run_id, year) {
 
 # Used to fetch a run's output from S3 and populate it locally. Useful for
 # running reports and performing local troubleshooting
+# nolint start: cyclocomp_linter
 model_fetch_run <- function(run_id, year) {
   tictoc::tic(paste0("Fetched run: ", run_id))
 
@@ -96,15 +97,29 @@ model_fetch_run <- function(run_id, year) {
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
   for (path in paths$output) {
-    is_dataset <- endsWith(path$s3, "/")
-    if (is_dataset) {
-      dataset_path <- paste0(path$s3, "year=", year, "/run_id=", run_id, "/")
-      message("Now fetching: ", dataset_path)
+    is_directory <- endsWith(path$s3, "/")
+    if (is_directory) {
+      partitioned_by_run <- endsWith(path$s3, paste0("run_id=", run_id, "/"))
+      if (partitioned_by_run) {
+        dir_path <- path$s3
+      } else {
+        dir_path <- paste0(path$s3, "year=", year, "/run_id=", run_id, "/")
+      }
 
-      obj_path <- paste0(dataset_path, "township_code=10/part-0.parquet")
-      if (aws.s3::object_exists(obj_path)) {
-        df <- dplyr::collect(arrow::open_dataset(dataset_path))
+      message("Now fetching: ", dir_path)
+      objs_prefix <- sub(paste0("s3://", bucket, "/"), "", dir_path)
+      objs <- aws.s3::get_bucket_df(bucket, objs_prefix)
+      objs <- dplyr::filter(objs, Size > 0)
+      if (nrow(objs) > 0 && all(endsWith(objs$Key, ".parquet"))) {
+        df <- dplyr::collect(arrow::open_dataset(dir_path))
         arrow::write_parquet(df, path$local)
+      } else if (nrow(objs) > 0) {
+        for (key in objs$Key) {
+          message("Now fetching: ", key)
+          local_path <- file.path(path$local, basename(key))
+          local_path <- unname(gsub("//", "/", local_path))
+          aws.s3::save_object(key, bucket = bucket, file = local_path)
+        }
       } else {
         warning(path$local, " does not exist for this run")
       }
@@ -119,6 +134,7 @@ model_fetch_run <- function(run_id, year) {
   }
   tictoc::toc()
 }
+# nolint end: cyclocomp_linter
 
 # Extract the number of iterations that occurred before early stopping during
 # cross-validation. See the tune::tune_bayes() argument `extract`
