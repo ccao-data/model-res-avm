@@ -188,11 +188,26 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
   message("Starting cross-validation")
 
-  # Create the cross-validation folds
-  train_folds <- vfold_cv(
-    data = train,
-    v = params$cv$num_folds
-  )
+  # Create resamples / folds for cross-validation
+  if (params$model$parameter$validation_type == "random") {
+    train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
+  } else if (params$model$parameter$validation_type == "recent") {
+    # CRITICAL NOTE: When using rolling-origin CV with train_includes_val = TRUE
+    # the validation set IS INCLUDED IN THE TRAINING DATA for each fold
+
+    # This is a hack to pass a validation set to LightGBM for early stopping
+    # (our R wrapper package Lightsnip cuts out the last X% of each training
+    # set to use as a validation set). See GitLab issue #82 for more info
+    train_folds <- create_rolling_origin_splits(
+      data = train,
+      v = params$cv$num_folds,
+      overlap_months = params$cv$fold_overlap,
+      date_col = meta_sale_date,
+      val_prop = params$model$parameter$validation_prop,
+      train_includes_val = params$model$parameter$validation_prop > 0,
+      cumulative = FALSE
+    )
+  }
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned

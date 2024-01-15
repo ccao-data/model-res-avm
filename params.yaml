@@ -56,9 +56,6 @@ input:
   min_sale_year: "2015"
   max_sale_year: "2023"
 
-  # Time window (in months) used for rolling origin cross-validation
-  time_split: 15
-
   # Parameters used to generate townhome complex identifiers
   complex:
     # Townhomes (class 210/295) should match exactly on these variables to be
@@ -86,12 +83,18 @@ input:
 
 # Cross-validation parameters used in the train stage
 cv:
-  # Proportion of the training data to use for training vs test e.g. 0.9 means
-  # the most recent 10% of sales are used as a test set
+  # Proportion of the training data to use for training vs test, split by time.
+  # 0.9 means the most recent 10% of sales are used as a test set
   split_prop: 0.9
 
-  # Number of folds to use for cross-validation
-  num_folds: 5
+  # Number of folds to use for cross-validation. For v-fold CV, the data will be
+  # randomly split. For rolling-origin, the data will be split into V chunks by
+  # time, with each chunk/period calculated automatically
+  num_folds: 6
+
+  # The number of months time-based folds should overlap each other. Only
+  # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
+  fold_overlap: 9
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
@@ -275,7 +278,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
-    validation_type: "random"
+    validation_type: "recent"
     validation_metric: "rmse"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
