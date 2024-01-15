@@ -90,11 +90,11 @@ cv:
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
   # time, with each chunk/period calculated automatically
-  num_folds: 6
+  num_folds: 5
 
   # The number of months time-based folds should overlap each other. Only
   # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
-  fold_overlap: 9
+  fold_overlap: 18
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
@@ -288,7 +288,7 @@ model:
 
     # During CV, the number of iterations to go without improvement before
     # stopping training. Early stopping is deactivated when NULL
-    stop_iter: 40
+    stop_iter: 50
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
@@ -307,7 +307,7 @@ model:
       # for setting this parameter is to discover a good upper bound using CV,
       # then manually set that bound for non-CV runs (which don't use
       # early stopping by default)
-      num_iterations: 1575
+      num_iterations: 2500
       learning_rate: 0.015
 
       # Maximum number of bins for discretizing continuous features. Lower uses
