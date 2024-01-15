@@ -143,8 +143,10 @@ if (!exists("model_performance_assessment")) {
   model_performance_assessment <-
     arrow::read_parquet(paths$output$performance_assessment$local)
 }
-
-# Load feature importance data
+if (!exists("model_parameter_final")) {
+  model_parameter_final <-
+    arrow::read_parquet(paths$output$parameter_final$local)
+}
 if (!exists("feat_imp_df")) {
   feat_imp_df <- read_parquet(paths$output$feature_importance$local)
 }

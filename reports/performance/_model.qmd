@@ -1,17 +1,88 @@
 {{< include ../_setup.qmd >}}
 
+```{r _model_metadata}
+# Chunk to populate the metadata / dataset summary under the top header
+# Anything prefixed with m_ is a variable that will be used directly in the text
+m_test_min_date <- min(test_card$meta_sale_date)
+m_test_max_date <- max(test_card$meta_sale_date)
+m_test_n_sales <- test_card %>%
+  nrow() %>%
+  scales::comma()
+m_test_n_sales_triad <- test_card %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  nrow() %>%
+  scales::comma()
+m_test_n_sales_prop <-
+  (nrow(filter(test_card, meta_triad_code == run_triad_code)) /
+    nrow(test_card)) %>%
+  scales::percent(accuracy = 0.01)
+m_test_med_sp <- test_card$meta_sale_price %>%
+  median() %>%
+  scales::dollar()
+m_test_split_prop <- scales::percent(1 - metadata$cv_split_prop, accuracy = 0.01)
+
+m_train_min_date <- min(training_data$meta_sale_date)
+m_train_max_date <- max(training_data$meta_sale_date)
+m_train_n_sales <- training_data %>%
+  nrow() %>%
+  scales::comma()
+m_train_n_sales_triad <- training_data %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  nrow() %>%
+  scales::comma()
+m_train_n_sales_prop <-
+  (nrow(filter(training_data, meta_triad_code == run_triad_code)) /
+    nrow(training_data)) %>%
+  scales::percent(accuracy = 0.01)
+m_train_med_sp <- training_data$meta_sale_price %>%
+  median() %>%
+  scales::dollar()
+m_train_n_outliers <- training_data$sv_is_outlier %>%
+  sum() %>%
+  scales::comma()
+m_train_n_outliers_prop <-
+  ((nrow(training_data) / sum(training_data$sv_is_outlier)) / 100) %>%
+  scales::percent(accuracy = 0.01)
+
+m_assess_min_date <- min(assessment_pin$sale_ratio_study_date, na.rm = TRUE)
+m_assess_max_date <- max(assessment_pin$sale_ratio_study_date, na.rm = TRUE)
+m_assess_n_sales <- table(is.na(assessment_pin$sale_ratio_study_price))[1] %>%
+  scales::comma()
+m_assess_med_sp <- assessment_pin$sale_ratio_study_price %>%
+  median(na.rm = TRUE) %>%
+  scales::dollar()
+m_assess_stage_far <- paste(
+  metadata$ratio_study_far_year,
+  metadata$ratio_study_far_stage
+)
+m_assess_stage_near <- paste(
+  metadata$ratio_study_near_year,
+  metadata$ratio_study_near_stage
+)
+```
+
 # Model
 
-This document describes overall model performance statistics using four sets of data:
+The following document describes performance for ```r metadata$run_id```, a ```r model_parameter_final$engine``` model built to re-assess the ```r metadata$assessment_triad``` triad in ```r metadata$assessment_year```. The document uses four sets of data to measure performance:
 
-- **Test Set**: Predictions made on a holdout set of data that the model didn't see during training. Typically the last 10% of sales. Per industry best practices, this set should be used for model comparison and selection.
-  - Includes sales from `r min(test_card$meta_sale_date)` to `r max(test_card$meta_sale_date)`.
-  - The total number of sales is `r scales::comma(nrow(test_card))`.
-- **Training Set**: Full data used to train to model for final prediction (prediction on the assessment set, not the test set). This _includes_ the test set, which is removed during model CV and tuning.
-  - Includes sales from `r min(training_data$meta_sale_date)` to `r max(training_data$meta_sale_date)`.
-  - The total number of sales is `r scales::comma(nrow(training_data))`.
-  - Includes `r scales::comma(sum(training_data$sv_is_outlier))` outliers that are removed during training, or `r scales::percent((nrow(training_data) / sum(training_data$sv_is_outlier)) / 100, accuracy = 0.01)` of the training set.
-- **Assessment Set**: This is the main model output for Valuations. It includes predictions on both seen (recently sold) and unseen (no recent sales) data. Sales are included for study if they're in the year prior to the assessment year i.e. 2023 assessments reference 2022 sales. This is the assessor standard way of measuring performance. This set should only be used to understand preliminary sales ratio outcomes.
+- **Test Set**: A holdout set of data that the model didn't see during training. Per industry best practices, this set is used for model comparison and selection. For this run, the test set:
+  - Spanned from ```r m_test_min_date``` to ```r m_test_max_date```
+  - Contained ```r m_test_n_sales``` total sales, of which ```r m_test_n_sales_triad``` (```r m_test_n_sales_prop```) were in the ```r metadata$assessment_triad``` triad
+  - Had a median sale price of ```r m_test_med_sp```
+  - Included the last ```r m_test_split_prop``` of all training data sales
+- **Training Set**: Full data used to train to model for final prediction (prediction on the assessment set, not the test set). This _includes_ the test set, which is removed during model cross-validation and tuning. For this run, the training set:
+  - Spanned from ```r m_train_min_date``` to ```r m_train_max_date```
+  - Contained ```r m_train_n_sales``` total sales, of which ```r m_train_n_sales_triad``` (```r m_train_n_sales_prop```) were in the ```r metadata$assessment_triad``` triad
+  - Had a median sale price of ```r m_train_med_sp```
+  - Contained ```r m_train_n_outliers``` outliers (```r m_train_n_outliers_prop``` of the total sales)
+  - Used ```r metadata$model_predictor_all_count``` predictors, ```r metadata$model_predictor_categorical_count``` of which were categoricals
+- **Assessment Set**: This is the main model output for Valuations. It includes predictions on both seen (recently sold) and unseen (no recent sales) data. Sales are included for study if they're in the year prior to the assessment year i.e. 2023 assessments reference 2022 sales. This is the assessor standard way of measuring performance. This set should only be used to understand preliminary sales ratio outcomes. For this run, the assessment set:
+  - Contained sales from ```r m_assess_min_date``` to ```r m_assess_max_date``` for comparison
+  - Contained ```r m_assess_n_sales``` total sales for comparison
+  - Had a median sale price of ```r m_assess_med_sp```
+  - Had a lien/assessment date of ```r metadata$assessment_date```
+  - Used characteristics data from ```r metadata$assessment_data_year```
+  - Used ```r m_assess_stage_far``` and ```r m_assess_stage_near``` values for percentage change calculations
 - **Linear Baseline**: Test set results using a separate simple linear model. This is used as a baseline for comparison against the more complicated main model.
 
 ```{r _model_setup}
