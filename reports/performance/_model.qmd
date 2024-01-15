@@ -639,7 +639,7 @@ est_v_actual_plotly_town <- function(data, x) {
         suffix = "K"
       ),
       n.breaks = 5,
-      limits = c(1e4, 1.5e6)
+      limits = c(1e4, 3e6)
     ) +
     scale_x_continuous(
       name = "Actual FMV (Sale Price)",
@@ -649,7 +649,7 @@ est_v_actual_plotly_town <- function(data, x) {
         suffix = "K"
       ),
       n.breaks = 5,
-      limits = c(1e4, 1.5e6)
+      limits = c(1e4, 3e6)
     ) +
     theme_minimal()
 
@@ -722,7 +722,7 @@ est_v_actual_plotly_class <- function(data, x) {
         suffix = "K"
       ),
       n.breaks = 5,
-      limits = c(1e4, 1.5e6)
+      limits = c(1e4, 3e6)
     ) +
     scale_x_continuous(
       name = "Actual FMV (Sale Price)",
@@ -732,7 +732,7 @@ est_v_actual_plotly_class <- function(data, x) {
         suffix = "K"
       ),
       n.breaks = 5,
-      limits = c(1e4, 1.5e6)
+      limits = c(1e4, 3e6)
     ) +
     theme_minimal()
 
