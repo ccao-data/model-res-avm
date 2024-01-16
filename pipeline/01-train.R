@@ -102,8 +102,7 @@ message("Initializing LightGBM model")
 # lightgbm as "engine arguments" i.e. things specific to lightgbm, as opposed to
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
-  stop_iter = params$model$parameter$stop_iter,
-  trees = params$model$hyperparameter$default$num_iterations
+  stop_iter = params$model$parameter$stop_iter
 ) %>%
   set_mode("regression") %>%
   set_engine(
@@ -170,6 +169,23 @@ lgbm_model <- parsnip::boost_tree(
     lambda_l2 = tune()
   )
 
+# The num_iterations (trees) parameter has three possible values:
+# 1. If CV AND early stopping are enabled, set a static parameter using the
+#    upper bound of the CV search range as the maximum possible number of trees
+# 2. If CV is enabled but early stopping is disabled, set the search range to
+#    the standard CV range
+# 3. If no CV is enabled, use the default parameter value
+if (cv_enable && early_stopping_enable) {
+  lgbm_model <- lgbm_model %>%
+    set_args(trees = params$model$hyperparameter$range$num_iterations[2])
+} else if (cv_enable && !early_stopping_enable) {
+  lgbm_model <- lgbm_model %>%
+    set_args(trees = tune())
+} else {
+  lgbm_model <- lgbm_model %>%
+    set_args(trees = params$model$hyperparameter$default$num_iterations)
+}
+
 # Initialize lightgbm workflow, which contains both the model spec AND the
 # pre-processing steps/recipe needed to prepare the raw data
 lgbm_wflow <- workflow() %>%
@@ -188,11 +204,26 @@ lgbm_wflow <- workflow() %>%
 if (cv_enable) {
   message("Starting cross-validation")
 
-  # Create the cross-validation folds
-  train_folds <- vfold_cv(
-    data = train,
-    v = params$cv$num_folds
-  )
+  # Create resamples / folds for cross-validation
+  if (params$model$parameter$validation_type == "random") {
+    train_folds <- vfold_cv(data = train, v = params$cv$num_folds)
+  } else if (params$model$parameter$validation_type == "recent") {
+    # CRITICAL NOTE: When using rolling-origin CV with train_includes_val = TRUE
+    # the validation set IS INCLUDED IN THE TRAINING DATA for each fold
+
+    # This is a hack to pass a validation set to LightGBM for early stopping
+    # (our R wrapper package Lightsnip cuts out the last X% of each training
+    # set to use as a validation set). See GitLab issue #82 for more info
+    train_folds <- create_rolling_origin_splits(
+      data = train,
+      v = params$cv$num_folds,
+      overlap_months = params$cv$fold_overlap,
+      date_col = meta_sale_date,
+      val_prop = params$model$parameter$validation_prop,
+      train_includes_val = params$model$parameter$validation_prop > 0,
+      cumulative = FALSE
+    )
+  }
 
   # Create the parameter search space for hyperparameter optimization
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
@@ -217,6 +248,12 @@ if (cv_enable) {
       lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2)
       # nolint end
     )
+
+  # Only update the tuning param with the CV range if early stopping is disabled
+  if (!early_stopping_enable) {
+    lgbm_params <- lgbm_params %>%
+      update(trees = dials::trees(lgbm_range$num_iterations))
+  }
 
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
   # quite a long time, depending on the compute resources available

@@ -95,6 +95,7 @@ metadata <- tibble::tibble(
   shap_enable = shap_enable,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
+  cv_fold_overlap = params$cv$fold_overlap,
   cv_initial_set = params$cv$initial_set,
   cv_max_iterations = params$cv$max_iterations,
   cv_no_improve = params$cv$no_improve,

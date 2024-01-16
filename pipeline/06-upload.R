@@ -257,7 +257,11 @@ if (upload_enable) {
 
   # If values were uploaded, trigger a Glue crawler to find any new partitions
   glue_srv <- paws.analytics::glue()
-  glue_srv$start_crawler("ccao-model-results-crawler")
+  tryCatch(
+    glue_srv$start_crawler("ccao-model-results-crawler"),
+    error = function(e) message(e),
+    warning = function(w) message(e)
+  )
 
   # If SNS ARN is available, notify subscribers via email upon run completion
   if (!is.na(Sys.getenv("AWS_SNS_ARN_MODEL_STATUS", unset = NA))) {
@@ -311,7 +315,8 @@ if (upload_enable) {
       Subject = paste("Model Run Complete:", run_id),
       Message = paste0(
         "Model run: ", run_id, " complete\n",
-        "Finished in: ", pipeline_sns_total_time, "\n\n",
+        "Finished in: ", pipeline_sns_total_time, "\n",
+        "Run note: ", metadata$run_note, "\n\n",
         "Report link: ", report_url, "\n\n",
         pipeline_sns_results
       ),

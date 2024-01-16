@@ -2,15 +2,10 @@
 
 # Statistical Tests
 
+This section contains various statistical tests and plots, mostly to ensure that the universe of sold properties is representative of the universe of all properties.
+
 ```{r _stats_gather_data}
-# This script runs balance tests comparing the universe of residential parcels
-# to the sample of residential parcels with sales in the previous 8 years
-# that are used to train the data department's CAMA.
-
-# GATHER DATA ----
-
-# Vars to test across
-vars <-
+stats_regression_vars <-
   grep("char_|3435|acs5_median|township_name",
     names(chars_data),
     value = TRUE
@@ -22,22 +17,23 @@ vars <-
   )
 
 # All residential parcel characteristics from time frame, with a sale indicator
-sf_parcels <- chars_data %>%
+stats_sf_parcels <- chars_data %>%
   filter(!meta_class %in% c("211", "212")) %>%
+  mutate(meta_card_num = as.character(meta_card_num)) %>%
   # Join on sales indicator for most recent sale in the last two years -
   # if there is one
   left_join(
     training_data %>%
       filter(
-        year >= as.numeric(params$year) - 1,
-        !sv_is_outlier,
+        year >= as.numeric(metadata$input_max_sale_year) - 1,
+        !sv_is_outlier, !ind_pin_is_multicard,
         meta_sale_date == max(meta_sale_date, na.rm = TRUE),
-        .by = meta_pin
+        .by = c(meta_pin, meta_card_num)
       ) %>%
       # We apply distinct here to remove duplicate sales that are a result of
       # multicard and multiland sales, otherwise we'll get many-to-many joins.
       distinct() %>%
-      select(meta_pin, meta_sale_date, meta_year)
+      select(meta_pin, meta_card_num, meta_sale_date, meta_year)
   ) %>%
   mutate(
     sale = factor(
@@ -58,7 +54,7 @@ sf_parcels <- chars_data %>%
       as.factor
     )
   ) %>%
-  select(sale, all_of(vars)) %>%
+  select(sale, all_of(stats_regression_vars)) %>%
   vars_recode(
     type = "long",
     dict = ccao::vars_dict_legacy
@@ -69,22 +65,21 @@ sf_parcels <- chars_data %>%
   rename_with(toTitleCase) %>%
   rename_with(~ gsub("Acs5", "ACS5", .x))
 
-logit_parcels <- sf_parcels %>%
+stats_logit_parcels <- stats_sf_parcels %>%
   mutate(across(where(is.factor), ~ addNA(.x))) %>%
   drop_na()
 
-vars <- names(sf_parcels) %>%
+stats_logit_vars <- names(stats_sf_parcels) %>%
   grep("Sale|Township", ., value = TRUE, invert = TRUE)
 ```
 
+## Logistic Regression
 
-## Logit Regressions
-
-All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single family parcels from the past two years, excluding some parcels with incomplete characteristics.
+All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale, ceterus paribus. Sample is universe of single-family parcels from the two years prior to assessment, excluding some parcels with incomplete characteristics.
 
 ```{r _stats_logit}
-remove <-
-  names(sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>%
+stats_logit_remove <-
+  names(stats_sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>%
     select(where(is.factor))) %>%
   grep(
     "Sale|Township|Apartments|Single|Commercial",
@@ -93,28 +88,28 @@ remove <-
     value = TRUE
   )
 
-fmla <- as.formula(
-  paste0("Sale ~ ", paste(gsub(" |-", "_", vars), collapse = "+"))
+stats_logit_fmla <- as.formula(
+  paste0("Sale ~ ", paste(gsub(" |-", "_", stats_logit_vars), collapse = "+"))
 )
 
-logit <- glm(fmla,
-  data = logit_parcels %>%
+stats_logit_fit <- glm(stats_logit_fmla,
+  data = stats_logit_parcels %>%
     rename_with(~ gsub(" |-", "_", .x)),
   family = "binomial"
 )
 
-sample_size <- logit$df.null
+stats_logit_sample_size <- stats_logit_fit$df.null
 
-county_logit <- logit %>%
+stats_county_logit <- stats_logit_fit %>%
   broom::tidy() %>%
   mutate(
     p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
-    term = gsub("_", " ", gsub(paste(remove, collapse = "|"), "", term))
+    term = gsub("_", " ", gsub(paste(stats_logit_remove, collapse = "|"), "", term))
   ) %>%
   kable(
     caption = paste0(
       "Sample size: ",
-      format(sample_size, big.mark = ","),
+      format(stats_logit_sample_size, big.mark = ","),
       " single-family parcels"
     ),
     col.names = c("Predictor", "β", "SE", "t", "p"),
@@ -147,96 +142,11 @@ county_logit <- logit %>%
   pack_rows("Central Air Conditioning", 67, 68) %>%
   pack_rows("Design Plan", 69, 70) %>%
   pack_rows("Recent Renovation", 71, 71)
-
-logits <- logit_parcels %>%
-  split(.$`Meta Township Name`) %>%
-  sapply(function(x) {
-    if (nrow(x) < 1000) {
-      trim_vars <- grep("Renovation", vars, value = TRUE, invert = TRUE)
-
-      fmla <- as.formula(paste0("Sale ~ ", paste0(gsub(
-        " |-", "_", trim_vars
-      ), collapse = "+")))
-
-      glm(fmla,
-        data = x %>%
-          rename_with(~ gsub(" |-", "_", .x)),
-        family = "binomial"
-      ) %>%
-        broom::tidy() %>%
-        mutate(
-          p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
-          term = gsub("_", " ", term)
-        ) %>%
-        kable(
-          col.names = c("Predictor", "β", "SE", "t", "p"),
-          digits = c(0, 5, 5, 3, 0),
-          align = c("l", "r", "c", "r", "l"),
-          padding = 5L
-        ) %>%
-        add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
-          notation = "none"
-        ) %>%
-        kable_styling(
-          "striped",
-          position = "left",
-          fixed_thead = TRUE,
-          html_font = "Consolas"
-        )
-    } else {
-      fmla <- as.formula(
-        paste0("Sale ~ ", paste0(gsub(" |-", "_", vars), collapse = "+"))
-      )
-
-      glm(fmla,
-        data = x %>%
-          rename_with(~ gsub(" |-", "_", .x)),
-        family = "binomial"
-      ) %>%
-        broom::tidy() %>%
-        mutate(
-          p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
-          term = gsub("_", " ", term)
-        ) %>%
-        kable(
-          col.names = c("Predictor", "β", "SE", "t", "p"),
-          digits = c(0, 5, 5, 3, 0),
-          align = c("l", "r", "c", "r", "l"),
-          padding = 5L
-        ) %>%
-        add_footnote(
-          "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
-          notation = "none"
-        ) %>%
-        kable_styling(
-          "striped",
-          position = "left",
-          fixed_thead = TRUE,
-          html_font = "Consolas"
-        )
-    }
-  }, simplify = FALSE)
 ```
-
-::: {.panel-tabset}
-
-## County
 
 ```{r _stats_county_regression}
-county_logit
+stats_county_logit
 ```
-
-```{r _stats_township_regressions, results = 'asis'}
-iwalk(logits, ~ {
-  cat("## ", .y, "\n\n")
-
-  print(.x)
-
-  cat("\n\n")
-})
-```
-:::
 
 ## Standardized Mean Differences
 
@@ -249,15 +159,16 @@ deviation of outcome among participants}}$$
 We're looking for SMDs greater than .1 or .05 for sensitive covariates.
 
 ```{r _stats_smds}
-smd_table <- CreateTableOne(
-  vars = vars %>% grep("Median", ., invert = TRUE, value = TRUE),
+stats_smd_table <- CreateTableOne(
+  vars = stats_logit_vars %>%
+    grep("Median", ., invert = TRUE, value = TRUE),
   strata = "Sale",
-  data = sf_parcels,
+  data = stats_sf_parcels,
   test = FALSE,
   includeNA = TRUE
 )
 
-print(smd_table, smd = TRUE)
+tableone::kableone(stats_smd_table, smd = TRUE)
 ```
 
 ## Empirical Cumulative Distributions
@@ -266,15 +177,18 @@ For the empirical cumulative distributions, we are looking for overlap/similar
 distributions. Numeric variables scaled and centered.
 
 ::: panel-tabset
-## Numeric Columns:
 
-```{r _stats_ecdfs1}
-num_plots <- length(sf_parcels %>% select(where(is.numeric)))
+### Numeric Columns
 
-grobs <- lapply(1:num_plots, function(index) {
-  x <- names(sf_parcels %>% select(where(is.numeric)))[index]
-  data <- sf_parcels %>% select(Sale, any_of(x))
-  ggplot(data, aes(scale(sf_parcels %>% pull(x)), color = Sale)) +
+```{r _stats_ecdfs_numeric}
+stats_ecdfs_plots_num <- stats_sf_parcels %>%
+  select(where(is.numeric)) %>%
+  length()
+
+stats_ecdfs_grobs_num <- lapply(seq_len(stats_ecdfs_plots_num), function(index) {
+  x <- names(stats_sf_parcels %>% select(where(is.numeric)))[index]
+  data <- stats_sf_parcels %>% select(Sale, any_of(x))
+  ggplot(data, aes(scale(stats_sf_parcels %>% pull(x)), color = Sale)) +
     stat_ecdf(geom = "step") +
     labs(x = str_wrap(x, width = 25)) +
     theme_minimal() +
@@ -284,18 +198,18 @@ grobs <- lapply(1:num_plots, function(index) {
       axis.ticks.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks.y = element_blank(),
-      legend.position = if (index == num_plots) "bottom" else "none"
+      legend.position = if (index == stats_ecdfs_plots_num) "bottom" else "none"
     )
 })
 
-for (i in seq(1, length(grobs), by = 6)) {
+for (i in seq(1, length(stats_ecdfs_grobs_num), by = 6)) {
   if (i == 13) {
     grid.arrange(
       grobs = list(
-        grobs[[i]],
-        grobs[[i + 1]],
-        grobs[[i + 2]],
-        grobs[[i + 3]],
+        stats_ecdfs_grobs_num[[i]],
+        stats_ecdfs_grobs_num[[i + 1]],
+        stats_ecdfs_grobs_num[[i + 2]],
+        stats_ecdfs_grobs_num[[i + 3]],
         rectGrob(gp = gpar(col = "white")),
         rectGrob(gp = gpar(col = "white"))
       ),
@@ -305,8 +219,12 @@ for (i in seq(1, length(grobs), by = 6)) {
   } else {
     grid.arrange(
       grobs = list(
-        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
-        grobs[[i + 3]], grobs[[i + 4]], grobs[[i + 5]]
+        stats_ecdfs_grobs_num[[i]],
+        stats_ecdfs_grobs_num[[i + 1]],
+        stats_ecdfs_grobs_num[[i + 2]],
+        stats_ecdfs_grobs_num[[i + 3]],
+        stats_ecdfs_grobs_num[[i + 4]],
+        stats_ecdfs_grobs_num[[i + 5]]
       ),
       ncol = 3,
       nrow = 2
@@ -315,14 +233,22 @@ for (i in seq(1, length(grobs), by = 6)) {
 }
 ```
 
-## Factor Columns:
+### Factor Columns
 
-```{r _stats_ecdfs2}
-num_plots <- length(sf_parcels %>% select(where(is.factor) & any_of(vars)))
+```{r _stats_ecdfs_factor}
+stats_ecdfs_plots_fct <- stats_sf_parcels %>%
+  select(where(is.factor)) %>%
+  length()
 
-grobs <- lapply(1:num_plots, function(index) {
-  x <- names(sf_parcels %>% select(where(is.factor) & any_of(vars)))[index]
-  ggplot(sf_parcels, aes(as.numeric(sf_parcels %>% pull(x)), color = Sale)) +
+stats_ecdfs_grobs_fct <- lapply(seq_len(stats_ecdfs_plots_fct), function(index) {
+  x <- names(
+    stats_sf_parcels %>%
+      select(where(is.factor) & any_of(stats_logit_vars))
+  )[index]
+  ggplot(
+    data = stats_sf_parcels,
+    mapping = aes(as.numeric(stats_sf_parcels %>% pull(x)), color = Sale)
+  ) +
     stat_ecdf(geom = "step") +
     labs(x = str_wrap(x, width = 25)) +
     theme_minimal() +
@@ -332,16 +258,19 @@ grobs <- lapply(1:num_plots, function(index) {
       axis.ticks.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks.y = element_blank(),
-      legend.position = if (index == num_plots) "bottom" else "none"
+      legend.position = if (index == stats_ecdfs_plots_fct) "bottom" else "none"
     )
 })
 
-for (i in seq(1, length(grobs), by = 6)) {
+for (i in seq(1, length(stats_ecdfs_grobs_fct), by = 6)) {
   if (i == 13) {
     grid.arrange(
       grobs = list(
-        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
-        grobs[[i + 3]], grobs[[i + 4]],
+        stats_ecdfs_grobs_fct[[i]],
+        stats_ecdfs_grobs_fct[[i + 1]],
+        stats_ecdfs_grobs_fct[[i + 2]],
+        stats_ecdfs_grobs_fct[[i + 3]],
+        stats_ecdfs_grobs_fct[[i + 4]],
         rectGrob(gp = gpar(col = "white"))
       ),
       ncol = 3,
@@ -350,8 +279,12 @@ for (i in seq(1, length(grobs), by = 6)) {
   } else {
     grid.arrange(
       grobs = list(
-        grobs[[i]], grobs[[i + 1]], grobs[[i + 2]],
-        grobs[[i + 3]], grobs[[i + 4]], grobs[[i + 5]]
+        stats_ecdfs_grobs_fct[[i]],
+        stats_ecdfs_grobs_fct[[i + 1]],
+        stats_ecdfs_grobs_fct[[i + 2]],
+        stats_ecdfs_grobs_fct[[i + 3]],
+        stats_ecdfs_grobs_fct[[i + 4]],
+        stats_ecdfs_grobs_fct[[i + 5]]
       ),
       ncol = 3,
       nrow = 2
@@ -366,18 +299,19 @@ for (i in seq(1, length(grobs), by = 6)) {
 
 If the training sample is representative of the housing stock at large we should
 see similar changes in AVs between the previous year and predictions regardless
-of whether a home has sold recently. This chart compares the median change in AV
-(dollar and percentage) for homes which have sold in the previous three years to
-those which have not.
+of whether a home has sold recently. This table compares the median change in AV
+(dollar and percentage) for homes which have sold in the three years prior to
+the assessment year those which did not sell.
 
-```{r _model_sales_chasing}
-median_yoy_delta <- assessment_pin %>%
+```{r _model_in_v_out_of_sample_delta}
+stats_median_yoy_delta <- assessment_pin %>%
   mutate(
     Township = ccao::town_convert(meta_township_code),
     prior_far_yoy_change_pct = as.numeric(prior_far_yoy_change_pct),
     prior_near_yoy_change_nom = as.numeric(prior_near_yoy_change_nom),
     is_recent_sale = case_when(
-      lubridate::year(sale_recent_1_date) >= as.numeric(params$year) - 3 ~ TRUE,
+      lubridate::year(sale_recent_1_date) >=
+        as.numeric(metadata$input_max_sale_year) - 3 ~ TRUE,
       TRUE ~ FALSE
     )
   ) %>%
@@ -413,15 +347,15 @@ median_yoy_delta <- assessment_pin %>%
     change_dollars_ratio, yoy_change_dollars_TRUE, yoy_change_dollars_FALSE,
   )
 
-median_yoy_delta %>%
+stats_median_yoy_delta %>%
   mutate(
     change_percent_ratio = cell_spec(
       change_percent_ratio,
-      color = ifelse(between(change_percent_ratio, 0.95, 1.0), "green", "red")
+      color = ifelse(between(change_percent_ratio, 0.95, 1.05), "green", "red")
     ),
     change_dollars_ratio = cell_spec(
       change_dollars_ratio,
-      color = ifelse(between(change_dollars_ratio, 0.95, 1.0), "green", "red")
+      color = ifelse(between(change_dollars_ratio, 0.95, 1.05), "green", "red")
     )
   ) %>%
   kable(
@@ -441,6 +375,5 @@ median_yoy_delta %>%
   add_header_above(c(" " = 1, "Percentage Change" = 3, "Dollar Change" = 3)) %>%
   add_header_above(
     c("Comparison of YOY Change in AV for Sold and Unsold Houses" = 7)
-  ) %>%
-  add_footnote("Ratios in green are > 0.95 and < 1.05")
+  )
 ```

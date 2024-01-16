@@ -3,6 +3,8 @@ title: "`r params$year` Model Performance and Diagnostics"
 subtitle: "Run ID: `r params$run_id`"
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
+abstract-title: "Run Note"
+abstract: '`r arrow::read_parquet(here::here("output/metadata/model_metadata.parquet"))$run_note`'
 execute:
   echo: false
   warning: false
@@ -18,19 +20,21 @@ knitr:
     out.width: "100%"
 editor: source
 params:
-  run_id: "2023-12-27-pedantic-billy"
-  year: "2023"
+  run_id: "2024-01-10-objective-patrick"
+  year: "2024"
 ---
 
 {{< include ../_setup.qmd >}}
 
 {{< include _model.qmd >}}
 
+{{< include _outcomes.qmd >}}
+
 {{< include _sales.qmd >}}
 
-{{< include _input.qmd >}}
-
 {{< include _outliers.qmd >}}
+
+{{< include _input.qmd >}}
 
 ```{r, results='asis'}
 # Dynamically render shap code based on whether they are enabled for model run

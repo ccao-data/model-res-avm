@@ -12,7 +12,7 @@
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Test run for updated 2024 model pipeline with V-fold cross-validation
+  Cutover to 2024 model (Chicago reassessment) using 2023 data
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -33,18 +33,18 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to pull land rates, HIEs, and other information
-  year: "2023"
+  year: "2024"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2023-01-01"
+  date: "2023-10-01"
 
   # Added context for model artifacts stored in S3. Does not change behavior
-  triad: "south"
+  triad: "city"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2022"
+  data_year: "2023"
 
   # Year used to partition data on S3. Working year in this case means the year
   # the Data Department is currently creating models for
@@ -53,11 +53,8 @@ assessment:
 # Parameters used to define the input/training data
 input:
   # The min and max year of sales to use for the training data sample
-  min_sale_year: "2014"
-  max_sale_year: "2022"
-
-  # Time window (in months) used for rolling origin cross-validation
-  time_split: 15
+  min_sale_year: "2015"
+  max_sale_year: "2023"
 
   # Parameters used to generate townhome complex identifiers
   complex:
@@ -86,12 +83,18 @@ input:
 
 # Cross-validation parameters used in the train stage
 cv:
-  # Proportion of the training data to use for training vs test e.g. 0.9 means
-  # the most recent 10% of sales are used as a test set
+  # Proportion of the training data to use for training vs test, split by time.
+  # 0.9 means the most recent 10% of sales are used as a test set
   split_prop: 0.9
 
-  # Number of folds to use for cross-validation
+  # Number of folds to use for cross-validation. For v-fold CV, the data will be
+  # randomly split. For rolling-origin, the data will be split into V chunks by
+  # time, with each chunk/period calculated automatically
   num_folds: 5
+
+  # The number of months time-based folds should overlap each other. Only
+  # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
+  fold_overlap: 15
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
@@ -125,7 +128,7 @@ model:
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
-  seed: 2023
+  seed: 2024
   deterministic: TRUE
   force_row_wise: TRUE
 
@@ -275,7 +278,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
-    validation_type: "random"
+    validation_type: "recent"
     validation_metric: "rmse"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
@@ -285,14 +288,19 @@ model:
 
     # During CV, the number of iterations to go without improvement before
     # stopping training. Early stopping is deactivated when NULL
-    stop_iter: 40
+    stop_iter: 50
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
     default:
-      # Total number of iterations. Usually changed in tandem with learning_rate
-      # NOTE: If cross-validation is not used, then the model will always train
-      # to exactly this number of iterations, even if early stopping is enabled
+      # Total/maximum number of iterations. Usually changed in tandem with
+      # learning_rate. One of the most important params controlling complexity
+
+      # If cross-validation and early stopping are disabled then the model will
+      # always train to exactly this number of iterations. The ideal strategy
+      # for setting this parameter is to discover a good fixed value using CV,
+      # then manually set that value for non-CV runs (which don't use
+      # early stopping by default)
       num_iterations: 1575
       learning_rate: 0.015
 
@@ -316,7 +324,12 @@ model:
 
     # Range of possible hyperparameter values for tuning to explore
     range:
-      num_iterations: [40, 2500]
+      # NOTE: If cross-validation is used and/or early stopping is enabled, then
+      # the upper bound for num_iterations is effectively the MAXIMUM number of
+      # trees (i.e. the model can stop before reaching this number), and the
+      # number actual used is reported in the lgbm_final_params object in the
+      # train stage and parameter_final table in the run outputs/Athena
+      num_iterations: [100, 2500]
       learning_rate: [-3.0, -0.4] # 10 ^ X
       max_bin: [50, 512]
       num_leaves: [32, 2048]
@@ -359,10 +372,10 @@ pv:
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
 ratio_study:
-  far_year: "2020"
+  far_year: "2021"
   far_stage: "board"
   far_column: "meta_2yr_pri_board_tot"
-  near_year: "2022"
+  near_year: "2023"
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
@@ -391,7 +404,6 @@ ratio_study:
   # also be appended to using the environmental variable REPORT_ADDITIONAL_PINS
   pins:
     - "13253180150000"
-    - "17321110470000"
     - "05174150240000"
 
 
