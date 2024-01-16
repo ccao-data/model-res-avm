@@ -26,7 +26,6 @@ params:
 
 {{< include ../_setup.qmd >}}
 
-
 ```{r _pin_checks}
 target_pins <- ccao::pin_clean(params$pin)
 
@@ -41,15 +40,27 @@ for (target_pin in target_pins) {
 }
 ```
 
+```{r}
+unique_pins <- unique(params$pin)
+
+# Loop through each unique pin and render it
+for (pin in unique_pins) {
+  # Replace this with the actual rendering code for each pin
+  print(pin)
+}
+
+```
+
+## Hyperlinks
+
 ```{r _URLs, results='asis'}
 base_url <- "https://www.cookcountyassessor.com/pin/"
 pin_values <- params$pin
 
-for(pin in pin_values) {
+for (pin in pin_values) {
   full_url <- paste0(base_url, pin)
   cat(sprintf('<a href="%s">%s</a><br/>', full_url, full_url))
 }
-
 ```
 
 ```{r _pin_setup}
@@ -92,7 +103,7 @@ assessment_pin %>%
     "Pin" = meta_pin,
     "Township" = township,
     "Final FMV" = pred_pin_final_fmv
-  )  %>%
+  ) %>%
   mutate(`Final FMV` = scales::dollar(`Final FMV`)) %>%
   arrange(Pin) %>%
   kable() %>%
@@ -140,11 +151,17 @@ res_chars %>%
   filter(year == params$year | as.numeric(year) == as.numeric(params$year) - 3) %>%
   arrange(pin, card, year) %>%
   group_by(pin, card) %>%
-  mutate("Changed Characteristics" = ifelse(
-    any(across(.cols = -year, .fns = ~ .x != lag(.x, default = first(.x), order_by = year))),
-    "TRUE",
-    "FALSE"
-  )) %>%
+  mutate("Changed Characteristics" = {
+    changes <- sapply(across(.cols = -year), function(col) {
+      changed_indices <- which(col != lag(col, default = first(col), order_by = year))
+      if (length(changed_indices) > 0) TRUE else FALSE
+    })
+    if (any(changes)) {
+      paste(names(changes)[changes], collapse = ", ")
+    } else {
+      "FALSE"
+    }
+  }) %>%
   select(
     Pin = pin,
     Year = year,
@@ -155,10 +172,10 @@ res_chars %>%
     Beds = char_beds,
     "Full Baths" = char_fbath,
     "Half Baths" = char_hbath,
-    "Air" = char_air,
+    Air = char_air,
     "Residential Type" = char_type_resd,
-    "Rooms" = char_rooms,
-    "HIE" = hie,
+    Rooms = char_rooms,
+    HIE = hie,
     "Multicard Flag" = flag_pin_is_multicard,
     "Missing Critical Value" = flag_char_missing_critical_value,
     "Changed Characteristics"
@@ -171,6 +188,7 @@ res_chars %>%
     fixed_thead = TRUE,
     html_font = "Consolas"
   )
+
 ```
 
 ```{r _pin_shap_data_manipulation}
@@ -296,7 +314,6 @@ shap_df_filtered_ %>%
     fixed_thead = TRUE,
     html_font = "Consolas"
   )
-
 ```
 
 
@@ -379,6 +396,4 @@ kable(display_df, format = "html", escape = FALSE) %>%
     fixed_thead = TRUE,
     html_font = "Consolas"
   )
-
-
 ```
