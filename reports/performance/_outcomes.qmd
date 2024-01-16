@@ -2,15 +2,15 @@
 
 # Outcomes
 
-## Changes in Individual Assessed Value
+This section focuses on the impact of the model. It looks at outcomes such as the year-over-year percentage change in market value. It compares ```r m_assess_stage_near``` values to predicted, PIN-level values from the model. It uses the **assessment set** for all plots and tables.
 
-This section looks at the year-over-year change in assessed values. It separates the data into individual observations, identifying the PINs in each neighborhood/township which grew at the fastest rate.
+## Change in Individual Market Values
 
 ::: panel-tabset
 
 ### Map of Largest YoY Changes
 
-This map caps the legend at a 300% to increase legibility. It plots the 10 largest year-over-year increases in assessed value by neighborhood.
+This map plots the 10 largest year-over-year increases in market value by neighborhood. It caps the legend at a 300% to increase legibility.
 
 ```{r _outcomes_map_of_largest_change}
 outcomes_map_big_changes <- assessment_pin %>%
@@ -30,7 +30,7 @@ outcomes_map_nbhd_increases <- st_as_sf(outcomes_map_big_changes) %>%
 
 outcomes_map_color_palette <-
   colorNumeric(
-    palette = "PuRd",
+    palette = "YlGnBu",
     domain = c(min(outcomes_map_big_changes$prior_near_yoy_change_pct), 300)
   )
 
@@ -53,14 +53,16 @@ leaflet() %>%
     fillOpacity = 0.7,
     radius = 1,
     popup = ~ paste0(
-      "PIN: ", meta_pin,
+      "PIN: ",
+      "<a target='_blank' rel='noopener noreferrer' ",
+      "href='https://www.cookcountyassessor.com/pin/", meta_pin,
+      "'>", meta_pin, "</a>",
+      "<br>Neighborhood: ", meta_nbhd_code,
       "<br>Class: ", meta_class,
       "<br><br>",
-      "Neighborhood: ",
-      meta_nbhd_code,
-      "<br>Prior year (near) FMV: ",
+      tools::toTitleCase(m_assess_stage_near), " FMV: ",
       scales::dollar(prior_near_tot),
-      "<br>Cur. year (rounded) FMV: ",
+      "<br>Estimated FMV: ",
       scales::dollar(pred_pin_final_fmv_round),
       "<br>YoY Change: ",
       round(prior_near_yoy_change_pct, 2), "%"
@@ -82,7 +84,7 @@ leaflet() %>%
 
 ### Table of Largest YoY Changes
 
-This table excludes any PINs which had a prior year assessed value of less than $25,000. It then identifies the 5 PINs in each neighborhood which had the largest year-over-year increase in assessed value.
+This table excludes any PINs which had a prior year market value of less than $25,000. It then identifies the 5 PINs in each township which had the largest percentage year-over-year increase in market value.
 
 ```{r _outcomes_table_of_largest_change}
 outcomes_map_big_changes %>%
@@ -162,50 +164,155 @@ outcomes_map_big_changes %>%
 
 :::
 
-## Median Rate of Change by Neighborhood
+## Change in Median Market Value
+
+::: panel-tabset
+
+### By Neighborhood
 
 ```{r _outcomes_map_of_neighborhood_change}
-outcomes_map_nbhd_breaks <- c(-Inf, 0, 20, 40, 60, 80, 100, Inf)
-outcomes_map_nbhd_labels <- c(
-  "< 0%", "0% - 20%", "20% - 40%", "40% - 60%",
-  "60% - 80%", "80% - 100%", "> 100%"
+outcomes_map_breaks <- c(-Inf, 0, 10, 20, 30, 40, 50, 60, Inf)
+outcomes_map_labels <- c(
+  "< 0%", "0% - 10%", "10% - 20%", "20% - 30%",
+  "30% - 40%", "40% - 50%", "50% - 60%", "> 60%"
+)
+outcomes_map_labels <- factor(
+  x = outcomes_map_labels,
+  levels = outcomes_map_labels
 )
 
-outcomes_map_nbhd_increases <- outcomes_map_nbhd_increases %>%
+outcomes_map_nbhd_delta <- model_performance_assessment %>%
+  filter(
+    triad_code == run_triad_code,
+    !by_class,
+    geography_type == "nbhd_code"
+  ) %>%
+  select(
+    meta_nbhd_code = geography_id,
+    neighborhood_median_change = prior_near_yoy_pct_chg_median,
+    prior_near_fmv_median,
+    estimate_fmv_median,
+    sale_fmv_median, num_sale
+  ) %>%
   mutate(
+    neighborhood_median_change = neighborhood_median_change * 100,
+    township = ccao::town_convert(substr(meta_nbhd_code, 1, 2)),
     change_category = cut(
       neighborhood_median_change,
-      breaks = outcomes_map_nbhd_breaks,
-      labels = outcomes_map_nbhd_labels,
+      breaks = outcomes_map_breaks,
+      labels = outcomes_map_labels,
       include.lowest = TRUE
     )
   )
 
+outcomes_map_nbhd_delta_sf <- ccao::nbhd_shp %>%
+  inner_join(
+    outcomes_map_nbhd_delta,
+    by = c("town_nbhd" = "meta_nbhd_code")
+  ) %>%
+  rename(meta_nbhd_code = town_nbhd)
+
 outcomes_map_nbhd_palette <- colorFactor(
-  palette = c("#e34a33", "#ffffff", RColorBrewer::brewer.pal(6, "BuPu")),
-  domain = outcomes_map_nbhd_increases$change_category
+  palette = c("#e34a33", "#ffffff", RColorBrewer::brewer.pal(6, "YlGnBu")),
+  domain = outcomes_map_nbhd_delta_sf$change_category
 )
 
-leaflet(data = outcomes_map_nbhd_increases) %>%
+leaflet(data = outcomes_map_nbhd_delta_sf) %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
   addPolygons(
     fillColor = ~ outcomes_map_nbhd_palette(change_category),
     color = "black",
     weight = 1,
     opacity = 1,
-    fillOpacity = 0.7,
+    fillOpacity = 0.5,
     smoothFactor = 0.5,
     popup = ~ paste0(
       "Township: ", township_name,
       "<br>Neighborhood: ", meta_nbhd_code,
-      "<br>Change: ", round(neighborhood_median_change, 2), "%"
+      "<br><br>",
+      "Num. Sales: ", scales::comma(num_sale),
+      "<br>Med. Sale FMV: ", scales::dollar(sale_fmv_median),
+      "<br><br>",
+      "Med. ", tools::toTitleCase(m_assess_stage_near), " FMV: ",
+      scales::dollar(prior_near_fmv_median),
+      "<br>Med. Estimated FMV: ",
+      scales::dollar(estimate_fmv_median),
+      "<br>Med. YoY Change: ", round(neighborhood_median_change, 2), "%"
     )
   ) %>%
   addLegend(
     position = "bottomright",
     pal = outcomes_map_nbhd_palette,
-    values = ~change_category,
+    values = outcomes_map_labels,
     title = "Median YoY Change",
-    opacity = 1
+    opacity = 0.5
   )
 ```
+
+### By Township
+
+```{r _outcomes_map_of_township_change}
+outcomes_map_township_delta <- model_performance_assessment %>%
+  filter(
+    triad_code == run_triad_code,
+    !by_class,
+    geography_type == "township_code"
+  ) %>%
+  select(
+    township_code = geography_id,
+    township_median_change = prior_near_yoy_pct_chg_median,
+    prior_near_fmv_median,
+    estimate_fmv_median,
+    sale_fmv_median, num_sale
+  ) %>%
+  mutate(
+    township_median_change = township_median_change * 100,
+    township = ccao::town_convert(township_code),
+    change_category = cut(
+      township_median_change,
+      breaks = outcomes_map_breaks,
+      labels = outcomes_map_labels,
+      include.lowest = TRUE
+    )
+  )
+
+outcomes_map_township_delta_sf <- ccao::town_shp %>%
+  inner_join(outcomes_map_township_delta, by = "township_code")
+
+outcomes_map_township_palette <- colorFactor(
+  palette = c("#e34a33", "#ffffff", RColorBrewer::brewer.pal(6, "YlGnBu")),
+  domain = outcomes_map_township_delta_sf$change_category
+)
+
+leaflet(data = outcomes_map_township_delta_sf) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    fillColor = ~ outcomes_map_township_palette(change_category),
+    color = "black",
+    weight = 1,
+    opacity = 1,
+    fillOpacity = 0.5,
+    smoothFactor = 0.5,
+    popup = ~ paste0(
+      "Township: ", township_name,
+      "<br><br>",
+      "Num. Sales: ", scales::comma(num_sale),
+      "<br>Med. Sale FMV: ", scales::dollar(sale_fmv_median),
+      "<br><br>",
+      "Med. ", tools::toTitleCase(m_assess_stage_near), " FMV: ",
+      scales::dollar(prior_near_fmv_median),
+      "<br>Med. Estimated FMV: ",
+      scales::dollar(estimate_fmv_median),
+      "<br>Med. YoY Change: ", round(township_median_change, 2), "%"
+    )
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    pal = outcomes_map_township_palette,
+    values = outcomes_map_labels,
+    title = "Median YoY Change",
+    opacity = 0.5
+  )
+```
+
+:::
