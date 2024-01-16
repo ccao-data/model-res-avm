@@ -77,7 +77,7 @@ hie_data_subset <- hie_data %>%
 
 ## Predicted Model Value
 
-```{r, _predicted_model_value}
+```{r, _pin_predicted_model_value}
 assessment_pin %>%
   mutate(township = ccao::town_convert(meta_township_code)) %>%
   filter(meta_pin %in% params$pin) %>%
@@ -212,7 +212,7 @@ assessment_card_filtered <- assessment_card_filtered %>%
   arrange(meta_pin)
 ```
 
-## Individual Pin SHAP Results
+## Card-Level SHAP Results
 
 ```{r _pin_shap_viz}
 create_shap_viz <- function(row_idx) {
@@ -238,7 +238,7 @@ num_rows <- nrow(shap_df_filtered)
 
 ::: {.panel-tabset}
 
-```{r, results = 'asis'}
+```{r _pin_SHAP_results, results = 'asis'}
 results <- vector("list", length = num_rows)
 
 for (i in 1:num_rows) {
@@ -253,8 +253,9 @@ for (i in 1:num_rows) {
 ```
 
 :::
+  
 ## Table of SHAP Values Grouped by Category
-```{r pin_shap_table, results = "asis"}
+```{r _pin_shap_table, results = "asis"}
 shap_df_filtered_ <- shap_df_filtered %>%
   filter(meta_pin %in% params$pin) %>%
   mutate(Pin = as.numeric(meta_pin)) %>%
@@ -296,7 +297,7 @@ shap_df_filtered_ %>%
 
 
 ## Change in Pin Value over 3 Year Timeframe
-```{r pin_change_in_house_value, results = 'asis'}
+```{r _pin_change_in_house_value, results = 'asis'}
 wider_data <- pin_value %>%
   pivot_wider(
     names_from = year,
