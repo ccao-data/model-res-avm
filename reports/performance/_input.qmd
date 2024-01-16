@@ -298,18 +298,14 @@ input_multicard_test_pins <- tribble(
 )
 
 input_multicard_test_df <- assessment_card %>%
-  filter(
-    ccao::town_get_triad(meta_township_code) == run_triad_code,
-  ) %>%
-  group_by(meta_pin) %>%
-  filter(n() > 1) %>%
-  select(meta_pin, meta_class, meta_card_num, meta_tieback_proration_rate, char_bldg_sf) %>%
-  filter(meta_tieback_proration_rate != 1)
-
-input_multicard_test_df <- assessment_card %>%
-  filter(
-    ccao::town_get_triad(meta_township_code) == run_triad_code,
-    meta_pin %in% input_multicard_test_pins$pin
+  inner_join(
+    assessment_pin %>%
+      filter(
+        meta_pin %in% input_multicard_test_pins$pin,
+        meta_triad_code == run_triad_code
+      ) %>%
+      select(meta_pin),
+    by = "meta_pin"
   ) %>%
   arrange(meta_pin, meta_card_num) %>%
   select(
