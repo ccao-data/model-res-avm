@@ -249,8 +249,8 @@ if (cv_enable) {
       # nolint end
     )
 
-  # Update the tuning param with the CV range only if early stopping is disabled
-  if (cv_enable && !early_stopping_enable) {
+  # Only update the tuning param with the CV range if early stopping is disabled
+  if (!early_stopping_enable) {
     lgbm_params <- lgbm_params %>%
       update(trees = dials::trees(lgbm_range$num_iterations))
   }
