@@ -264,14 +264,10 @@ outliers_ratio_comparison <- training_data %>%
     median_sale_price = median(meta_sale_price),
     .by = c(sv_is_outlier, meta_township_name)
   ) %>%
-  pivot_wider(
-    id_cols = meta_township_name,
-    names_from = sv_is_outlier,
-    values_from = median_sale_price
-  ) %>%
+  arrange(meta_township_name, sv_is_outlier) %>%
+  group_by(meta_township_name) %>%
   mutate(
-    percent = ifelse(is.null(.$`TRUE`), 0, .$`TRUE`) /
-      ifelse(is.null(.$`FALSE`), 0, .$`FALSE`),
+    percent = last(median_sale_price) / first(median_sale_price),
     above_below = ifelse(percent > 1,
       "Outlier > Not Outlier", "Not Outlier > Outlier"
     ),
@@ -280,7 +276,8 @@ outliers_ratio_comparison <- training_data %>%
         c("Outlier > Not Outlier", "Not Outlier > Outlier")
     ),
     triad = ccao::town_get_triad(meta_township_name, name = TRUE)
-  )
+  ) %>%
+  distinct(meta_township_name, percent, above_below, triad)
 
 outliers_ratio_comparison %>%
   ggplot(aes(x = reorder(meta_township_name, percent), y = percent)) +
