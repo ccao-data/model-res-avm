@@ -26,7 +26,8 @@ params:
 
 {{< include ../_setup.qmd >}}
 
-```{r pin_checks}
+
+```{r _pin_checks}
 target_pins <- ccao::pin_clean(params$pin)
 
 for (target_pin in target_pins) {
@@ -38,30 +39,38 @@ for (target_pin in target_pins) {
     stop(paste("Invalid PIN:", target_pin, "not found in assessment data"))
   }
 }
+```
+
+```{r _URLs, results='asis'}
+base_url <- "https://www.cookcountyassessor.com/pin/"
+pin_values <- params$pin
+
+for(pin in pin_values) {
+  full_url <- paste0(base_url, pin)
+  cat(sprintf('<a href="%s">%s</a><br/>', full_url, full_url))
+}
 
 ```
 
-```{r pin_setup}
+```{r _pin_setup}
 noctua_options(cache_size = 10)
 con <- dbConnect(noctua::athena())
 
 pins_clause <- paste0("('", paste(params$pin, collapse = "', '"), "')")
 
-sql_query <- sprintf("SELECT pin, year, pin10, card, class, char_yrblt, char_bldg_sf, char_beds, char_fbath, char_hbath, char_air, char_type_resd, char_rooms FROM default.vw_card_res_char WHERE CAST(year AS INTEGER) > 2020 AND pin IN %s", pins_clause)
-
-# Execute the query
-res_chars <- dbGetQuery(conn = con, sql_query)
-
-
-working_data <- dbGetQuery(
+res_chars <- dbGetQuery(
   conn = con,
-  sprintf("SELECT * FROM default.vw_pin_value WHERE CAST(year AS INTEGER) > 2020 AND pin IN %s", pins_clause)
+  sprintf("SELECT pin, year, pin10, pin_is_multicard, card, class, char_yrblt, char_bldg_sf, char_beds, char_fbath, char_hbath, char_air, char_type_resd, char_rooms FROM default.vw_card_res_char WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 3, pins_clause)
 )
 
+pin_value <- dbGetQuery(
+  conn = con,
+  sprintf("SELECT * FROM default.vw_pin_value WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 3, pins_clause)
+)
 
 pin_sale <- dbGetQuery(
   conn = con,
-  sprintf("SELECT year, pin, num_parcels_sale FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) > 2020 AND pin IN %s", pins_clause)
+  sprintf("SELECT year, pin, num_parcels_sale FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 3, pins_clause)
 )
 
 hie_data_subset <- hie_data %>%
@@ -70,228 +79,98 @@ hie_data_subset <- hie_data %>%
 ```
 
 
-
 ## Topline Characteristics
 
 
-::: {.panel-tabset}
-
 ## Predicted Model Value
 
-```{r}
+```{r, _predicted_model_value}
 assessment_pin %>%
-  filter(meta_pin %in% params$pin) %>%  
-  select('Pin' = meta_pin,
-         'Township' = meta_township_code,
-         'Class' = meta_class,
-         'Final FMV' = pred_pin_final_fmv) %>%
+  mutate(township = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_pin %in% params$pin) %>%
+  select(
+    "Pin" = meta_pin,
+    "Township" = township,
+    "Final FMV" = pred_pin_final_fmv
+  )  %>%
+  mutate(`Final FMV` = scales::dollar(`Final FMV`)) %>%
   arrange(Pin) %>%
   kable() %>%
   kable_styling(
-          "striped",
-          position = "left",
-          fixed_thead = TRUE,
-          html_font = "Consolas"
-        )  
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
 ```
 
 ## Sale Data
 
-
-```{r pin_topline_characteristics, results= 'asis'}
+```{r _pin_topline_characteristics, results= 'asis'}
 assessment_pin %>%
-  filter(meta_pin %in% params$pin) %>%  
+  filter(meta_pin %in% params$pin) %>%
   left_join(pin_sale, by = c("meta_pin" = "pin")) %>%
-  select('Pin' = meta_pin,
-         'Township' = meta_township_code,
-         'Sale Date' = sale_recent_1_date, 
-         'Sale Price' = sale_recent_1_price, 
-         'Document Number' = sale_recent_1_document_num,
-         'Multicard Flag' = flag_pin_is_multicard,
-         'Number of Parcels' = num_parcels_sale) %>%
+  select(
+    "Pin" = meta_pin,
+    "Sale Date" = sale_recent_1_date,
+    "Sale Price" = sale_recent_1_price,
+    "Document Number" = sale_recent_1_document_num,
+    "Number of Parcels" = num_parcels_sale,
+    # "Outlier Type" = sv_outlier_type
+  ) %>%
   arrange(Pin) %>%
-  kable()  %>%
+  mutate(`Sale Price` = scales::dollar(`Sale Price`)) %>%
+  kable() %>%
   kable_styling(
-          "striped",
-          position = "left",
-          fixed_thead = TRUE,
-          html_font = "Consolas"
-        )
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
 ```
 
-## Property Characteristics
+## Characteristics
 
-```{r}
-assessment_pin %>%
-  mutate(hie = replace_na(hie, FALSE)) %>%
-  filter(meta_pin %in% params$pin) %>%  
-  left_join(hie_data_subset[, c("pin", "hie")], by = c("meta_pin" = "pin")) %>%
-  
-
-```
-
-
-:::
-
-
-## Identify any Missing Data or Changes in Characteristics
-
-
-
-```{r}
-res_chars[1,7] <- res_chars[1,7] * 1.1
-
-# Example function to detect differences (modify as per your actual logic)
-detect_differences <- function(df) {
-  # Logic to determine if variables in df are different
-  # Return TRUE if different, FALSE otherwise
-  # Example: return(TRUE if length(unique(df$var)) > 1 else FALSE)
-}
-
-# Apply the function to each group and create a new column
-res_chars <- res_chars %>%
-  group_by(pin, card) %>%
-  mutate(diff = detect_differences(cur_data()))
-
-# Create a kable and color the rows based on the 'diff' column
+```{r _pin_characteristics}
 res_chars %>%
-  kable("html") %>%
-  row_spec(which(res_chars$diff), background = "red")
-
-
-test1_highlighted <- test1 %>%
-  mutate(across(starts_with("change_"), ~cell_spec(. , "html", color = ifelse(., "red", "black"))))
-
-kable_html <- test1_highlighted %>%
-  ungroup() %>%
-  select(-starts_with("change_")) %>%  # Remove the 'change_' columns
-  kable("html", escape = FALSE) %>%
-  kable_styling()
-
-kable_html
-  
-```
-
-
-```{r}
-library(dplyr)
-library(DT)
-
-test <- res_chars %>%
+  left_join(hie_data_subset[, c("pin", "hie")], by = c("pin" = "pin")) %>%
+  mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
+  left_join(assessment_pin[, c("meta_pin", "flag_char_missing_critical_value", "flag_pin_is_multicard")], by = c("pin" = "meta_pin")) %>%
   distinct(pin, card, year, .keep_all = TRUE) %>%
   filter(year == params$year | as.numeric(year) == as.numeric(params$year) - 3) %>%
   arrange(pin, card, year) %>%
   group_by(pin, card) %>%
-  mutate(Any_Difference = ifelse(
-    any(across(.cols = -year, .fns = ~.x != lag(.x, default = first(.x), order_by = year))),
-    "Yes",
-    "No"
+  mutate("Changed Characteristics" = ifelse(
+    any(across(.cols = -year, .fns = ~ .x != lag(.x, default = first(.x), order_by = year))),
+    "TRUE",
+    "FALSE"
   )) %>%
   select(
     Pin = pin,
     Year = year,
     Card = card,
-    'Year Built' = char_yrblt,
-    'Building SF' = char_bldg_sf,
+    Class = class,
+    "Year Built" = char_yrblt,
+    "Building SF" = char_bldg_sf,
     Beds = char_beds,
-    'Full Baths' = char_fbath,
-    'Half Baths' = char_hbath,
+    "Full Baths" = char_fbath,
+    "Half Baths" = char_hbath,
     "Air" = char_air,
-    'Residential Type' = char_type_resd,
+    "Residential Type" = char_type_resd,
     "Rooms" = char_rooms,
-    Any_Difference
-  )
-
-test <- test %>%
-  mutate(Any_Difference = factor(Any_Difference, levels = c("No", "Yes")))
-
-datatable(test, 
-          options = list(
-            rowCallback = JS(
-              "function(row, data, index) {
-                if (data[11] === 'Yes') {
-                  $('td:eq(11)', row).css('background-color', 'yellow');
-                }
-              }"
-            )
-          ))
-
-
-```
-
-
-```{r pin_changes_in_characteristics}
-chars_wide <- res_chars %>%
-  distinct(pin, year, .keep_all = TRUE) %>%
-  arrange(year, decreasing = FALSE) %>%
-  pivot_wider(
-    names_from = year,
-    values_from = -c(pin, year),
-    names_sep = "_",
-    id_cols = pin) %>%
-  select(-matches("pin10"))
-  
-
-check_changes <- function(df, start_col) {
-  cols <- lapply(df[, (start_col):(start_col + 3)], function(x) as.numeric(as.character(x)))
-
-
-  change_exists <- apply(do.call(cbind, cols), 1, function(x) {
-    x[is.na(x)] <- 0
-    any(base::diff(x) != 0)
-  })
-
-  return(change_exists)
-}
-
-apply_changes_to_dataset <- function(dataset) {
-  total_cols <- ncol(dataset)
-  start_col <- 2
-
-  while (start_col <= (total_cols - 3)) {
-    changes <- check_changes(dataset, start_col)
-
-    first_col_name <- names(dataset)[start_col]
-    modified_col_name <- gsub("\\d", "", first_col_name)
-
-    new_col_name <- paste(modified_col_name, "change", sep = "")
-
-    dataset[[new_col_name]] <- changes
-
-    start_col <- start_col + 4
-  }
-
-  return(dataset)
-}
-
-modified_dataset <- apply_changes_to_dataset(chars_wide)
-
-modified_dataset$missing_characteristics <- apply(modified_dataset[, 5:ncol(modified_dataset)], 1, function(x) any(is.na(x)))
-
-missing_data_table <- modified_dataset %>%
-  select(matches("change|characteristic|pin")) %>%
-  rename('Pin' = pin,
-         'Class' = class_change,
-         'Year Built' = char_yrblt_change, 
-         'Building SF' = char_bldg_sf_change,
-         'Bedrooms' = char_beds_change,
-         'Full Baths' = char_fbath_change,
-         'Half Baths' = char_hbath_change,
-         'Air' = char_air_change,
-         'Type' = char_type_resd_change,
-         'Rooms' = char_rooms_change,
-         'Missing Characteristics' = missing_characteristics
-         ) %>%
-  arrange(Pin) %>%
+    "HIE" = hie,
+    "Multicard Flag" = flag_pin_is_multicard,
+    "Missing Critical Value" = flag_char_missing_critical_value,
+    "Changed Characteristics"
+  ) %>%
+  mutate(Pin = ifelse(Year == as.numeric(params$year), NA, Pin)) %>%
   kable() %>%
-    kable_styling(
-          "striped",
-          position = "left",
-          fixed_thead = TRUE,
-          html_font = "Consolas"
-        )
-
-missing_data_table
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
 ```
 
 ```{r _pin_shap_data_manipulation}
@@ -317,7 +196,6 @@ shap_predictors <- shap_predictors[!shap_predictors %in% c(
 
 assessment_card_filtered <- assessment_card %>%
   mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
-  filter(meta_triad == run_triad_code) %>%
   arrange(meta_pin, meta_card_num)
 
 townships_to_iterate <- shap_df_filtered %>%
@@ -352,9 +230,9 @@ create_shap_viz <- function(row_idx) {
       slice(row_idx),
     baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
   ) %>%
-  sv_waterfall(
-    max_display = 15L
-  )
+    sv_waterfall(
+      max_display = 15L
+    )
 
   return(shapviz_object)
 }
@@ -376,13 +254,12 @@ for (i in 1:num_rows) {
 
   cat("\n\n")
 }
-
 ```
 
 :::
 ## Table of SHAP Values Grouped by Category
 ```{r pin_shap_table, results = "asis"}
-shap_df_filtered_v2 <- shap_df_filtered %>%
+shap_df_filtered_ <- shap_df_filtered %>%
   filter(meta_pin %in% params$pin) %>%
   mutate(Pin = as.numeric(meta_pin)) %>%
   mutate(Card = as.numeric(meta_card_num)) %>%
@@ -395,48 +272,37 @@ sum_columns_by_prefix_per_row <- function(df, prefix) {
     rowSums(na.rm = TRUE)
 }
 
-Pin <- shap_df_filtered_v2$Pin
-Card <- shap_df_filtered_v2$Card
-Characteristics <- sum_columns_by_prefix_per_row(shap_df_filtered_v2, "char")
-Census_Data <- sum_columns_by_prefix_per_row(shap_df_filtered_v2, "acs5")
-Time <- sum_columns_by_prefix_per_row(shap_df_filtered_v2, "time")
-Location <- sum_columns_by_prefix_per_row(shap_df_filtered_v2, "loc") + shap_df_filtered_v2$ccao_is_corner_lot
-Proximity <- sum_columns_by_prefix_per_row(shap_df_filtered_v2, "prox")
-School <- rowSums(shap_df_filtered_v2[, c("other_school_district_elementary_avg_rating", "other_school_district_secondary_avg_rating")], na.rm = TRUE)
-Baseline <- shap_df_filtered_v2$pred_card_shap_baseline_fmv
-Meta <- sum_columns_by_prefix_per_row(shap_df_filtered_v2, "meta")
-
-
-combined_sums <- data.frame(
-  Pin = Pin,
-  Card = Card,
-  Baseline = Baseline,
-  Characteristics = Characteristics,
-  Census_Data = Census_Data,
-  Time = Time,
-  Location = Location,
-  Proximity = Proximity,
-  School = School,
-  Meta = Meta
-) %>%
+shap_df_filtered_ %>%
+  mutate(
+    Characteristics = rowSums(select(., starts_with("char")), na.rm = TRUE),
+    Census_Data = rowSums(select(., starts_with("acs5")), na.rm = TRUE),
+    Time = rowSums(select(., starts_with("time")), na.rm = TRUE),
+    Location = rowSums(select(., starts_with("loc")), na.rm = TRUE) + ccao_is_corner_lot - loc_school_secondary_district_geoid - loc_school_elementary_district_geoid + other_tax_bill_rate,
+    Proximity = rowSums(select(., starts_with("prox")), na.rm = TRUE),
+    School = rowSums(select(., c("other_school_district_elementary_avg_rating", "other_school_district_secondary_avg_rating", "loc_school_elementary_district_geoid", "loc_school_secondary_district_geoid")), na.rm = TRUE),
+    Baseline = pred_card_shap_baseline_fmv,
+    Meta = rowSums(select(., starts_with("meta")), na.rm = TRUE)
+  ) %>%
+  select(Pin, Card, Baseline, Characteristics, Census_Data, Time, Location, Proximity, School, Meta) %>%
   arrange(Pin, Card) %>%
   mutate(across(3:ncol(.), scales::dollar)) %>%
-  kable(col.names = c("Pin", "Card", "Baseline", "Characteristics", "Census Data", "Time", "Location", "Proximity", "School", "Meta"),
-        align = 'l') %>% 
+  kable(
+    col.names = c("Pin", "Card", "Baseline", "Characteristics", "Census Data", "Time", "Location", "Proximity", "School", "Meta"),
+    align = "l"
+  ) %>%
   kable_styling(
     "striped",
     position = "left",
     fixed_thead = TRUE,
     html_font = "Consolas"
   )
-combined_sums
 
 ```
 
 
-## Change in House Value over 3 Year Timeframe
+## Change in Pin Value over 3 Year Timeframe
 ```{r pin_change_in_house_value, results = 'asis'}
-wider_data <- working_data %>%
+wider_data <- pin_value %>%
   pivot_wider(
     names_from = year,
     values_from = -c(pin, year),
@@ -458,16 +324,16 @@ single_pin <- wider_data %>%
     across(contains("mailed"), ~ . * 10),
     across(contains("board"), ~ . * 10),
     across(contains("certified"), ~ . * 10)
-) %>%
+  ) %>%
   inner_join(
     assessment_pin %>%
       select(meta_pin, pred_pin_final_fmv),
     by = c("pin" = "meta_pin")
   ) %>%
-  select_if(~!all(is.na(.))) %>%
+  select_if(~ !all(is.na(.))) %>%
   rename_with(~ str_replace_all(., "_", " ") %>%
-                str_replace_all(., " tot", "") %>%
-                str_to_title()) %>%
+    str_replace_all(., " tot", "") %>%
+    str_to_title()) %>%
   arrange(Pin)
 
 color_matrix <- matrix("none", nrow = nrow(single_pin), ncol = ncol(single_pin))
@@ -506,15 +372,13 @@ for (j in 1:ncol(display_df)) {
 }
 
 
-
-
-kable_html <- kable(display_df, format = "html", escape = FALSE) %>%
+kable(display_df, format = "html", escape = FALSE) %>%
   kable_styling(
-          "striped",
-          position = "left",
-          fixed_thead = TRUE,
-          html_font = "Consolas"
-        )
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
 
-kable_html
+
 ```
