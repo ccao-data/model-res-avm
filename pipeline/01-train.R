@@ -102,8 +102,7 @@ message("Initializing LightGBM model")
 # lightgbm as "engine arguments" i.e. things specific to lightgbm, as opposed to
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
-  stop_iter = params$model$parameter$stop_iter,
-  trees = params$model$hyperparameter$default$num_iterations
+  stop_iter = params$model$parameter$stop_iter
 ) %>%
   set_mode("regression") %>%
   set_engine(
@@ -170,6 +169,23 @@ lgbm_model <- parsnip::boost_tree(
     lambda_l2 = tune()
   )
 
+# The num_iterations (trees) parameter has three possible values:
+# 1. If CV AND early stopping are enabled, set a static parameter using the
+#    upper bound of the CV search range as the maximum possible number of trees
+# 2. If CV is enabled but early stopping is disabled, set the search range to
+#    the standard CV range
+# 3. If no CV is enabled, use the default parameter value
+if (cv_enable && early_stopping_enable) {
+  lgbm_model <- lgbm_model %>%
+    set_args(trees = params$model$hyperparameter$range$num_iterations[2])
+} else if (cv_enable && !early_stopping_enable) {
+  lgbm_model <- lgbm_model %>%
+    set_args(trees = tune())
+} else {
+  lgbm_model <- lgbm_model %>%
+    set_args(trees = params$model$hyperparameter$default$num_iterations)
+}
+
 # Initialize lightgbm workflow, which contains both the model spec AND the
 # pre-processing steps/recipe needed to prepare the raw data
 lgbm_wflow <- workflow() %>%
@@ -232,6 +248,12 @@ if (cv_enable) {
       lambda_l2           = lightsnip::lambda_l2(lgbm_range$lambda_l2)
       # nolint end
     )
+
+  # Only update the tuning param with the CV range if early stopping is disabled
+  if (!early_stopping_enable) {
+    lgbm_params <- lgbm_params %>%
+      update(trees = dials::trees(lgbm_range$num_iterations))
+  }
 
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
   # quite a long time, depending on the compute resources available
