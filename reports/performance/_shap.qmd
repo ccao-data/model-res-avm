@@ -3,7 +3,9 @@
 # SHAP Values
 
 SHAP values are a way to explain the importance of specific features within the model.
-They represent both the direction and magnitude of a feature's impact on an individual prediction.
+They represent both the direction and magnitude of a feature's impact on an individual
+property's predicted value. Summed together, the SHAP values of all features for a given
+property should equal the difference between the predicted value and the baseline value.
 
 ## Summary Table
 
@@ -86,6 +88,13 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 
 ## Overall Beeswarm
 
+The [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
+displays an information-dense summary of how features impact the model’s output.
+
+Each property is represented by a single dot on each feature facet. The x position of the dot is
+determined by the SHAP value of that feature, and dots “pile up” along each feature row to show
+density. Color is used to display the original value of the feature. 
+
 ```{r _shap_beeswarm_overall, warning=FALSE}
 shap_townships_list <- shap_df_filtered %>%
   distinct(township_code) %>%
@@ -111,7 +120,7 @@ shapviz::shapviz(
     max_display = 15L
   ) +
   theme_minimal() +
-  coord_cartesian(xlim = c(-100000, 200000)) +
+  coord_cartesian(xlim = c(-150000, 300000)) +
   scale_x_continuous(labels = scales::dollar)
 ```
 
@@ -135,7 +144,7 @@ for (township in shap_townships_list) {
         max_display = 15L
       ) +
       theme_minimal() +
-      coord_cartesian(xlim = c(-100000, 200000)) +
+      coord_cartesian(xlim = c(-150000, 300000)) +
       scale_x_continuous(labels = scales::dollar)
   )
   cat("\n\n")

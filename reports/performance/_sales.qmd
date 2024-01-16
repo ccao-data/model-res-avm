@@ -10,7 +10,7 @@ This section contains volume and sale price trends as present in the **training 
 
 ### By Township and Year
 
-*NOTE: Outliers are removed*
+_NOTE: Outliers are removed._
 
 ```{r _sales_volume_town_year}
 sales_volume_town_year_plot <- training_data %>%
@@ -47,7 +47,7 @@ ggplotly(sales_volume_town_year_plot, tooltip = "text")
 
 ### By Class and Year
 
-*NOTE: Outliers are removed*
+_NOTE: Outliers are removed._
 
 ```{r _sales_volume_class_year}
 sales_volume_class_year_plot <- training_data %>%
@@ -84,7 +84,7 @@ ggplotly(sales_volume_class_year_plot, tooltip = "text")
 
 ### By Township and Quarter
 
-*NOTE: Outliers are removed*
+_NOTE: Outliers are removed._
 
 Sales by quarter for the previous 4 years. The goal is to see how different
 segments of the market are changing as a proportion in each township. Sales are
@@ -133,7 +133,7 @@ training_data %>%
 
 ### By Outlier Status and Year
 
-_NOTE: Includes sales from all triads_
+_NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_outlier_year}
 training_data %>%
@@ -164,7 +164,7 @@ training_data %>%
 
 ### By Outlier Status and Month
 
-_NOTE: Includes sales from all triads_
+_NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_outlier_month}
 training_data %>%
@@ -189,7 +189,7 @@ training_data %>%
 
 ### By Quarter (All)
 
-_NOTE: Includes sales from all triads_
+_NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_quarter_all}
 training_data %>%
@@ -205,7 +205,7 @@ training_data %>%
 
 ### By Quarter (Outliers)
 
-_NOTE: Includes sales from all triads_
+_NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_quarter_outlier}
 training_data %>%
@@ -220,9 +220,9 @@ training_data %>%
   kable(align = c("l", rep("r", 4)))
 ```
 
-### By Quarter (Outlier Percentage)
+### By Quarter (Outlier Pct.)
 
-_NOTE: Includes sales from all triads_
+_NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_quarter_outlier_pct}
 training_data %>%
@@ -247,7 +247,7 @@ training_data %>%
 
 ### By Outlier Status and Year
 
-_NOTE: Includes sales from all triads_
+_NOTE: Includes sales from all triads._
 
 ```{r _sales_price_outlier_year}
 training_data %>%

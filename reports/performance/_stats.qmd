@@ -2,7 +2,7 @@
 
 # Statistical Tests
 
-This section contains various statistical tests and plots, mostly to ensure that the universe of sold properties is repreeentative of the universe of all properties.
+This section contains various statistical tests and plots, mostly to ensure that the universe of sold properties is representative of the universe of all properties.
 
 ```{r _stats_gather_data}
 stats_regression_vars <-
@@ -75,7 +75,7 @@ stats_logit_vars <- names(stats_sf_parcels) %>%
 
 ## Logistic Regression
 
-All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale ceterus paribus. Sample is universe of single-family parcels from the past two years, excluding some parcels with incomplete characteristics.
+All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale, ceterus paribus. Sample is universe of single-family parcels from the two years prior to assessment, excluding some parcels with incomplete characteristics.
 
 ```{r _stats_logit}
 stats_logit_remove <-
@@ -299,7 +299,7 @@ for (i in seq(1, length(stats_ecdfs_grobs_fct), by = 6)) {
 
 If the training sample is representative of the housing stock at large we should
 see similar changes in AVs between the previous year and predictions regardless
-of whether a home has sold recently. This chart compares the median change in AV
+of whether a home has sold recently. This table compares the median change in AV
 (dollar and percentage) for homes which have sold in the three years prior to
 the assessment year those which did not sell.
 

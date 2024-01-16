@@ -3,6 +3,8 @@ title: "`r params$year` Model Performance and Diagnostics"
 subtitle: "Run ID: `r params$run_id`"
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
+abstract-title: "Run Note"
+abstract: '`r arrow::read_parquet(here::here("output/metadata/model_metadata.parquet"))$run_note`'
 execute:
   echo: false
   warning: false

@@ -1,15 +1,96 @@
 {{< include ../_setup.qmd >}}
 
-# Input Data
+# Data and Processing
 
-## Data Process Checks
+This section primarily looks at data from the **training set**. It does three things:
+
+- Checks for characteristic and data issues in the input data
+- Checks that the input data is being processed, flagged, and filled as expected
+- Checks that post-modeling and data post-processing steps are applied correctly
+
+## Input Data Issues 
 
 ::: panel-tabset
 
-### Home Improvement Exemption Spot Check
+### Large Sqft. 211s and 212s
 
-This tests if our Home Improvement Exemption characteristics are getting
-accurately updated.
+Table of 211s and 212s which are in the 100th percentile by class and township.
+These properties should likely be desk reviewed and/or valued manually.
+
+```{r _input_large_211_212}
+training_data %>%
+  filter(
+    meta_class %in% c("211", "212"),
+    meta_triad_code == run_triad_code,
+    !ind_pin_is_multicard
+  ) %>%
+  group_by(meta_class, meta_township_name) %>%
+  mutate(
+    sf_ntile = ntile(char_bldg_sf, 100),
+    mean_sf = mean(char_bldg_sf, na.rm = TRUE)
+  ) %>%
+  filter(sf_ntile >= 100) %>%
+  mutate(across(ends_with("_sf"), scales::comma)) %>%
+  select(
+    PIN = meta_pin,
+    `Township Name` = meta_township_name,
+    Class = meta_class,
+    `Num. Apts.` = char_apts,
+    `Mean Sqft. by Town and Class` = mean_sf,
+    `Building Sqft` = char_bldg_sf
+  ) %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(3:5)
+        )
+      )
+    )
+  )
+```
+
+### PINs with 0 or Missing Land Value
+
+Table of PINs with `NULL` land square footage or a land square footage of 0.
+Such values don't affect the predicted value of the property, but they may
+receive incorrect building/land value splits.
+
+```{r _input_pins_weird_land}
+assessment_pin %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  filter(
+    pred_pin_final_fmv_land == 0 |
+      is.infinite(pred_pin_final_fmv_land / pred_pin_final_fmv_round) |
+      is.na(pred_pin_final_fmv_land / pred_pin_final_fmv_round)
+  ) %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  select(
+    `Year` = meta_year,
+    `Township Name` = township_name,
+    `PIN` = meta_pin,
+    `Class` = meta_class,
+    `Land %` = pred_pin_final_fmv_land / pred_pin_final_fmv_round,
+    `Land FMV` = pred_pin_final_fmv_land,
+    `Land Sqft.` = char_land_sf
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+:::
+
+## Input Data Processing
+
+::: panel-tabset
+
+### Home Improvement Exemptions
+
+Checks if Home Improvement Exemption characteristics are getting
+accurately updated. In general, we expect numeric values to be additive
+(`OG SQFT + HIE SQFT = NEW SQFT`) and categorical values to be
+replacements (`OG AIR + HIE AIR = HIE AIR`).
 
 ```{r _input_hie_characteristics}
 input_hie_pins <- training_data %>%
@@ -63,7 +144,10 @@ input_hie_chars_df %>%
 
 ### Characteristic Filling
 
-This tests if our time filling techniques are working as expected.
+Checks if our time filling techniques are working as expected.
+We expect point-in-time characteristics to be filled forward and backward in time
+for most features i.e. 2019 flood factor records will cover both past and future
+years in the records below.
 
 ```{r _input_characteristic_filling}
 input_char_filling_df <- training_data %>%
@@ -88,249 +172,13 @@ input_char_filling_df %>%
   datatable(rownames = FALSE)
 ```
 
-### Multi-Card and Multi-PIN Aggregation
-
-This uses 5 test pins to assess if multi-card parcels successfully aggregate to
-the full pin.
-
-```{r _input_multicard_sample}
-input_multicard_test_pins <- c(
-  "17321110470000",
-  "05174150240000",
-  "05213220250000",
-  "08121220400000",
-  "06334030310000"
-)
-
-input_multicard_test_df <- assessment_card %>%
-  filter(meta_pin %in% input_multicard_test_pins) %>%
-  arrange(meta_pin, meta_card_num) %>%
-  select(
-    PIN = meta_pin, Class = meta_class, Card = meta_card_num,
-    `Card %` = meta_card_pct_total_fmv, SQFT = char_bldg_sf,
-    `Card Initial` = pred_card_initial_fmv,
-    `Card Final` = pred_card_final_fmv
-  ) %>%
-  left_join(
-    assessment_pin %>%
-      select(
-        PIN = meta_pin, Proration = meta_tieback_proration_rate,
-        `PIN Far` = prior_far_tot,
-        `PIN Near` = prior_near_tot,
-        `PIN Initial` = pred_pin_initial_fmv,
-        `PIN Final` = pred_pin_final_fmv_round
-      ),
-    by = c("PIN")
-  ) %>%
-  mutate(
-    `Card %` = scales::percent(`Card %`, accuracy = 0.01),
-    `SQFT` = scales::comma(`SQFT`),
-    `Card Initial` = scales::dollar(`Card Initial`),
-    across(starts_with("PIN "), scales::dollar)
-  )
-
-input_multicard_test_df %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-right",
-          targets = c(
-            "Card %", "SQFT", "Card Initial", "Card Final", "PIN Far",
-            "PIN Near", "PIN Initial", "PIN Final"
-          )
-        )
-      )
-    )
-  )
-```
-
-### Land Valuation
-
-```{r, _input_land_valuation, out.width="100%"}
-input_land_valuation <- assessment_pin %>%
-  filter(meta_triad_code == run_triad_code) %>%
-  mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
-  select(
-    meta_pin,
-    land_pct,
-    pred_pin_final_fmv_bldg,
-    pred_pin_final_fmv_land,
-    pred_pin_final_fmv_round
-  )
-
-input_land_valuation %>%
-  ggplot() +
-  geom_histogram(aes(x = land_pct)) +
-  scale_x_continuous(
-    name = "Land % of Total FMV",
-    labels = scales::label_percent()
-  ) +
-  labs(y = "Count") +
-  theme_minimal()
-```
-
-### PINs with 0 or Missing Land Values
-
-```{r _input_pins_weird_land}
-assessment_pin %>%
-  filter(meta_triad_code == run_triad_code) %>%
-  filter(
-    pred_pin_final_fmv_land == 0 |
-      is.infinite(pred_pin_final_fmv_land / pred_pin_final_fmv_round) |
-      is.na(pred_pin_final_fmv_land / pred_pin_final_fmv_round)
-  ) %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
-  select(
-    `Year` = meta_year,
-    `Township Name` = township_name,
-    `PIN` = meta_pin,
-    `Class` = meta_class,
-    `Land %` = pred_pin_final_fmv_land / pred_pin_final_fmv_round,
-    `Land FMV` = pred_pin_final_fmv_land,
-    `Land Sqft.` = char_land_sf
-  ) %>%
-  datatable(rownames = FALSE)
-```
-
-:::
-
-## Multi-Family and Townhomes
-
-::: panel-tabset
-
-### Multi-Family YoY Changes
-
-Where are 211s and 212s increasing a *lot*? Near values are Certified values
-from the current year, and far values are Board of Review values from two years ago.
-
-```{r _input_211_and_212_yoy_changes}
-input_multifamily_change <- assessment_pin %>%
-  filter(
-    meta_class %in% c("211", "212"),
-    meta_triad_code == run_triad_code
-  ) %>%
-  mutate(
-    yoy_far = abs((pred_pin_final_fmv - prior_far_tot) / pred_pin_final_fmv),
-    yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv),
-    big_swing_near = yoy_near > 0.5,
-    big_swing_far = yoy_far > 0.5
-  ) %>%
-  summarise(
-    big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE) / n(),
-    big_swings_far = sum(as.numeric(big_swing_far), na.rm = TRUE) / n(),
-    .by = c(meta_township_code, meta_class)
-  ) %>%
-  arrange(desc(big_swings_near)) %>%
-  mutate(across(starts_with("big"), ~ label_percent(accuracy = 0.1)(.x))) %>%
-  left_join(
-    ccao::town_dict %>%
-      select(meta_township_code = township_code, township_name)
-  ) %>%
-  select(
-    "Township Name" = township_name,
-    "Class" = meta_class,
-    "% Delta Near > 50%" = big_swings_near,
-    "% Delta Far > 50%" = big_swings_far
-  )
-
-input_multifamily_change %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-right",
-          targets = c(2:3)
-        )
-      )
-    )
-  )
-```
-
-### Large Sqft. 211s and 212s
-
-Table of 211s and 212s which are three standard deviations above the norm in terms of square footage. 
-
-```{r _input_large_211_212}
-training_data %>%
-  filter(
-    meta_class %in% c("211", "212"),
-    meta_triad_code == run_triad_code,
-    !ind_pin_is_multicard
-  ) %>%
-  mutate(
-    mean_sf = round(mean(char_bldg_sf, na.rm = TRUE), 0),
-    outlier = abs(char_bldg_sf) >
-      mean(char_bldg_sf, na.rm = TRUE) + 3 * sd(char_bldg_sf, na.rm = TRUE),
-    .by = meta_class
-  ) %>%
-  filter(outlier) %>%
-  mutate(across(ends_with("_sf"), scales::comma)) %>%
-  select(
-    PIN = meta_pin,
-    `Township Name` = meta_township_name,
-    Class = meta_class,
-    `Mean Sqft` = mean_sf,
-    `Building Sqft` = char_bldg_sf
-  ) %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-right",
-          targets = c(3:4)
-        )
-      )
-    )
-  )
-```
-
-### Townhome Complex Averaging
-
-This takes a sample of 20 observations to see how far apart the initial
-predicted values are for townhomes. Is the average they get assigned reasonable?
-
-```{r _input_townhomes_210_295}
-assessment_pin %>%
-  filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
-  group_by(meta_complex_id) %>%
-  mutate(
-    fmvpsf = pred_pin_final_fmv / char_total_bldg_sf
-  ) %>%
-  summarise(
-    n = n(),
-    "Min Initial FMV" = min(pred_pin_initial_fmv, na.rm = TRUE),
-    "Max Initial FMV" = max(pred_pin_initial_fmv, na.rm = TRUE),
-    "Initial % Range" =
-      (`Max Initial FMV` - `Min Initial FMV`) / `Min Initial FMV`,
-    "Mean Final FMV" = mean(pred_pin_final_fmv, na.rm = TRUE),
-    "FMV per SQFT SD" = sd(fmvpsf, na.rm = TRUE)
-  ) %>%
-  slice_max(order_by = `Initial % Range`, n = 20) %>%
-  mutate(
-    across(contains("SQFT"), ~ round(.x, 1)),
-    across(contains("FMV"), dollar),
-    across(contains("%"), ~ percent(.x, accuracy = 0.1))
-  ) %>%
-  relocate(c(meta_complex_id, n)) %>%
-  rename("Complex ID" = meta_complex_id, "Count" = n) %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-right",
-          targets = c(2:6)
-        )
-      )
-    )
-  )
-```
-
 ### Map of Townhome Complex IDs
+
+Checks if townhome complex ID construction in the `ingest` stage is working
+as expected. The map shows 5 random complex IDs selected from each township,
+along with complexes nearby the randomly selected ones. The map should show that
+nearby PINs in the same area/complex receive different complex IDs if they have
+significantly different characteristics.
 
 ```{r _input_complex_id_map, warning=FALSE}
 # Self-join to find 5 random complex IDs from each township + their nearest
@@ -402,11 +250,15 @@ leaflet(input_complex_id_map) %>%
     ~loc_longitude,
     ~loc_latitude,
     popup = ~ paste0(
-      "<b>Complex ID</b> ", as.character(meta_complex_id),
+      "Complex ID: ", as.character(meta_complex_id),
       "<hr>",
-      "<b>Rooms</b>: ", char_rooms,
-      "<br><b>Building SF</b>: ", scales::comma(char_bldg_sf),
-      "<br><b>Year Built</b>: ", char_yrblt
+      "PIN: ",
+      "<a target='_blank' rel='noopener noreferrer' ",
+      "href='https://www.cookcountyassessor.com/pin/", meta_pin,
+      "'>", meta_pin, "</a>",
+      "<br>Rooms: ", char_rooms,
+      "<br>Building SF: ", scales::comma(char_bldg_sf),
+      "<br>Year Built: ", char_yrblt
     ),
     radius = 5,
     weight = 1,
@@ -414,6 +266,166 @@ leaflet(input_complex_id_map) %>%
     opacity = 1,
     fillColor = ~ input_complex_id_palette(meta_complex_id),
     fillOpacity = 1
+  )
+```
+
+:::
+
+## Post-Modeling
+
+::: panel-tabset
+
+### Multi-Card and Multi-PIN Aggregation
+
+This table uses test pins to check if multi-card parcels are correctly aggregated to the full PIN.
+Look for consistency with past year's results. See the post-modeling section of the README documentation
+for details on card-level aggregation.
+
+```{r _input_multicard_sample}
+input_multicard_test_pins <- tribble(
+  ~"pin", ~"triad",
+  "17321110470000", "south",
+  "05174150240000", "south",
+  "05213220250000", "south",
+  "08121220400000", "south",
+  "06334030310000", "south",
+  "20142150160000", "city",
+  "20143110110000", "city",
+  "20143120360000", "city",
+  "10313170010000", "city",
+  "14331230380000", "city",
+  "14293000710000", "city"
+)
+
+input_multicard_test_df <- assessment_card %>%
+  filter(
+    ccao::town_get_triad(meta_township_code) == run_triad_code,
+  ) %>%
+  group_by(meta_pin) %>%
+  filter(n() > 1) %>%
+  select(meta_pin, meta_class, meta_card_num, meta_tieback_proration_rate, char_bldg_sf) %>%
+  filter(meta_tieback_proration_rate != 1)
+
+input_multicard_test_df <- assessment_card %>%
+  filter(
+    ccao::town_get_triad(meta_township_code) == run_triad_code,
+    meta_pin %in% input_multicard_test_pins$pin
+  ) %>%
+  arrange(meta_pin, meta_card_num) %>%
+  select(
+    PIN = meta_pin, Class = meta_class, Card = meta_card_num,
+    `Card %` = meta_card_pct_total_fmv, SQFT = char_bldg_sf,
+    `Card Initial` = pred_card_initial_fmv,
+    `Card Final` = pred_card_final_fmv
+  ) %>%
+  left_join(
+    assessment_pin %>%
+      select(
+        PIN = meta_pin, Proration = meta_tieback_proration_rate,
+        `PIN Far` = prior_far_tot,
+        `PIN Near` = prior_near_tot,
+        `PIN Initial` = pred_pin_initial_fmv,
+        `PIN Final` = pred_pin_final_fmv_round
+      ),
+    by = c("PIN")
+  ) %>%
+  mutate(
+    `Card %` = scales::percent(`Card %`, accuracy = 0.01),
+    `SQFT` = scales::comma(`SQFT`),
+    `Proration` = scales::percent(`Proration`, accuracy = 0.01),
+    `Card Initial` = scales::dollar(`Card Initial`),
+    `Card Final` = scales::dollar(`Card Final`),
+    across(starts_with("PIN "), scales::dollar)
+  )
+
+input_multicard_test_df %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Card %", "SQFT", "Card Initial", "Card Final", "PIN Far",
+            "PIN Near", "PIN Initial", "PIN Final", "Proration"
+          )
+        )
+      )
+    )
+  )
+```
+
+### Land Valuation
+
+Plot showing the post-modeling land valuation cap (usually 50%) in action. We
+expect to see a spike at the cap. Properties above the cap are usually pro-rated
+or multi-card PINs.
+
+```{r, _input_land_valuation, out.width="100%"}
+input_land_valuation <- assessment_pin %>%
+  filter(meta_triad_code == run_triad_code) %>%
+  mutate(land_pct = pred_pin_final_fmv_land / pred_pin_final_fmv_round) %>%
+  select(
+    meta_pin,
+    land_pct,
+    pred_pin_final_fmv_bldg,
+    pred_pin_final_fmv_land,
+    pred_pin_final_fmv_round
+  )
+
+input_land_valuation %>%
+  ggplot() +
+  geom_histogram(aes(x = land_pct)) +
+  scale_x_continuous(
+    name = "Land % of Total FMV",
+    labels = scales::label_percent(),
+    limits = c(0, 1)
+  ) +
+  labs(y = "Count") +
+  theme_minimal()
+```
+
+### Townhome Complex Averaging
+
+This takes a sample of 50 townhome PINs to see how far apart the initial
+predicted values are from the final values (which are the average of the
+complex). We want to ensure that the average for complexes is reasonable and
+doesn't move the initial predictions too much.
+
+```{r _input_townhomes_210_295}
+assessment_pin %>%
+  filter(!is.na(meta_complex_id) & meta_triad_code == run_triad_code) %>%
+  group_by(meta_complex_id) %>%
+  mutate(
+    fmvpsf = pred_pin_final_fmv / char_total_bldg_sf
+  ) %>%
+  summarise(
+    n = n(),
+    "Min Initial FMV" = min(pred_pin_initial_fmv, na.rm = TRUE),
+    "Max Initial FMV" = max(pred_pin_initial_fmv, na.rm = TRUE),
+    "Initial % Range" =
+      (`Max Initial FMV` - `Min Initial FMV`) / `Min Initial FMV`,
+    "Mean Final FMV" = mean(pred_pin_final_fmv, na.rm = TRUE),
+    "FMV per SQFT SD" = sd(fmvpsf, na.rm = TRUE)
+  ) %>%
+  slice_max(order_by = `Initial % Range`, n = 50) %>%
+  mutate(
+    across(contains("SQFT"), ~ round(.x, 1)),
+    across(contains("FMV"), dollar),
+    across(contains("%"), ~ percent(.x, accuracy = 0.1))
+  ) %>%
+  relocate(c(meta_complex_id, n)) %>%
+  rename("Complex ID" = meta_complex_id, "Count" = n) %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(2:6)
+        )
+      )
+    )
   )
 ```
 
