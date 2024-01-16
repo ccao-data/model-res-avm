@@ -81,13 +81,12 @@ hie_data_subset <- hie_data %>%
 assessment_pin %>%
   mutate(township = ccao::town_convert(meta_township_code)) %>%
   filter(meta_pin %in% params$pin) %>%
+  arrange(meta_pin) %>%
   select(
-    "Pin" = meta_pin,
     "Township" = township,
     "Final FMV" = pred_pin_final_fmv
   ) %>%
   mutate(`Final FMV` = scales::dollar(`Final FMV`)) %>%
-  arrange(Pin) %>%
   kable() %>%
   kable_styling(
     "striped",
@@ -103,15 +102,14 @@ assessment_pin %>%
 assessment_pin %>%
   filter(meta_pin %in% params$pin) %>%
   left_join(pin_sale, by = c("meta_pin" = "pin")) %>%
+  arrange(meta_pin) %>%
   select(
-    "Pin" = meta_pin,
     "Sale Date" = sale_recent_1_date,
     "Sale Price" = sale_recent_1_price,
     "Document Number" = sale_recent_1_document_num,
     "Number of Parcels" = num_parcels_sale,
     # "Outlier Type" = sv_outlier_type
   ) %>%
-  arrange(Pin) %>%
   mutate(`Sale Price` = scales::dollar(`Sale Price`)) %>%
   kable() %>%
   kable_styling(
@@ -144,8 +142,8 @@ res_chars %>%
       "FALSE"
     }
   }) %>%
+  ungroup() %>%
   select(
-    Pin = pin,
     Year = year,
     Card = card,
     Class = class,
@@ -162,7 +160,6 @@ res_chars %>%
     "Missing Critical Value" = flag_char_missing_critical_value,
     "Changed Characteristics"
   ) %>%
-  mutate(Pin = ifelse(Year == as.numeric(params$year), NA, Pin)) %>%
   kable() %>%
   kable_styling(
     "striped",
@@ -245,7 +242,7 @@ num_rows <- nrow(shap_df_filtered)
 results <- vector("list", length = num_rows)
 
 for (i in 1:num_rows) {
-  cat("##", shap_df_filtered$meta_pin[i], "- Card ", shap_df_filtered$meta_card_num[i], "\n")
+  cat("##", "Card ", shap_df_filtered$meta_card_num[i], "\n")
 
   results[[i]] <- create_shap_viz(i)
 
@@ -282,11 +279,11 @@ shap_df_filtered_ %>%
     Baseline = pred_card_shap_baseline_fmv,
     Meta = rowSums(select(., starts_with("meta")), na.rm = TRUE)
   ) %>%
-  select(Pin, Card, Baseline, Characteristics, Census_Data, Time, Location, Proximity, School, Meta) %>%
   arrange(Pin, Card) %>%
+  select(Card, Baseline, Characteristics, Census_Data, Time, Location, Proximity, School, Meta) %>%
   mutate(across(3:ncol(.), scales::dollar)) %>%
   kable(
-    col.names = c("Pin", "Card", "Baseline", "Characteristics", "Census Data", "Time", "Location", "Proximity", "School", "Meta"),
+    col.names = c("Card", "Baseline", "Characteristics", "Census Data", "Time", "Location", "Proximity", "School", "Meta"),
     align = "l"
   ) %>%
   kable_styling(
@@ -332,7 +329,8 @@ single_pin <- wider_data %>%
   rename_with(~ str_replace_all(., "_", " ") %>%
     str_replace_all(., " tot", "") %>%
     str_to_title()) %>%
-  arrange(Pin)
+  arrange(Pin) %>%
+  select(-Pin)
 
 color_matrix <- matrix("none", nrow = nrow(single_pin), ncol = ncol(single_pin))
 
@@ -356,7 +354,7 @@ for (j in 3:ncol(single_pin)) {
 }
 
 single_pin <- single_pin %>%
-  mutate_at(2:ncol(single_pin), scales::dollar)
+  mutate_at(1:ncol(single_pin), scales::dollar)
 
 display_df <- as.data.frame(lapply(single_pin, as.character), stringsAsFactors = FALSE)
 
