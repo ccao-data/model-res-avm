@@ -315,7 +315,8 @@ if (upload_enable) {
       Subject = paste("Model Run Complete:", run_id),
       Message = paste0(
         "Model run: ", run_id, " complete\n",
-        "Finished in: ", pipeline_sns_total_time, "\n\n",
+        "Finished in: ", pipeline_sns_total_time, "\n",
+        "Run note: ", metadata$run_note, "\n\n",
         "Report link: ", report_url, "\n\n",
         pipeline_sns_results
       ),
