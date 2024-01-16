@@ -89,7 +89,7 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 ## Overall Beeswarm
 
 The [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
-is designed to display an information-dense summary of how features impact the model’s output.
+displays an information-dense summary of how features impact the model’s output.
 
 Each property is represented by a single dot on each feature facet. The x position of the dot is
 determined by the SHAP value of that feature, and dots “pile up” along each feature row to show
@@ -120,7 +120,7 @@ shapviz::shapviz(
     max_display = 15L
   ) +
   theme_minimal() +
-  coord_cartesian(xlim = c(-100000, 200000)) +
+  coord_cartesian(xlim = c(-150000, 300000)) +
   scale_x_continuous(labels = scales::dollar)
 ```
 
@@ -144,7 +144,7 @@ for (township in shap_townships_list) {
         max_display = 15L
       ) +
       theme_minimal() +
-      coord_cartesian(xlim = c(-100000, 200000)) +
+      coord_cartesian(xlim = c(-150000, 300000)) +
       scale_x_continuous(labels = scales::dollar)
   )
   cat("\n\n")
