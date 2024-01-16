@@ -40,16 +40,6 @@ for (target_pin in target_pins) {
 }
 ```
 
-```{r}
-unique_pins <- unique(params$pin)
-
-# Loop through each unique pin and render it
-for (pin in unique_pins) {
-  # Replace this with the actual rendering code for each pin
-  print(pin)
-}
-
-```
 
 ## Hyperlinks
 
