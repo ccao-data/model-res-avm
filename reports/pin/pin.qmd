@@ -15,13 +15,9 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: "2024-01-07-great-ida"
+  run_id: "2024-01-10-objective-patrick"
   year: "2024"
-  pin:
-    - "28011040250000"
-    - "28011040270000"
-    - "16083110070000"
-    - "01273080020000"
+  pin: "13253180150000"
 ---
 
 {{< include ../_setup.qmd >}}
@@ -39,9 +35,6 @@ for (target_pin in target_pins) {
   }
 }
 ```
-
-
-## Hyperlinks
 
 ```{r _URLs, results='asis'}
 base_url <- "https://www.cookcountyassessor.com/pin/"
@@ -78,10 +71,6 @@ hie_data_subset <- hie_data %>%
   filter(hie_last_year_active >= params$year) %>%
   mutate(hie = TRUE)
 ```
-
-
-## Topline Characteristics
-
 
 ## Predicted Model Value
 
