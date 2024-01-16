@@ -305,20 +305,7 @@ training_data_clean <- training_data_w_hie %>%
     time_sale_day_of_year = as.integer(yday(meta_sale_date)),
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
-    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
-    # Time window to use for cross-validation during training. The last X% of
-    # each window is held out as a validation set
-    time_split = time_interval %/% months(params$input$time_split),
-    # Collapse the last 2 splits into their earlier neighbor. This is done
-    # because part of the final time window will be held out for the test set,
-    # which will shrink the last split to the point of being too small for CV
-    time_split = ifelse(
-      time_split > max(time_split) - 2,
-      max(time_split) - 2,
-      time_split
-    ),
-    time_split = as.character(time_split + 1),
-    time_split = factor(time_split, levels = sort(unique(time_split)))
+    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
   select(-time_interval) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
