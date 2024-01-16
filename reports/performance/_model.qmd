@@ -147,6 +147,9 @@ generate_model_township_stats <- function(df) {
 
 ## Topline Statistics
 
+IAAO and machine learning standard performance statistics for townships within the ```r metadata$assessment_triad``` triad.
+Statistics highlighted in <span style="background-color:#d3f2c2">green</span> meet the IAAO standard. Note that median absolute percentage error (`MdAPE`) is how most private sector AVMs measure performance.
+
 ::: {.panel-tabset}
 
 ### Test Set
@@ -194,6 +197,8 @@ model_township_stats_assessment_df %>%
 :::
 
 ## Ratio Curves
+
+Ratio curves for the ```r metadata$assessment_triad``` triad created using the **test set**. Each dot is a median ratio at a given decile of sale price. Generally the goal is to make these curves as flat (close to 1) as possible. Curves sloping up and to the left indicate regressivity. The <span style="background-color:#d3f2c2">green</span> shaded area represents the IAAO target median ratio of 0.95 to 1.05.
 
 ::: {.panel-tabset}
 
@@ -363,6 +368,10 @@ for (township in model_townships_list) {
 :::
 
 ## Estimate vs Actual (Distributions)
+
+**Test set** distributions of actual fair market value (sales) compared to estimated fair market value from the model.
+The goal is for these distributions look extremely similar. The number under each y-axis label is the
+number of sales in that group.
 
 ### By Township
 
@@ -608,13 +617,15 @@ for (township in model_townships_list) {
 
 ## Estimate vs Actual (Individual Obs.)
 
+Scatterplot of predicted vs actual sale price for each PIN in the **test set**. The goal is for all points to be close to the 45-degree line; the farther away from the line, the worse the model is at predicting that PIN. 
+
+_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN._
+
 ### By Township
 
 ::: panel-tabset
 
 #### Main Model
-
-_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
 
 ```{r _model_est_v_actual_town_indiv_main}
 est_v_actual_plotly_town <- function(data, x) {
@@ -682,8 +693,6 @@ est_v_actual_plotly_town(test_card, pred_card_initial_fmv)
 
 #### Linear Baseline
 
-_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
-
 ```{r _model_est_v_actual_town_indiv_lin}
 est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
 ```
@@ -695,8 +704,6 @@ est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
 ::: panel-tabset
 
 #### Main Model
-
-_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
 
 ```{r _model_est_v_actual_class_indiv_main}
 est_v_actual_plotly_class <- function(data, x) {
@@ -765,8 +772,6 @@ est_v_actual_plotly_class(test_card, pred_card_initial_fmv)
 
 #### Linear Baseline
 
-_NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN_
-
 ```{r _model_est_v_actual_class_indiv_lin}
 est_v_actual_plotly_class(test_card, pred_card_initial_fmv_lin)
 ```
@@ -774,6 +779,12 @@ est_v_actual_plotly_class(test_card, pred_card_initial_fmv_lin)
 :::
 
 ## Feature Importance
+
+- **Gain** is the relative contribution of the corresponding feature to the model calculated by taking each feature's contribution for each tree in the model. A higher value of this metric when compared to another feature implies it is more important for generating a prediction.
+- **Cover** is the relative number of observations related to this feature. For example, if you have 100 observations, 4 features and 3 trees, and suppose `feature1` is used to decide the leaf node for 10, 5, and 2 observations in `tree1`, `tree2` and `tree3` respectively; then the metric will count cover for this feature as `10 + 5 + 2 = 17` observations. This will be calculated for all the 4 features and the cover will be 17 expressed as a percentage for all features' cover metrics.
+- **Frequency** is the percentage representing the relative number of times a particular feature occurs in the trees of the model. In the above example, if `feature1` occurred in 2 splits, 1 split and 3 splits in each of `tree1`, `tree2` and `tree3`; then the weight for `feature1` will be `2 + 1 + 3 = 6`. The frequency for `feature1` is calculated as its percentage weight over weights of all features.
+
+_NOTE: These metrics apply to ALL triads, not just the triad being re-assessed._
 
 ```{r _model_feature_importance_function}
 # Feature importance bar chart function
@@ -863,12 +874,11 @@ model_plot_feature_importance(
 
 ## Time Tracking
 
+Plots to show how well the model picks up on time trends. The **test set** plot shows the model's ability to forecast slightly into the future. The **training set** plot shows time tracking for data the model has already seen (i.e. no forecasting). The number next to each township name is the number of sales for the period shown.
+
 ::: panel-tabset
 
 ### Test Set (Unseen)
-
-This chart looks at sales slightly in the future to see if the model tracks
-trends which it has not yet seen.
 
 ```{r _model_time_trends_unseen, fig.height=8, fig.width=7}
 test_card %>%
@@ -913,9 +923,6 @@ test_card %>%
 ```
 
 ### Training Set (Seen)
-
-Here the chart demonstrates if the model's median sale price reflects the time
-trends for the data it has already seen.
 
 ```{r _model_time_trends_seen, fig.height=8, fig.width=7}
 training_data_pred %>%
@@ -967,7 +974,7 @@ training_data_pred %>%
 
 ## Lorenz Curves
 
-Lorenz curves are a way to visualize the distribution of the model's estimates compared to actual sales. In the ideal case, the curve would overlap, indicating perfectly accurate estimates. In cases where the estimate curve is above the sale curve, estimates are considered regressive. In cases where the estimate curve is below the sale curve, estimates are considered progressive.
+Lorenz curves are a way to visualize the distribution of the model's estimates compared to actual sales. In the ideal case, the curves would overlap, indicating perfectly accurate estimates. In cases where the estimate curve is above the sale curve, estimates are considered regressive. In cases where the estimate curve is below the sale curve, estimates are considered progressive.
 
 See the [assessr package documentation](https://ccao-data.github.io/assessr/articles/example-ratio-study.html#lorenz-curves) for more information on how to interpret these plots.
 
@@ -1065,6 +1072,8 @@ iwalk(model_lorenz_curve_plots, ~ {
 
 ## Big Misses
 
+Tables of the largest misses (in absolute terms) from the both the **test set** and **assessment set**. They show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price.
+
 ::: {.panel-tabset}
 
 ### Test Set
@@ -1121,8 +1130,6 @@ model_big_misses_test %>%
 ```
 
 ### Assessment Set
-
-The following table shows shows the largest misses from the **assessment set**. It finds four sales (one per quartile of price) for each township where the model's estimate was the furthest from the actual sale price.
 
 ```{r _model_big_misses_assessment}
 model_big_misses_assessment <- assessment_pin %>%

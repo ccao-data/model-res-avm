@@ -4,13 +4,13 @@
 
 This section focuses on the impact of the model. It looks at outcomes such as the year-over-year percentage change in market value. It compares ```r m_assess_stage_near``` values to predicted, PIN-level values from the model. It uses the **assessment set** for all plots and tables.
 
-## Change in Individual Market Values
+## Individual Values with Large Changes
 
 ::: panel-tabset
 
 ### Map of Largest YoY Changes
 
-This map plots the 10 largest year-over-year increases in market value by neighborhood. It caps the legend at a 300% to increase legibility.
+Map of the 10 largest year-over-year increases in market value by neighborhood. The legend is capped at 300% to increase legibility.
 
 ```{r _outcomes_map_of_largest_change}
 outcomes_map_big_changes <- assessment_pin %>%
@@ -59,7 +59,7 @@ leaflet() %>%
       "'>", meta_pin, "</a>",
       "<br>Neighborhood: ", meta_nbhd_code,
       "<br>Class: ", meta_class,
-      "<br><br>",
+      "<hr>",
       tools::toTitleCase(m_assess_stage_near), " FMV: ",
       scales::dollar(prior_near_tot),
       "<br>Estimated FMV: ",
@@ -84,7 +84,7 @@ leaflet() %>%
 
 ### Table of Largest YoY Changes
 
-This table excludes any PINs which had a prior year market value of less than $25,000. It then identifies the 5 PINs in each township which had the largest percentage year-over-year increase in market value.
+Table of the 5 PINs in each township which had the largest percentage year-over-year increase in market value. Excludes any PINs which had a prior year market value of less than $25,000.
 
 ```{r _outcomes_table_of_largest_change}
 outcomes_map_big_changes %>%
@@ -164,7 +164,7 @@ outcomes_map_big_changes %>%
 
 :::
 
-## Change in Median Market Value
+## Change in Median Value by Geography
 
 ::: panel-tabset
 
@@ -229,10 +229,10 @@ leaflet(data = outcomes_map_nbhd_delta_sf) %>%
     popup = ~ paste0(
       "Township: ", township_name,
       "<br>Neighborhood: ", meta_nbhd_code,
-      "<br><br>",
+      "<hr>",
       "Num. Sales: ", scales::comma(num_sale),
       "<br>Med. Sale FMV: ", scales::dollar(sale_fmv_median),
-      "<br><br>",
+      "<hr>",
       "Med. ", tools::toTitleCase(m_assess_stage_near), " FMV: ",
       scales::dollar(prior_near_fmv_median),
       "<br>Med. Estimated FMV: ",
@@ -295,10 +295,10 @@ leaflet(data = outcomes_map_township_delta_sf) %>%
     smoothFactor = 0.5,
     popup = ~ paste0(
       "Township: ", township_name,
-      "<br><br>",
+      "<hr>",
       "Num. Sales: ", scales::comma(num_sale),
       "<br>Med. Sale FMV: ", scales::dollar(sale_fmv_median),
-      "<br><br>",
+      "<hr>",
       "Med. ", tools::toTitleCase(m_assess_stage_near), " FMV: ",
       scales::dollar(prior_near_fmv_median),
       "<br>Med. Estimated FMV: ",
@@ -316,3 +316,63 @@ leaflet(data = outcomes_map_township_delta_sf) %>%
 ```
 
 :::
+
+## Multi-Family Changes
+
+This table tries to answer the question: _where_ are 211s and 212s increasing?
+It tabulates the number of 211s and 212s by township that have a change (from
+their ```r m_assess_stage_near``` value) of greater than 50%.
+
+```{r _outcomes_211_and_212_yoy_changes}
+outcomes_multifamily_change <- assessment_pin %>%
+  filter(
+    meta_class %in% c("211", "212"),
+    meta_triad_code == run_triad_code
+  ) %>%
+  mutate(
+    yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv),
+    big_swing_near = yoy_near > 0.5,
+    nom_change = pred_pin_final_fmv - prior_near_tot
+  ) %>%
+  summarise(
+    count = n(),
+    big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE),
+    big_swings_near_pct = big_swings_near / n(),
+    med_nom_change_of_swing = median(
+      ifelse(big_swing_near, nom_change, NA),
+      na.rm = TRUE
+    ),
+    .by = c(meta_township_code, meta_class)
+  ) %>%
+  arrange(desc(big_swings_near_pct)) %>%
+  left_join(
+    ccao::town_dict %>%
+      select(meta_township_code = township_code, township_name)
+  ) %>%
+  mutate(
+    big_swings_near_pct = scales::percent(big_swings_near_pct),
+    across(c(count, big_swings_near), scales::comma),
+    med_nom_change_of_swing = scales::dollar(med_nom_change_of_swing)
+  ) %>%
+  select(
+    `Township` = township_name,
+    `Class` = meta_class,
+    `Raw Count` = count,
+    `Number w/ Change > 50%` = big_swings_near,
+    `Percent w/ Change > 50%` = big_swings_near_pct,
+    `Med. $ Change When Change > 50%` = med_nom_change_of_swing
+  )
+
+outcomes_multifamily_change %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(2:5)
+        )
+      )
+    )
+  )
+```
