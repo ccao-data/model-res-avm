@@ -72,6 +72,7 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     are returned along with the indexes of the comparison observations."""
     num_observations = len(leaf_node_matrix)
     num_comparisons = len(comparison_leaf_node_matrix)
+    weights = weights.T
     idx_dtype = np.int64
     score_dtype = np.float64
 
@@ -88,10 +89,15 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
         # already made; we just need to do it in a way that will have a
         # low memory footprint
         for y_i in range(num_comparisons):
-            leaf_node_match_arr = (
-              leaf_node_matrix[x_i] == comparison_leaf_node_matrix[y_i]
-            ).astype(np.int64)
-            similarity_score = np.sum(leaf_node_match_arr * weights.T)
+            similarity_score = 0.0
+            for tree_idx in range(len(leaf_node_matrix[x_i])):
+                similarity_score += (
+                    weights[0, tree_idx] * (
+                        leaf_node_matrix[x_i][tree_idx] ==
+                        comparison_leaf_node_matrix[y_i][tree_idx]
+                    )
+                )
+
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
             # First check if the score is higher than the lowest score,
