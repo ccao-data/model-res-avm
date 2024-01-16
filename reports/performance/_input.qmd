@@ -278,23 +278,38 @@ leaflet(input_complex_id_map) %>%
 ### Multi-Card and Multi-PIN Aggregation
 
 This table uses test pins to check if multi-card parcels are correctly aggregated to the full PIN.
-There are two possible card aggregation rules:
-
-1. 
+Look for consistency with past year's results. See the post-modeling section of the README documentation
+for details on card-level aggregation.
 
 ```{r _input_multicard_sample}
-input_multicard_test_pins <- c(
-  "17321110470000", # south
-  "05174150240000", # south
-  "05213220250000", # south
-  "08121220400000", # south
-  "06334030310000" # south
+input_multicard_test_pins <- tribble(
+  ~"pin", ~"triad",
+  "17321110470000", "south",
+  "05174150240000", "south",
+  "05213220250000", "south",
+  "08121220400000", "south",
+  "06334030310000", "south",
+  "20142150160000", "city",
+  "20143110110000", "city",
+  "20143120360000", "city",
+  "10313170010000", "city",
+  "14331230380000", "city",
+  "14293000710000", "city"
 )
 
 input_multicard_test_df <- assessment_card %>%
   filter(
     ccao::town_get_triad(meta_township_code) == run_triad_code,
-    meta_pin %in% input_multicard_test_pins
+  ) %>%
+  group_by(meta_pin) %>%
+  filter(n() > 1) %>%
+  select(meta_pin, meta_class, meta_card_num, meta_tieback_proration_rate, char_bldg_sf) %>%
+  filter(meta_tieback_proration_rate != 1)
+
+input_multicard_test_df <- assessment_card %>%
+  filter(
+    ccao::town_get_triad(meta_township_code) == run_triad_code,
+    meta_pin %in% input_multicard_test_pins$pin
   ) %>%
   arrange(meta_pin, meta_card_num) %>%
   select(
@@ -317,7 +332,9 @@ input_multicard_test_df <- assessment_card %>%
   mutate(
     `Card %` = scales::percent(`Card %`, accuracy = 0.01),
     `SQFT` = scales::comma(`SQFT`),
+    `Proration` = scales::percent(`Proration`, accuracy = 0.01),
     `Card Initial` = scales::dollar(`Card Initial`),
+    `Card Final` = scales::dollar(`Card Final`),
     across(starts_with("PIN "), scales::dollar)
   )
 
@@ -330,7 +347,7 @@ input_multicard_test_df %>%
           className = "dt-right",
           targets = c(
             "Card %", "SQFT", "Card Initial", "Card Final", "PIN Far",
-            "PIN Near", "PIN Initial", "PIN Final"
+            "PIN Near", "PIN Initial", "PIN Final", "Proration"
           )
         )
       )
