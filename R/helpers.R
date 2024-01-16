@@ -229,3 +229,129 @@ mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
   out <- out * 100
   out
 }
+
+# Modified rolling origin forecast split function. Splits the training data into
+# N separate time windows, each of which can overlap by N months. Also splits
+# out a validation set from each windows for Tidymodels / LightGBM.
+#
+# WARNING: If train_includes_val is TRUE, then each training window contains
+# the training data AND the validation data (they overlap! see GitLab issue #82
+# and the README for more information)
+create_rolling_origin_splits <- function(data,
+                                         v = 5,
+                                         overlap_months = 0,
+                                         date_col,
+                                         val_prop,
+                                         train_includes_val = FALSE,
+                                         cumulative = FALSE) {
+  stopifnot(
+    v >= 2 && v <= 20,
+    overlap_months >= 0,
+    val_prop >= 0 && val_prop < 1,
+    is.logical(train_includes_val),
+    is.logical(cumulative)
+  )
+
+  data <- dplyr::arrange(data, {{ date_col }})
+
+  # Find the duration (in months) that splits the date range of the training
+  # data. There may be some remainder
+  duration_per_fold <- data %>%
+    dplyr::summarise(
+      min_date = min({{ date_col }}),
+      max_date = max({{ date_col }})
+    ) %>%
+    dplyr::mutate(
+      dur_per_fold = lubridate::as.duration(
+        ceiling((max_date - min_date) / v)
+      )
+    ) %>%
+    dplyr::pull(dur_per_fold) %/% lubridate::dmonths(1)
+
+  if (overlap_months > duration_per_fold) {
+    stop(
+      "Overlap period must be less than the duration of each fold. ",
+      "Please reduce overlap_months or decrease the number of folds."
+    )
+  }
+
+  # If an overlap period is provided, shift and expand the periods/dates
+  # such that windows overlap by each overlap amount, but still cover the
+  # entire date period
+  start_dates <- seq.Date(
+    from = min(data$meta_sale_date),
+    by = paste0(duration_per_fold + overlap_months, " months"),
+    length.out = v
+  )
+  start_offset <- c(
+    lubridate::dmonths(0),
+    lubridate::as.duration(
+      cumsum(rep(lubridate::dmonths(overlap_months), v - 1))
+    )
+  )
+  start_dates <- as.Date(start_dates - start_offset)
+
+  # Split the training data into N separate time windows, overlapping based on
+  # the overlap argument, then recombine into a single dataframe
+  data_split <- purrr::imap_dfr(start_dates, function(x, i) {
+    if (x == max(start_dates)) {
+      end_date <- as.Date(Inf)
+    } else {
+      end_date <- x + lubridate::dmonths(duration_per_fold + overlap_months)
+      end_date <- as.Date(end_date)
+    }
+    data_sub <- data %>%
+      dplyr::mutate(split_id = i, idx = dplyr::row_number()) %>%
+      dplyr::filter({{ date_col }} >= x & {{ date_col }} <= end_date) %>%
+      dplyr::group_by(split_id) %>%
+      dplyr::summarize(min_idx = min(idx), max_idx = max(idx))
+  })
+
+  # If no overlap period set, force the indices to be non-overlapping
+  if (overlap_months == 0) {
+    data_split <- data_split %>%
+      dplyr::mutate(
+        min_idx = dplyr::lag(max_idx),
+        min_idx = ifelse(is.na(min_idx), 1, min_idx + 1)
+      )
+  }
+
+  # Create indices to split the data into training and validation sets
+  if (cumulative) {
+    starts <- rep(1, length(data_split$max_idx))
+  } else {
+    starts <- data_split$min_idx
+  }
+
+  in_idx <- mapply(seq, starts, data_split$max_idx, SIMPLIFY = FALSE)
+  out_idx <- lapply(in_idx, function(x) {
+    n <- length(x)
+    m <- min(n - floor(n * val_prop), n - 1) + 1
+    add_to_idx <- ifelse(x[1] == 1, 0, x[1] - 1)
+    seq(add_to_idx + max(m, 3), add_to_idx + n)
+  })
+
+  if (!train_includes_val) {
+    in_idx <- mapply(setdiff, in_idx, out_idx, SIMPLIFY = FALSE)
+  }
+
+  # Create the final rsample object from indices
+  indices <- mapply(
+    rsample:::merge_lists, in_idx, out_idx,
+    SIMPLIFY = FALSE
+  )
+  split_objs <- purrr::map(
+    indices, rsample::make_splits,
+    data = data, class = "rof_split"
+  )
+  split_objs <- list(
+    splits = split_objs,
+    id = recipes::names0(length(split_objs), "Slice")
+  )
+  rset <- rsample::new_rset(
+    splits = split_objs$splits,
+    ids = split_objs$id,
+    subclass = c("rolling_origin", "rset")
+  )
+  return(rset)
+}
