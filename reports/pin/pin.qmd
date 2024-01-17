@@ -19,9 +19,8 @@ params:
   year: "2024"
   pin:
     - "28011040250000"
-    - "28011040270000"
-    - "16083110070000"
-    - "01273080020000"
+
+---
 
 {{< include ../_setup.qmd >}}
 
@@ -39,7 +38,7 @@ for (target_pin in target_pins) {
 }
 ```
 
-```{r _URLs, results='asis'}
+```{r _pin_URLs, results='asis'}
 base_url <- "https://www.cookcountyassessor.com/pin/"
 pin_values <- params$pin
 
@@ -67,7 +66,7 @@ pin_value <- dbGetQuery(
 
 pin_sale <- dbGetQuery(
   conn = con,
-  sprintf("SELECT year, pin, num_parcels_sale FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 3, pins_clause)
+  sprintf("SELECT year, pin, num_parcels_sale, doc_no, sale_date, sale_price FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 10, pins_clause)
 )
 
 hie_data_subset <- hie_data %>%
@@ -102,15 +101,16 @@ assessment_pin %>%
 assessment_pin %>%
   filter(meta_pin %in% params$pin) %>%
   left_join(pin_sale, by = c("meta_pin" = "pin")) %>%
-  arrange(meta_pin) %>%
+  arrange(meta_pin, desc(sale_date)) %>%
   select(
-    "Sale Date" = sale_recent_1_date,
-    "Sale Price" = sale_recent_1_price,
-    "Document Number" = sale_recent_1_document_num,
+    "Sale Date" = sale_date,
+    "Sale Price" = sale_price,
+    "Document Number" = doc_no,
     "Number of Parcels" = num_parcels_sale,
     # "Outlier Type" = sv_outlier_type
   ) %>%
-  mutate(`Sale Price` = scales::dollar(`Sale Price`)) %>%
+  mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
+  mutate(`Sale Price` = dollar(`Sale Price`)) %>%
   kable() %>%
   kable_styling(
     "striped",
