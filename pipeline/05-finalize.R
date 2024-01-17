@@ -33,8 +33,6 @@ run_end_timestamp <- lubridate::now()
 git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
 
-
-
 ## 2.2. DVC Hashes -------------------------------------------------------------
 
 # Read the MD5 hash of each input dataset. These are created by DVC and used to
