@@ -53,13 +53,6 @@ assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
     all_of(params$ratio_study$geographies),
     char_total_bldg_sf, prior_far_tot, prior_near_tot,
     pred_pin_final_fmv_round, sale_ratio_study_price
-  ) %>%
-  filter(!is.na(pred_pin_final_fmv_round)) %>%
-  mutate(
-    pred_pin_final_fmv_round = ifelse(
-      pred_pin_final_fmv_round <= 0, 1,
-      pred_pin_final_fmv_round
-    )
   )
 
 
