@@ -241,7 +241,6 @@ model:
     # else LightGBM will treat them as numeric
     categorical:
       - "loc_census_puma_geoid"
-      - "loc_census_tract_geoid"
       - "meta_modeling_group"
       - "char_air"
       - "char_apts"

@@ -26,6 +26,7 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
+    step_mutate(loc_census_tract_geoid = as.numeric(loc_census_tract_geoid)) %>%
     # Replace novel levels with "new"
     step_novel(all_of(cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
