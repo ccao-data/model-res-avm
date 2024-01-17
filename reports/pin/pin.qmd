@@ -18,8 +18,7 @@ params:
   run_id: "2024-01-07-great-ida"
   year: "2024"
   pin:
-    - "28011040250000"
-
+    - "16083110070000"
 ---
 
 {{< include ../_setup.qmd >}}
@@ -66,7 +65,7 @@ pin_value <- dbGetQuery(
 
 pin_sale <- dbGetQuery(
   conn = con,
-  sprintf("SELECT year, pin, num_parcels_sale, doc_no, sale_date, sale_price FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 10, pins_clause)
+  sprintf("SELECT year, pin, num_parcels_sale, sv_outlier_type, doc_no, sale_date, sale_price FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 10, pins_clause)
 )
 
 hie_data_subset <- hie_data %>%
@@ -107,7 +106,7 @@ assessment_pin %>%
     "Sale Price" = sale_price,
     "Document Number" = doc_no,
     "Number of Parcels" = num_parcels_sale,
-    # "Outlier Type" = sv_outlier_type
+    "Outlier Type" = sv_outlier_type
   ) %>%
   mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
   mutate(`Sale Price` = dollar(`Sale Price`)) %>%
