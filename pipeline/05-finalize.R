@@ -32,11 +32,7 @@ run_end_timestamp <- lubridate::now()
 # Get the commit of the current reference
 git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
-# If in a CI context, use the run note passed to the workflow. Otherwise, use
-# the note included in params.yaml
-run_note <- as.character(
-  Sys.getenv("WORKFLOW_RUN_NOTE", unset = params$run_note)
-)
+
 
 
 ## 2.2. DVC Hashes -------------------------------------------------------------
