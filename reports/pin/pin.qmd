@@ -17,57 +17,30 @@ editor: source
 params:
   run_id: "2024-01-07-great-ida"
   year: "2024"
-  pin:
-    - "16083110070000"
+  pin: "01273080020000"
 ---
 
 {{< include ../_setup.qmd >}}
 
 ```{r _pin_checks}
-target_pins <- ccao::pin_clean(params$pin)
+target_pin <- ccao::pin_clean(params$pin)
+if (nchar(target_pin) != 14) {
+  stop("Invalid PIN: must be 14 characters long")
+}
 
-for (target_pin in target_pins) {
-  if (nchar(target_pin) != 14) {
-    stop(paste("Invalid PIN:", target_pin, "must be 14 characters long"))
-  }
-
-  if (!target_pin %in% assessment_card$meta_pin) {
-    stop(paste("Invalid PIN:", target_pin, "not found in assessment data"))
-  }
+if (!target_pin %in% assessment_card$meta_pin) {
+  stop("Invalid PIN: not found in assessment data")
 }
 ```
 
 ```{r _pin_URLs, results='asis'}
-base_url <- "https://www.cookcountyassessor.com/pin/"
-pin_values <- params$pin
-
-for (pin in pin_values) {
-  full_url <- paste0(base_url, pin)
-  cat(sprintf('<a href="%s">%s</a><br/>', full_url, full_url))
-}
+html_link <- sprintf('<a href="https://www.cookcountyassessor.com/pin/%s">https://www.cookcountyassessor.com/pin/%s</a><br/>', params$pin, params$pin)
+html_link
 ```
 
+
+
 ```{r _pin_setup}
-noctua_options(cache_size = 10)
-con <- dbConnect(noctua::athena())
-
-pins_clause <- paste0("('", paste(params$pin, collapse = "', '"), "')")
-
-res_chars <- dbGetQuery(
-  conn = con,
-  sprintf("SELECT pin, year, pin10, pin_is_multicard, card, class, char_yrblt, char_bldg_sf, char_beds, char_fbath, char_hbath, char_air, char_type_resd, char_rooms FROM default.vw_card_res_char WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 3, pins_clause)
-)
-
-pin_value <- dbGetQuery(
-  conn = con,
-  sprintf("SELECT * FROM default.vw_pin_value WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 3, pins_clause)
-)
-
-pin_sale <- dbGetQuery(
-  conn = con,
-  sprintf("SELECT year, pin, num_parcels_sale, sv_outlier_type, doc_no, sale_date, sale_price FROM default.vw_pin_sale WHERE CAST(year AS INTEGER) >= %d AND pin IN %s", as.numeric(params$year) - 10, pins_clause)
-)
-
 hie_data_subset <- hie_data %>%
   filter(hie_last_year_active >= params$year) %>%
   mutate(hie = TRUE)
@@ -78,13 +51,24 @@ hie_data_subset <- hie_data %>%
 ```{r, _pin_predicted_model_value}
 assessment_pin %>%
   mutate(township = ccao::town_convert(meta_township_code)) %>%
-  filter(meta_pin %in% params$pin) %>%
+  filter(meta_pin == params$pin) %>%
   arrange(meta_pin) %>%
   select(
     "Township" = township,
-    "Final FMV" = pred_pin_final_fmv
+    "FMV 3 Years Prior" = prior_far_tot,
+    "FMV 1 Year Prior" = prior_near_tot,
+    "Bldg Effective" = pred_pin_bldg_rate_effective,
+    "Final FMV" = pred_pin_final_fmv,
+    "Final FMV Bldg" = pred_pin_final_fmv_bldg,
+    "Final FMV Bldg no Prorate" = pred_pin_final_fmv_bldg_no_prorate,
+    "Final FMV Land" = pred_pin_final_fmv_land,
+    "Final FMV Round" = pred_pin_final_fmv_round,
+    "Final FMV Round no Prorate" = pred_pin_final_fmv_round_no_prorate,
+    "Initial FMV" = pred_pin_initial_fmv,
+    "Land PCT Total" = pred_pin_land_pct_total,
+    "Land Rate Effective" = pred_pin_land_rate_effective
   ) %>%
-  mutate(`Final FMV` = scales::dollar(`Final FMV`)) %>%
+  mutate(across(`FMV 3 Years Prior`:`Land Rate Effective`, scales::dollar)) %>%
   kable() %>%
   kable_styling(
     "striped",
@@ -92,20 +76,20 @@ assessment_pin %>%
     fixed_thead = TRUE,
     html_font = "Consolas"
   )
+
 ```
 
 ## Sale Data
 
 ```{r _pin_topline_characteristics, results= 'asis'}
 assessment_pin %>%
-  filter(meta_pin %in% params$pin) %>%
-  left_join(pin_sale, by = c("meta_pin" = "pin")) %>%
-  arrange(meta_pin, desc(sale_date)) %>%
+  filter(meta_pin == params$pin) %>%
+  left_join(training_data[, c("meta_pin", "sv_outlier_type", "meta_sale_document_num", "meta_sale_date", "meta_sale_price")], by = "meta_pin") %>%
+  arrange(desc(meta_sale_date)) %>%
   select(
-    "Sale Date" = sale_date,
-    "Sale Price" = sale_price,
-    "Document Number" = doc_no,
-    "Number of Parcels" = num_parcels_sale,
+    "Sale Date" = meta_sale_date,
+    "Sale Price" = meta_sale_price,
+    "Document Number" = meta_sale_document_num,
     "Outlier Type" = sv_outlier_type
   ) %>%
   mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
@@ -122,30 +106,15 @@ assessment_pin %>%
 ## Characteristics
 
 ```{r _pin_characteristics}
-res_chars %>%
-  left_join(hie_data_subset[, c("pin", "hie")], by = c("pin" = "pin")) %>%
+chars_data %>%
+  filter(meta_pin == params$pin) %>%
+  left_join(hie_data_subset[, c("pin", "hie")], by = c("meta_pin" = "pin")) %>%
   mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
-  left_join(assessment_pin[, c("meta_pin", "flag_char_missing_critical_value", "flag_pin_is_multicard")], by = c("pin" = "meta_pin")) %>%
-  distinct(pin, card, year, .keep_all = TRUE) %>%
-  filter(year == params$year | as.numeric(year) == as.numeric(params$year) - 3) %>%
-  arrange(pin, card, year) %>%
-  group_by(pin, card) %>%
-  mutate("Changed Characteristics" = {
-    changes <- sapply(across(.cols = -year), function(col) {
-      changed_indices <- which(col != lag(col, default = first(col), order_by = year))
-      if (length(changed_indices) > 0) TRUE else FALSE
-    })
-    if (any(changes)) {
-      paste(names(changes)[changes], collapse = ", ")
-    } else {
-      "FALSE"
-    }
-  }) %>%
-  ungroup() %>%
+  left_join(assessment_pin[, c("meta_pin", "flag_char_missing_critical_value", "flag_pin_is_multicard")], by = "meta_pin") %>%
+  arrange(meta_year) %>%
   select(
-    Year = year,
-    Card = card,
-    Class = class,
+    Year = meta_year,
+    Class = meta_class,
     "Year Built" = char_yrblt,
     "Building SF" = char_bldg_sf,
     Beds = char_beds,
@@ -157,8 +126,18 @@ res_chars %>%
     HIE = hie,
     "Multicard Flag" = flag_pin_is_multicard,
     "Missing Critical Value" = flag_char_missing_critical_value,
-    "Changed Characteristics"
   ) %>%
+  mutate("Changed Characteristics" = {
+    changes <- sapply(across(.cols = -Year), function(col) {
+      changed_indices <- which(col != lag(col, default = first(col), order_by = Year))
+      if (length(changed_indices) > 0) TRUE else FALSE
+    })
+    if (any(changes)) {
+      paste(names(changes)[changes], collapse = ", ")
+    } else {
+      "FALSE"
+    }
+  }) %>%
   kable() %>%
   kable_styling(
     "striped",
@@ -262,12 +241,6 @@ shap_df_filtered_ <- shap_df_filtered %>%
   select_if(is.numeric) %>%
   select(-township_code)
 
-sum_columns_by_prefix_per_row <- function(df, prefix) {
-  df %>%
-    select(starts_with(prefix)) %>%
-    rowSums(na.rm = TRUE)
-}
-
 shap_df_filtered_ %>%
   mutate(
     Characteristics = rowSums(select(., starts_with("char")), na.rm = TRUE),
@@ -286,89 +259,6 @@ shap_df_filtered_ %>%
     col.names = c("Card", "Baseline", "Characteristics", "Census Data", "Time", "Location", "Proximity", "School", "Meta"),
     align = "l"
   ) %>%
-  kable_styling(
-    "striped",
-    position = "left",
-    fixed_thead = TRUE,
-    html_font = "Consolas"
-  )
-```
-
-
-## Change in Pin Value over 3 Year Timeframe
-```{r _pin_change_in_house_value, results = 'asis'}
-wider_data <- pin_value %>%
-  pivot_wider(
-    names_from = year,
-    values_from = -c(pin, year),
-    names_sep = "_",
-    id_cols = pin
-  )
-
-year_numeric <- as.numeric(params$year)
-years <- (year_numeric - 4):year_numeric
-
-# Create a vector of column names to select
-cols_to_select <- c("pin", unlist(sapply(years, function(y) {
-  c(paste0("mailed_tot_", y), paste0("certified_tot_", y), paste0("board_tot_", y))
-})))
-
-single_pin <- wider_data %>%
-  select(contains(cols_to_select)) %>%
-  mutate(
-    across(contains("mailed"), ~ . * 10),
-    across(contains("board"), ~ . * 10),
-    across(contains("certified"), ~ . * 10)
-  ) %>%
-  inner_join(
-    assessment_pin %>%
-      select(meta_pin, pred_pin_final_fmv),
-    by = c("pin" = "meta_pin")
-  ) %>%
-  select_if(~ !all(is.na(.))) %>%
-  rename_with(~ str_replace_all(., "_", " ") %>%
-    str_replace_all(., " tot", "") %>%
-    str_to_title()) %>%
-  arrange(Pin) %>%
-  select(-Pin)
-
-color_matrix <- matrix("none", nrow = nrow(single_pin), ncol = ncol(single_pin))
-
-for (j in 3:ncol(single_pin)) {
-  for (i in 1:nrow(single_pin)) {
-    value <- single_pin[i, j]
-    previous <- single_pin[i, j - 1]
-
-    if (!is.na(value) && !is.na(previous) && previous != 0) {
-      if (value > previous) {
-        color_matrix[i, j] <- "green"
-      } else if (value < previous) {
-        color_matrix[i, j] <- "red"
-      } else {
-        color_matrix[i, j] <- "transparent"
-      }
-    } else {
-      color_matrix[i, j] <- "gray"
-    }
-  }
-}
-
-single_pin <- single_pin %>%
-  mutate_at(1:ncol(single_pin), scales::dollar)
-
-display_df <- as.data.frame(lapply(single_pin, as.character), stringsAsFactors = FALSE)
-
-expanded_color_matrix <- matrix("none", nrow = nrow(display_df), ncol = ncol(display_df))
-expanded_color_matrix[, 1:ncol(color_matrix)] <- color_matrix
-
-for (j in 1:ncol(display_df)) {
-  for (i in 1:nrow(display_df)) {
-    display_df[i, j] <- cell_spec(display_df[i, j], "html", background = expanded_color_matrix[i, j])
-  }
-}
-
-
-kable(display_df, format = "html", escape = FALSE) %>%
   kable_styling(
     "striped",
     position = "left",
