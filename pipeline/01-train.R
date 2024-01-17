@@ -67,7 +67,7 @@ lin_recipe <- model_lin_recipe(
   data = training_data_full %>%
     mutate(meta_sale_price = log(meta_sale_price)),
   pred_vars = params$model$predictor$all,
-  cat_vars = params$model$predictor$categorical,
+  cat_vars = c(params$model$predictor$categorical, "loc_census_tract_geoid"),
   id_vars = params$model$predictor$id
 )
 
