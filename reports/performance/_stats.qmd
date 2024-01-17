@@ -237,7 +237,7 @@ for (i in seq(1, length(stats_ecdfs_grobs_num), by = 6)) {
 
 ```{r _stats_ecdfs_factor}
 stats_ecdfs_plots_fct <- stats_sf_parcels %>%
-  select(where(is.factor)) %>%
+  select(where(is.factor), -contains("class")) %>%
   length()
 
 stats_ecdfs_grobs_fct <- lapply(seq_len(stats_ecdfs_plots_fct), function(index) {
