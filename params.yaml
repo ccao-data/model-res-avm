@@ -139,8 +139,8 @@ model:
     # Vector of predictors from the training data included in the model. Edit
     # this list to add or remove variables from the model
     all:
-      - "meta_township_code"
-      - "meta_nbhd_code"
+      - "loc_census_puma_geoid"
+      - "loc_census_tract_geoid"
       - "meta_modeling_group"
       - "meta_tieback_proration_rate"
       - "char_yrblt"
@@ -170,6 +170,7 @@ model:
       - "char_tp_plan"
       - "char_type_resd"
       - "char_recent_renovation"
+      - "char_class"
       - "loc_longitude"
       - "loc_latitude"
       - "loc_env_flood_fema_sfha"
@@ -234,14 +235,13 @@ model:
       - "time_sale_day_of_month"
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
-      - "char_class"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
     # else LightGBM will treat them as numeric
     categorical:
-      - "meta_township_code"
-      - "meta_nbhd_code"
+      - "loc_census_puma_geoid"
+      - "loc_census_tract_geoid"
       - "meta_modeling_group"
       - "char_air"
       - "char_apts"
@@ -260,11 +260,11 @@ model:
       - "char_tp_dsgn"
       - "char_tp_plan"
       - "char_type_resd"
+      - "char_class"
       - "loc_tax_municipality_name"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
       - "time_sale_quarter_of_year"
-      - "char_class"
 
     # List of identifiers for each observation, can be ignored
     id:
