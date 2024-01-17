@@ -13,7 +13,9 @@ tictoc::tic("Train")
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
-
+read_parquet(paths$input$training$local) %>%
+  mutate(sv_is_outlier = FALSE) %>%
+  write_parquet(paths$input$training$local)
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Prepare Data --------------------------------------------------------------
