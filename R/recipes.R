@@ -26,14 +26,7 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
-    step_mutate(
-      loc_census_tract_geoid = as.numeric(loc_census_tract_geoid),
-      loc_tax_municipality_name = as.numeric(loc_tax_municipality_name),
-      loc_school_elementary_district_geoid =
-        as.numeric(loc_school_elementary_district_geoid),
-      loc_school_secondary_district_geoid =
-        as.numeric(loc_school_secondary_district_geoid),
-    ) %>%
+    step_mutate(meta_nbhd_code = as.numeric(meta_nbhd_code)) %>%
     # Replace novel levels with "new"
     step_novel(all_of(cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
@@ -92,8 +85,8 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Drop any predictors with near-zero variance, add interactions, and
     # perform transforms
     step_nzv(all_predictors()) %>%
-    step_interact(terms = ~ loc_census_puma_geoid * time_sale_day) %>%
-    step_interact(terms = ~ loc_census_puma_geoid * char_bldg_sf) %>%
+    step_interact(terms = ~ meta_township_code * time_sale_day) %>%
+    step_interact(terms = ~ meta_township_code * char_bldg_sf) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
       acs5_median_income_household_past_year,
