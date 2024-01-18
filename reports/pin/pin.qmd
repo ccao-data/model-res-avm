@@ -55,8 +55,8 @@ assessment_pin %>%
   arrange(meta_pin) %>%
   select(
     "Township" = township,
-    "3 Years Prior" = prior_far_tot,
-    "1 Year Prior" = prior_near_tot,
+    "3 Years Prior Total" = prior_far_tot,
+    "1 Year Prior Total" = prior_near_tot,
     "Final FMV" = pred_pin_final_fmv,
     "Bldg Effective" = pred_pin_bldg_rate_effective,
     "Final FMV Bldg" = pred_pin_final_fmv_bldg,
@@ -68,7 +68,7 @@ assessment_pin %>%
     "Land PCT Total" = pred_pin_land_pct_total,
     "Land Rate Effective" = pred_pin_land_rate_effective
   ) %>%
-  mutate(across(`3 Years Prior`:`Land Rate Effective`, scales::dollar)) %>%
+  mutate(across(`3 Years Prior Total`:`Land Rate Effective`, scales::dollar)) %>%
   kable() %>%
   kable_styling(
     "striped",
