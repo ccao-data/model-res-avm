@@ -15,16 +15,15 @@ format:
     fontsize: 12pt
 editor: source
 params:
-  run_id: "2024-01-10-objective-patrick"
+  run_id: "2024-01-07-great-ida"
   year: "2024"
-  pin: "13253180150000"
+  pin: "01273080020000"
 ---
 
 {{< include ../_setup.qmd >}}
 
-```{r pin_checks}
+```{r _pin_checks}
 target_pin <- ccao::pin_clean(params$pin)
-
 if (nchar(target_pin) != 14) {
   stop("Invalid PIN: must be 14 characters long")
 }
@@ -34,4 +33,224 @@ if (!target_pin %in% assessment_card$meta_pin) {
 }
 ```
 
-This is a stub report for the PIN `r target_pin` and run ID `r params$run_id`!
+```{r _pin_URLs, results='asis'}
+html_link <- sprintf('<a href="https://www.cookcountyassessor.com/pin/%s">https://www.cookcountyassessor.com/pin/%s</a><br/>', params$pin, params$pin)
+cat(html_link)
+```
+
+
+
+```{r _pin_setup}
+hie_data_subset <- hie_data %>%
+  filter(hie_last_year_active >= params$year) %>%
+  mutate(hie = TRUE)
+```
+
+## Predicted Model Value
+
+```{r, _pin_predicted_model_value}
+assessment_pin %>%
+  mutate(township = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_pin == params$pin) %>%
+  arrange(meta_pin) %>%
+  select(
+    "Township" = township,
+    "3 Years Prior Total" = prior_far_tot,
+    "1 Year Prior Total" = prior_near_tot,
+    "Final FMV" = pred_pin_final_fmv,
+    "Bldg Effective" = pred_pin_bldg_rate_effective,
+    "Final FMV Bldg" = pred_pin_final_fmv_bldg,
+    "Final FMV Bldg no Prorate" = pred_pin_final_fmv_bldg_no_prorate,
+    "Final FMV Land" = pred_pin_final_fmv_land,
+    "Final FMV Round" = pred_pin_final_fmv_round,
+    "Final FMV Round no Prorate" = pred_pin_final_fmv_round_no_prorate,
+    "Initial FMV" = pred_pin_initial_fmv,
+    "Land PCT Total" = pred_pin_land_pct_total,
+    "Land Rate Effective" = pred_pin_land_rate_effective
+  ) %>%
+  mutate(across(`3 Years Prior Total`:`Land Rate Effective`, scales::dollar)) %>%
+  kable() %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
+```
+
+## Sale Data
+
+```{r _pin_topline_characteristics, results= 'asis'}
+training_data %>%
+  filter(meta_pin == params$pin) %>%
+  arrange(desc(meta_sale_date)) %>%
+  select(
+    "Sale Date" = meta_sale_date,
+    "Sale Price" = meta_sale_price,
+    "Document Number" = meta_sale_document_num,
+    "Outlier Type" = sv_outlier_type
+  ) %>%
+  mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
+  mutate(`Sale Price` = dollar(`Sale Price`)) %>%
+  kable() %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
+```
+
+## Characteristics
+
+```{r _pin_characteristics}
+chars_data %>%
+  filter(meta_pin == params$pin) %>%
+  left_join(hie_data_subset[, c("pin", "hie")], by = c("meta_pin" = "pin")) %>%
+  mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
+  filter(year == max(year)) %>%
+  left_join(assessment_pin[, c("meta_pin", "flag_char_missing_critical_value", "flag_pin_is_multicard")], by = "meta_pin") %>%
+  arrange(meta_year) %>%
+  select(
+    Year = meta_year,
+    Class = meta_class,
+    "Year Built" = char_yrblt,
+    "Building SF" = char_bldg_sf,
+    Beds = char_beds,
+    "Full Baths" = char_fbath,
+    "Half Baths" = char_hbath,
+    Air = char_air,
+    "Residential Type" = char_type_resd,
+    Rooms = char_rooms,
+    HIE = hie,
+    "Multicard Flag" = flag_pin_is_multicard,
+    "Missing Critical Value" = flag_char_missing_critical_value,
+  ) %>%
+  kable() %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
+```
+
+```{r _pin_shap_data_manipulation}
+shap_df_filtered <- shap_df %>%
+  left_join(
+    assessment_card %>%
+      mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+      select(meta_year, meta_pin, meta_card_num, meta_triad),
+    by = c("meta_year", "meta_pin", "meta_card_num")
+  ) %>%
+  arrange(meta_pin, meta_card_num)
+
+
+shap_predictors <- names(shap_df_filtered)
+shap_predictors <- shap_predictors[!shap_predictors %in% c(
+  "meta_year",
+  "meta_pin",
+  "meta_card_num",
+  "pred_card_shap_baseline_fmv",
+  "township_code",
+  "meta_triad"
+)]
+
+assessment_card_filtered <- assessment_card %>%
+  mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+  arrange(meta_pin, meta_card_num)
+
+townships_to_iterate <- shap_df_filtered %>%
+  distinct(township_code) %>%
+  pull() %>%
+  as.character()
+
+shap_idx_full_model <- which(
+  assessment_card_filtered$meta_township_code %in% townships_to_iterate
+)
+
+shap_df_filtered <- shap_df_filtered %>%
+  filter(meta_pin %in% params$pin) %>%
+  arrange(meta_pin)
+
+assessment_card_filtered <- assessment_card_filtered %>%
+  filter(meta_pin %in% params$pin) %>%
+  arrange(meta_pin)
+```
+
+## Card-Level SHAP Results
+
+```{r _pin_shap_viz}
+create_shap_viz <- function(row_idx) {
+  shapviz_object <- shapviz(
+    object = shap_df_filtered %>%
+      select(all_of(shap_predictors)) %>%
+      slice(row_idx) %>%
+      as.matrix(),
+    X = assessment_card_filtered %>%
+      select(all_of(shap_predictors)) %>%
+      slice(row_idx),
+    baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
+  ) %>%
+    sv_waterfall(
+      max_display = 15L
+    )
+
+  return(shapviz_object)
+}
+
+num_rows <- nrow(shap_df_filtered)
+```
+
+::: {.panel-tabset}
+
+```{r _pin_SHAP_results, results = 'asis'}
+results <- vector("list", length = num_rows)
+
+for (i in 1:num_rows) {
+  cat("##", "Card ", shap_df_filtered$meta_card_num[i], "\n")
+
+  results[[i]] <- create_shap_viz(i)
+
+  print(results[[i]])
+
+  cat("\n\n")
+}
+```
+
+:::
+  
+## Table of SHAP Values Grouped by Category
+```{r _pin_shap_table, results = "asis"}
+shap_df_filtered_ <- shap_df_filtered %>%
+  filter(meta_pin %in% params$pin) %>%
+  mutate(Pin = as.numeric(meta_pin)) %>%
+  mutate(Card = as.numeric(meta_card_num)) %>%
+  select_if(is.numeric) %>%
+  select(-township_code)
+
+shap_df_filtered_ %>%
+  mutate(
+    Characteristics = rowSums(select(., starts_with("char")), na.rm = TRUE),
+    Census_Data = rowSums(select(., starts_with("acs5")), na.rm = TRUE),
+    Time = rowSums(select(., starts_with("time")), na.rm = TRUE),
+    Location = rowSums(select(., starts_with("loc")), na.rm = TRUE) + ccao_is_corner_lot - loc_school_secondary_district_geoid - loc_school_elementary_district_geoid + other_tax_bill_rate,
+    Proximity = rowSums(select(., starts_with("prox")), na.rm = TRUE),
+    School = rowSums(select(., c("other_school_district_elementary_avg_rating", "other_school_district_secondary_avg_rating", "loc_school_elementary_district_geoid", "loc_school_secondary_district_geoid")), na.rm = TRUE),
+    Baseline = pred_card_shap_baseline_fmv,
+    Meta = rowSums(select(., starts_with("meta")), na.rm = TRUE)
+  ) %>%
+  arrange(Pin, Card) %>%
+  select(Card, Baseline, Characteristics, Census_Data, Time, Location, Proximity, School, Meta) %>%
+  mutate(across(3:ncol(.), scales::dollar)) %>%
+  kable(
+    col.names = c("Card", "Baseline", "Characteristics", "Census Data", "Time", "Location", "Proximity", "School", "Meta"),
+    align = "l"
+  ) %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE,
+    html_font = "Consolas"
+  )
+```
