@@ -35,7 +35,7 @@ if (!target_pin %in% assessment_card$meta_pin) {
 
 ```{r _pin_URLs, results='asis'}
 html_link <- sprintf('<a href="https://www.cookcountyassessor.com/pin/%s">https://www.cookcountyassessor.com/pin/%s</a><br/>', params$pin, params$pin)
-print(html_link)
+cat(html_link)
 ```
 
 
