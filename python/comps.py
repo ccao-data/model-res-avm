@@ -67,8 +67,8 @@ def get_comps(
     # approximate infinity. This is necessary because observation data may
     # have observed values that are lower than the minimum value in the
     # comparison data, or higher than the maximum value
-    price_bin_indices.at[0, "min"] = np.iinfo(np.int64).min + 1
-    price_bin_indices.at[num_price_bins - 1, "max"] = np.iinfo(np.int64).max - 1
+    price_bin_indices.at[0, "min"] = np.iinfo(np.int32).min + 1
+    price_bin_indices.at[num_price_bins - 1, "max"] = np.iinfo(np.int32).max - 1
 
     # Update bins to ensure they have no gaps. This enables us to put values
     # from the observation dataframe into these bins, since otherwise
@@ -85,7 +85,7 @@ def get_comps(
     # Place observations in bins. Do this in a numba-accelerated function so
     # that we can make use of fast loops
     observation_df["price_bin"] = _bin_by_price(
-        observation_df[["id", "meta_sale_price"]].values,
+        observation_df[["id", "pred_pin_final_fmv"]].values,
         price_bin_indices.values
     )
 
@@ -93,9 +93,10 @@ def get_comps(
     total_num_possible_comps = len(sorted_comparison_df)
     binned_ids, binned_scores = [], []
     for bin_idx, bin in price_bin_indices.iterrows():
-        cols_to_drop = ["id", "meta_sale_price", "price_bin"]
         observations = observation_df[observation_df["price_bin"] == bin["id"]]
-        observation_matrix = observations.drop(columns=cols_to_drop).values
+        observation_matrix = observations.drop(
+          columns=["id", "pred_pin_final_fmv", "price_bin"]
+        ).values
 
         # Add a 1-bin buffer on either side in case an observation is close to
         # a bin edge. In addition, make sure that argmax is inclusive by
@@ -118,11 +119,13 @@ def get_comps(
         )
         # Handle -1, which is an indicator of no match
         comp_idx_to_id[-1] = -1
-        possible_comp_matrix = possible_comps.drop(columns=cols_to_drop).values
+        possible_comp_matrix = possible_comps.drop(
+          columns=["id", "meta_sale_price", "price_bin"]
+        ).values
 
         print(
             (
-                f"Getting top {n} comps for price bin {bin['id']}/"
+                f"Getting top {n} comps for price bin {bin['id'] + 1}/"
                 f"{len(price_bin_indices)} (${price_min:,} to ${price_max:,}) - "
                 f"{len(observations)}/{total_num_observations} observations, "
                 f"{len(possible_comps)}/{total_num_possible_comps} possible comps"
@@ -234,7 +237,7 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
             similarity_score = 0.0
             for tree_idx in range(len(leaf_node_matrix[x_i])):
                 similarity_score += (
-                    weights[0, tree_idx] * (
+                    weights[tree_idx] * (
                         leaf_node_matrix[x_i][tree_idx] ==
                         comparison_leaf_node_matrix[y_i][tree_idx]
                     )
@@ -284,7 +287,7 @@ if __name__ == "__main__":
     leaf_nodes = pd.DataFrame(
         np.random.randint(0, num_obs, size=[num_obs, num_trees])
     )
-    leaf_nodes["meta_sale_price"] = np.random.normal(
+    leaf_nodes["pred_pin_final_fmv"] = np.random.normal(
         mean_sale_price, std_deviation, size=num_obs
     ).astype(int)
 
@@ -294,7 +297,7 @@ if __name__ == "__main__":
     training_leaf_nodes["meta_sale_price"] = np.random.normal(
         mean_sale_price, std_deviation, size=num_comparisons
     ).astype(int)
-    tree_weights = np.random.dirichlet(np.ones(num_trees), size=1).T
+    tree_weights = np.random.dirichlet(np.ones(num_trees))
 
     start = time.time()
     get_comps(leaf_nodes, training_leaf_nodes, tree_weights)

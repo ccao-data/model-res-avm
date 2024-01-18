@@ -39,6 +39,13 @@ if (shap_enable || comp_enable) {
   )
 }
 
+if (comp_enable) {
+  message("Loading predicted values for comp calculation")
+
+  predicted_data <- read_parquet(paths$output$assessment_pin$local) %>%
+    as_tibble()
+}
+
 
 
 
@@ -152,10 +159,24 @@ if (comp_enable) {
 
   # Get leaf node assignments for the training data. Assume that the training
   # data is a subset of the assessment data
-  assessment_train_idxs <- which(
-    assessment_data$meta_pin %in% training_data$meta_pin
-  )
+  assessment_joined_to_training <- assessment_data %>%
+    rownames_to_column() %>%
+    inner_join(training_data, by = c("meta_pin", "meta_card_num"))
+
+  assessment_train_idxs <- assessment_joined_to_training %>%
+    dplyr::pull(rowname) %>%
+    as.integer()
   training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
+
+  # Add sale price to both training and assessment sets, so that we can use
+  # it to chunk comp comparisons
+  training_leaf_nodes$meta_sale_price <- assessment_joined_to_training %>%
+    dplyr::pull(meta_sale_price) %>%
+    as.integer()
+  leaf_nodes$pred_pin_final_fmv <- assessment_data %>%
+    left_join(predicted_data, by = "meta_pin") %>%
+    mutate(pred_pin_final_fmv = as.integer(pred_pin_final_fmv)) %>%
+    dplyr::pull("pred_pin_final_fmv")
 
   # Do the comps calculation in Python because the code is simpler and faster
   message("Calling out to python/comps.py to perform comps calculation")
