@@ -101,10 +101,13 @@ def get_comps(
         # a bin edge. In addition, make sure that argmax is inclusive by
         # expanding the range by 1
         argmin, argmax = bin["argmin"], bin["argmax"] + 1
+        price_min, price_max = bin["min"], bin["max"]
         if bin_idx > 0:
-            argmin = price_bin_indices.iloc[bin_idx - 1]["argmin"]
+            prev_bin = price_bin_indices.iloc[bin_idx - 1]
+            argmin, price_min = prev_bin["argmin"], prev_bin["min"]
         if bin_idx < len(price_bin_indices) - 1:
-            argmax = price_bin_indices.iloc[bin_idx + 1]["argmax"] + 1
+            next_bin = price_bin_indices.iloc[bin_idx + 1]
+            argmax, price_max = next_bin["argmax"] + 1, next_bin["max"]
 
         possible_comps = sorted_comparison_df[argmin:argmax]
         comp_idx_to_id = dict(
@@ -120,7 +123,7 @@ def get_comps(
         print(
             (
                 f"Getting top {n} comps for price bin {bin['id']}/"
-                f"{len(price_bin_indices)} - "
+                f"{len(price_bin_indices)} (${price_min:,} to ${price_max:,}) - "
                 f"{len(observations)}/{total_num_observations} observations, "
                 f"{len(possible_comps)}/{total_num_possible_comps} possible comps"
             ),
