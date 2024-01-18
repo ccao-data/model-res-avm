@@ -13,7 +13,7 @@ property should equal the difference between the predicted value and the baselin
 shap_df_filtered <- shap_df %>%
   left_join(
     assessment_card %>%
-      mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+      mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
       select(meta_year, meta_pin, meta_card_num, meta_triad),
     by = c("meta_year", "meta_pin", "meta_card_num")
   ) %>%
@@ -68,7 +68,7 @@ shap_predictors <- shap_predictors[!shap_predictors %in% c(
 )]
 
 assessment_card_filtered <- assessment_card %>%
-  mutate(meta_triad = ccao::town_get_triad(meta_township_code)) %>%
+  mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
   filter(meta_triad == run_triad_code) %>%
   arrange(meta_pin, meta_card_num)
 
@@ -102,7 +102,7 @@ shap_townships_list <- shap_df_filtered %>%
   as.character()
 
 shap_idx_full_model <- which(
-  assessment_card_filtered$meta_township_code %in% shap_townships_list
+  as.character(assessment_card_filtered$township_code) %in% shap_townships_list
 )
 
 shapviz::shapviz(
@@ -132,7 +132,9 @@ shapviz::shapviz(
 # Dynamically produce tabset
 for (township in shap_townships_list) {
   cat("##", ccao::town_convert(township), "\n")
-  shap_idx <- which(assessment_card_filtered$meta_township_code == township)
+  shap_idx <- which(
+    as.character(assessment_card_filtered$township_code) == township
+  )
   print(
     create_shapviz(
       shap_df_filtered,
