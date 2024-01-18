@@ -68,7 +68,6 @@ Config/renv/profiles/reporting/dependencies:
     leaflet,
     magrittr,
     markdown,
-    noctua,
     plotly,
     quarto,
     repr,
