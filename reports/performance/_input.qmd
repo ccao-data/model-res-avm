@@ -309,7 +309,7 @@ input_multicard_test_df <- assessment_card %>%
   ) %>%
   arrange(meta_pin, meta_card_num) %>%
   select(
-    PIN = meta_pin, Class = meta_class, Card = meta_card_num,
+    PIN = meta_pin, Class = char_class, Card = meta_card_num,
     `Card %` = meta_card_pct_total_fmv, SQFT = char_bldg_sf,
     `Card Initial` = pred_card_initial_fmv,
     `Card Final` = pred_card_final_fmv
