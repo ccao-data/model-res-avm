@@ -35,7 +35,7 @@ if (!target_pin %in% assessment_card$meta_pin) {
 
 ```{r _pin_URLs, results='asis'}
 html_link <- sprintf('<a href="https://www.cookcountyassessor.com/pin/%s">https://www.cookcountyassessor.com/pin/%s</a><br/>', params$pin, params$pin)
-html_link
+print(html_link)
 ```
 
 
@@ -76,15 +76,13 @@ assessment_pin %>%
     fixed_thead = TRUE,
     html_font = "Consolas"
   )
-
 ```
 
 ## Sale Data
 
 ```{r _pin_topline_characteristics, results= 'asis'}
-assessment_pin %>%
+training_data %>%
   filter(meta_pin == params$pin) %>%
-  left_join(training_data[, c("meta_pin", "sv_outlier_type", "meta_sale_document_num", "meta_sale_date", "meta_sale_price")], by = "meta_pin") %>%
   arrange(desc(meta_sale_date)) %>%
   select(
     "Sale Date" = meta_sale_date,
@@ -110,6 +108,7 @@ chars_data %>%
   filter(meta_pin == params$pin) %>%
   left_join(hie_data_subset[, c("pin", "hie")], by = c("meta_pin" = "pin")) %>%
   mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
+  filter(year == max(year)) %>%
   left_join(assessment_pin[, c("meta_pin", "flag_char_missing_critical_value", "flag_pin_is_multicard")], by = "meta_pin") %>%
   arrange(meta_year) %>%
   select(
@@ -127,17 +126,6 @@ chars_data %>%
     "Multicard Flag" = flag_pin_is_multicard,
     "Missing Critical Value" = flag_char_missing_critical_value,
   ) %>%
-  mutate("Changed Characteristics" = {
-    changes <- sapply(across(.cols = -Year), function(col) {
-      changed_indices <- which(col != lag(col, default = first(col), order_by = Year))
-      if (length(changed_indices) > 0) TRUE else FALSE
-    })
-    if (any(changes)) {
-      paste(names(changes)[changes], collapse = ", ")
-    } else {
-      "FALSE"
-    }
-  }) %>%
   kable() %>%
   kable_styling(
     "striped",
