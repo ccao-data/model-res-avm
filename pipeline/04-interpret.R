@@ -160,7 +160,7 @@ if (comp_enable) {
   # Get leaf node assignments for the training data. Assume that the training
   # data is a subset of the assessment data
   assessment_joined_to_training <- assessment_data %>%
-    rownames_to_column() %>%
+    tibble::rownames_to_column() %>%
     inner_join(training_data, by = c("meta_pin", "meta_card_num"))
 
   assessment_train_idxs <- assessment_joined_to_training %>%
