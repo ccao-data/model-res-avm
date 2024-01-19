@@ -384,6 +384,7 @@ num_sales_prev_n_years <- function(
           as.duration(1),
           as.duration(years(years))
         )) %>%
+        # Distinct is necessary because of multicard sales
         distinct() %>%
         summarise(
           num_sales_last_three_years = sum(within_three_years, na.rm = TRUE),
@@ -403,13 +404,16 @@ num_sales_prev_n_years <- function(
         by = "meta_pin",
         relationship = "many-to-many"
       ) %>%
+        # Distinct is necessary because of multicard sales
         distinct() %>%
-        mutate(within_three_years =
-                 year > as.numeric(params$assessment$working_year) - years) %>%
+        mutate(
+          within_three_years =
+                 year > as.numeric(params$assessment$working_year) - years
+          ) %>%
         summarise(
           num_sales_last_three_years = sum(within_three_years, na.rm = TRUE),
           .by = meta_pin
-          ),
+        ),
       by = "meta_pin",
       relationship = "many-to-many"
     )
@@ -418,6 +422,6 @@ num_sales_prev_n_years <- function(
   } else {
     stop(
       "'training' and 'assessment' are the only options for the set parameter."
-      )
+    )
   }
 }
