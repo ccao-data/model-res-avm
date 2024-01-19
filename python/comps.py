@@ -2,7 +2,8 @@ import numpy as np
 import numba as nb
 import pandas as pd
 
-# The number of bins to create for sale prices, e.g. 10 = deciles
+# The number of bins to create for when binning data by sale price; e.g. if
+# this value is 10, the data will be binned into deciles
 NUM_PRICE_BINS = 30
 
 
@@ -14,9 +15,20 @@ def get_comps(
     num_price_bins=NUM_PRICE_BINS,
 ):
     """Fast algorithm to get the top `n` comps from a dataframe of lightgbm
-    leaf node assignments (`observation_df`), weighted according to a tree
-    importance vector `weights`. More details on the underlying algorithm here:
-    https://ccao-data.github.io/lightsnip/articles/finding-comps.html
+    leaf node assignments (`observation_df`) compared to a second dataframe of
+    assignments (`comparison_df`). Leaf nodes are weighted according to a tree
+    importance vector `weights` and used to generate a similarity score and
+    return two dataframes, one a set of indices and the other a set of scores
+    for the `n` most similar comparables. More details on the underlying
+    algorithm here: https://ccao-data.github.io/lightsnip/articles/finding-comps.html
+
+    The function expects that `observation_df` will have a column called
+    `pred_pin_final_fmv` and `comparison_df` will have a column called
+    `meta_sale_price`. These two columns represent the predicted value
+    and the observed value for the observations and the comparisons,
+    respectively. These columns are then used along with the `num_price_bins`
+    parameter to bin the comparison data and only compare observations to
+    comparisons that are in the three closest bins to the observation.
     """
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
@@ -29,7 +41,7 @@ def get_comps(
     comparison_df["id"] = list(range(len(comparison_df)))
 
     # Sort the comparison data and extract the indexes of rows that represent
-    # boundaries between price deciles. We'll use these decile indexes to
+    # boundaries between price bins. We'll use these bin indexes to
     # reduce the number of comparison parcels that we need to search for each
     # observation
     sorted_comparison_df = comparison_df.sort_values(
@@ -188,9 +200,12 @@ def get_comps(
 
 @nb.njit(fastmath=True, parallel=True)
 def _bin_by_price(observation_matrix, price_bin_matrix):
+    """Given a matrix of observations and a matrix of price bins, place the
+    observations in the closest price bin and return an array of bin IDs
+    with the same length as the observation matrix."""
     num_observations = len(observation_matrix)
     price_bin_idx, price_bin_min_idx, price_bin_max_idx = 0, 3, 4
-    observation_idx, observation_price_idx = 0, 1
+    observation_price_idx = 1
     output_matrix = np.zeros(num_observations, dtype=np.int64)
 
     for obs_idx in nb.prange(num_observations):
