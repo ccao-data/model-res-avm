@@ -58,17 +58,17 @@ land <- dbGetQuery(
 
 # For land lines with no square footage, set to default of 0 if a secondary line
 # If a main line, then set to 10
-land <- land %>%
-  group_by(meta_pin) %>%
-  mutate(count = n()) %>%
-  ungroup() %>%
+land <- land |>
+  group_by(meta_pin) |>
+  mutate(count = n()) |>
+  ungroup() |>
   mutate(
     meta_line_sf = case_when(
       count == 1 & is.na(meta_line_sf) ~ 10,
       count > 1 & is.na(meta_line_sf) ~ 0,
       TRUE ~ meta_line_sf
     )
-  ) %>%
+  ) |>
   select(-count)
 
 # To include land with the desk review spreadsheets we need to pull the same
@@ -114,12 +114,12 @@ vacant_land <- dbGetQuery(
 
 # Clean up the vacant land records to match the pipeline output
 rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
-vacant_land_trans <- vacant_land %>%
+vacant_land_trans <- vacant_land |>
   rename_with(
     .fn = ~ gsub(paste0(rsn_prefix, "_"), "prior_near_", .x),
     .cols = starts_with(rsn_prefix)
-  ) %>%
-  select(-contains("mailed"), -contains("certified"), -contains("board")) %>%
+  ) |>
+  select(-contains("mailed"), -contains("certified"), -contains("board")) |>
   mutate(across(starts_with("prior_near_"), ~ .x * 10))
 
 # Grab single-PIN sales for vacant land classes. Only used for reference, not
@@ -143,22 +143,22 @@ vacant_land_sales <- dbGetQuery(
 )
 
 # Transform sales data from long to wide, keeping most recent 2 sales
-vacant_land_sales_trans <- vacant_land_sales %>%
-  mutate(meta_sale_date = ymd_hms(meta_sale_date)) %>%
-  group_by(meta_pin) %>%
-  slice_max(meta_sale_date, n = 2) %>%
+vacant_land_sales_trans <- vacant_land_sales |>
+  mutate(meta_sale_date = ymd_hms(meta_sale_date)) |>
+  group_by(meta_pin) |>
+  slice_max(meta_sale_date, n = 2) |>
   distinct(
     meta_pin, meta_year,
     meta_sale_price, meta_sale_date, meta_sale_document_num
-  ) %>%
-  mutate(mr = paste0("sale_recent_", row_number())) %>%
+  ) |>
+  mutate(mr = paste0("sale_recent_", row_number())) |>
   tidyr::pivot_wider(
     id_cols = meta_pin,
     names_from = mr,
     values_from = c(meta_sale_date, meta_sale_price, meta_sale_document_num),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
-  ) %>%
-  select(meta_pin, contains("1"), contains("2")) %>%
+  ) |>
+  select(meta_pin, contains("1"), contains("2")) |>
   ungroup()
 
 # Load neighborhood level land rates
@@ -175,18 +175,18 @@ land_nbhd_rate <- dbGetQuery(
 
 # Combine land data into a single dataframe with the same structure as
 # assessment_pin. Carry over improvement values from prior years
-vacant_land_merged <- vacant_land_trans %>%
-  left_join(vacant_land_sales_trans, by = "meta_pin") %>%
-  left_join(land_nbhd_rate, by = c("meta_nbhd_code", "meta_class")) %>%
+vacant_land_merged <- vacant_land_trans |>
+  left_join(vacant_land_sales_trans, by = "meta_pin") |>
+  left_join(land_nbhd_rate, by = c("meta_nbhd_code", "meta_class")) |>
   left_join(
-    land %>%
-      group_by(meta_pin) %>%
+    land |>
+      group_by(meta_pin) |>
       summarize(
         char_land_sf = sum(meta_line_sf),
         flag_pin_is_multiland = n() > 1
       ),
     by = "meta_pin"
-  ) %>%
+  ) |>
   mutate(
     # Replace missing values for some PINs (very few, usually brand new)
     across(
@@ -274,20 +274,20 @@ assessment_card <- dbGetQuery(
 message("Preparing data for Desk Review export")
 
 # Merge vacant land data with data from the residential AVM
-assessment_pin_merged <- assessment_pin %>%
+assessment_pin_merged <- assessment_pin |>
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
     across(ends_with("_date"), ymd),
     across(starts_with("flag_"), as.numeric),
     across(where(is.numeric), ~ na_if(.x, Inf))
-  ) %>%
-  bind_rows(vacant_land_merged) %>%
-  filter(!is.na(pred_pin_final_fmv_land)) %>%
+  ) |>
+  bind_rows(vacant_land_merged) |>
+  filter(!is.na(pred_pin_final_fmv_land)) |>
   mutate(across(ends_with("_date"), as_date))
 
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
-assessment_pin_prepped <- assessment_pin_merged %>%
+assessment_pin_prepped <- assessment_pin_merged |>
   mutate(
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
@@ -297,7 +297,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
     )
-  ) %>%
+  ) |>
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
     property_full_address, loc_cook_municipality_name, meta_complex_id,
@@ -318,8 +318,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
     flag_char_missing_critical_value
-  ) %>%
-  arrange(township_code, meta_pin) %>%
+  ) |>
+  arrange(township_code, meta_pin) |>
   mutate(
     meta_pin = glue(
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
@@ -333,25 +333,25 @@ assessment_pin_prepped <- assessment_pin_merged %>%
 
 # Get all PINs with multiple cards, break out into supplemental data set to
 # attach to each town
-assessment_card_prepped <- assessment_card %>%
+assessment_card_prepped <- assessment_card |>
   semi_join(
-    assessment_pin %>%
-      filter(as.logical(as.numeric(flag_pin_is_multicard))) %>%
+    assessment_pin |>
+      filter(as.logical(as.numeric(flag_pin_is_multicard))) |>
       select(meta_pin),
     by = "meta_pin"
-  ) %>%
+  ) |>
   select(
     township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
     char_yrblt, char_beds, char_ext_wall, char_heat, char_bldg_sf,
     char_type_resd, char_land_sf
-  ) %>%
+  ) |>
   mutate(
     meta_pin = glue(
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
       "{meta_pin}")'
     )
-  ) %>%
+  ) |>
   arrange(township_code, meta_pin, meta_card_num)
 
 
@@ -369,8 +369,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   ## 5.1. PIN-Level ------------------------------------------------------------
 
   # Filter overall data to specific township
-  assessment_pin_filtered <- assessment_pin_prepped %>%
-    filter(township_code == town) %>%
+  assessment_pin_filtered <- assessment_pin_prepped |>
+    filter(township_code == town) |>
     select(-township_code)
 
   # Generate sheet and column headers
@@ -458,8 +458,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # 5.2. Card-Level ------------------------------------------------------------
 
   # Filter overall data to specific township
-  assessment_card_filtered <- assessment_card_prepped %>%
-    filter(township_code == town) %>%
+  assessment_card_filtered <- assessment_card_prepped |>
+    filter(township_code == town) |>
     select(-township_code)
 
   card_sheet_name <- "Card Detail"
@@ -533,12 +533,12 @@ message("Preparing data for iasWorld export")
 # Here we want to extract the building value for each card for upload to
 # iasWorld. Land valuation is handled via rates in iasWorld, so no
 # need to include the land portion of each PIN
-upload_data <- assessment_pin %>%
+upload_data <- assessment_pin |>
   left_join(
     assessment_card,
     by = c("township_code", "meta_pin"),
     multiple = "all"
-  ) %>%
+  ) |>
   # Calculate the UNPRORATED building value of each card using the same
   # distribution method from the assessment stage
   mutate(
@@ -546,9 +546,9 @@ upload_data <- assessment_pin %>%
       meta_card_pct_total_fmv,
     temp_card_frac_prop = pred_card_final_fmv_no_prorate -
       as.integer(pred_card_final_fmv_no_prorate)
-  ) %>%
-  group_by(meta_pin) %>%
-  arrange(desc(temp_card_frac_prop)) %>%
+  ) |>
+  group_by(meta_pin) |>
+  arrange(desc(temp_card_frac_prop)) |>
   mutate(
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
@@ -560,8 +560,8 @@ upload_data <- assessment_pin %>%
     pred_card_final_fmv_no_prorate = round(
       as.integer(pred_card_final_fmv_no_prorate) + temp_add_diff
     )
-  ) %>%
-  ungroup() %>%
+  ) |>
+  ungroup() |>
   select(
     township_code,
     PARID = meta_pin, CARD = meta_card_num,
@@ -581,9 +581,9 @@ upload_data <- assessment_pin %>%
 for (town in unique(upload_data$township_code)) {
   message("Now processing: ", town_convert(town))
 
-  upload_data_fil <- upload_data %>%
-    filter(township_code == town) %>%
-    select(-township_code) %>%
+  upload_data_fil <- upload_data |>
+    filter(township_code == town) |>
+    select(-township_code) |>
     arrange(PARID, CARD)
 
   write_csv(

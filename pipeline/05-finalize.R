@@ -37,9 +37,9 @@ git_commit <- git2r::revparse_single(git2r::repository(), "HEAD")
 
 # Read the MD5 hash of each input dataset. These are created by DVC and used to
 # version and share the input data
-dvc_md5_df <- bind_rows(read_yaml("dvc.lock")$stages$ingest$outs) %>%
-  mutate(path = paste0("dvc_md5_", gsub("input/|.parquet", "", path))) %>%
-  select(path, md5) %>%
+dvc_md5_df <- bind_rows(read_yaml("dvc.lock")$stages$ingest$outs) |>
+  mutate(path = paste0("dvc_md5_", gsub("input/|.parquet", "", path))) |>
+  select(path, md5) |>
   pivot_wider(names_from = path, values_from = md5)
 
 
@@ -107,12 +107,12 @@ metadata <- tibble::tibble(
   model_predictor_categorical_count =
     length(params$model$predictor$categorical),
   model_predictor_categorical_name = list(params$model$predictor$categorical)
-) %>%
-  bind_cols(dvc_md5_df) %>%
+) |>
+  bind_cols(dvc_md5_df) |>
   relocate(
     starts_with("dvc_id_"),
     .after = "input_complex_match_fuzzy_value"
-  ) %>%
+  ) |>
   arrow::write_parquet(paths$output$metadata$local)
 
 
@@ -135,7 +135,7 @@ tryCatch(
 
     message("Generating performance report")
 
-    here("reports", "performance", "performance.qmd") %>%
+    here("reports", "performance", "performance.qmd") |>
       quarto_render(
         execute_params = list(
           run_id = run_id,
@@ -170,7 +170,7 @@ purrr::iwalk(report_pins, \(pin, i) {
         length(report_pins), ": ", pin
       )
 
-      here("reports", "pin", "pin.qmd") %>%
+      here("reports", "pin", "pin.qmd") |>
         quarto_render(
           execute_params = list(
             run_id = run_id,
@@ -202,7 +202,7 @@ message("Saving run timings")
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-bind_rows(tictoc::tic.log(format = FALSE)) %>%
+bind_rows(tictoc::tic.log(format = FALSE)) |>
   arrow::write_parquet(gsub("//*", "/", file.path(
     paths$intermediate$timing$local,
     "model_timing_finalize.parquet"
@@ -215,7 +215,7 @@ timings <- list.files(
 )
 
 # Convert the intermediate timing logs to a wide data frame, then save to file
-timings_df <- purrr::map_dfr(timings, read_parquet) %>%
+timings_df <- purrr::map_dfr(timings, read_parquet) |>
   mutate(
     run_id = run_id,
     run_end_timestamp = run_end_timestamp,
@@ -226,16 +226,16 @@ timings_df <- purrr::map_dfr(timings, read_parquet) %>%
       "Train" = "01", "Assess" = "02", "Evaluate" = "03",
       "Interpret" = "04", "Finalize" = "05"
     )
-  ) %>%
-  arrange(order) %>%
-  select(-c(tic:toc, msg)) %>%
+  ) |>
+  arrange(order) |>
+  select(-c(tic:toc, msg)) |>
   tidyr::pivot_wider(
     id_cols = c(run_id, run_end_timestamp),
     names_from = stage,
     values_from = elapsed
-  ) %>%
-  mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) %>%
-  mutate(across(ends_with("_sec_elapsed"), function(x) round(x, 2))) %>%
+  ) |>
+  mutate(overall_sec_elapsed = rowSums(across(ends_with("_sec_elapsed")))) |>
+  mutate(across(ends_with("_sec_elapsed"), function(x) round(x, 2))) |>
   write_parquet(paths$output$timing$local)
 
 # Clear any remaining logs from tictoc

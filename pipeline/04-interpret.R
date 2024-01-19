@@ -58,8 +58,8 @@ if (shap_enable) {
   )
 
   # Convert the SHAP value output from a matrix to a tibble and add column names
-  shap_values_tbl <- shap_values %>%
-    as_tibble(.name_repair = "unique") %>%
+  shap_values_tbl <- shap_values |>
+    as_tibble(.name_repair = "unique") |>
     purrr::set_names(c(
       colnames(assessment_data_prepped),
       "pred_card_shap_baseline_fmv"
@@ -67,16 +67,16 @@ if (shap_enable) {
 
   # Keep only the SHAP value columns from predictors + any ID and partition
   # columns, then add run ID and write to file
-  shap_values_final <- assessment_data %>%
+  shap_values_final <- assessment_data |>
     select(
       meta_year, meta_pin, meta_card_num,
       township_code = meta_township_code
-    ) %>%
-    bind_cols(shap_values_tbl) %>%
+    ) |>
+    bind_cols(shap_values_tbl) |>
     select(
       meta_year, meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
       all_of(params$model$predictor$all), township_code
-    ) %>%
+    ) |>
     write_parquet(paths$output$shap$local)
 } else {
   # If SHAP creation is disabled, we still need to write an empty stub file
@@ -93,21 +93,21 @@ if (shap_enable) {
 message("Calculating feature importance metrics")
 
 # Calculate feature importance using LightGBM's built-in method
-lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
-  as_tibble() %>%
-  rename(model_predictor_all_name = Feature) %>%
-  rename_with(tolower, Gain:Frequency) %>%
+lightgbm::lgb.importance(lgbm_final_full_fit$fit) |>
+  as_tibble() |>
+  rename(model_predictor_all_name = Feature) |>
+  rename_with(tolower, Gain:Frequency) |>
   mutate(across(
     gain:frequency,
     ~ order(order(.x, decreasing = TRUE)),
     .names = "{.col}_rank"
-  )) %>%
-  rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
+  )) |>
+  rename_with(~ paste0(.x, "_value"), gain:frequency) |>
   write_parquet(paths$output$feature_importance$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-bind_rows(tictoc::tic.log(format = FALSE)) %>%
+bind_rows(tictoc::tic.log(format = FALSE)) |>
   arrow::write_parquet(gsub("//*", "/", file.path(
     paths$intermediate$timing$local,
     "model_timing_interpret.parquet"

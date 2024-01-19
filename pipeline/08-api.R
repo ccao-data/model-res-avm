@@ -31,23 +31,23 @@ message("Loading data for API creation")
 # Load metadata to get predictors used and other info
 metadata <- read_parquet(paths$output$metadata$s3)
 predictors <- metadata$model_predictor_all_name[[1]]
-towns <- ccao::town_dict %>%
-  filter(triad_code == params$export$triad_code) %>%
+towns <- ccao::town_dict |>
+  filter(triad_code == params$export$triad_code) |>
   pull(township_code)
 
 # Load categorical variable dictionary for lookup and data validation
-dict <- ccao::vars_dict %>%
+dict <- ccao::vars_dict |>
   filter(
     var_data_type == "categorical",
     var_name_model %in% predictors,
     var_name_model != "meta_modeling_group"
-  ) %>%
+  ) |>
   distinct(var_name_pretty, var_code, var_value)
 
 dict <- bind_rows(
   dict,
-  ccao::vars_dict %>%
-    filter(var_name_model == "meta_modeling_group") %>%
+  ccao::vars_dict |>
+    filter(var_name_model == "meta_modeling_group") |>
     distinct(var_name_pretty, var_code = var_value_short, var_value)
 )
 
@@ -66,7 +66,7 @@ card_data <- arrow::open_dataset(
     paste0("year=", year),
     paste0("run_id=", run_id, "/")
   )
-) %>%
+) |>
   collect()
 
 
@@ -81,9 +81,9 @@ for (town in towns) {
   message("Now processing: ", town_convert(town))
 
   # Load data from file, then make it pretty for saving to sheet
-  card_data_town <- card_data %>%
-    filter(meta_township_code == town) %>%
-    mutate(api_prediction = NA, api_prediction_rounded = NA) %>%
+  card_data_town <- card_data |>
+    filter(meta_township_code == town) |>
+    mutate(api_prediction = NA, api_prediction_rounded = NA) |>
     select(
       meta_pin, meta_card_num, meta_class, pred_card_initial_fmv,
       api_prediction, api_prediction_rounded,
@@ -95,12 +95,12 @@ for (town in towns) {
       starts_with("prox_"),
       starts_with("acs5_"),
       starts_with("other_")
-    ) %>%
-    arrange(meta_pin, meta_card_num) %>%
+    ) |>
+    arrange(meta_pin, meta_card_num) |>
     mutate(
       across(where(is.numeric), ~ round(.x, 8)),
       meta_pin = ccao::pin_format_pretty(meta_pin, full_length = TRUE)
-    ) %>%
+    ) |>
     var_encode(cols = starts_with("char_"))
 
   # Load workbook and styles

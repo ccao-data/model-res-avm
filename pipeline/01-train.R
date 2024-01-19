@@ -29,8 +29,8 @@ message("Preparing model training data")
 # NOTE: It is critical to trim "multicard" sales when training. Multicard means
 # there is multiple buildings on a PIN. Since these sales include multiple
 # buildings, they are typically higher than a "normal" sale and must be removed
-training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+training_data_full <- read_parquet(paths$input$training$local) |>
+  filter(!ind_pin_is_multicard, !sv_is_outlier) |>
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
@@ -63,7 +63,7 @@ message("Creating and fitting linear baseline model")
 # Create a linear model recipe with additional imputation, transformations,
 # and feature interactions
 lin_recipe <- model_lin_recipe(
-  data = training_data_full %>%
+  data = training_data_full |>
     mutate(meta_sale_price = log(meta_sale_price)),
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
@@ -71,19 +71,19 @@ lin_recipe <- model_lin_recipe(
 )
 
 # Create a linear model specification and workflow
-lin_model <- parsnip::linear_reg() %>%
-  set_mode("regression") %>%
+lin_model <- parsnip::linear_reg() |>
+  set_mode("regression") |>
   set_engine("lm")
-lin_wflow <- workflow() %>%
-  add_model(lin_model) %>%
+lin_wflow <- workflow() |>
+  add_model(lin_model) |>
   add_recipe(
     recipe = lin_recipe,
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
 # Fit the linear model on the training data
-lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
+lin_wflow_final_fit <- lin_wflow |>
+  fit(data = train |> mutate(meta_sale_price = log(meta_sale_price)))
 
 
 
@@ -106,8 +106,8 @@ message("Initializing LightGBM model")
 # model arguments, which are provided by parsnip's boost_tree()
 lgbm_model <- parsnip::boost_tree(
   stop_iter = params$model$parameter$stop_iter
-) %>%
-  set_mode("regression") %>%
+) |>
+  set_mode("regression") |>
   set_engine(
     engine = params$model$engine,
 
@@ -179,20 +179,20 @@ lgbm_model <- parsnip::boost_tree(
 #    the standard CV range
 # 3. If no CV is enabled, use the default parameter value
 if (cv_enable && early_stopping_enable) {
-  lgbm_model <- lgbm_model %>%
+  lgbm_model <- lgbm_model |>
     set_args(trees = params$model$hyperparameter$range$num_iterations[2])
 } else if (cv_enable && !early_stopping_enable) {
-  lgbm_model <- lgbm_model %>%
+  lgbm_model <- lgbm_model |>
     set_args(trees = tune())
 } else {
-  lgbm_model <- lgbm_model %>%
+  lgbm_model <- lgbm_model |>
     set_args(trees = params$model$hyperparameter$default$num_iterations)
 }
 
 # Initialize lightgbm workflow, which contains both the model spec AND the
 # pre-processing steps/recipe needed to prepare the raw data
-lgbm_wflow <- workflow() %>%
-  add_model(lgbm_model) %>%
+lgbm_wflow <- workflow() |>
+  add_model(lgbm_model) |>
   add_recipe(
     recipe = train_recipe,
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
@@ -232,8 +232,8 @@ if (cv_enable) {
   # Parameter boundaries are taken from the lightgbm docs and hand-tuned
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html
   lgbm_range <- params$model$hyperparameter$range
-  lgbm_params <- lgbm_wflow %>%
-    hardhat::extract_parameter_set_dials() %>%
+  lgbm_params <- lgbm_wflow |>
+    hardhat::extract_parameter_set_dials() |>
     update(
       # nolint start
       learning_rate       = lightsnip::learning_rate(lgbm_range$learning_rate),
@@ -254,7 +254,7 @@ if (cv_enable) {
 
   # Only update the tuning param with the CV range if early stopping is disabled
   if (!early_stopping_enable) {
-    lgbm_params <- lgbm_params %>%
+    lgbm_params <- lgbm_params |>
       update(trees = dials::trees(lgbm_range$num_iterations))
   }
 
@@ -279,18 +279,18 @@ if (cv_enable) {
 
   # Save tuning results to file. This is a data.frame where each row is one
   # CV iteration
-  lgbm_search %>%
-    lightsnip::axe_tune_data() %>%
+  lgbm_search |>
+    lightsnip::axe_tune_data() |>
     arrow::write_parquet(paths$output$parameter_raw$local)
 
   # Save the parameter ranges searched while tuning
-  lgbm_params %>%
-    mutate(range = purrr::map(object, dials::range_get)) %>%
-    tidyr::unnest_wider(range) %>%
+  lgbm_params |>
+    mutate(range = purrr::map(object, dials::range_get)) |>
+    tidyr::unnest_wider(range) |>
     select(
       parameter_name = name, parameter_type = component_id,
       lower, upper
-    ) %>%
+    ) |>
     arrow::write_parquet(paths$output$parameter_range$local)
 
   # Choose the best model (whichever model minimizes the chosen objective,
@@ -299,20 +299,20 @@ if (cv_enable) {
     engine = params$model$engine,
     seed = params$model$seed,
     objective = params$model$objective
-  ) %>%
+  ) |>
     bind_cols(
-      as_tibble(params$model$parameter) %>%
+      as_tibble(params$model$parameter) |>
         select(-any_of("num_iterations"))
-    ) %>%
+    ) |>
     bind_cols(
       select_iterations(lgbm_search, metric = params$cv$best_metric)
-    ) %>%
+    ) |>
     bind_cols(
-      select_best(lgbm_search, metric = params$cv$best_metric) %>%
+      select_best(lgbm_search, metric = params$cv$best_metric) |>
         select(-any_of("trees"))
-    ) %>%
-    select(configuration = .config, everything()) %>%
-    mutate(across(any_of("num_iterations"), as.integer)) %>%
+    ) |>
+    select(configuration = .config, everything()) |>
+    mutate(across(any_of("num_iterations"), as.integer)) |>
     arrow::write_parquet(paths$output$parameter_final$local)
 } else {
   # If CV is disabled, just use the default set of parameters specified in
@@ -327,11 +327,11 @@ if (cv_enable) {
     engine = params$model$engine,
     seed = params$model$seed,
     objective = params$model$objective
-  ) %>%
-    bind_cols(as_tibble(params$model$parameter)) %>%
-    bind_cols(as_tibble(params$model$hyperparameter$default)) %>%
-    select(-all_of(lgbm_missing_params)) %>%
-    mutate(across(any_of("num_iterations"), as.integer)) %>%
+  ) |>
+    bind_cols(as_tibble(params$model$parameter)) |>
+    bind_cols(as_tibble(params$model$hyperparameter$default)) |>
+    select(-all_of(lgbm_missing_params)) |>
+    mutate(across(any_of("num_iterations"), as.integer)) |>
     arrow::write_parquet(paths$output$parameter_final$local)
 
   # If CV is disabled, we still need to write empty stub files for any outputs
@@ -346,7 +346,7 @@ if (cv_enable) {
 # Finalize the model specification by disabling early stopping, instead using
 # the maximum number of iterations used during the best cross-validation round
 # OR the default `num_iterations` if CV was not performed
-lgbm_model_final <- lgbm_model %>%
+lgbm_model_final <- lgbm_model |>
   set_args(
     stop_iter = NULL,
     validation = 0,
@@ -356,17 +356,17 @@ lgbm_model_final <- lgbm_model %>%
 # Fit the final model using the training data and our final hyperparameters
 # This model is used to measure performance on the test set
 message("Fitting final model on training data")
-lgbm_wflow_final_fit <- lgbm_wflow %>%
-  update_model(lgbm_model_final) %>%
-  finalize_workflow(lgbm_final_params) %>%
+lgbm_wflow_final_fit <- lgbm_wflow |>
+  update_model(lgbm_model_final) |>
+  finalize_workflow(lgbm_final_params) |>
   fit(data = train)
 
 # Fit the final model using the full data (including the test set) and our final
 # hyperparameters. This model is used for actually assessing all properties
 message("Fitting final model on full data")
-lgbm_wflow_final_full_fit <- lgbm_wflow %>%
-  update_model(lgbm_model_final) %>%
-  finalize_workflow(lgbm_final_params) %>%
+lgbm_wflow_final_full_fit <- lgbm_wflow |>
+  update_model(lgbm_model_final) |>
+  finalize_workflow(lgbm_final_params) |>
   fit(data = training_data_full)
 
 
@@ -380,14 +380,14 @@ message("Finalizing and saving trained model")
 # Get predictions on the test set using the training data model. These
 # predictions are used to evaluate model performance on the unseen test set.
 # Keep only the variables necessary for evaluation
-test %>%
+test |>
   mutate(
     pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
     pred_card_initial_fmv_lin = exp(predict(
       lin_wflow_final_fit,
-      test %>% mutate(meta_sale_price = log(meta_sale_price))
+      test |> mutate(meta_sale_price = log(meta_sale_price))
     )$.pred)
-  ) %>%
+  ) |>
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
     all_of(params$ratio_study$geographies), char_bldg_sf,
@@ -397,33 +397,33 @@ test %>%
     )),
     pred_card_initial_fmv, pred_card_initial_fmv_lin,
     meta_sale_price, meta_sale_date, meta_sale_document_num
-  ) %>%
+  ) |>
   # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential
   mutate(
     prior_far_tot = prior_far_tot * 10,
     prior_near_tot = prior_near_tot * 10
-  ) %>%
-  as_tibble() %>%
+  ) |>
+  as_tibble() |>
   write_parquet(paths$output$test_card$local)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk
-lgbm_wflow_final_full_fit %>%
-  workflows::extract_fit_parsnip() %>%
+lgbm_wflow_final_full_fit |>
+  workflows::extract_fit_parsnip() |>
   lightsnip::lgbm_save(paths$output$workflow_fit$local)
 
 # Save the finalized recipe object to file so it can be used to preprocess
 # new data. This is critical since it saves the factor levels used to integer-
 # encode any categorical columns
-lgbm_wflow_final_full_fit %>%
-  workflows::extract_recipe() %>%
-  lightsnip::axe_recipe() %>%
+lgbm_wflow_final_full_fit |>
+  workflows::extract_recipe() |>
+  lightsnip::axe_recipe() |>
   saveRDS(paths$output$workflow_recipe$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-bind_rows(tictoc::tic.log(format = FALSE)) %>%
+bind_rows(tictoc::tic.log(format = FALSE)) |>
   arrow::write_parquet(gsub("//*", "/", file.path(
     paths$intermediate$timing$local,
     "model_timing_train.parquet"

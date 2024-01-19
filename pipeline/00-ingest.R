@@ -73,7 +73,7 @@ hie_data <- dbGetQuery(
 tictoc::toc()
 
 # Save HIE data for use in report generation
-hie_data %>%
+hie_data |>
   write_parquet(paths$input$hie$local)
 
 # Pull all residential PIN input data for the assessment and prior year. We will
@@ -91,11 +91,11 @@ assessment_data <- dbGetQuery(
 tictoc::toc()
 
 # Save both years for report generation using the characteristics
-assessment_data %>%
+assessment_data |>
   write_parquet(paths$input$char$local)
 
 # Save only the assessment year data to use for assessing values
-assessment_data <- assessment_data %>%
+assessment_data <- assessment_data |>
   filter(year == params$assessment$data_year)
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
@@ -132,14 +132,14 @@ rm(AWS_ATHENA_CONN_NOCTUA)
 # Ingest-specific helper functions for data cleaning, etc.
 
 # Create a dictionary of column types, as specified in ccao::vars_dict
-col_type_dict <- ccao::vars_dict %>%
-  distinct(var_name = var_name_model, var_type = var_data_type) %>%
+col_type_dict <- ccao::vars_dict |>
+  distinct(var_name = var_name_model, var_type = var_data_type) |>
   drop_na(var_name)
 
 # Mini-function to ensure that columns are the correct type
 recode_column_type <- function(col, col_name, dict = col_type_dict) {
-  col_type <- dict %>%
-    filter(var_name == col_name) %>%
+  col_type <- dict |>
+    filter(var_name == col_name) |>
     pull(var_type)
 
   switch(col_type,
@@ -169,7 +169,7 @@ message("Adding HIE data to training and assessment sets")
 # Convert legacy data to sparse representation with 1 active row per HIE year.
 # NOTE: ONLY join to non-multicard PINs, since HIEs cannot be matched when there
 # are multiple cards
-hie_data_training_sparse <- hie_data %>%
+hie_data_training_sparse <- hie_data |>
   ccao::chars_sparsify(
     pin_col = pin,
     year_col = year,
@@ -177,7 +177,7 @@ hie_data_training_sparse <- hie_data %>%
     upload_date_col = qu_upload_date,
     additive_source = any_of(chars_cols$add$source),
     replacement_source = any_of(chars_cols$replace$source)
-  ) %>%
+  ) |>
   mutate(
     ind_pin_is_multicard = FALSE,
     year = as.character(year)
@@ -185,25 +185,25 @@ hie_data_training_sparse <- hie_data %>%
 
 # Merge the HIE data with the training data, updating/adding to training data
 # characteristics
-training_data_w_hie <- training_data %>%
+training_data_w_hie <- training_data |>
   mutate(across(
     all_of(ccao::chars_cols$add$target),
     ~ recode_column_type(.x, cur_column())
-  )) %>%
+  )) |>
   left_join(
     hie_data_training_sparse,
     by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
-  ) %>%
-  mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
+  ) |>
+  mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) |>
   ccao::chars_update(
     additive_target = any_of(chars_cols$add$target),
     replacement_target = any_of(chars_cols$replace$target)
-  ) %>%
-  select(-starts_with("qu_")) %>%
+  ) |>
+  select(-starts_with("qu_")) |>
   mutate(
     hie_num_active = replace_na(hie_num_active, 0),
     char_porch = recode(char_porch, "3" = "0")
-  ) %>%
+  ) |>
   relocate(hie_num_active, .before = meta_cdu)
 
 
@@ -211,8 +211,8 @@ training_data_w_hie <- training_data %>%
 
 # For assessment data, we want to include ONLY the HIEs that expire in the
 # assessment year
-hie_data_assessment_sparse <- hie_data %>%
-  filter(hie_last_year_active == as.numeric(params$assessment$year) - 1) %>%
+hie_data_assessment_sparse <- hie_data |>
+  filter(hie_last_year_active == as.numeric(params$assessment$year) - 1) |>
   ccao::chars_sparsify(
     pin_col = pin,
     year_col = year,
@@ -220,7 +220,7 @@ hie_data_assessment_sparse <- hie_data %>%
     upload_date_col = qu_upload_date,
     additive_source = any_of(chars_cols$add$source),
     replacement_source = any_of(chars_cols$replace$source)
-  ) %>%
+  ) |>
   mutate(
     ind_pin_is_multicard = FALSE,
     year = as.character(year)
@@ -228,26 +228,26 @@ hie_data_assessment_sparse <- hie_data %>%
 
 # Update assessment data with any expiring HIEs. Add a field for the number
 # of HIEs expired for each PIN
-assessment_data_w_hie <- assessment_data %>%
+assessment_data_w_hie <- assessment_data |>
   mutate(across(
     all_of(ccao::chars_cols$add$target),
     ~ recode_column_type(.x, cur_column())
-  )) %>%
+  )) |>
   left_join(
     hie_data_assessment_sparse,
     by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
-  ) %>%
-  mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
+  ) |>
+  mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) |>
   ccao::chars_update(
     additive_target = any_of(chars_cols$add$target),
     replacement_target = any_of(chars_cols$replace$target)
-  ) %>%
-  select(-starts_with("qu_")) %>%
+  ) |>
+  select(-starts_with("qu_")) |>
   mutate(
     hie_num_active = replace_na(hie_num_active, 0),
     char_porch = recode(char_porch, "3" = "0")
-  ) %>%
-  rename(hie_num_expired = hie_num_active) %>%
+  ) |>
+  rename(hie_num_expired = hie_num_active) |>
   relocate(hie_num_expired, .before = meta_cdu)
 
 
@@ -262,24 +262,24 @@ message("Adding time features and cleaning")
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, missingness, etc. is handled via Tidymodels recipes
-training_data_clean <- training_data_w_hie %>%
+training_data_clean <- training_data_w_hie |>
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)
-  ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  ccao::vars_recode(cols = starts_with("char_"), type = "code") |>
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
   mutate(across(
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
-  )) %>%
+  )) |>
   # Only exclude explicit outliers from training. Sales with missing validation
   # outcomes will be considered non-outliers
   mutate(
     sv_is_outlier = replace_na(sv_is_outlier, FALSE),
     sv_outlier_type = replace_na(sv_outlier_type, "Not outlier")
-  ) %>%
+  ) |>
   # Some Athena columns are stored as arrays but are converted to string on
   # ingest. In such cases, take the first element and clean the string
   mutate(
@@ -289,7 +289,7 @@ training_data_clean <- training_data_w_hie %>%
     # Miscellanous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     across(where(is.character), \(x) na_if(x, ""))
-  ) %>%
+  ) |>
   # Create time/date features using lubridate
   mutate(
     # Calculate interval periods and time since the start of the sales sample
@@ -306,10 +306,10 @@ training_data_clean <- training_data_w_hie %>%
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
-  ) %>%
-  select(-time_interval) %>%
-  relocate(starts_with("sv_"), .after = everything()) %>%
-  as_tibble() %>%
+  ) |>
+  select(-time_interval) |>
+  relocate(starts_with("sv_"), .after = everything()) |>
+  as_tibble() |>
   write_parquet(paths$input$training$local)
 
 
@@ -318,12 +318,12 @@ training_data_clean <- training_data_w_hie %>%
 # Clean the assessment data. This is the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
 # time variables and identifying complexes
-assessment_data_clean <- assessment_data_w_hie %>%
-  ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+assessment_data_clean <- assessment_data_w_hie |>
+  ccao::vars_recode(cols = starts_with("char_"), type = "code") |>
   mutate(across(
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
-  )) %>%
+  )) |>
   # Same Athena string cleaning and feature cleanup as the training data
   mutate(
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
@@ -331,7 +331,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     across(where(is.character), \(x) na_if(x, ""))
-  ) %>%
+  ) |>
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
@@ -349,8 +349,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
-  ) %>%
-  as_tibble() %>%
+  ) |>
+  as_tibble() |>
   write_parquet(paths$input$assessment$local)
 
 
@@ -367,21 +367,21 @@ message("Creating townhome complex identifiers")
 # joining and then link each PIN into an undirected graph. See this SO post
 # for more details on the methodology:
 # https://stackoverflow.com/questions/68353869/create-group-based-on-fuzzy-criteria # nolint
-complex_id_temp <- assessment_data_clean %>%
-  filter(meta_class %in% c("210", "295")) %>%
+complex_id_temp <- assessment_data_clean |>
+  filter(meta_class %in% c("210", "295")) |>
   # Self-join with attributes that must be exactly matching
   select(
     meta_pin, meta_card_num, meta_township_code, meta_class,
     all_of(params$input$complex$match_exact),
     any_of(paste0("char_", names(params$input$complex$match_fuzzy))),
     loc_x_3435, loc_y_3435
-  ) %>%
+  ) |>
   full_join(
     eval(.),
     by = params$input$complex$match_exact,
     multiple = "all",
     relationship = "many-to-many"
-  ) %>%
+  ) |>
   # Filter with attributes that can be "fuzzy" matched
   filter(
     char_rooms.x >= char_rooms.y - params$input$complex$match_fuzzy$rooms,
@@ -400,50 +400,50 @@ complex_id_temp <- assessment_data_clean %>%
       loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_y_3435.x)
     # nolint end
-  ) %>%
+  ) |>
   # Combine PINs into a graph
-  select(meta_pin.x, meta_pin.y) %>%
-  igraph::graph_from_data_frame(directed = FALSE) %>%
-  igraph::components() %>%
-  igraph::membership() %>%
+  select(meta_pin.x, meta_pin.y) |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::components() |>
+  igraph::membership() |>
   # Convert graph to tibble and clean up
-  utils::stack() %>%
-  as_tibble() %>%
-  mutate(ind = as.character(ind)) %>%
+  utils::stack() |>
+  as_tibble() |>
+  mutate(ind = as.character(ind)) |>
   rename(meta_pin = ind, meta_complex_id = values)
 
 # Attach original PIN data and fill any missing complexes with
 # a sequential integer
-complex_id_data <- assessment_data_clean %>%
-  filter(meta_class %in% c("210", "295")) %>%
-  distinct(meta_pin, meta_township_code, meta_class) %>%
-  left_join(complex_id_temp, by = "meta_pin") %>%
-  arrange(meta_complex_id) %>%
+complex_id_data <- assessment_data_clean |>
+  filter(meta_class %in% c("210", "295")) |>
+  distinct(meta_pin, meta_township_code, meta_class) |>
+  left_join(complex_id_temp, by = "meta_pin") |>
+  arrange(meta_complex_id) |>
   mutate(meta_complex_id = ifelse(
     !is.na(meta_complex_id),
     meta_complex_id,
     lag(meta_complex_id) + 1
-  )) %>%
+  )) |>
   # Break long "chains" of fuzzy matched properties into separate groups if the
   # chain spans more than the allowed square foot difference
   left_join(
-    assessment_data_clean %>%
-      filter(meta_class %in% c("210", "295")) %>%
-      group_by(meta_pin) %>%
+    assessment_data_clean |>
+      filter(meta_class %in% c("210", "295")) |>
+      group_by(meta_pin) |>
       summarize(tot_sqft = sum(char_bldg_sf)),
     by = "meta_pin"
-  ) %>%
-  group_by(meta_complex_id) %>%
+  ) |>
+  group_by(meta_complex_id) |>
   mutate(
     char_break = floor(tot_sqft / params$input$complex$match_fuzzy$bldg_sf),
     char_break = char_break - min(char_break),
     char_break = floor(char_break / 2)
-  ) %>%
-  group_by(meta_complex_id, char_break) %>%
-  mutate(meta_complex_id = cur_group_id()) %>%
-  ungroup() %>%
-  select(-c(tot_sqft, char_break)) %>%
-  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
+  ) |>
+  group_by(meta_complex_id, char_break) |>
+  mutate(meta_complex_id = cur_group_id()) |>
+  ungroup() |>
+  select(-c(tot_sqft, char_break)) |>
+  mutate(meta_complex_id = as.numeric(meta_complex_id)) |>
   write_parquet(paths$input$complex_id$local)
 
 
@@ -451,11 +451,11 @@ complex_id_data <- assessment_data_clean %>%
 message("Saving land rates")
 
 # Write land data directly to file, since it's already mostly clean
-land_site_rate_data %>%
-  select(meta_pin = pin, meta_class = class, land_rate_per_pin, year) %>%
+land_site_rate_data |>
+  select(meta_pin = pin, meta_class = class, land_rate_per_pin, year) |>
   write_parquet(paths$input$land_site_rate$local)
-land_nbhd_rate_data %>%
-  select(meta_nbhd = town_nbhd, meta_class = class, land_rate_per_sqft) %>%
+land_nbhd_rate_data |>
+  select(meta_nbhd = town_nbhd, meta_class = class, land_rate_per_sqft) |>
   write_parquet(paths$input$land_nbhd_rate$local)
 
 # Reminder to upload to DVC store

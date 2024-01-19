@@ -25,9 +25,9 @@ col_rename_dict <- c(
 
 # Get the triad of the run to use for filtering
 run_triad <- tools::toTitleCase(params$assessment$triad)
-run_triad_code <- ccao::town_dict %>%
-  filter(triad_name == run_triad) %>%
-  distinct(triad_code) %>%
+run_triad_code <- ccao::town_dict |>
+  filter(triad_name == run_triad) |>
+  distinct(triad_code) |>
   pull(triad_code)
 
 
@@ -46,8 +46,8 @@ test_data_card <- read_parquet(paths$output$test_card$local)
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
 # aggregated to the PIN-level
-assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) %>%
-  filter(meta_triad_code == run_triad_code) %>%
+assessment_data_pin <- read_parquet(paths$output$assessment_pin$local) |>
+  filter(meta_triad_code == run_triad_code) |>
   select(
     meta_pin, meta_class, meta_triad_code,
     all_of(params$ratio_study$geographies),
@@ -120,15 +120,15 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   )
 
   # Generate aggregate performance stats by geography
-  df_stat <- data %>%
+  df_stat <- data |>
     # Aggregate to get counts by geography without class
-    group_by({{ triad }}, {{ geography }}) %>%
+    group_by({{ triad }}, {{ geography }}) |>
     mutate(
       num_pin_no_class = n(),
       num_sale_no_class = sum(!is.na({{ truth }}))
-    ) %>%
+    ) |>
     # Aggregate including class
-    group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
+    group_by({{ triad }}, {{ geography }}, {{ class }}) |>
     summarize(
 
       # Basic summary stats, counts, proportions, etc
@@ -142,71 +142,71 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       estimate_total_av = sum({{ estimate }} / 10, na.rm = TRUE),
 
       # Assessment-specific ratio stats
-      rs_lst = rs_fns_list %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ truth }})) %>%
+      rs_lst = rs_fns_list |>
+        map(., \(f) exec(f, {{ estimate }}, {{ truth }})) |>
         list(),
       median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
 
       # Yardstick (ML-specific) performance stats
-      ys_lst = ys_fns_list %>%
-        map(., \(f) exec(f, {{ truth }}, {{ estimate }})) %>%
+      ys_lst = ys_fns_list |>
+        map(., \(f) exec(f, {{ truth }}, {{ estimate }})) |>
         list(),
 
       # Summary stats of sale price and sale price per sqft
-      sum_sale_lst = sum_fns_list %>%
-        set_names(paste0("sale_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ truth }})) %>%
+      sum_sale_lst = sum_fns_list |>
+        set_names(paste0("sale_fmv_", names(.))) |>
+        map(., \(f) exec(f, {{ truth }})) |>
         list(),
-      sum_sale_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("sale_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ truth }}, {{ bldg_sqft }})) %>%
+      sum_sale_sf_lst = sum_sqft_fns_list |>
+        set_names(paste0("sale_fmv_per_sqft_", names(.))) |>
+        map(., \(f) exec(f, {{ truth }}, {{ bldg_sqft }})) |>
         list(),
 
       # Summary stats of prior values and value per sqft
       prior_far_num_missing = sum(is.na({{ rsf_col }})),
-      sum_rsf_lst = sum_fns_list %>%
-        set_names(paste0("prior_far_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsf_col }})) %>%
+      sum_rsf_lst = sum_fns_list |>
+        set_names(paste0("prior_far_fmv_", names(.))) |>
+        map(., \(f) exec(f, {{ rsf_col }})) |>
         list(),
-      sum_rsf_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("prior_far_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsf_col }}, {{ bldg_sqft }})) %>%
+      sum_rsf_sf_lst = sum_sqft_fns_list |>
+        set_names(paste0("prior_far_fmv_per_sqft_", names(.))) |>
+        map(., \(f) exec(f, {{ rsf_col }}, {{ bldg_sqft }})) |>
         list(),
-      yoy_rsf_lst = yoy_fns_list %>%
-        set_names(paste0("prior_far_yoy_pct_chg_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ rsf_col }})) %>%
+      yoy_rsf_lst = yoy_fns_list |>
+        set_names(paste0("prior_far_yoy_pct_chg_", names(.))) |>
+        map(., \(f) exec(f, {{ estimate }}, {{ rsf_col }})) |>
         list(),
       prior_near_num_missing = sum(is.na({{ rsn_col }})),
-      sum_rsn_lst = sum_fns_list %>%
-        set_names(paste0("prior_near_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsn_col }})) %>%
+      sum_rsn_lst = sum_fns_list |>
+        set_names(paste0("prior_near_fmv_", names(.))) |>
+        map(., \(f) exec(f, {{ rsn_col }})) |>
         list(),
-      sum_rsn_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("prior_near_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsn_col }}, {{ bldg_sqft }})) %>%
+      sum_rsn_sf_lst = sum_sqft_fns_list |>
+        set_names(paste0("prior_near_fmv_per_sqft_", names(.))) |>
+        map(., \(f) exec(f, {{ rsn_col }}, {{ bldg_sqft }})) |>
         list(),
-      yoy_rsn_lst = yoy_fns_list %>%
-        set_names(paste0("prior_near_yoy_pct_chg_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ rsn_col }})) %>%
+      yoy_rsn_lst = yoy_fns_list |>
+        set_names(paste0("prior_near_yoy_pct_chg_", names(.))) |>
+        map(., \(f) exec(f, {{ estimate }}, {{ rsn_col }})) |>
         list(),
 
       # Summary stats of estimate value and estimate per sqft
       estimate_num_missing = sum(is.na({{ estimate }})),
-      sum_est_lst = sum_fns_list %>%
-        set_names(paste0("estimate_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }})) %>%
+      sum_est_lst = sum_fns_list |>
+        set_names(paste0("estimate_fmv_", names(.))) |>
+        map(., \(f) exec(f, {{ estimate }})) |>
         list(),
-      sum_est_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("estimate_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ bldg_sqft }})) %>%
+      sum_est_sf_lst = sum_sqft_fns_list |>
+        set_names(paste0("estimate_fmv_per_sqft_", names(.))) |>
+        map(., \(f) exec(f, {{ estimate }}, {{ bldg_sqft }})) |>
         list(),
       .groups = "drop"
-    ) %>%
-    ungroup() %>%
+    ) |>
+    ungroup() |>
     unnest_wider(ends_with("_lst"))
 
   # Clean up the stats output (rename cols, relocate cols, etc.)
-  df_stat %>%
+  df_stat |>
     mutate(
       by_class = !is.null({{ class }}),
       geography_type = ifelse(
@@ -218,12 +218,12 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
         ),
         "triad_code"
       )
-    ) %>%
-    rename(any_of(col_dict)) %>%
+    ) |>
+    rename(any_of(col_dict)) |>
     relocate(
       any_of(c("geography_type", "geography_id", "by_class", "class")),
       .after = "triad_code"
-    ) %>%
+    ) |>
     mutate(across(
       -(contains("_max") & contains("yoy")) & where(is.numeric),
       ~ replace(.x, !is.finite(.x), NA)
@@ -238,10 +238,10 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
                                    class, col_dict, num_quantile) {
   # Calculate the median ratio by quantile of sale price, plus the upper and
   # lower bounds of each quantile
-  df_quantile <- data %>%
-    group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
-    mutate(quantile = ntile({{ truth }}, n = num_quantile)) %>%
-    group_by({{ triad }}, {{ geography }}, {{ class }}, quantile) %>%
+  df_quantile <- data |>
+    group_by({{ triad }}, {{ geography }}, {{ class }}) |>
+    mutate(quantile = ntile({{ truth }}, n = num_quantile)) |>
+    group_by({{ triad }}, {{ geography }}, {{ class }}, quantile) |>
     summarize(
       num_sale = sum(!is.na({{ truth }})),
       median_ratio = median(({{ estimate }} / {{ truth }}), na.rm = TRUE),
@@ -256,11 +256,11 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
         na.rm = TRUE
       ),
       .groups = "drop"
-    ) %>%
+    ) |>
     ungroup()
 
   # Clean up the quantile output
-  df_quantile %>%
+  df_quantile |>
     mutate(
       num_quantile = num_quantile,
       by_class = !is.null({{ class }}),
@@ -273,16 +273,16 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
         ),
         "triad_code"
       )
-    ) %>%
-    filter(!is.na(quantile)) %>%
-    rename(any_of(col_dict)) %>%
+    ) |>
+    filter(!is.na(quantile)) |>
+    rename(any_of(col_dict)) |>
     relocate(
       any_of(c(
         "geography_type", "geography_id",
         "by_class", "class", "num_quantile"
       )),
       .after = "triad_code"
-    ) %>%
+    ) |>
     mutate(across(
       -(contains("_max") & contains("yoy")) & where(is.numeric),
       ~ replace(.x, !is.finite(.x), NA)
@@ -305,8 +305,8 @@ geographies_quosures <- c(
 geographies_list <- tidyr::expand_grid(
   geographies_quosures,
   rlang::quos(meta_class, NULL)
-) %>%
-  as.list() %>%
+) |>
+  as.list() |>
   unname()
 
 # Same as above, but add quantile breakouts to the grid expansion
@@ -314,8 +314,8 @@ geographies_list_quantile <- tidyr::expand_grid(
   geographies_quosures,
   rlang::quos(meta_class, NULL),
   params$ratio_study$num_quantile
-) %>%
-  as.list() %>%
+) |>
+  as.list() |>
   unname()
 
 
@@ -352,8 +352,8 @@ pwalk(
       },
       .options = furrr_options(seed = TRUE, stdout = FALSE),
       .progress = FALSE
-    ) %>%
-      purrr::list_rbind() %>%
+    ) |>
+      purrr::list_rbind() |>
       write_parquet(path)
   }
 )
@@ -387,8 +387,8 @@ pwalk(
       },
       .options = furrr_options(seed = TRUE, stdout = FALSE),
       .progress = FALSE
-    ) %>%
-      purrr::list_rbind() %>%
+    ) |>
+      purrr::list_rbind() |>
       write_parquet(path)
   }
 )
@@ -418,8 +418,8 @@ future_pmap(
   },
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = FALSE
-) %>%
-  purrr::list_rbind() %>%
+) |>
+  purrr::list_rbind() |>
   write_parquet(paths$output$performance_assessment$local)
 
 # Same as above, but calculate stats per quantile of sale price
@@ -442,13 +442,13 @@ future_pmap(
   },
   .options = furrr_options(seed = TRUE, stdout = FALSE),
   .progress = FALSE
-) %>%
-  purrr::list_rbind() %>%
+) |>
+  purrr::list_rbind() |>
   write_parquet(paths$output$performance_quantile_assessment$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
-bind_rows(tictoc::tic.log(format = FALSE)) %>%
+bind_rows(tictoc::tic.log(format = FALSE)) |>
   arrow::write_parquet(gsub("//*", "/", file.path(
     paths$intermediate$timing$local,
     "model_timing_evaluate.parquet"
