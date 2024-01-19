@@ -94,6 +94,16 @@ def get_comps(
     binned_ids, binned_scores = [], []
     for bin_idx, bin in price_bin_indices.iterrows():
         observations = observation_df[observation_df["price_bin"] == bin["id"]]
+
+        if observations.empty:
+            print(
+                f"No observations in bin {bin['id'] + 1}; skipping",
+                # Flush statement to stdout so that reticulate will print it
+                # in real time
+                flush=True
+            )
+            continue
+
         observation_matrix = observations.drop(
           columns=["id", "pred_pin_final_fmv", "price_bin"]
         ).values
@@ -130,8 +140,6 @@ def get_comps(
                 f"{len(observations)}/{total_num_observations} observations, "
                 f"{len(possible_comps)}/{total_num_possible_comps} possible comps"
             ),
-            # Flush statement to stdout so that reticulate will print it
-            # in real time
             flush=True
         )
 
