@@ -408,8 +408,8 @@ num_sales_prev_n_years <- function(
         distinct() %>%
         mutate(
           within_three_years =
-                 year > as.numeric(params$assessment$working_year) - years
-          ) %>%
+            year > as.numeric(params$assessment$working_year) - years
+        ) %>%
         summarise(
           num_sales_last_three_years = sum(within_three_years, na.rm = TRUE),
           .by = meta_pin
