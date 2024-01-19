@@ -290,6 +290,8 @@ training_data_clean <- training_data_w_hie %>%
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     across(where(is.character), \(x) na_if(x, ""))
   ) %>%
+  # Count number of sales within prior n years
+  num_sales_prev_n_years(years = 3, set = "training") %>%
   # Create time/date features using lubridate
   mutate(
     # Calculate interval periods and time since the start of the sales sample
@@ -331,6 +333,12 @@ assessment_data_clean <- assessment_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     across(where(is.character), \(x) na_if(x, ""))
+  ) %>%
+  # Count number of sales within prior n years
+  num_sales_prev_n_years(
+    training_data = training_data_clean,
+    years = 3,
+    set = "assessment"
   ) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
