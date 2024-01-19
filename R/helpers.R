@@ -360,7 +360,8 @@ create_rolling_origin_splits <- function(data,
 # differently on the training and assessment sets. For the training set, it
 # tallies the number of sales within the prior 3 years for any given sale by
 # PIN. For the assessment set it tallies the number of sales within 3 years of
-# params$assessment$working_year for a given PIN.
+# params$assessment$working_year for a given PIN and training data must be
+# provided.
 num_sales_prev_n_years <- function(
     training_data,
     assessment_data = NULL,
