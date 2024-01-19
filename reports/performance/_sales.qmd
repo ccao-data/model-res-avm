@@ -13,16 +13,16 @@ This section contains volume and sale price trends as present in the **training 
 _NOTE: Outliers are removed._
 
 ```{r _sales_volume_town_year}
-sales_volume_town_year_plot <- training_data %>%
-  filter(meta_triad_name == run_triad) %>%
-  mutate(meta_year = as.numeric(meta_year)) %>%
+sales_volume_town_year_plot <- training_data |>
+  filter(meta_triad_name == run_triad) |>
+  mutate(meta_year = as.numeric(meta_year)) |>
   summarise(
     num_sales = sum(!sv_is_outlier, na.rm = TRUE),
     num_outliers = sum(sv_is_outlier, na.rm = TRUE),
     pct_outliers = scales::percent(num_outliers / num_sales, accuracy = 0.1),
     .by = c(meta_township_name, meta_year)
-  ) %>%
-  ungroup() %>%
+  ) |>
+  ungroup() |>
   ggplot() +
   geom_line(
     mapping = aes(
@@ -50,16 +50,16 @@ ggplotly(sales_volume_town_year_plot, tooltip = "text")
 _NOTE: Outliers are removed._
 
 ```{r _sales_volume_class_year}
-sales_volume_class_year_plot <- training_data %>%
-  filter(meta_triad_name == run_triad) %>%
-  mutate(meta_year = as.numeric(meta_year)) %>%
+sales_volume_class_year_plot <- training_data |>
+  filter(meta_triad_name == run_triad) |>
+  mutate(meta_year = as.numeric(meta_year)) |>
   summarise(
     num_sales = sum(!sv_is_outlier, na.rm = TRUE),
     num_outliers = sum(sv_is_outlier, na.rm = TRUE),
     pct_outliers = scales::percent(num_outliers / num_sales, accuracy = 0.1),
     .by = c(meta_class, meta_year)
-  ) %>%
-  ungroup() %>%
+  ) |>
+  ungroup() |>
   ggplot() +
   geom_line(
     mapping = aes(
@@ -91,12 +91,12 @@ segments of the market are changing as a proportion in each township. Sales are
 binned into different groups based on price.
 
 ```{r _sales_volume_town_quarter, fig.height=8, fig.width=7}
-training_data %>%
+training_data |>
   filter(
     !sv_is_outlier,
     meta_triad_name == run_triad,
     meta_year >= as.numeric(metadata$input_max_sale_year) - 3
-  ) %>%
+  ) |>
   mutate(
     Bin = cut(
       meta_sale_price,
@@ -110,9 +110,9 @@ training_data %>%
       )
     ),
     date = floor_date(meta_sale_date, "quarter")
-  ) %>%
-  summarise(Sales = n(), .by = c(meta_township_name, date, Bin)) %>%
-  select(Sales, Bin, Township = meta_township_name, date) %>%
+  ) |>
+  summarise(Sales = n(), .by = c(meta_township_name, date, Bin)) |>
+  select(Sales, Bin, Township = meta_township_name, date) |>
   ggplot(aes(
     x = date,
     y = Sales,
@@ -136,11 +136,11 @@ training_data %>%
 _NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_outlier_year}
-training_data %>%
+training_data |>
   mutate(
     outlier = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
     outlier = factor(outlier, c("Outlier", "Not Outlier"))
-  ) %>%
+  ) |>
   ggplot(aes(x = meta_year, group = sv_is_outlier)) +
   geom_bar(aes(fill = outlier)) +
   geom_text(
@@ -167,11 +167,11 @@ training_data %>%
 _NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_outlier_month}
-training_data %>%
+training_data |>
   mutate(
     outlier = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
     outlier = factor(outlier, c("Outlier", "Not Outlier"))
-  ) %>%
+  ) |>
   ggplot(aes(x = time_sale_month_of_year, group = sv_is_outlier)) +
   geom_bar(aes(fill = outlier)) +
   labs(y = "Number of Sales", x = "Month of Year") +
@@ -192,14 +192,14 @@ training_data %>%
 _NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_quarter_all}
-training_data %>%
+training_data |>
   mutate(
     Year = lubridate::year(meta_sale_date),
     Quarter = paste0("Q", lubridate::quarter(meta_sale_date))
-  ) %>%
-  count(Year, Quarter) %>%
-  tidyr::pivot_wider(names_from = Quarter, values_from = n) %>%
-  mutate(across(starts_with("Q"), scales::comma)) %>%
+  ) |>
+  count(Year, Quarter) |>
+  tidyr::pivot_wider(names_from = Quarter, values_from = n) |>
+  mutate(across(starts_with("Q"), scales::comma)) |>
   kable(align = c("l", rep("r", 4)))
 ```
 
@@ -208,15 +208,15 @@ training_data %>%
 _NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_quarter_outlier}
-training_data %>%
-  filter(sv_is_outlier) %>%
+training_data |>
+  filter(sv_is_outlier) |>
   mutate(
     Year = lubridate::year(meta_sale_date),
     Quarter = paste0("Q", lubridate::quarter(meta_sale_date))
-  ) %>%
-  count(Year, Quarter) %>%
-  tidyr::pivot_wider(names_from = Quarter, values_from = n) %>%
-  mutate(across(starts_with("Q"), scales::comma)) %>%
+  ) |>
+  count(Year, Quarter) |>
+  tidyr::pivot_wider(names_from = Quarter, values_from = n) |>
+  mutate(across(starts_with("Q"), scales::comma)) |>
   kable(align = c("l", rep("r", 4)))
 ```
 
@@ -225,17 +225,17 @@ training_data %>%
 _NOTE: Includes sales from all triads._
 
 ```{r _sales_volume_quarter_outlier_pct}
-training_data %>%
+training_data |>
   mutate(
     Year = lubridate::year(meta_sale_date),
     Quarter = paste0("Q", lubridate::quarter(meta_sale_date))
-  ) %>%
-  count(Year, Quarter, sv_is_outlier) %>%
-  group_by(Year, Quarter) %>%
-  mutate(outlier_pct = scales::percent(n / sum(n), accuracy = 0.01)) %>%
-  filter(sv_is_outlier) %>%
-  select(-n, -sv_is_outlier) %>%
-  tidyr::pivot_wider(names_from = Quarter, values_from = outlier_pct) %>%
+  ) |>
+  count(Year, Quarter, sv_is_outlier) |>
+  mutate(.by = Year, Quarter) |>
+  mutate(outlier_pct = scales::percent(n / sum(n), accuracy = 0.01)) |>
+  filter(sv_is_outlier) |>
+  select(-n, -sv_is_outlier) |>
+  tidyr::pivot_wider(names_from = Quarter, values_from = outlier_pct) |>
   kable(align = c("l", rep("r", 4)))
 ```
 
@@ -250,15 +250,15 @@ training_data %>%
 _NOTE: Includes sales from all triads._
 
 ```{r _sales_price_outlier_year}
-training_data %>%
+training_data |>
   mutate(
     outlier = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
     outlier = factor(outlier, c("Outlier", "Not Outlier"))
-  ) %>%
+  ) |>
   summarise(
     median_price = median(meta_sale_price),
     .by = c(meta_year, outlier)
-  ) %>%
+  ) |>
   ggplot(aes(x = meta_year, y = median_price, group = outlier)) +
   geom_line(aes(color = outlier)) +
   scale_y_continuous(labels = dollar_format()) +
@@ -273,29 +273,29 @@ training_data %>%
 ### Indexed by Township and Quarter
 
 ```{r _sales_price_index_township}
-sales_price_index_nearest_year <- ccao::town_dict %>%
-  filter(triad_name == run_triad) %>%
-  slice(1) %>%
-  pull(township_name) %>%
+sales_price_index_nearest_year <- ccao::town_dict |>
+  filter(triad_name == run_triad) |>
+  slice(1) |>
+  pull(township_name) |>
   ccao::town_get_assmnt_year(round_type = "floor") - 3
 
-sales_price_index_township <- training_data %>%
+sales_price_index_township <- training_data |>
   filter(
     meta_triad_name == run_triad,
     sv_is_outlier == FALSE,
     meta_year >= sales_price_index_nearest_year
-  ) %>%
-  mutate(date = floor_date(meta_sale_date, "quarter")) %>%
-  group_by(date, meta_township_name, meta_triad_name) %>%
+  ) |>
+  mutate(date = floor_date(meta_sale_date, "quarter")) |>
+  group_by(date, meta_township_name, meta_triad_name) |>
   summarise(
     median_price = median(meta_sale_price),
     num_sales = n()
-  ) %>%
-  group_by(meta_township_name, meta_triad_name) %>%
+  ) |>
+  group_by(meta_township_name, meta_triad_name) |>
   mutate(median_price_change = (
     median_price /
       first(median_price, order_by = date)
-  ) - 1) %>%
+  ) - 1) |>
   ggplot(
     mapping = aes(
       x = date,
@@ -334,23 +334,23 @@ ggplotly(sales_price_index_township, tooltip = "text")
 ### Indexed by Class and Quarter
 
 ```{r _sales_price_index_class}
-sales_price_index_class <- training_data %>%
+sales_price_index_class <- training_data |>
   filter(
     meta_triad_name == run_triad,
     sv_is_outlier == FALSE,
     meta_year >= sales_price_index_nearest_year
-  ) %>%
-  mutate(date = floor_date(meta_sale_date, "quarter")) %>%
-  group_by(date, meta_class) %>%
+  ) |>
+  mutate(date = floor_date(meta_sale_date, "quarter")) |>
+  group_by(date, meta_class) |>
   summarise(
     median_price = median(meta_sale_price),
     num_sales = n()
-  ) %>%
-  group_by(meta_class) %>%
+  ) |>
+  group_by(meta_class) |>
   mutate(median_price_change = (
     median_price /
       first(median_price, order_by = date)
-  ) - 1) %>%
+  ) - 1) |>
   ggplot(
     mapping = aes(
       x = date,
