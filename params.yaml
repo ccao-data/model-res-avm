@@ -56,6 +56,9 @@ input:
   min_sale_year: "2015"
   max_sale_year: "2023"
 
+  # Number of years back to look for count_past_n_years feature
+  n_years_prior: 4
+
   # Parameters used to generate townhome complex identifiers
   complex:
     # Townhomes (class 210/295) should match exactly on these variables to be
