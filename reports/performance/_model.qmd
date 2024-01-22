@@ -25,7 +25,7 @@ The following document describes performance for ```r metadata$run_id```, a ```r
 - **Linear Baseline**: Test set results using a separate simple linear model. This is used as a baseline for comparison against the more complicated main model.
 
 ```{r _model_setup}
-training_data_pred <- training_data %>%
+training_data_pred <- training_data |>
   mutate(
     pred_card_initial_fmv = predict(
       model_fit,
@@ -33,36 +33,36 @@ training_data_pred <- training_data %>%
     )$.pred
   )
 
-model_performance_test_merged <- model_performance_test %>%
-  mutate(stage = "Main Model") %>%
+model_performance_test_merged <- model_performance_test |>
+  mutate(stage = "Main Model") |>
   bind_rows(
-    model_performance_test_linear %>%
+    model_performance_test_linear |>
       mutate(stage = "Linear Baseline")
-  ) %>%
+  ) |>
   mutate(stage = factor(stage, levels = c("Main Model", "Linear Baseline")))
 
-model_performance_test_quantile_merged <- model_performance_quantile_test %>%
-  mutate(stage = "Main Model") %>%
+model_performance_test_quantile_merged <- model_performance_quantile_test |>
+  mutate(stage = "Main Model") |>
   bind_rows(
-    model_performance_quantile_test_linear %>%
+    model_performance_quantile_test_linear |>
       mutate(stage = "Linear Baseline")
-  ) %>%
+  ) |>
   mutate(stage = factor(stage, levels = c("Main Model", "Linear Baseline")))
 
 # Collect townships to iterate over
-model_townships_list <- ccao::town_dict %>%
-  filter(triad_name == run_triad) %>%
+model_townships_list <- ccao::town_dict |>
+  filter(triad_name == run_triad) |>
   pull(township_name)
 ```
 
 ```{r _model_township_stats_setup}
-model_township_stats_df <- model_performance_test_merged %>%
+model_township_stats_df <- model_performance_test_merged |>
   filter(
     geography_type == "township_code",
     triad_code == run_triad_code,
     !by_class
-  ) %>%
-  mutate(township_name = ccao::town_convert(geography_id)) %>%
+  ) |>
+  mutate(township_name = ccao::town_convert(geography_id)) |>
   select(
     stage,
     township_name,
@@ -72,7 +72,7 @@ model_township_stats_df <- model_performance_test_merged %>%
     median_ratio,
     rmse, mdape, r_squared,
     cod_met, prd_met, prb_met, mki_met,
-  ) %>%
+  ) |>
   mutate(
     ratio_met = between(median_ratio, 0.95, 1.05),
     across(c(ends_with("_fmv_median"), rmse), scales::dollar),
@@ -100,8 +100,8 @@ generate_model_township_stats <- function(df) {
     )
   ))
 
-  df %>%
-    select(-any_of("stage")) %>%
+  df |>
+    select(-any_of("stage")) |>
     datatable(
       rownames = FALSE,
       filter = "none",
@@ -129,11 +129,11 @@ generate_model_township_stats <- function(df) {
           )
         )
       )
-    ) %>%
+    ) |>
     formatRound(
       c("cod", "prd", "prb", "mki", "median_ratio", "r_squared"),
       digits = 2
-    ) %>%
+    ) |>
     formatStyle(
       columns = c("cod", "prd", "prb", "mki", "median_ratio"),
       valueColumns = c("cod_met", "prd_met", "prb_met", "mki_met", "ratio_met"),
@@ -155,42 +155,42 @@ Statistics highlighted in <span style="background-color:#d3f2c2">green</span> me
 ### Test Set
 
 ```{r _model_township_stats_table_test}
-model_township_stats_df %>%
-  filter(stage == "Main Model") %>%
+model_township_stats_df |>
+  filter(stage == "Main Model") |>
   generate_model_township_stats()
 ```
 
 ### Linear Baseline
 
 ```{r _model_township_stats_table_test_linear}
-model_township_stats_df %>%
-  filter(stage == "Linear Baseline") %>%
+model_township_stats_df |>
+  filter(stage == "Linear Baseline") |>
   generate_model_township_stats()
 ```
 
 ### Assessment Set
 
 ```{r _model_township_stats_table_assessment}
-model_township_stats_assessment_df <- model_performance_assessment %>%
+model_township_stats_assessment_df <- model_performance_assessment |>
   filter(
     geography_type == "township_code",
     triad_code == run_triad_code,
     !by_class
-  ) %>%
-  mutate(township_name = ccao::town_convert(geography_id)) %>%
+  ) |>
+  mutate(township_name = ccao::town_convert(geography_id)) |>
   select(
     township_name, sale_fmv_median, estimate_fmv_median,
     cod, prd, prb, mki, median_ratio,
     rmse, mdape, r_squared,
     cod_met, prd_met, prb_met, mki_met
-  ) %>%
+  ) |>
   mutate(
     ratio_met = between(median_ratio, 0.95, 1.05),
     across(c(ends_with("_fmv_median"), rmse), scales::dollar),
     mdape = scales::percent(mdape / 100, 0.01)
   )
 
-model_township_stats_assessment_df %>%
+model_township_stats_assessment_df |>
   generate_model_township_stats()
 ```
 
@@ -203,13 +203,13 @@ Ratio curves for the ```r metadata$assessment_triad``` triad created using the *
 ::: {.panel-tabset}
 
 ```{r _model_ratio_curve_triad, results='asis'}
-model_ratio_distribution_df <- model_performance_test_quantile_merged %>%
+model_ratio_distribution_df <- model_performance_test_quantile_merged |>
   filter(
     geography_type == "triad_code",
     triad_code == run_triad_code,
     num_quantile == "10",
     !by_class
-  ) %>%
+  ) |>
   mutate(
     lower_bound_short = sapply(lower_bound, shorten_number),
     upper_bound_short = sapply(upper_bound, shorten_number),
@@ -219,18 +219,18 @@ model_ratio_distribution_df <- model_performance_test_quantile_merged %>%
     )
   )
 
-model_ratio_distribution_labels <- model_ratio_distribution_df %>%
-  filter(stage == "Main Model") %>%
+model_ratio_distribution_labels <- model_ratio_distribution_df |>
+  filter(stage == "Main Model") |>
   pull(custom_label)
 
 # Manually set axes to highest and lowest contained in the data
-model_ratio_distribution_lims <- model_performance_test_quantile_merged %>%
+model_ratio_distribution_lims <- model_performance_test_quantile_merged |>
   filter(
     geography_type %in% c("township_code", "triad_code"),
     triad_code == run_triad_code,
     num_quantile == "10",
     !by_class
-  ) %>%
+  ) |>
   summarise(
     min_value = min(median_ratio),
     max_value = max(median_ratio)
@@ -283,18 +283,18 @@ cat("\n\n")
 ```{r _model_ratio_curve_by_township, results='asis'}
 # Make graph function to iterate through for tabset
 generate_model_ratio_township_graph <- function(data, township, lims) {
-  data_to_plot <- data %>%
+  data_to_plot <- data |>
     filter(
       geography_type == "township_code",
       triad_code == run_triad_code,
       num_quantile == "10",
       township_name == township,
       !by_class
-    ) %>%
+    ) |>
     select(
       stage, township_name, quantile,
       median_ratio, lower_bound, upper_bound
-    ) %>%
+    ) |>
     mutate(
       lower_bound_short = sapply(lower_bound, shorten_number),
       upper_bound_short = sapply(upper_bound, shorten_number),
@@ -304,8 +304,8 @@ generate_model_ratio_township_graph <- function(data, township, lims) {
       )
     )
 
-  data_to_plot_labels <- data_to_plot %>%
-    filter(stage == "Main Model") %>%
+  data_to_plot_labels <- data_to_plot |>
+    filter(stage == "Main Model") |>
     pull(custom_label)
 
   ggplot(
@@ -354,12 +354,12 @@ generate_model_ratio_township_graph <- function(data, township, lims) {
 # Dynamically produce tabset
 for (township in model_townships_list) {
   cat("###", township, "\n")
-  model_performance_test_quantile_merged %>%
-    mutate(township_name = ccao::town_convert(geography_id)) %>%
+  model_performance_test_quantile_merged |>
+    mutate(township_name = ccao::town_convert(geography_id)) |>
     generate_model_ratio_township_graph(
       township,
       model_ratio_distribution_lims
-    ) %>%
+    ) |>
     print()
   cat("\n\n")
 }
@@ -376,26 +376,26 @@ number of sales in that group.
 ### By Township
 
 ```{r _model_est_v_actual_township, fig.width=8, fig.height=14}
-model_test_est_v_actual <- model_performance_test_merged %>%
+model_test_est_v_actual <- model_performance_test_merged |>
   filter(
     triad_code == run_triad_code,
     geography_type == "township_code",
     !by_class
-  ) %>%
-  mutate(township_name = ccao::town_convert(geography_id)) %>%
+  ) |>
+  mutate(township_name = ccao::town_convert(geography_id)) |>
   select(
     township_name, geography_type, geography_id, class, num_sale, stage,
     sale_fmv_q25, sale_fmv_median, sale_fmv_q75,
     estimate_fmv_q25, estimate_fmv_median, estimate_fmv_q75
   )
 
-model_test_est_v_actual_wide <- model_test_est_v_actual %>%
-  select(-class) %>%
+model_test_est_v_actual_wide <- model_test_est_v_actual |>
+  select(-class) |>
   pivot_longer(
     cols = -c(geography_type, geography_id, township_name, num_sale, stage),
     names_to = "type",
     values_to = "value"
-  ) %>%
+  ) |>
   mutate(
     category = case_when(
       str_detect(type, "sale") ~ "Actual (Sales)",
@@ -403,8 +403,8 @@ model_test_est_v_actual_wide <- model_test_est_v_actual %>%
         stage == "Linear Baseline" ~ "Estimate (Linear Baseline)",
       str_detect(type, "estimate") ~ "Estimate (Main Model)"
     )
-  ) %>%
-  select(township_name, category, value, num_sale) %>%
+  ) |>
+  select(township_name, category, value, num_sale) |>
   mutate(
     type_factor = factor(
       category,
@@ -417,10 +417,10 @@ model_test_est_v_actual_wide <- model_test_est_v_actual %>%
     township = paste0(township_name, "\n(", num_sale, ")")
   )
 
-model_test_est_v_actual_segment <- model_test_est_v_actual_wide %>%
-  group_by(township, type_factor) %>%
-  arrange(township, type_factor, value) %>%
-  mutate(xend = lead(value)) %>%
+model_test_est_v_actual_segment <- model_test_est_v_actual_wide |>
+  group_by(township, type_factor) |>
+  arrange(township, type_factor, value) |>
+  mutate(xend = lead(value)) |>
   filter(!is.na(xend))
 
 ggplot() +
@@ -492,21 +492,21 @@ ggplot() +
 ```{r _model_est_v_actual_township_by_class, results='asis', fig.width=8, fig.height=10}
 # Make class breakout function with facet
 model_sale_vs_estimate_by_class <- function(data, township) {
-  est_vs_actual <- data %>%
+  est_vs_actual <- data |>
     filter(
       triad_code == run_triad_code,
       geography_type == "township_code",
       by_class
-    ) %>%
+    ) |>
     select(
       geography_type, geography_id, class, num_sale, stage,
       sale_fmv_q25, sale_fmv_median, sale_fmv_q75,
       estimate_fmv_q25, estimate_fmv_median, estimate_fmv_q75
     )
 
-  reshaped_data <- est_vs_actual %>%
-    mutate(township_name = ccao::town_convert(geography_id)) %>%
-    dplyr::filter(township_name == township) %>%
+  reshaped_data <- est_vs_actual |>
+    mutate(township_name = ccao::town_convert(geography_id)) |>
+    dplyr::filter(township_name == township) |>
     pivot_longer(
       cols = -c(
         geography_type, geography_id, township_name,
@@ -514,7 +514,7 @@ model_sale_vs_estimate_by_class <- function(data, township) {
       ),
       names_to = "type",
       values_to = "value"
-    ) %>%
+    ) |>
     mutate(
       category = case_when(
         str_detect(type, "sale") ~ "Actual (Sales)",
@@ -522,8 +522,8 @@ model_sale_vs_estimate_by_class <- function(data, township) {
           stage == "Linear Baseline" ~ "Estimate (Linear Baseline)",
         str_detect(type, "estimate") ~ "Estimate (Main Model)"
       )
-    ) %>%
-    select(township_name, class, category, value, num_sale) %>%
+    ) |>
+    select(township_name, class, category, value, num_sale) |>
     mutate(
       type_factor = factor(
         category,
@@ -536,10 +536,10 @@ model_sale_vs_estimate_by_class <- function(data, township) {
       class = paste0(class, "\n(", num_sale, ")")
     )
 
-  segment_data <- reshaped_data %>%
-    group_by(class, type_factor) %>%
-    arrange(class, type_factor, value) %>%
-    mutate(xend = lead(value)) %>%
+  segment_data <- reshaped_data |>
+    group_by(class, type_factor) |>
+    arrange(class, type_factor, value) |>
+    mutate(xend = lead(value)) |>
     filter(!is.na(xend))
 
   ggplot() +
@@ -606,8 +606,8 @@ model_sale_vs_estimate_by_class <- function(data, township) {
 
 for (township in model_townships_list) {
   cat("###", township, "\n")
-  model_performance_test_merged %>%
-    model_sale_vs_estimate_by_class(township) %>%
+  model_performance_test_merged |>
+    model_sale_vs_estimate_by_class(township) |>
     print()
   cat("\n\n")
 }
@@ -629,9 +629,9 @@ _NOTE: Click any of the dots on the plot below to open the Assessor's website fo
 
 ```{r _model_est_v_actual_town_indiv_main}
 est_v_actual_plotly_town <- function(data, x) {
-  pred_v_actual_plot_df <- data %>%
-    filter(meta_triad_code == run_triad_code) %>%
-    mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  pred_v_actual_plot_df <- data |>
+    filter(meta_triad_code == run_triad_code) |>
+    mutate(Township = ccao::town_convert(meta_township_code)) |>
     rename(
       PIN = meta_pin,
       `Sale Price` = meta_sale_price,
@@ -707,9 +707,9 @@ est_v_actual_plotly_town(test_card, pred_card_initial_fmv_lin)
 
 ```{r _model_est_v_actual_class_indiv_main}
 est_v_actual_plotly_class <- function(data, x) {
-  pred_v_actual_plot_df <- data %>%
-    filter(meta_triad_code == run_triad_code) %>%
-    mutate(Township = ccao::town_convert(meta_township_code)) %>%
+  pred_v_actual_plot_df <- data |>
+    filter(meta_triad_code == run_triad_code) |>
+    mutate(Township = ccao::town_convert(meta_township_code)) |>
     rename(
       PIN = meta_pin,
       Class = meta_class,
@@ -790,9 +790,9 @@ _NOTE: These metrics apply to ALL triads, not just the triad being re-assessed._
 # Feature importance bar chart function
 model_plot_feature_importance <- function(data, gain_column, color, nudge) {
   # Clean up name of column for ggplot
-  name_labs <- strsplit(gain_column, "_")[[1]][1] %>% str_to_title()
+  name_labs <- strsplit(gain_column, "_")[[1]][1] |> str_to_title()
 
-  data <- data %>%
+  data <- data |>
     mutate(
       model_predictor_all_name_wrapped =
         gsub("(.{20})", "\\1\n", model_predictor_all_name, perl = TRUE)
@@ -881,25 +881,25 @@ Plots to show how well the model picks up on time trends. The **test set** plot 
 ### Test Set (Unseen)
 
 ```{r _model_time_trends_unseen, fig.height=8, fig.width=7}
-test_card %>%
-  filter(meta_triad_code == run_triad_code) %>%
+test_card |>
+  filter(meta_triad_code == run_triad_code) |>
   mutate(
     time_sale_month = floor_date(meta_sale_date, "month"),
     meta_township_name = ccao::town_convert(meta_township_code)
-  ) %>%
-  group_by(meta_township_name, time_sale_month) %>%
+  ) |>
+  group_by(meta_township_name, time_sale_month) |>
   summarize(
     `Median Estimate` = median(pred_card_initial_fmv),
     `Median Sale Price` = median(meta_sale_price),
     count_sales = n()
-  ) %>%
-  tidyr::pivot_longer(cols = starts_with("Median")) %>%
-  group_by(meta_township_name) %>%
+  ) |>
+  tidyr::pivot_longer(cols = starts_with("Median")) |>
+  group_by(meta_township_name) |>
   mutate(
     name = factor(name, levels = c("Median Sale Price", "Median Estimate")),
     total_sales = sum(count_sales) / 2, # rows are doubled after pivoting
     meta_township_name = paste0(meta_township_name, " (", total_sales, ")")
-  ) %>%
+  ) |>
   ggplot() +
   geom_line(aes(x = time_sale_month, y = value, color = name)) +
   scale_color_manual(
@@ -925,29 +925,29 @@ test_card %>%
 ### Training Set (Seen)
 
 ```{r _model_time_trends_seen, fig.height=8, fig.width=7}
-training_data_pred %>%
+training_data_pred |>
   filter(
     !sv_is_outlier,
     meta_triad_name == run_triad,
     !ind_pin_is_multicard
-  ) %>%
+  ) |>
   mutate(
     time_sale_month = floor_date(meta_sale_date, "month"),
     meta_township_name = ccao::town_convert(meta_township_code)
-  ) %>%
-  group_by(meta_township_name, time_sale_month) %>%
+  ) |>
+  group_by(meta_township_name, time_sale_month) |>
   summarize(
     `Median Estimate` = median(pred_card_initial_fmv),
     `Median Sale Price` = median(meta_sale_price),
     count_sales = n()
-  ) %>%
-  tidyr::pivot_longer(cols = starts_with("Median")) %>%
-  group_by(meta_township_name) %>%
+  ) |>
+  tidyr::pivot_longer(cols = starts_with("Median")) |>
+  group_by(meta_township_name) |>
   mutate(
     name = factor(name, levels = c("Median Sale Price", "Median Estimate")),
     total_sales = sum(count_sales) / 2, # rows are doubled after pivoting
     meta_township_name = paste0(meta_township_name, " (", total_sales, ")")
-  ) %>%
+  ) |>
   ggplot() +
   geom_line(aes(x = time_sale_month, y = value, color = name)) +
   scale_color_manual(
@@ -981,14 +981,14 @@ See the [assessr package documentation](https://ccao-data.github.io/assessr/arti
 ::: {.panel-tabset}
 
 ```{r _model_lorenz_curve, results = 'asis'}
-model_lorenz_curve_df <- test_card %>%
+model_lorenz_curve_df <- test_card |>
   select(
     pred_card_initial_fmv,
     meta_sale_price,
     meta_township_code
-  ) %>%
-  arrange(meta_sale_price) %>%
-  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) %>%
+  ) |>
+  arrange(meta_sale_price) |>
+  left_join(ccao::town_dict, by = c("meta_township_code" = "township_code")) |>
   filter(triad_code == run_triad_code)
 
 generate_lorenz_curve_function <- function(data, township_name) {
@@ -1055,10 +1055,10 @@ generate_lorenz_curve_function <- function(data, township_name) {
     theme(legend.position = "bottom")
 }
 
-model_lorenz_curve_plots <- model_lorenz_curve_df %>%
-  group_by(township_name) %>%
-  group_nest() %>%
-  mutate(plot = map2(data, township_name, generate_lorenz_curve_function)) %>%
+model_lorenz_curve_plots <- model_lorenz_curve_df |>
+  group_by(township_name) |>
+  group_nest() |>
+  mutate(plot = map2(data, township_name, generate_lorenz_curve_function)) |>
   pull(plot)
 
 iwalk(model_lorenz_curve_plots, ~ {
@@ -1079,15 +1079,15 @@ Tables of the largest misses (in absolute terms) from the both the **test set** 
 ### Test Set
 
 ```{r _model_big_misses_test}
-model_big_misses_test <- test_card %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
-  filter(meta_triad_code == run_triad_code) %>%
+model_big_misses_test <- test_card |>
+  mutate(township_name = ccao::town_convert(meta_township_code)) |>
+  filter(meta_triad_code == run_triad_code) |>
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_bldg_sf,
     `Sale Date` = meta_sale_date, `Sale Price` = meta_sale_price,
     `Est. FMV` = pred_card_initial_fmv
-  ) %>%
+  ) |>
   mutate(
     Difference = abs(`Sale Price` - `Est. FMV`),
     `Qnt.` = cut(
@@ -1097,21 +1097,21 @@ model_big_misses_test <- test_card %>%
       include.lowest = TRUE
     ),
     .by = Town
-  ) %>%
-  group_by(Town, `Qnt.`) %>%
-  slice_max(Difference, n = 1) %>%
-  arrange(-Difference) %>%
-  relocate(`Qnt.`, .after = "Town") %>%
+  ) |>
+  group_by(Town, `Qnt.`) |>
+  slice_max(Difference, n = 1) |>
+  arrange(-Difference) |>
+  relocate(`Qnt.`, .after = "Town") |>
   mutate(
     across(
       c(ends_with("Price"), ends_with("FMV"), Difference),
       ~ scales::dollar(.x, prefix = "$")
     ),
     `Bldg Sqft` = scales::comma(`Bldg Sqft`)
-  ) %>%
+  ) |>
   arrange(Town, `Qnt.`)
 
-model_big_misses_test %>%
+model_big_misses_test |>
   datatable(
     rownames = FALSE,
     options = list(
@@ -1132,21 +1132,21 @@ model_big_misses_test %>%
 ### Assessment Set
 
 ```{r _model_big_misses_assessment}
-model_big_misses_assessment <- assessment_pin %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+model_big_misses_assessment <- assessment_pin |>
+  mutate(township_name = ccao::town_convert(meta_township_code)) |>
   filter(
     meta_triad_code == run_triad_code,
     !is.na(sale_recent_1_price),
     !is.na(pred_pin_final_fmv_round),
     year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
-  ) %>%
+  ) |>
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
     `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
     `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
     `Est. FMV` = pred_pin_final_fmv_round
-  ) %>%
+  ) |>
   mutate(
     Difference = abs(`Sale 1 Price` - `Est. FMV`),
     `Qnt.` = cut(
@@ -1156,21 +1156,21 @@ model_big_misses_assessment <- assessment_pin %>%
       include.lowest = TRUE
     ),
     .by = Town
-  ) %>%
-  group_by(Town, `Qnt.`) %>%
-  slice_max(Difference, n = 1) %>%
-  arrange(-Difference) %>%
-  relocate(`Qnt.`, .after = "Town") %>%
+  ) |>
+  group_by(Town, `Qnt.`) |>
+  slice_max(Difference, n = 1) |>
+  arrange(-Difference) |>
+  relocate(`Qnt.`, .after = "Town") |>
   mutate(
     across(
       c(ends_with("Price"), ends_with("FMV"), Difference),
       ~ scales::dollar(.x, prefix = "$")
     ),
     `Bldg Sqft` = scales::comma(`Bldg Sqft`)
-  ) %>%
+  ) |>
   arrange(Town, `Qnt.`)
 
-model_big_misses_assessment %>%
+model_big_misses_assessment |>
   datatable(
     rownames = FALSE,
     options = list(

@@ -13,19 +13,19 @@ This section focuses on the impact of the model. It looks at outcomes such as th
 Map of the 10 largest year-over-year increases in market value by neighborhood. The legend is capped at 300% to increase legibility.
 
 ```{r _outcomes_map_of_largest_change}
-outcomes_map_big_changes <- assessment_pin %>%
-  group_by(meta_nbhd_code) %>%
-  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
-  filter(!is.na(prior_near_yoy_change_pct)) %>%
+outcomes_map_big_changes <- assessment_pin |>
+  group_by(meta_nbhd_code) |>
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) |>
+  distinct(meta_pin, .keep_all = TRUE) |>
+  filter(!is.na(prior_near_yoy_change_pct)) |>
   mutate(
     prior_near_yoy_change_pct = prior_near_yoy_change_pct * 100,
     neighborhood_median_change = median(prior_near_yoy_change_pct)
-  ) %>%
-  slice_max(prior_near_yoy_change_pct, n = 10) %>%
+  ) |>
+  slice_max(prior_near_yoy_change_pct, n = 10) |>
   mutate(capped_yoy_change = pmin(prior_near_yoy_change_pct, 300))
 
-outcomes_map_nbhd_increases <- st_as_sf(outcomes_map_big_changes) %>%
+outcomes_map_nbhd_increases <- st_as_sf(outcomes_map_big_changes) |>
   distinct(meta_nbhd_code, .keep_all = TRUE)
 
 outcomes_map_color_palette <-
@@ -34,8 +34,8 @@ outcomes_map_color_palette <-
     domain = c(min(outcomes_map_big_changes$prior_near_yoy_change_pct), 300)
   )
 
-leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
+leaflet() |>
+  addProviderTiles(providers$CartoDB.Positron) |>
   addPolygons(
     data = outcomes_map_nbhd_increases,
     fillColor = "white",
@@ -43,7 +43,7 @@ leaflet() %>%
     color = "black",
     opacity = 1,
     fillOpacity = 0.5
-  ) %>%
+  ) |>
   addCircleMarkers(
     data = outcomes_map_big_changes,
     ~loc_longitude,
@@ -67,14 +67,14 @@ leaflet() %>%
       "<br>YoY Change: ",
       round(prior_near_yoy_change_pct, 2), "%"
     )
-  ) %>%
+  ) |>
   addLegend(
     "bottomright",
     pal = outcomes_map_color_palette,
     values = c(min(outcomes_map_big_changes$prior_near_yoy_change_pct), 300),
     title = "YoY Change",
     labFormat = labelFormat(suffix = "%")
-  ) %>%
+  ) |>
   setView(
     lng = mean(outcomes_map_big_changes$loc_longitude),
     lat = mean(outcomes_map_big_changes$loc_latitude),
@@ -87,17 +87,17 @@ leaflet() %>%
 Table of the 5 PINs in each township which had the largest percentage year-over-year increase in market value. Excludes any PINs which had a prior year market value of less than $25,000.
 
 ```{r _outcomes_table_of_largest_change}
-outcomes_map_big_changes %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
-  filter(prior_near_tot > 25000) %>%
-  group_by(meta_township_code) %>%
-  slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
-  ungroup() %>%
+outcomes_map_big_changes |>
+  distinct(meta_pin, .keep_all = TRUE) |>
+  filter(prior_near_tot > 25000) |>
+  group_by(meta_township_code) |>
+  slice_max(order_by = prior_near_yoy_change_nom, n = 5) |>
+  ungroup() |>
   left_join(
     select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
     by = c("meta_pin", "meta_year")
-  ) %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
+  ) |>
+  distinct(meta_pin, .keep_all = TRUE) |>
   mutate(
     Pin = meta_pin,
     Township = meta_township_code,
@@ -121,7 +121,7 @@ outcomes_map_big_changes %>%
     "Median Neighborhood Change" = scales::percent(
       round(neighborhood_median_change, 2) / 100
     )
-  ) %>%
+  ) |>
   select(
     Pin,
     Township,
@@ -141,7 +141,7 @@ outcomes_map_big_changes %>%
     `Rooms`,
     `Full Bathrooms`,
     `Median Neighborhood Change`
-  ) %>%
+  ) |>
   datatable(
     options = list(
       pageLength = 10,
@@ -181,19 +181,19 @@ outcomes_map_labels <- factor(
   levels = outcomes_map_labels
 )
 
-outcomes_map_nbhd_delta <- model_performance_assessment %>%
+outcomes_map_nbhd_delta <- model_performance_assessment |>
   filter(
     triad_code == run_triad_code,
     !by_class,
     geography_type == "nbhd_code"
-  ) %>%
+  ) |>
   select(
     meta_nbhd_code = geography_id,
     neighborhood_median_change = prior_near_yoy_pct_chg_median,
     prior_near_fmv_median,
     estimate_fmv_median,
     sale_fmv_median, num_sale
-  ) %>%
+  ) |>
   mutate(
     neighborhood_median_change = neighborhood_median_change * 100,
     township = ccao::town_convert(substr(meta_nbhd_code, 1, 2)),
@@ -205,11 +205,11 @@ outcomes_map_nbhd_delta <- model_performance_assessment %>%
     )
   )
 
-outcomes_map_nbhd_delta_sf <- ccao::nbhd_shp %>%
+outcomes_map_nbhd_delta_sf <- ccao::nbhd_shp |>
   inner_join(
     outcomes_map_nbhd_delta,
     by = c("town_nbhd" = "meta_nbhd_code")
-  ) %>%
+  ) |>
   rename(meta_nbhd_code = town_nbhd)
 
 outcomes_map_nbhd_palette <- colorFactor(
@@ -217,8 +217,8 @@ outcomes_map_nbhd_palette <- colorFactor(
   domain = outcomes_map_nbhd_delta_sf$change_category
 )
 
-leaflet(data = outcomes_map_nbhd_delta_sf) %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
+leaflet(data = outcomes_map_nbhd_delta_sf) |>
+  addProviderTiles(providers$CartoDB.Positron) |>
   addPolygons(
     fillColor = ~ outcomes_map_nbhd_palette(change_category),
     color = "black",
@@ -239,7 +239,7 @@ leaflet(data = outcomes_map_nbhd_delta_sf) %>%
       scales::dollar(estimate_fmv_median),
       "<br>Med. YoY Change: ", round(neighborhood_median_change, 2), "%"
     )
-  ) %>%
+  ) |>
   addLegend(
     position = "bottomright",
     pal = outcomes_map_nbhd_palette,
@@ -252,19 +252,19 @@ leaflet(data = outcomes_map_nbhd_delta_sf) %>%
 ### By Township
 
 ```{r _outcomes_map_of_township_change}
-outcomes_map_township_delta <- model_performance_assessment %>%
+outcomes_map_township_delta <- model_performance_assessment |>
   filter(
     triad_code == run_triad_code,
     !by_class,
     geography_type == "township_code"
-  ) %>%
+  ) |>
   select(
     township_code = geography_id,
     township_median_change = prior_near_yoy_pct_chg_median,
     prior_near_fmv_median,
     estimate_fmv_median,
     sale_fmv_median, num_sale
-  ) %>%
+  ) |>
   mutate(
     township_median_change = township_median_change * 100,
     township = ccao::town_convert(township_code),
@@ -276,7 +276,7 @@ outcomes_map_township_delta <- model_performance_assessment %>%
     )
   )
 
-outcomes_map_township_delta_sf <- ccao::town_shp %>%
+outcomes_map_township_delta_sf <- ccao::town_shp |>
   inner_join(outcomes_map_township_delta, by = "township_code")
 
 outcomes_map_township_palette <- colorFactor(
@@ -284,8 +284,8 @@ outcomes_map_township_palette <- colorFactor(
   domain = outcomes_map_township_delta_sf$change_category
 )
 
-leaflet(data = outcomes_map_township_delta_sf) %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
+leaflet(data = outcomes_map_township_delta_sf) |>
+  addProviderTiles(providers$CartoDB.Positron) |>
   addPolygons(
     fillColor = ~ outcomes_map_township_palette(change_category),
     color = "black",
@@ -305,7 +305,7 @@ leaflet(data = outcomes_map_township_delta_sf) %>%
       scales::dollar(estimate_fmv_median),
       "<br>Med. YoY Change: ", round(township_median_change, 2), "%"
     )
-  ) %>%
+  ) |>
   addLegend(
     position = "bottomright",
     pal = outcomes_map_township_palette,
@@ -324,16 +324,16 @@ It tabulates the number of 211s and 212s by township that have a change (from
 their ```r m_assess_stage_near``` value) of greater than 50%.
 
 ```{r _outcomes_211_and_212_yoy_changes}
-outcomes_multifamily_change <- assessment_pin %>%
+outcomes_multifamily_change <- assessment_pin |>
   filter(
     meta_class %in% c("211", "212"),
     meta_triad_code == run_triad_code
-  ) %>%
+  ) |>
   mutate(
     yoy_near = abs((pred_pin_final_fmv - prior_near_tot) / pred_pin_final_fmv),
     big_swing_near = yoy_near > 0.5,
     nom_change = pred_pin_final_fmv - prior_near_tot
-  ) %>%
+  ) |>
   summarise(
     count = n(),
     big_swings_near = sum(as.numeric(big_swing_near), na.rm = TRUE),
@@ -343,17 +343,17 @@ outcomes_multifamily_change <- assessment_pin %>%
       na.rm = TRUE
     ),
     .by = c(meta_township_code, meta_class)
-  ) %>%
-  arrange(desc(big_swings_near_pct)) %>%
+  ) |>
+  arrange(desc(big_swings_near_pct)) |>
   left_join(
-    ccao::town_dict %>%
+    ccao::town_dict |>
       select(meta_township_code = township_code, township_name)
-  ) %>%
+  ) |>
   mutate(
     big_swings_near_pct = scales::percent(big_swings_near_pct),
     across(c(count, big_swings_near), scales::comma),
     med_nom_change_of_swing = scales::dollar(med_nom_change_of_swing)
-  ) %>%
+  ) |>
   select(
     `Township` = township_name,
     `Class` = meta_class,
@@ -363,7 +363,7 @@ outcomes_multifamily_change <- assessment_pin %>%
     `Med. $ Change When Change > 50%` = med_nom_change_of_swing
   )
 
-outcomes_multifamily_change %>%
+outcomes_multifamily_change |>
   datatable(
     rownames = FALSE,
     options = list(
