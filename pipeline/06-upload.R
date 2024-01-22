@@ -208,8 +208,14 @@ if (upload_enable) {
   if (comp_enable) {
     message("Uploading comps")
     read_parquet(paths$output$comp$local) %>%
-      mutate(year = params$assessment$year) %>%
-      write_parquet(paths$output$comp$s3)
+      mutate(run_id = run_id, year = params$assessment$working_year) %>%
+      group_by(year, run_id) %>%
+      arrow::write_dataset(
+        path = paths$output$comp$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        compression = "snappy"
+      )
   }
 
 

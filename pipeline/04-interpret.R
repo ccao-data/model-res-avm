@@ -149,7 +149,9 @@ if (comp_enable) {
   # To do this, we need the training data so that we can compute base model
   # error
   message("Extracting weights from training data")
-  training_data <- read_parquet(paths$input$training$local) %>% as_tibble()
+  training_data <- read_parquet(paths$input$training$local) %>%
+    filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+    as_tibble()
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
@@ -203,8 +205,11 @@ if (comp_enable) {
     mutate_all(\(idx_row) {
       assessment_data[assessment_train_idxs[idx_row], ]$meta_pin
     }) %>%
-    cbind(pin = assessment_data$meta_pin) %>%
-    relocate(pin) %>%
+    cbind(
+      pin = assessment_data$meta_pin,
+      card = assessment_data$meta_card_num,
+    ) %>%
+    relocate(pin, card) %>%
     rename_with(\(colname) gsub("comp_idx_", "comp_pin_", colname))
 
   # Combine the comp indexes and scores into one dataframe and write to a file
