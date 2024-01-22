@@ -7,66 +7,26 @@ They represent both the direction and magnitude of a feature's impact on an indi
 property's predicted value. Summed together, the SHAP values of all features for a given
 property should equal the difference between the predicted value and the baseline value.
 
-## Summary Table
+## Overall Feature Importance
 
 ```{r _shap_filtering, warning=FALSE}
+shap_predictors <- unlist(metadata$model_predictor_all_name)
+
 shap_df_filtered <- shap_df %>%
-  left_join(
-    assessment_card %>%
-      mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
-      select(meta_year, meta_pin, meta_card_num, meta_triad),
-    by = c("meta_year", "meta_pin", "meta_card_num")
-  ) %>%
+  mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
   filter(meta_triad == run_triad_code) %>%
   arrange(meta_pin, meta_card_num)
-```
 
-```{r _shap_table}
-shap_df_filtered %>%
-  select(
-    where(~ !all(is.na(.x))) & !starts_with("pred") & where(is.numeric)
-  ) %>%
-  skim() %>%
-  rename_with(~ str_replace_all(.x, "skim_|numeric.", "")) %>%
-  select(-c(type, n_missing, complete_rate, p25, p75)) %>%
-  rename(histogram = hist, median = p50, min = p0, max = p100) %>%
-  mutate(across(where(is.numeric), ~ round(.x, 1))) %>%
-  left_join(feat_imp_df, by = c("variable" = "model_predictor_all_name")) %>%
-  arrange(desc(gain_value)) %>%
-  select(
-    "Variable" = variable,
-    "Mean" = mean,
-    "Median" = median,
-    "SD" = sd,
-    "Min" = min,
-    "Max" = max,
-    "Histogram" = histogram
-  ) %>%
-  mutate(across(Mean:Max, scales::dollar)) %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-nowrap dt-right",
-          targets = c(1:5)
-        )
-      )
-    )
+shap_df_filtered_long <- shap_df_filtered %>%
+  select(township_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
   )
 ```
 
 ```{r _shap_function}
-shap_predictors <- names(shap_df_filtered)
-shap_predictors <- shap_predictors[!shap_predictors %in% c(
-  "meta_year",
-  "meta_pin",
-  "meta_card_num",
-  "pred_card_shap_baseline_fmv",
-  "township_code",
-  "meta_triad"
-)]
-
 assessment_card_filtered <- assessment_card %>%
   mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
   filter(meta_triad == run_triad_code) %>%
@@ -86,16 +46,40 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
 }
 ```
 
-## Overall Beeswarm
+```{r _shap_triad_table}
+shap_df_filtered_long %>%
+  group_by(feature) %>%
+  summarize(
+    `Mean Abs.` = mean(abs(shap)),
+    `Median Abs.` = median(abs(shap)),
+    Mean = mean(shap),
+    Median = median(shap),
+    SD = sd(shap),
+    `Min.` = min(shap),
+    `Max.` = max(shap)
+  ) %>%
+  mutate(`Rel. Imp.` = `Mean Abs.` / sum(`Mean Abs.`)) %>%
+  relocate(`Rel. Imp.`, .after = feature) %>%
+  arrange(desc(`Mean Abs.`)) %>%
+  mutate(
+    across(`Mean Abs.`:`Max.`, ~ scales::dollar(.x, accuracy = 0.01)),
+    `Rel. Imp.` = scales::percent(`Rel. Imp.`, accuracy = 0.01)
+  ) %>%
+  rename(Feature = feature) %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-nowrap dt-right",
+          targets = c(1:8)
+        )
+      )
+    )
+  )
+```
 
-The [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
-displays an information-dense summary of how features impact the model’s output.
-
-Each property is represented by a single dot on each feature facet. The x position of the dot is
-determined by the SHAP value of that feature, and dots “pile up” along each feature row to show
-density. Color is used to display the original value of the feature. 
-
-```{r _shap_beeswarm_overall, warning=FALSE}
+```{r _shap_triad_plot, warning=FALSE}
 shap_townships_list <- shap_df_filtered %>%
   distinct(township_code) %>%
   pull() %>%
@@ -116,19 +100,69 @@ shapviz::shapviz(
   baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
 ) %>%
   shapviz::sv_importance(
-    "beeswarm",
-    max_display = 15L
+    kind = "bar",
+    max_display = 25L
+  ) +
+  labs(x = "Mean Abs. SHAP Value") +
+  scale_x_continuous(
+    labels = scales::dollar,
+    expand = expansion(mult = c(0, 0.1))
   ) +
   theme_minimal() +
-  coord_cartesian(xlim = c(-150000, 300000)) +
-  scale_x_continuous(labels = scales::dollar)
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_text(margin = margin(t = 10))
+  )
 ```
 
-## Beeswarm Per Township
+## Feature Importance by Township
+
+```{r _shap_township_table}
+shap_df_filtered_long %>%
+  group_by(feature, township_code) %>%
+  summarize(
+    `Mean Abs.` = mean(abs(shap)),
+    `Median Abs.` = median(abs(shap)),
+    Mean = mean(shap),
+    Median = median(shap),
+    SD = sd(shap),
+    `Min.` = min(shap),
+    `Max.` = max(shap)
+  ) %>%
+  mutate(
+    `Rel. Imp.` = `Mean Abs.` / sum(`Mean Abs.`),
+    township_code = ccao::town_convert(as.character(township_code))
+  ) %>%
+  relocate(township_code, .before = everything()) %>%
+  relocate(`Rel. Imp.`, .after = feature) %>%
+  arrange(township_code, desc(`Mean Abs.`)) %>%
+  mutate(
+    across(`Mean Abs.`:`Max.`, ~ scales::dollar(.x, accuracy = 0.01)),
+    `Rel. Imp.` = scales::percent(`Rel. Imp.`, accuracy = 0.01)
+  ) %>%
+  rename(Township = township_code, Feature = feature) %>%
+  datatable(
+    rownames = FALSE,
+    filter = "top",
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-nowrap dt-right",
+          targets = c(2:9),
+          searchable = FALSE
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = 0
+        )
+      )
+    )
+  )
+```
 
 ::: {.panel-tabset}
 
-```{r _shap_beeswarm_iterate_township, results='asis', warning=FALSE}
+```{r _shap_township_plot, results='asis', warning=FALSE}
 # Dynamically produce tabset
 for (township in shap_townships_list) {
   cat("##", ccao::town_convert(township), "\n")
@@ -142,12 +176,19 @@ for (township in shap_townships_list) {
       shap_idx
     ) %>%
       shapviz::sv_importance(
-        "beeswarm",
-        max_display = 15L
+        kind = "bar",
+        max_display = 25L
+      ) +
+      labs(x = "Mean Abs. SHAP Value") +
+      scale_x_continuous(
+        labels = scales::dollar,
+        expand = expansion(mult = c(0, 0.1))
       ) +
       theme_minimal() +
-      coord_cartesian(xlim = c(-150000, 300000)) +
-      scale_x_continuous(labels = scales::dollar)
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_text(margin = margin(t = 10))
+      )
   )
   cat("\n\n")
 }
