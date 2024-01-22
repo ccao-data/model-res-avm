@@ -78,7 +78,7 @@ for (i in 1:num_rows) {
   cat("##", "Card ", shap_df_filtered$meta_card_num[i], "\n")
 
   results[[i]] <- create_shap_viz(i) +
-    scale_x_continuous(labels = scales::dollar)
+    scale_x_continuous(labels = scales::dollar, expand = c(0.1, 0))
 
   print(results[[i]])
 
