@@ -1,8 +1,10 @@
 ---
-title: "PIN: `r params$pin`"
+title: "PIN: `r sprintf('<a target=_blank href=https://www.cookcountyassessor.com/pin/%s>%s</a>', params$pin, params$pin)`"
 subtitle: "Run ID: `r params$run_id`"
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
+abstract-title: "Run Note"
+abstract: '`r arrow::read_parquet(here::here("output/metadata/model_metadata.parquet"))$run_note`'
 execute:
   echo: false
   warning: false
@@ -13,18 +15,20 @@ format:
     toc_float: true
     fig-align: center
     fontsize: 12pt
+knitr:
+  opts_chunk:
+    out.width: "100%"
 editor: source
 params:
-  run_id: "2023-12-27-pedantic-billy"
-  year: "2023"
-  pin: "13253180150000"
+  run_id: "2024-01-07-great-ida"
+  year: "2024"
+  pin: "01273080020000"
 ---
 
 {{< include ../_setup.qmd >}}
 
-```{r pin_checks}
+```{r _pin_checks}
 target_pin <- ccao::pin_clean(params$pin)
-
 if (nchar(target_pin) != 14) {
   stop("Invalid PIN: must be 14 characters long")
 }
@@ -34,4 +38,125 @@ if (!target_pin %in% assessment_card$meta_pin) {
 }
 ```
 
-This is a stub report for the PIN `r target_pin` and run ID `r params$run_id`!
+```{r _pin_setup}
+hie_data_subset <- hie_data %>%
+  filter(hie_last_year_active >= params$year) %>%
+  mutate(hie = TRUE)
+```
+
+## Values
+
+```{r, _pin_predicted_model_value}
+assessment_pin %>%
+  mutate(township = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_pin == target_pin) %>%
+  arrange(meta_pin) %>%
+  select(
+    "Township" = township,
+    "Prior Far Total" = prior_far_tot,
+    "Prior Near Total" = prior_near_tot,
+    "Initial Pred. FMV" = pred_pin_initial_fmv,
+    "Final Pred. FMV" = pred_pin_final_fmv,
+    "Final Pred. FMV Round" = pred_pin_final_fmv_round,
+    "Final FMV Land" = pred_pin_final_fmv_land,
+    "Final FMV Round No Prorate" = pred_pin_final_fmv_round_no_prorate,
+    "Final FMV Bldg" = pred_pin_final_fmv_bldg,
+    "Final FMV Bldg No Prorate" = pred_pin_final_fmv_bldg_no_prorate,
+    "Bldg Effective" = pred_pin_bldg_rate_effective,
+    "Land Pct. Total" = pred_pin_land_pct_total,
+    "Land Rate Effective" = pred_pin_land_rate_effective
+  ) %>%
+  mutate(
+    across(
+      c(`Prior Far Total`:`Bldg Effective`, `Land Rate Effective`),
+      ~ scales::dollar(.x)
+    ),
+    across(
+      `Land Pct. Total`,
+      ~ scales::percent(.x, accuracy = 0.01)
+    )
+  ) %>%
+  kable(align = "lrrrrrrrrrrrr") %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE
+  )
+```
+
+## Sales
+
+```{r _pin_topline_characteristics, results= 'asis'}
+training_data %>%
+  filter(meta_pin == target_pin) %>%
+  arrange(desc(meta_sale_date)) %>%
+  select(
+    "Sale Date" = meta_sale_date,
+    "Sale Price" = meta_sale_price,
+    "Document Number" = meta_sale_document_num,
+    "Outlier Type" = sv_outlier_type
+  ) %>%
+  mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
+  mutate(`Sale Price` = scales::dollar(`Sale Price`)) %>%
+  kable(align = "lrll") %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE
+  )
+```
+
+## Characteristics
+
+```{r _pin_characteristics}
+chars_data %>%
+  filter(meta_pin == target_pin) %>%
+  left_join(
+    hie_data_subset %>%
+      select(pin, hie),
+    by = c("meta_pin" = "pin")
+  ) %>%
+  mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
+  filter(year == max(year)) %>%
+  left_join(
+    assessment_pin %>%
+      select(meta_pin, flag_char_missing_critical_value, flag_pin_is_multicard),
+    by = "meta_pin"
+  ) %>%
+  ccao::vars_recode(
+    cols = starts_with("char_"),
+    type = "short",
+    as_factor = FALSE
+  ) %>%
+  arrange(meta_year) %>%
+  select(
+    Year = meta_year,
+    Class = meta_class,
+    "Year Built" = char_yrblt,
+    "Building SF" = char_bldg_sf,
+    Beds = char_beds,
+    "Full Baths" = char_fbath,
+    "Half Baths" = char_hbath,
+    Air = char_air,
+    "Residential Type" = char_type_resd,
+    Rooms = char_rooms,
+    HIE = hie,
+    "Multicard Flag" = flag_pin_is_multicard,
+    "Missing Critical Value" = flag_char_missing_critical_value,
+  ) %>%
+  kable() %>%
+  kable_styling(
+    "striped",
+    position = "left",
+    fixed_thead = TRUE
+  )
+```
+
+```{r, results='asis'}
+# Dynamically render shap code based on whether they are enabled for model run
+# https://www.harveyl888.com/post/2022-05-12-knit_child_quarto/
+if (shap_exists) {
+  shap_qmd <- knitr::knit_child("_shap.qmd", quiet = TRUE)
+  cat(shap_qmd, sep = "\n")
+}
+```

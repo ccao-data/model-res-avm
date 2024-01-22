@@ -2,61 +2,13 @@
 
 # Outliers
 
-## Sale Outliers
+This section examines flagged, non-arms-length sales, hereafter called "outliers". These sales are identified via a [dedicated sales validation model](https://github.com/ccao-data/model-sales-val). Note that unless otherwise specified, all figures and tables include data from _all triads_.
+
+## Counts and Percentages
 
 ::: panel-tabset
 
-## Sales View
-
-These are the counts of flagged sales by township and flag type, as derived by
-the Sale Validation script.
-
-```{r _outliers_flagged_sales}
-# This object is joined to itself using different filters, which is why this
-# filtering is applied here rather than below.
-price_outlier_type <- training_data %>%
-  filter(meta_class != "200" & meta_triad_name == run_triad)
-
-price_outlier_type <- price_outlier_type %>%
-  filter(sv_is_outlier) %>%
-  summarise(
-    `Min Sale Price` = min(meta_sale_price, na.rm = TRUE),
-    `Median Sale Price` = median(meta_sale_price, na.rm = TRUE),
-    `Max Sale Price` = max(meta_sale_price, na.rm = TRUE),
-    n = n(),
-    .by = c(meta_class, sv_outlier_type, meta_township_name)
-  ) %>%
-  left_join(
-    price_outlier_type %>%
-      filter(!sv_is_outlier) %>%
-      summarise(
-        `Median Non-outlier Sale Price` = median(meta_sale_price, na.rm = TRUE),
-        .by = c(meta_class, meta_township_name)
-      ),
-    by = join_by(meta_class, meta_township_name)
-  ) %>%
-  mutate(across(contains("Sale"), dollar)) %>%
-  dplyr::rename(Class = meta_class, "Township Name" = meta_township_name)
-
-price_outlier_type %>%
-  datatable(
-    rownames = FALSE,
-    height = "500px",
-    options = list(
-      columnDefs = list(
-        list(className = "dt-center", targets = c(1:7))
-      )
-    )
-  )
-```
-
-:::
-
-## Counts and Percentages of Outliers
-
-::: panel-tabset
-
-## Count of Outliers by Type
+### Count by Type
 
 ```{r _outliers_type_breakdown}
 y_lim_axis_outlier_breakdown <- training_data %>%
@@ -65,20 +17,14 @@ y_lim_axis_outlier_breakdown <- training_data %>%
   summarise(max_value = max(n)) %>%
   pull(max_value)
 
-ggplot(
-  training_data %>%
-    filter(sv_is_outlier) %>%
-    summarise(count = n(), .by = sv_outlier_type),
-  aes(x = reorder(sv_outlier_type, -count), y = count)
-) +
-  labs(
-    y = "Number of Sales", x = "Outlier Types"
-  ) +
+training_data %>%
+  filter(sv_is_outlier) %>%
+  summarise(count = n(), .by = sv_outlier_type) %>%
+  ggplot(aes(x = reorder(sv_outlier_type, -count), y = count)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(
-    label = comma(count)
-  ), vjust = -0.5) +
+  geom_text(aes(label = comma(count)), vjust = -0.5) +
   ylim(0, 1.03 * (y_lim_axis_outlier_breakdown)) +
+  labs(y = "Number of Sales", x = "Outlier Types") +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 60, hjust = 1),
@@ -86,7 +32,11 @@ ggplot(
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
   )
+```
 
+### Count by Type and Year
+
+```{r _outliers_type_breakdown_table}
 training_data %>%
   filter(sv_is_outlier) %>%
   group_by(meta_year, sv_outlier_type) %>%
@@ -97,49 +47,56 @@ training_data %>%
   kable_styling("striped")
 ```
 
-## Share of Outliers by Class
+### Percentage by Class
 
-```{r _outliers_classes}
-ggplot(
-  training_data %>%
-    summarise(
-      percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
-      .by = meta_class
-    ),
-  aes(x = meta_class, y = percent)
-) +
+```{r _outliers_pct_class}
+training_data %>%
+  summarise(
+    percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
+    .by = meta_class
+  ) %>%
+  filter(!meta_class %in% c("218", "219")) %>%
+  ggplot(aes(x = meta_class, y = percent)) +
   geom_bar(stat = "identity") +
+  geom_text(
+    mapping = aes(label = scales::percent(percent, accuracy = .1)),
+    hjust = -0.1,
+    angle = 90
+  ) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent_format()) +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    expand = expansion(add = c(0, 0.015))
+  ) +
   theme(
     axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
+    axis.title.x = element_blank()
   )
 ```
 
-## Share of Outliers by Township
+### Percentage by Township
 
-```{r _outliers_townships}
-y_lim_axis_outlier_townships <-
-  training_data %>%
+```{r _outliers_pct_township}
+y_lim_axis_outlier_townships <- training_data %>%
   group_by(meta_township_name) %>%
   summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
   ungroup() %>%
   slice_max(percent, n = 1) %>%
   pull(percent)
 
-ggplot(
-  training_data %>%
-    summarise(
-      percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
-      .by = meta_township_name
-    ),
-  aes(x = reorder(meta_township_name, -percent), y = percent)
-) +
+training_data %>%
+  summarise(
+    percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
+    .by = c(meta_township_name, meta_triad_name)
+  ) %>%
+  ggplot(aes(x = reorder(meta_township_name, -percent), y = percent)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(
-    label = scales::percent(percent, accuracy = .1)
-  ), hjust = -0.1, angle = 90) +
+  geom_text(
+    mapping = aes(label = scales::percent(percent, accuracy = .1)),
+    hjust = -0.1,
+    angle = 90,
+    size = 2.5
+  ) +
   theme_minimal() +
   scale_y_continuous(
     labels = scales::percent_format(),
@@ -149,490 +106,386 @@ ggplot(
     axis.text.x = element_text(angle = 60, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
-  )
+  ) +
+  facet_wrap(vars(meta_triad_name), scales = "free_x")
 ```
 
 :::
 
-
-## Outlier Distributions
+## Distributions
 
 ::: panel-tabset
 
-## Cumulative Price Distribution
+### By Outlier Status 
 
-```{r _outliers_price}
+```{r _outliers_dist_price}
 training_data %>%
   summarise(
     Min = min(meta_sale_price),
     Median = median(meta_sale_price),
     Mean = mean(meta_sale_price),
     Max = max(meta_sale_price),
-    `Std dev` = sd(meta_sale_price),
+    `Std. Dev.` = sd(meta_sale_price),
     .by = sv_is_outlier
   ) %>%
-  rename("Sale category" = sv_is_outlier) %>%
-  mutate(across(Min:`Std dev`, dollar)) %>%
+  mutate(Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier")) %>%
+  relocate(Category, .before = NULL) %>%
+  select(-sv_is_outlier) %>%
+  mutate(across(Min:`Std. Dev.`, dollar)) %>%
   kable() %>%
   kable_styling(full_width = TRUE)
 
-ggplot(training_data, aes(
-  log(meta_sale_price),
-  fill = sv_is_outlier
-)) +
+training_data %>%
+  mutate(
+    Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    Category = factor(Category, levels = c("Outlier", "Not Outlier"))
+  ) %>%
+  filter(meta_sale_price < 1.5e7) %>%
+  ggplot(aes(meta_sale_price, fill = Category)) +
   geom_density(alpha = 0.5) +
   theme_minimal() +
-  labs(x = "log(price)") +
+  labs(x = "Log Sale Price") +
   scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_log10(labels = scales::dollar_format()) +
   theme(
     legend.position = "bottom",
     legend.title = element_blank(),
     axis.title.y = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
     axis.ticks.y = element_blank()
   )
 ```
 
-## Cumulative Distribution of Price per Sq Ft
+### By Price Per Square Foot
 
-```{r _outliers_ppsft}
-ppsf <- training_data %>%
+```{r _outliers_dist_price_per_sqft}
+outliers_dist_price_per_sqft <- training_data %>%
   filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
   mutate(ppsf = meta_sale_price / char_bldg_sf)
 
-ppsf %>%
+outliers_dist_price_per_sqft %>%
   summarise(
     Min = min(ppsf),
     Median = median(ppsf),
     Mean = mean(ppsf),
     Max = max(ppsf),
-    `Std dev` = sd(ppsf),
+    `Std. Dev` = sd(ppsf),
     .by = sv_is_outlier
   ) %>%
-  rename("Sale category" = sv_is_outlier) %>%
-  mutate(across(Min:`Std dev`, dollar)) %>%
+  mutate(Category = ifelse(sv_is_outlier, "Outlier", "Not outlier")) %>%
+  relocate(Category, .before = NULL) %>%
+  select(-sv_is_outlier) %>%
+  mutate(across(Min:`Std. Dev`, dollar)) %>%
   kable() %>%
   kable_styling(full_width = TRUE)
 
-ggplot(ppsf, aes(log(ppsf), fill = sv_is_outlier)) +
+outliers_dist_price_per_sqft %>%
+  mutate(
+    Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    Category = factor(Category, levels = c("Outlier", "Not Outlier"))
+  ) %>%
+  filter(meta_sale_price < 2.5e6) %>%
+  ggplot(aes(ppsf, fill = Category)) +
   geom_density(alpha = 0.5) +
   labs(title = "Cumulative Distribution") +
   theme_minimal() +
-  labs(x = "log(price per sqft)") +
+  labs(x = "Log Price Per Square Foot") +
   scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_log10(labels = scales::dollar_format()) +
   theme(
     legend.position = "bottom",
     legend.title = element_blank(),
     axis.title.y = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
     axis.ticks.y = element_blank()
   )
 ```
-:::
 
+### By Township
 
-##  Median Outlier Price / Median Not Outlier Price by Township
+```{r _outliers_dist_township, fig.height=8, fig.width=7}
+training_data %>%
+  filter(meta_triad_name == run_triad) %>%
+  mutate(
+    township_name = ccao::town_convert(meta_township_code),
+    Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    Category = factor(Category, levels = c("Outlier", "Not Outlier"))
+  ) %>%
+  filter(meta_sale_price < 2.5e6) %>%
+  ggplot(aes(meta_sale_price, fill = Category)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "Log Sale Price") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_log10(labels = scales::dollar_format()) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  facet_wrap(vars(township_name), ncol = 3)
+```
 
-```{r _outliers_median_price_outliers, fig.height=6}
-outlier_vs_nonoutlier <- training_data %>%
+### By Class
+
+```{r _outliers_dist_class, fig.height=8, fig.width=7}
+training_data %>%
+  filter(
+    meta_triad_name == run_triad,
+    !meta_class %in% c("218", "219")
+  ) %>%
+  mutate(
+    township_name = ccao::town_convert(meta_township_code),
+    Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    Category = factor(Category, levels = c("Outlier", "Not Outlier"))
+  ) %>%
+  filter(meta_sale_price < 5e6) %>%
+  ggplot(aes(meta_sale_price, fill = Category)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "Log Sale Price") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_log10(labels = scales::dollar_format()) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  facet_wrap(vars(meta_class), ncol = 3)
+```
+
+### Ratio Comparison
+
+```{r _outliers_ratio_comparison, fig.height=8, fig.width=7}
+outliers_ratio_comparison <- training_data %>%
   summarise(
     median_sale_price = median(meta_sale_price),
     .by = c(sv_is_outlier, meta_township_name)
   ) %>%
-  pivot_wider(
-    id_cols = meta_township_name,
-    names_from = sv_is_outlier,
-    values_from = median_sale_price
-  ) %>%
+  arrange(meta_township_name, sv_is_outlier) %>%
+  group_by(meta_township_name) %>%
   mutate(
-    percent = `TRUE` / `FALSE`,
+    percent = last(median_sale_price) / first(median_sale_price),
     above_below = ifelse(percent > 1,
       "Outlier > Not Outlier", "Not Outlier > Outlier"
     ),
     above_below = factor(above_below,
       levels =
         c("Outlier > Not Outlier", "Not Outlier > Outlier")
-    )
-  )
+    ),
+    triad = ccao::town_get_triad(meta_township_name, name = TRUE)
+  ) %>%
+  distinct(meta_township_name, percent, above_below, triad)
 
-ggplot(
-  outlier_vs_nonoutlier,
-  aes(x = reorder(meta_township_name, percent), y = percent)
-) +
+outliers_ratio_comparison %>%
+  ggplot(aes(x = reorder(meta_township_name, percent), y = percent)) +
   labs(
     fill = "Median Price"
   ) +
   geom_bar(stat = "identity", aes(fill = above_below)) +
   coord_flip() +
-  geom_text(aes(
-    label = round(percent, 2)
-  ), hjust = -0.2) +
-  scale_y_continuous(limits = c(0, 5.5)) +
+  geom_text(aes(label = round(percent, 2)), size = 3.2, hjust = -0.2) +
+  scale_y_continuous(limits = c(0, 1.5)) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
     axis.title.x = element_blank(),
-  )
+    panel.grid.major.y = element_blank()
+  ) +
+  facet_wrap(vars(triad), ncol = 1, scales = "free_y", strip.position = "right")
 ```
 
+:::
 
-## Outliers Grouped by Decile
+## Table Breakouts
 
 ::: panel-tabset
 
-## Share of Outliers by Decile
-```{r _outliers_share_of_outliers_by_decile}
-ggplot(
-  training_data %>%
-    arrange(meta_sale_price) %>%
-    mutate(decile = ntile(meta_sale_price, 10)) %>%
-    summarise(
-      percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
-      .by = decile
-    ),
-  aes(x = decile, y = percent)
-) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = scales::percent(percent, accuracy = .1)),
-    hjust = -0.1,
-    angle = 90
-  ) +
-  theme_minimal() +
-  scale_y_continuous(
-    labels = scales::percent_format(),
-    limits = c(0, 0.09),
-    breaks = seq(0, 0.1, 0.02)
-  ) +
-  scale_x_continuous(breaks = seq(1, 10, 1)) +
-  theme(axis.title.y = element_blank())
-```
+### By Outlier Type and Township
 
+```{r _outliers_table_township_summary}
+# This object is joined to itself using different filters, which is why this
+# filtering is applied here rather than below.
+outliers_table_township_summary <- training_data %>%
+  filter(meta_class != "200" & meta_triad_name == run_triad)
 
-## Top Decile Statistics
-```{r _outliers_top_decile_statistics}
-training_data %>%
-  arrange(meta_sale_price) %>%
-  mutate(decile = ntile(meta_sale_price, 10)) %>%
-  filter(decile == 10) %>%
+outliers_table_township_summary <- outliers_table_township_summary %>%
+  filter(sv_is_outlier) %>%
   summarise(
-    Min = min(meta_sale_price),
-    Median = median(meta_sale_price),
-    Mean = mean(meta_sale_price),
-    Max = max(meta_sale_price),
-    `Std dev` = sd(meta_sale_price),
-    .by = sv_is_outlier
+    `Min. Sale Price` = min(meta_sale_price, na.rm = TRUE),
+    `Med. Sale Price` = median(meta_sale_price, na.rm = TRUE),
+    `Max. Sale Price` = max(meta_sale_price, na.rm = TRUE),
+    Count = n(),
+    .by = c(sv_outlier_type, meta_township_name)
   ) %>%
-  rename("Sale category" = sv_is_outlier) %>%
-  mutate(across(Min:`Std dev`, dollar)) %>%
-  kable() %>%
-  kable_styling(full_width = TRUE)
+  left_join(
+    outliers_table_township_summary %>%
+      filter(!sv_is_outlier) %>%
+      summarise(
+        `Med. Non-Outlier Sale Price` = median(meta_sale_price, na.rm = TRUE),
+        .by = c(meta_township_name)
+      ),
+    by = join_by(meta_township_name)
+  ) %>%
+  mutate(across(contains("Sale"), dollar)) %>%
+  relocate(meta_township_name) %>%
+  dplyr::rename(
+    "Outlier Type" = sv_outlier_type,
+    "Township Name" = meta_township_name
+  ) %>%
+  arrange(`Township Name`, desc(Count))
+
+outliers_table_township_summary %>%
+  datatable(
+    rownames = FALSE,
+    filter = "top",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1)),
+        list(className = "dt-right", targets = c(2:6))
+      )
+    )
+  )
 ```
 
-## Outlier Count in Top Decile
-```{r _outlier_count_by_decile}
-y_lim_axis_outlier_by_decile <-
-  training_data %>%
-  arrange(meta_sale_price) %>%
-  mutate(decile = ntile(meta_sale_price, 10)) %>%
-  group_by(decile) %>%
-  summarise(percent = mean(
-    case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)
-  )) %>%
-  ungroup() %>%
-  slice_max(percent, n = 1) %>%
-  pull(percent)
+### By Outlier Type and Class
 
-ggplot(
-  training_data %>%
-    arrange(meta_sale_price) %>%
-    mutate(decile = ntile(meta_sale_price, 10)) %>%
-    summarise(
-      percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
-      .by = decile
-    ),
-  aes(x = decile, y = percent)
-) +
-  labs(title = "Share of Outliers", x = "Quantile") +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = scales::percent(percent, accuracy = .1)),
-    vjust = -0.1
-  ) +
-  theme_minimal() +
-  scale_y_continuous(
-    labels = scales::percent_format(),
-    limits = c(0, 1.05 * y_lim_axis_outlier_by_decile)
-  ) +
-  scale_x_continuous(breaks = seq(1, 10, 1)) +
-  theme(axis.title.y = element_blank())
+```{r _outliers_table_class_summary}
+outliers_table_class_summary <- training_data %>%
+  filter(meta_class != "200" & meta_triad_name == run_triad)
 
-y_lim_axis_outlier_top_decile <-
-  training_data %>%
-  arrange(meta_sale_price) %>%
-  mutate(decile = ntile(meta_sale_price, 10)) %>%
-  filter(decile == 10 & sv_outlier_type != "Not outlier") %>%
-  group_by(sv_outlier_type) %>%
-  summarise(count = n()) %>%
-  ungroup() %>%
-  slice_max(count, n = 1) %>%
-  pull(count)
+outliers_table_class_summary <- outliers_table_class_summary %>%
+  filter(sv_is_outlier) %>%
+  summarise(
+    `Min. Sale Price` = min(meta_sale_price, na.rm = TRUE),
+    `Med. Sale Price` = median(meta_sale_price, na.rm = TRUE),
+    `Max. Sale Price` = max(meta_sale_price, na.rm = TRUE),
+    Count = n(),
+    .by = c(sv_outlier_type, meta_class)
+  ) %>%
+  left_join(
+    outliers_table_class_summary %>%
+      filter(!sv_is_outlier) %>%
+      summarise(
+        `Med. Non-Outlier Sale Price` = median(meta_sale_price, na.rm = TRUE),
+        .by = c(meta_class)
+      ),
+    by = join_by(meta_class)
+  ) %>%
+  mutate(across(contains("Sale"), dollar)) %>%
+  relocate(meta_class) %>%
+  dplyr::rename(
+    "Outlier Type" = sv_outlier_type,
+    "Class" = meta_class
+  ) %>%
+  arrange(`Class`, desc(Count))
 
-ggplot(
-  training_data %>%
-    arrange(meta_sale_price) %>%
-    mutate(decile = ntile(meta_sale_price, 10)) %>%
-    filter(decile == 10 & sv_outlier_type != "Not outlier") %>%
-    summarise(count = n(), .by = sv_outlier_type),
-  aes(x = reorder(sv_outlier_type, -count), y = count)
-) +
-  labs(
-    y = "Number of Sales",
-    x = "Outlier Types"
-  ) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = comma(count)), vjust = -0.5) +
-  scale_y_continuous(
-    labels = comma,
-    limits = c(0, 1.05 * y_lim_axis_outlier_top_decile)
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 60, hjust = 1),
-    axis.text.y = element_text(angle = 45, hjust = 1),
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank()
+outliers_table_class_summary %>%
+  datatable(
+    rownames = FALSE,
+    filter = "top",
+    options = list(
+      columnDefs = list(
+        list(className = "dt-center", targets = c(1)),
+        list(className = "dt-right", targets = c(2:6))
+      )
+    )
   )
 ```
 
 :::
 
-## Big Misses
-
-What are the sales with the largest miss relative to town and price quartile?
-
-```{r _outliers_big_misses}
-qnt_df <- assessment_pin %>%
-  mutate(Town = ccao::town_convert(meta_township_code)) %>%
-  filter(
-    meta_triad_code == run_triad_code,
-    !is.na(sale_recent_1_price),
-    !is.na(pred_pin_final_fmv_round),
-    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
-  ) %>%
-  select(
-    PIN = meta_pin, Town, Class = meta_class,
-    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
-    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
-    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
-    `Est. FMV` = pred_pin_final_fmv_round
-  ) %>%
-  mutate(
-    Difference = abs(`Sale 1 Price` - `Est. FMV`),
-    `Qnt.` = cut(
-      `Sale 1 Price`,
-      breaks = quantile(`Sale 1 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
-      labels = c("Q1", "Q2", "Q3", "Q4"),
-      include.lowest = TRUE
-    ),
-    .by = Town
-  ) %>%
-  group_by(Town, `Qnt.`) %>%
-  slice_max(Difference, n = 1) %>%
-  arrange(-Difference) %>%
-  relocate(`Qnt.`, .after = "Town")
-
-qnt_df %>%
-  datatable(rownames = FALSE)
-```
-
-## Increase in Housing Value
-
-This section looks at the year over year change in assessed housing values. It separates the data into individual observations, identifying the PINs in each neighborhood/township which grew at the fastest rate. It also identifies the median rate of change for each neighborhood.
+## Grouped by Decile
 
 ::: panel-tabset
 
-## Map of Largest YOY Changes
+### Share of Outliers by Decile
 
-This map caps the legend at a 300% to increase legibility. It then plots the 10 largest year over year increases in assessed values by neighborhood.
-
-```{r _outliers_map_of_largest_change}
-largest_increases <- assessment_pin %>%
-  group_by(meta_nbhd_code) %>%
-  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
-  filter(!is.na(prior_near_yoy_change_pct)) %>%
+```{r _outliers_decile_share}
+training_data %>%
+  arrange(meta_sale_price) %>%
+  mutate(decile = ntile(meta_sale_price, 10)) %>%
+  summarise(
+    percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0)),
+    lower_bound_short = shorten_number(min(meta_sale_price)),
+    upper_bound_short = shorten_number(max(meta_sale_price)),
+    .by = decile
+  ) %>%
   mutate(
-    prior_near_yoy_change_pct = prior_near_yoy_change_pct * 100,
-    neighborhood_median_change = median(prior_near_yoy_change_pct)
-  ) %>%
-  slice_max(prior_near_yoy_change_pct, n = 10) %>%
-  mutate(capped_yoy_change = pmin(prior_near_yoy_change_pct, 300))
-
-nbhd_increases <- st_as_sf(largest_increases) %>%
-  distinct(meta_nbhd_code, .keep_all = TRUE)
-
-color_palette <-
-  colorNumeric(
-    palette = "PuRd",
-    domain = c(min(largest_increases$prior_near_yoy_change_pct), 300)
-  )
-
-leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
-  addPolygons(
-    data = nbhd_increases,
-    fillColor = "white",
-    weight = 1,
-    color = "black",
-    opacity = 1,
-    fillOpacity = 0.5
-  ) %>%
-  addCircleMarkers(
-    data = largest_increases,
-    ~loc_longitude,
-    ~loc_latitude,
-    color = ~ color_palette(capped_yoy_change),
-    opacity = 0.7,
-    fillOpacity = 0.7,
-    radius = 1,
-    popup = ~ paste0(
-      "PIN: ", meta_pin,
-      "<br>Class: ", meta_class,
-      "<br><br>",
-      "Neighborhood: ",
-      meta_nbhd_code,
-      "<br>Prior year (near) FMV: ",
-      scales::dollar(prior_near_tot),
-      "<br>Cur. year (rounded) FMV: ",
-      scales::dollar(pred_pin_final_fmv_round),
-      "<br>YoY Change: ",
-      round(prior_near_yoy_change_pct, 2), "%"
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = color_palette,
-    values = c(min(largest_increases$prior_near_yoy_change_pct), 300),
-    title = "YoY Change",
-    labFormat = labelFormat(suffix = "%")
-  ) %>%
-  setView(
-    lng = mean(largest_increases$loc_longitude),
-    lat = mean(largest_increases$loc_latitude),
-    zoom = 10
-  )
-```
-
-## Table of Largest YOY Changes
-
-This table excludes any PINs which had a prior year assessed value of less than $25,000. It then identifies the 5 PINs in each neighborhood which had the largest year over year increase in assessed value.
-
-```{r _outliers_table_of_largest_change}
-datatable(
-  largest_increases %>%
-    distinct(meta_pin, .keep_all = TRUE) %>%
-    filter(prior_near_tot > 25000) %>%
-    group_by(meta_township_code) %>%
-    slice_max(order_by = prior_near_yoy_change_nom, n = 5) %>%
-    ungroup() %>%
-    left_join(
-      select(chars_data, meta_pin, char_beds, char_rooms, char_fbath, meta_year),
-      by = "meta_pin"
-    ) %>%
-    filter(meta_year.y == 2022) %>%
-    distinct(meta_pin, .keep_all = TRUE) %>%
-    mutate(
-      Pin = meta_pin,
-      Township = meta_township_code,
-      Neighborhood = meta_nbhd_code,
-      Class = meta_class,
-      Address = loc_property_address,
-      "Predicted Value" = pred_pin_final_fmv_round,
-      "Previous Value" = prior_near_tot,
-      "Nominal Change" = prior_near_yoy_change_nom,
-      "Percent Change" = round(prior_near_yoy_change_pct, 2),
-      "Recent Sale Date" = sale_recent_1_date,
-      "Recent Sale Price" = sale_recent_1_price,
-      "Missing Critical Value" = flag_char_missing_critical_value,
-      "Year Built" = char_yrblt,
-      "Total Building SF" = char_total_bldg_sf,
-      Bedrooms = char_beds,
-      Rooms = char_rooms,
-      "Full Bathrooms" = char_fbath,
-      "Median Neighborhood Change" = round(neighborhood_median_change, 2)
-    ) %>%
-    select(
-      Pin,
-      Township,
-      Neighborhood,
-      Class,
-      Address,
-      `Predicted Value`,
-      `Previous Value`,
-      `Nominal Change`,
-      `Percent Change`,
-      `Recent Sale Date`,
-      `Recent Sale Price`,
-      `Missing Critical Value`,
-      `Year Built`,
-      `Total Building SF`,
-      Bedrooms,
-      Rooms,
-      `Full Bathrooms`,
-      `Median Neighborhood Change`
+    custom_label = paste0(
+      decile,
+      "\n[", lower_bound_short, "-\n", upper_bound_short, "]"
     ),
-  options = list(pageLength = 10, scrollX = TRUE),
-  filter = "top",
-  rownames = FALSE
-)
+    custom_label = forcats::fct_reorder(custom_label, decile)
+  ) %>%
+  ggplot(aes(x = custom_label, y = percent)) +
+  geom_bar(stat = "identity") +
+  geom_text(
+    aes(label = scales::percent(percent, accuracy = 0.1)),
+    vjust = 0,
+    nudge_y = 0.005
+  ) +
+  theme_minimal() +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, NA),
+    expand = expansion(add = c(0, 0.05))
+  ) +
+  scale_x_discrete(name = "Decile of Sale Price") +
+  theme(
+    axis.title.y = element_blank(),
+    panel.grid.major.x = element_blank()
+  )
 ```
 
-## Median Rate of Change by Neighborhood
+### Outlier Types in Top Decile
 
-```{r _outliers_map_of_neighborhood_change}
-breaks <- c(-Inf, 0, 20, 40, 60, 80, 100, Inf)
-labels <- c(
-  "< 0%", "0% - 20%", "20% - 40%", "40% - 60%",
-  "60% - 80%", "80% - 100%", "> 100%"
-)
+```{r _outliers_decile_top}
+outlier_decile_breakout <- function(data, dec) {
+  outlier_decile_y_axis_lim <- data %>%
+    arrange(meta_sale_price) %>%
+    mutate(decile = ntile(meta_sale_price, 10)) %>%
+    filter(decile == dec & sv_outlier_type != "Not outlier") %>%
+    group_by(sv_outlier_type) %>%
+    summarise(count = n()) %>%
+    ungroup() %>%
+    slice_max(count, n = 1) %>%
+    pull(count)
 
-nbhd_increases <- nbhd_increases %>%
-  mutate(
-    change_category = cut(
-      neighborhood_median_change,
-      breaks = breaks,
-      labels = labels,
-      include.lowest = TRUE
+  data %>%
+    arrange(meta_sale_price) %>%
+    mutate(decile = ntile(meta_sale_price, 10)) %>%
+    filter(decile == dec & sv_outlier_type != "Not outlier") %>%
+    summarise(count = n(), .by = sv_outlier_type) %>%
+    ggplot(aes(x = reorder(sv_outlier_type, -count), y = count)) +
+    labs(
+      y = "Number of Sales",
+      x = "Outlier Types"
+    ) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = comma(count)), vjust = -0.5) +
+    scale_y_continuous(
+      labels = comma,
+      limits = c(0, 1.05 * outlier_decile_y_axis_lim)
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 60, hjust = 1),
+      axis.text.y = element_text(angle = 45, hjust = 1),
+      axis.title.y = element_blank(),
+      axis.title.x = element_blank()
     )
-  )
+}
 
-palette <- colorFactor(
-  palette = c("#e34a33", "#ffffff", RColorBrewer::brewer.pal(6, "BuPu")),
-  domain = nbhd_increases$change_category
-)
-leaflet(data = nbhd_increases) %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
-  addPolygons(
-    fillColor = ~ palette(change_category),
-    color = "black",
-    weight = 1,
-    opacity = 1,
-    fillOpacity = 0.7,
-    smoothFactor = 0.5,
-    popup = ~ paste0(
-      "Township: ", township_name,
-      "<br>Neighborhood: ", meta_nbhd_code,
-      "<br>Change: ", round(neighborhood_median_change, 2), "%"
-    )
-  ) %>%
-  addLegend(
-    position = "bottomright",
-    pal = palette,
-    values = ~change_category,
-    title = "Median YoY Change",
-    opacity = 1
-  )
+outlier_decile_breakout(training_data, 10)
+```
+
+### Outlier Types in Bottom Decile
+
+```{r _outliers_decile_bottom}
+outlier_decile_breakout(training_data, 1)
 ```
 
 :::

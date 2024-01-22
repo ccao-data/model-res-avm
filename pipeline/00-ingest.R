@@ -31,7 +31,8 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 message("Pulling data from Athena")
 
 # Pull the training data, which contains actual sales + attached characteristics
-# from the residential input view
+# from the residential input view. Earlier years are included to help calculate
+# lagged features
 tictoc::tic("Training data pulled")
 training_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
@@ -49,9 +50,10 @@ training_data <- dbGetQuery(
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.year
-  WHERE res.year
-      BETWEEN '{params$input$min_sale_year}'
-      AND '{params$input$max_sale_year}'
+  WHERE CAST(res.year AS int)
+      BETWEEN CAST({params$input$min_sale_year} AS int) -
+        {params$input$n_years_prior}
+      AND CAST({params$input$max_sale_year} AS int)
   AND NOT sale.is_multisale
   AND NOT sale.sale_filter_same_sale_within_365
   AND NOT sale.sale_filter_less_than_10k
@@ -276,7 +278,48 @@ training_data_clean <- training_data_w_hie %>%
   )) %>%
   # Only exclude explicit outliers from training. Sales with missing validation
   # outcomes will be considered non-outliers
-  mutate(sv_is_outlier = replace_na(sv_is_outlier, FALSE)) %>%
+  mutate(
+    sv_is_outlier = replace_na(sv_is_outlier, FALSE),
+    sv_outlier_type = replace_na(sv_outlier_type, "Not outlier")
+  ) %>%
+  # Some Athena columns are stored as arrays but are converted to string on
+  # ingest. In such cases, take the first element and clean the string
+  mutate(
+    across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
+    across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
+    across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    # Miscellanous column-level cleanup
+    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    across(where(is.character), \(x) na_if(x, ""))
+  ) %>%
+  # Get a count of the number of sales that have occurred in the last n years
+  left_join(
+    left_join(
+      training_data %>%
+        select(meta_pin, meta_sale_document_num, meta_sale_date),
+      training_data %>%
+        filter(!sv_is_outlier) %>%
+        select(meta_pin, meta_sale_date),
+      by = "meta_pin",
+      relationship = "many-to-many"
+    ) %>%
+      # as.duration(1) excludes the same sale from being identified as within
+      # 3 years of itself
+      mutate(within_n_years = between(
+        meta_sale_date.x - meta_sale_date.y,
+        as.duration(1),
+        as.duration(years(params$input$n_years_prior))
+      )) %>%
+      # Distinct is necessary because of multicard sales
+      distinct() %>%
+      summarise(
+        meta_sale_count_past_n_years = as.numeric(
+          sum(within_n_years, na.rm = TRUE)
+        ),
+        .by = c("meta_pin", "meta_sale_document_num")
+      ),
+    by = c("meta_pin", "meta_sale_document_num")
+  ) %>%
   # Create time/date features using lubridate
   mutate(
     # Calculate interval periods and time since the start of the sales sample
@@ -292,23 +335,18 @@ training_data_clean <- training_data_w_hie %>%
     time_sale_day_of_year = as.integer(yday(meta_sale_date)),
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
-    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
-    # Time window to use for cross-validation during training. The last X% of
-    # each window is held out as a validation set
-    time_split = time_interval %/% months(params$input$time_split),
-    # Collapse the last 2 splits into their earlier neighbor. This is done
-    # because part of the final time window will be held out for the test set,
-    # which will shrink the last split to the point of being too small for CV
-    time_split = ifelse(
-      time_split > max(time_split) - 2,
-      max(time_split) - 2,
-      time_split
-    ),
-    time_split = as.character(time_split + 1),
-    time_split = factor(time_split, levels = sort(unique(time_split)))
+    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
-  select(-time_interval) %>%
+  select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
+  relocate("year", .after = everything()) %>%
+  relocate("meta_sale_count_past_n_years", .after = meta_sale_buyer_name) %>%
+  filter(between(
+    meta_sale_date,
+    make_date(params$input$min_sale_year, 1, 1),
+    make_date(params$input$max_sale_year, 12, 31)
+  )) %>%
+  as_tibble() %>%
   write_parquet(paths$input$training$local)
 
 
@@ -323,6 +361,42 @@ assessment_data_clean <- assessment_data_w_hie %>%
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
   )) %>%
+  # Same Athena string cleaning and feature cleanup as the training data
+  mutate(
+    across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
+    across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
+    across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    across(where(is.character), \(x) na_if(x, ""))
+  ) %>%
+  # Get a count of the number of sales that have occurred in the last n years
+  left_join(
+    left_join(
+      assessment_data %>% select(meta_pin),
+      training_data %>%
+        filter(!sv_is_outlier) %>%
+        select(meta_pin, meta_sale_date),
+      by = "meta_pin",
+      relationship = "many-to-many"
+    ) %>%
+      # as.duration(1) excludes the same sale from being identified as within
+      # 3 years of itself
+      mutate(within_n_years = between(
+        ymd(params$assessment$date) - as_date(meta_sale_date),
+        as.duration(1),
+        as.duration(years(params$input$n_years_prior))
+      )) %>%
+      # Distinct is necessary because of multicard sales
+      distinct() %>%
+      summarise(
+        meta_sale_count_past_n_years = as.numeric(
+          sum(within_n_years, na.rm = TRUE)
+        ),
+        .by = "meta_pin"
+      ),
+    by = "meta_pin",
+    relationship = "many-to-many"
+  ) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
@@ -341,6 +415,11 @@ assessment_data_clean <- assessment_data_w_hie %>%
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
+  select(-any_of(c("time_interval"))) %>%
+  relocate(starts_with("sv_"), .after = everything()) %>%
+  relocate("year", .after = everything()) %>%
+  relocate(starts_with("meta_sale_"), .after = hie_num_expired) %>%
+  as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 
 

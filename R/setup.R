@@ -81,6 +81,18 @@ upload_enable <- as.logical(Sys.getenv(
   unset = get(params_obj_name)$toggle$upload_enable
 ))
 
+# If in a CI context, use the run note passed to the workflow. Otherwise, use
+# the note included in params.yaml
+run_note <- as.character(
+  Sys.getenv("WORKFLOW_RUN_NOTE", unset = get(params_obj_name)$run_note)
+)
+
+# Check to see if LightGBM early stopping is enabled based on engine parameters
+early_stopping_enable <-
+  get(params_obj_name)$model$parameter$validation_prop > 0 &&
+    !is.null(get(params_obj_name)$model$parameter$stop_iter) && # nolint
+    get(params_obj_name)$model$parameter$stop_iter > 0 # nolint
+
 # Load any additional PINs to generate reports for from environment
 report_pins <- unique(c(
   params$ratio_study$pins,

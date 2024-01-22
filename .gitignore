@@ -24,5 +24,8 @@ cache/
 *.html
 *.rmarkdown
 
+# Ignore scratch documents
+scratch*.*
+
 # Python files
 __pycache__

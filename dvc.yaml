@@ -26,7 +26,6 @@ stages:
     - input/training_data.parquet
     params:
     - cv
-    - input.time_split
     - model.engine
     - model.hyperparameter
     - model.objective
