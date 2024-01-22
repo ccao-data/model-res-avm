@@ -30,7 +30,7 @@ message("Preparing model training data")
 # there is multiple buildings on a PIN. Since these sales include multiple
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier, meta_triad_name == "City") %>%
+  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
@@ -66,7 +66,7 @@ lin_recipe <- model_lin_recipe(
   data = training_data_full %>%
     mutate(meta_sale_price = log(meta_sale_price)),
   pred_vars = params$model$predictor$all,
-  cat_vars = c(params$model$predictor$categorical, "loc_census_tract_geoid"),
+  cat_vars = c(params$model$predictor$categorical, "meta_nbhd_code"),
   id_vars = params$model$predictor$id
 )
 

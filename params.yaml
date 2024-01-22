@@ -249,7 +249,6 @@ model:
       - "char_type_resd"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
-      - "time_sale_quarter_of_year"
 
     # List of identifiers for each observation, can be ignored
     id:
