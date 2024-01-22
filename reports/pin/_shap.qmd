@@ -3,37 +3,25 @@
 ## SHAP Values
 
 ```{r _pin_shap_data_manipulation}
-shap_df_filtered <- shap_df %>%
-  left_join(
-    assessment_card %>%
-      mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
-      select(meta_year, meta_pin, meta_card_num, meta_triad),
-    by = c("meta_year", "meta_pin", "meta_card_num"),
-    relationship = "many-to-many"
-  ) %>%
-  arrange(meta_pin, meta_card_num)
+shap_predictors <- unlist(metadata$model_predictor_all_name)
 
-shap_predictors <- names(shap_df_filtered)
-shap_predictors <- shap_predictors[!shap_predictors %in% c(
-  "meta_year",
-  "meta_pin",
-  "meta_card_num",
-  "pred_card_shap_baseline_fmv",
-  "township_code",
-  "meta_triad"
-)]
+shap_df_filtered <- shap_df %>%
+  mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
+  filter(meta_triad == run_triad_code) %>%
+  arrange(meta_pin, meta_card_num)
 
 assessment_card_filtered <- assessment_card %>%
   mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
+  filter(meta_triad == run_triad_code) %>%
   arrange(meta_pin, meta_card_num)
 
-townships_to_iterate <- shap_df_filtered %>%
+shap_townships_to_iterate <- shap_df_filtered %>%
   distinct(township_code) %>%
   pull() %>%
   as.character()
 
 shap_idx_full_model <- which(
-  assessment_card_filtered$meta_township_code %in% townships_to_iterate
+  assessment_card_filtered$meta_township_code %in% shap_townships_to_iterate
 )
 
 shap_df_filtered <- shap_df_filtered %>%
@@ -59,26 +47,33 @@ create_shap_viz <- function(row_idx) {
       slice(row_idx),
     baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
   ) %>%
-    sv_waterfall(
-      max_display = 15L
-    )
+    sv_waterfall(max_display = 15L)
 
   return(shapviz_object)
 }
 
-num_rows <- nrow(shap_df_filtered)
+shap_num_rows <- nrow(shap_df_filtered)
 ```
 
 ::: {.panel-tabset}
 
 ```{r _pin_shap_results, results = 'asis'}
-results <- vector("list", length = num_rows)
+results <- vector("list", length = shap_num_rows)
 
-for (i in 1:num_rows) {
+for (i in seq_len(shap_num_rows)) {
   cat("##", "Card ", shap_df_filtered$meta_card_num[i], "\n")
 
   results[[i]] <- create_shap_viz(i) +
-    scale_x_continuous(labels = scales::dollar, expand = c(0.1, 0))
+    labs(x = "Mean Abs. SHAP Value") +
+    scale_x_continuous(
+      labels = scales::dollar,
+      expand = expansion(mult = c(0.05, 0.1))
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.title.x = element_text(margin = margin(t = 10))
+    )
 
   print(results[[i]])
 
