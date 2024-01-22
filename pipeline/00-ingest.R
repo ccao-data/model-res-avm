@@ -386,6 +386,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
       # as.duration(1) excludes the same sale from being identified as within
       # 3 years of itself
       mutate(within_n_years = between(
+        # Here we're looking back from the lien date instead of the sale date,
+        # as in the training data
         ymd(params$assessment$date) - as_date(meta_sale_date),
         as.duration(1),
         as.duration(years(params$input$n_years_prior))
@@ -393,8 +395,14 @@ assessment_data_clean <- assessment_data_w_hie %>%
       # Distinct is necessary because of multicard sales
       distinct() %>%
       summarise(
+        # Subtract 1 from the count of prior sales. The reasoning here is
+        # difficult, but basically: in the training data, this feature only has
+        # a count > 0 conditional on multiple sales. In the assessment data, if
+        # we count the lien date as a sale, the "multiple sales" conditional
+        # isn't technically true. Therefore, we subtract 1 from the count to
+        # make the feature consistent between the training and assessment data
         meta_sale_count_past_n_years = as.numeric(
-          sum(within_n_years, na.rm = TRUE)
+          pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
         .by = "meta_pin"
       ),
