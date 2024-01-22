@@ -98,29 +98,51 @@ shap_df_filtered %>%
   select_if(is.numeric) %>%
   select(-any_of("township_code")) %>%
   mutate(
-    `Chars.` = rowSums(select(., starts_with("char")), na.rm = TRUE),
-    ACS5 = rowSums(select(., starts_with("acs5")), na.rm = TRUE),
-    Time = rowSums(select(., starts_with("time")), na.rm = TRUE),
-    Location = rowSums(select(., starts_with("loc")), na.rm = TRUE) +
-      ccao_is_corner_lot - loc_school_secondary_district_geoid -
-      loc_school_elementary_district_geoid + other_tax_bill_rate,
-    Proximity = rowSums(select(., starts_with("prox")), na.rm = TRUE),
+    `Chars.` = rowSums(select(., starts_with("char_")), na.rm = TRUE),
+    ACS5 = rowSums(select(., starts_with("acs5_")), na.rm = TRUE),
+    Time = rowSums(select(., starts_with("time_")), na.rm = TRUE),
+    Location = rowSums(select(
+      .,
+      starts_with("loc_"),
+      -any_of(c(
+        "loc_school_elementary_district_geoid",
+        "loc_school_secondary_district_geoid"
+      )),
+      any_of(c("ccao_is_corner_lot", "other_tax_bill_rate"))
+    ), na.rm = TRUE),
+    Proximity = rowSums(select(., starts_with("prox_")), na.rm = TRUE),
     School = rowSums(select(., any_of(c(
       "other_school_district_elementary_avg_rating",
       "other_school_district_secondary_avg_rating",
       "loc_school_elementary_district_geoid",
       "loc_school_secondary_district_geoid"
     ))), na.rm = TRUE),
-    Baseline = pred_card_shap_baseline_fmv,
-    Meta = rowSums(select(., starts_with("meta")), na.rm = TRUE)
+    Meta = rowSums(select(., starts_with("meta_")), na.rm = TRUE),
+    Other = rowSums(select(
+      .,
+      -starts_with("char_"),
+      -starts_with("acs5_"),
+      -starts_with("time_"),
+      -starts_with("loc_"),
+      -starts_with("prox_"),
+      -starts_with("meta_"),
+      -any_of(c(
+        "other_school_district_elementary_avg_rating",
+        "other_school_district_secondary_avg_rating",
+        "ccao_is_corner_lot",
+        "other_tax_bill_rate"
+      )),
+      -any_of(c("PIN", "Card", "pred_card_shap_baseline_fmv"))
+    ), na.rm = TRUE)
   ) %>%
   arrange(PIN, Card) %>%
   select(
-    Card, Baseline, `Chars.`, ACS5, Time,
-    Location, Proximity, School, Meta
+    Card,
+    Baseline = pred_card_shap_baseline_fmv, `Chars.`, ACS5, Time,
+    Location, Proximity, School, Other, Meta
   ) %>%
   mutate(across(2:ncol(.), ~ scales::dollar(.x, accuracy = 1))) %>%
-  kable(align = "lrrrrrrrr") %>%
+  kable(align = "lrrrrrrrrr") %>%
   kable_styling(
     "striped",
     position = "left",
