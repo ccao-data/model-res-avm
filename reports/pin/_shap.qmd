@@ -96,7 +96,7 @@ shap_df_filtered %>%
   mutate(PIN = as.numeric(meta_pin)) %>%
   mutate(Card = as.numeric(meta_card_num)) %>%
   select_if(is.numeric) %>%
-  select(-township_code) %>%
+  select(-any_of("township_code")) %>%
   mutate(
     `Chars.` = rowSums(select(., starts_with("char")), na.rm = TRUE),
     ACS5 = rowSums(select(., starts_with("acs5")), na.rm = TRUE),
