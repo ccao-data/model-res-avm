@@ -144,7 +144,6 @@ model:
     all:
       - "meta_township_code"
       - "meta_nbhd_code"
-      - "meta_sale_count_past_n_years"
       - "char_yrblt"
       - "char_air"
       - "char_apts"
@@ -167,7 +166,6 @@ model:
       - "char_tp_dsgn"
       - "char_type_resd"
       - "char_recent_renovation"
-      - "char_class"
       - "loc_longitude"
       - "loc_latitude"
       - "loc_env_flood_fs_factor"
@@ -235,6 +233,7 @@ model:
     # else LightGBM will treat them as numeric
     categorical:
       - "meta_township_code"
+      - "meta_nbhd_code"
       - "char_air"
       - "char_apts"
       - "char_bsmt"
