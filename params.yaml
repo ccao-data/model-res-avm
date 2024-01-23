@@ -327,9 +327,9 @@ model:
       max_cat_threshold: 165
       min_data_per_group: 300
       cat_smooth: 82.0
-      cat_l2: 0.05
-      lambda_l1: 0.002
-      lambda_l2: 0.005
+      cat_l2: 1.00
+      lambda_l1: 0.022
+      lambda_l2: 0.152
 
     # Range of possible hyperparameter values for tuning to explore
     range:
