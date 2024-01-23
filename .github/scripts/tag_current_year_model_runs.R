@@ -36,7 +36,7 @@ run_ids <- raw_args[[1]] %>%
 # the current year
 run_id_is_valid <- function(run_id, year) {
   artifacts <- model_get_s3_artifacts_for_run(run_id, year)
-  artifacts <- artifacts[str_detect(artifacts, "^.*metadata.*$")]
+  artifacts <- artifacts[stringr::str_detect(artifacts, "^.*metadata.*$")]
   output <- artifacts %>%
     sapply(aws.s3::object_exists) %>%
     all()
@@ -55,8 +55,9 @@ if (!all(valid_run_ids)) {
     stop()
 }
 
-"Tagging runs with type - {run_type} - in year {year}: {run_ids}" %>%
+"Tagging runs with type \"{run_type}\" in year {year}: {run_ids}" %>%
   glue::glue() %>%
   print()
 
-run_ids %>% sapply(model_tag_run, year = year)
+run_ids %>%
+  purrr::walk(~ model_tag_run(run_id = .x, year = year, run_type = run_type))
