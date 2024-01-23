@@ -146,6 +146,7 @@ model:
       - "meta_nbhd_code"
       - "meta_modeling_group"
       - "meta_tieback_proration_rate"
+      - "meta_sale_count_past_n_years"
       - "char_yrblt"
       - "char_air"
       - "char_apts"
