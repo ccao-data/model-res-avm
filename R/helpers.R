@@ -20,6 +20,8 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
       stop("year cannot be an empty string")
     } else if (!stringr::str_detect(year, "^[0-9]{4}$")) {
       stop("year must be a four-digit number")
+    } else if (is.numeric(year)) {
+      stop("year must be a string")
     }
   }
 
