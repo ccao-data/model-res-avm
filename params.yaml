@@ -142,6 +142,8 @@ model:
     # Vector of predictors from the training data included in the model. Edit
     # this list to add or remove variables from the model
     all:
+      - "loc_census_puma_geoid"
+      - "loc_census_tract_geoid"
       - "meta_township_code"
       - "meta_nbhd_code"
       - "meta_modeling_group"
@@ -232,6 +234,8 @@ model:
     # It is CRITICAL that any categorical variables are included in this list,
     # else LightGBM will treat them as numeric
     categorical:
+      - "loc_census_puma_geoid"
+      - "loc_census_tract_geoid"
       - "meta_township_code"
       - "meta_nbhd_code"
       - "meta_modeling_group"
