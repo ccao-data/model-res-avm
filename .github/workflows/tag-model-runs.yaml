@@ -61,7 +61,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_TAGGIN_ARN }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_TAGGING_ARN }}
           aws-region: us-east-1
 
       - name: Tag model runs
