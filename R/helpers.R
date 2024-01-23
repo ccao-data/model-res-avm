@@ -104,6 +104,14 @@ model_delete_run <- function(run_id, year) {
     purrr::walk(aws.s3::delete_object)
 }
 
+# Used to tag existing runs by updating the metadata `run_type` field
+model_tag_run <- function(run_id, year, run_type) {
+  paths <- model_file_dict(run_id, year)
+  arrow::read_parquet(paths$output$metadata$s3) %>%
+    dplyr::mutate(run_type = run_type) %>%
+    arrow::write_parquet(paths$output$metadata$s3)
+}
+
 # Used to fetch a run's output from S3 and populate it locally. Useful for
 # running reports and performing local troubleshooting
 # nolint start: cyclocomp_linter
