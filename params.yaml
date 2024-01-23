@@ -194,6 +194,7 @@ model:
       - "prox_nearest_railroad_dist_ft"
       - "prox_nearest_secondary_road_dist_ft"
       - "prox_nearest_university_dist_ft"
+      - "prox_nearest_vacant_land_dist_ft"
       - "prox_nearest_water_dist_ft"
       - "prox_nearest_golf_course_dist_ft"
       - "acs5_percent_age_children"
