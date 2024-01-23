@@ -97,6 +97,7 @@ if (!run_type %in% possible_run_types) {
     paste0(possible_run_types, collapse = ", ")
   )
 }
+rm(possible_run_types)
 
 # Check to see if LightGBM early stopping is enabled based on engine parameters
 early_stopping_enable <-
