@@ -65,7 +65,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Tag model runs
-        run: Rscript ./.github/scripts/tag_current_year_model_runs.R "${RUN_IDS// /,}"
+        run: Rscript ./.github/scripts/tag_current_year_model_runs.R "${RUN_IDS// /,}" "$RUN_TYPE"
         shell: bash
         env:
           RUN_TYPE: ${{ inputs.run_type }}
