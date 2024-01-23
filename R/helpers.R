@@ -5,6 +5,24 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   wd <- here::here()
   suppressPackageStartupMessages(library(magrittr))
 
+  if (!is.null(run_id)) {
+    if (run_id == "") {
+      stop("run_id cannot be an empty string")
+    } else if (!stringr::str_detect(run_id, "^[a-z0-9]+(?:[-][a-z0-9]+)*$")) {
+      stop("run_id must contain only alphanumeric characters and hyphens")
+    } else if (!stringr::str_detect(run_id, "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z]*-[a-z]*")) { # nolint
+      stop("run_id must be in the format YYYY-MM-DD-<adjective>-<person>")
+    }
+  }
+
+  if (!is.null(year)) {
+    if (year == "") {
+      stop("year cannot be an empty string")
+    } else if (!stringr::str_detect(year, "^[0-9]{4}$")) {
+      stop("year must be a four-digit number")
+    }
+  }
+
   # Convert flat dictionary file to nested list
   dict <- read.csv(
     here::here("misc", "file_dict.csv"),
