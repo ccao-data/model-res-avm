@@ -9,6 +9,8 @@ property should equal the difference between the predicted value and the baselin
 
 ## Overall Feature Importance
 
+Aggregate feature importance scores ***for the target triad***. The length of the bars corresponds to the `Mean Abs.` column in the table below.
+
 ```{r _shap_filtering, warning=FALSE}
 shap_predictors <- unlist(metadata$model_predictor_all_name)
 
@@ -44,39 +46,6 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
     baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
   )
 }
-```
-
-```{r _shap_triad_table}
-shap_df_filtered_long %>%
-  group_by(feature) %>%
-  summarize(
-    `Mean Abs.` = mean(abs(shap)),
-    `Median Abs.` = median(abs(shap)),
-    Mean = mean(shap),
-    Median = median(shap),
-    SD = sd(shap),
-    `Min.` = min(shap),
-    `Max.` = max(shap)
-  ) %>%
-  mutate(`Rel. Imp.` = `Mean Abs.` / sum(`Mean Abs.`)) %>%
-  relocate(`Rel. Imp.`, .after = feature) %>%
-  arrange(desc(`Mean Abs.`)) %>%
-  mutate(
-    across(`Mean Abs.`:`Max.`, ~ scales::dollar(.x, accuracy = 0.01)),
-    `Rel. Imp.` = scales::percent(`Rel. Imp.`, accuracy = 0.01)
-  ) %>%
-  rename(Feature = feature) %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-nowrap dt-right",
-          targets = c(1:8)
-        )
-      )
-    )
-  )
 ```
 
 ```{r _shap_triad_plot, warning=FALSE}
@@ -115,11 +84,9 @@ shapviz::shapviz(
   )
 ```
 
-## Feature Importance by Township
-
-```{r _shap_township_table}
+```{r _shap_triad_table}
 shap_df_filtered_long %>%
-  group_by(feature, township_code) %>%
+  group_by(feature) %>%
   summarize(
     `Mean Abs.` = mean(abs(shap)),
     `Median Abs.` = median(abs(shap)),
@@ -129,36 +96,28 @@ shap_df_filtered_long %>%
     `Min.` = min(shap),
     `Max.` = max(shap)
   ) %>%
-  mutate(
-    `Rel. Imp.` = `Mean Abs.` / sum(`Mean Abs.`),
-    township_code = ccao::town_convert(as.character(township_code))
-  ) %>%
-  relocate(township_code, .before = everything()) %>%
+  mutate(`Rel. Imp.` = `Mean Abs.` / sum(`Mean Abs.`)) %>%
   relocate(`Rel. Imp.`, .after = feature) %>%
-  arrange(township_code, desc(`Mean Abs.`)) %>%
+  arrange(desc(`Mean Abs.`)) %>%
   mutate(
     across(`Mean Abs.`:`Max.`, ~ scales::dollar(.x, accuracy = 0.01)),
     `Rel. Imp.` = scales::percent(`Rel. Imp.`, accuracy = 0.01)
   ) %>%
-  rename(Township = township_code, Feature = feature) %>%
+  rename(Feature = feature) %>%
   datatable(
     rownames = FALSE,
-    filter = "top",
     options = list(
       columnDefs = list(
         list(
           className = "dt-nowrap dt-right",
-          targets = c(2:9),
-          searchable = FALSE
-        ),
-        list(
-          className = "dt-nowrap",
-          targets = 0
+          targets = c(1:8)
         )
       )
     )
   )
 ```
+
+## Feature Importance by Township
 
 ::: {.panel-tabset}
 
@@ -195,3 +154,48 @@ for (township in shap_townships_list) {
 ```
 
 :::
+
+```{r _shap_township_table}
+shap_df_filtered_long %>%
+  group_by(feature, township_code) %>%
+  summarize(
+    `Mean Abs.` = mean(abs(shap)),
+    `Median Abs.` = median(abs(shap)),
+    Mean = mean(shap),
+    Median = median(shap),
+    SD = sd(shap),
+    `Min.` = min(shap),
+    `Max.` = max(shap)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    `Rel. Imp.` = `Mean Abs.` / sum(`Mean Abs.`),
+    township_code = ccao::town_convert(as.character(township_code)),
+    .by = township_code
+  ) %>%
+  relocate(township_code, .before = everything()) %>%
+  relocate(`Rel. Imp.`, .after = feature) %>%
+  arrange(township_code, desc(`Mean Abs.`)) %>%
+  mutate(
+    across(`Mean Abs.`:`Max.`, ~ scales::dollar(.x, accuracy = 0.01)),
+    `Rel. Imp.` = scales::percent(`Rel. Imp.`, accuracy = 0.01)
+  ) %>%
+  rename(Township = township_code, Feature = feature) %>%
+  datatable(
+    rownames = FALSE,
+    filter = "top",
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-nowrap dt-right",
+          targets = c(2:9),
+          searchable = FALSE
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = 0
+        )
+      )
+    )
+  )
+```
