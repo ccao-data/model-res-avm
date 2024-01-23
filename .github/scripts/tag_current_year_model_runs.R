@@ -28,18 +28,19 @@ run_ids <- raw_args[[1]] %>%
   strsplit(split = ",", fixed = TRUE) %>%
   unlist()
 
-"Confirming artifacts exist for run IDs in year {year}: {raw_run_ids}" %>%
+"Confirming artifacts exist for run IDs in year {year}: {run_ids}" %>%
   glue::glue() %>%
   print()
 
 # We consider a run ID to be valid if it has any matching data in S3 for
 # the current year
 run_id_is_valid <- function(run_id, year) {
-  return(
-    model_get_s3_artifacts_for_run(run_id, year) %>%
-      sapply(aws.s3::object_exists) %>%
-      any()
-  )
+  artifacts <- model_get_s3_artifacts_for_run(run_id, year)
+  artifacts <- artifacts[str_detect(artifacts, "^.*metadata.*$")]
+  output <- artifacts %>%
+    sapply(aws.s3::object_exists) %>%
+    all()
+  return(output)
 }
 
 # Check for validity of the tag operation
@@ -58,4 +59,4 @@ if (!all(valid_run_ids)) {
   glue::glue() %>%
   print()
 
-run_ids %>% sapply(model_delete_run, year = year)
+run_ids %>% sapply(model_tag_run, year = year)
