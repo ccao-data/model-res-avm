@@ -63,6 +63,7 @@ metadata <- tibble::tibble(
   assessment_data_year = params$assessment$data_year,
   input_min_sale_year = params$input$min_sale_year,
   input_max_sale_year = params$input$max_sale_year,
+  input_n_years_prior = params$input$n_years_prior,
   input_complex_match_exact = list(params$input$complex$match_exact),
   input_complex_match_fuzzy_name = list(
     names(params$input$complex$match_fuzzy)
