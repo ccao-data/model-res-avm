@@ -23,21 +23,10 @@ year <- if (current_month < "05") {
 
 # Convert the comma-delimited input to a vector of run IDs
 raw_args <- commandArgs(trailingOnly = TRUE)
+run_type <- raw_args[[2]]
 run_ids <- raw_args[[1]] %>%
   strsplit(split = ",", fixed = TRUE) %>%
   unlist()
-
-run_type <- raw_args[[2]]
-possible_run_types <- c(
-  "junk", "rejected", "test",
-  "baseline", "candidate", "final"
-)
-if (!run_type %in% possible_run_types) {
-  stop(
-    "Invalid run type '", run_type, "'. Must be one of: ",
-    paste0(possible_run_types, collapse = ", ")
-  )
-}
 
 "Confirming artifacts exist for run IDs in year {year}: {raw_run_ids}" %>%
   glue::glue() %>%
