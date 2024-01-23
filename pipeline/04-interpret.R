@@ -207,7 +207,7 @@ if (comp_enable) {
     }) %>%
     cbind(
       pin = assessment_data$meta_pin,
-      card = assessment_data$meta_card_num,
+      card = assessment_data$meta_card_num
     ) %>%
     relocate(pin, card) %>%
     rename_with(\(colname) gsub("comp_idx_", "comp_pin_", colname))
