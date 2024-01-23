@@ -785,6 +785,8 @@ est_v_actual_plotly_class(test_card, pred_card_initial_fmv_lin)
 - **Frequency** is the percentage representing the relative number of times a particular feature occurs in the trees of the model. In the above example, if `feature1` occurred in 2 splits, 1 split and 3 splits in each of `tree1`, `tree2` and `tree3`; then the weight for `feature1` will be `2 + 1 + 3 = 6`. The frequency for `feature1` is calculated as its percentage weight over weights of all features.
 
 _NOTE: These metrics apply to ALL triads, not just the triad being re-assessed._
+  
+***CRITICAL NOTE: Feature importance metrics for categorical features do not always align with reality/intuition when mixed with numeric predictors. Use the SHAP feature importance metrics below if available. See [here](https://www.kaggle.com/code/mlisovyi/beware-of-categorical-features-in-lgbm) for a minimal example of this behavior.***
 
 ```{r _model_feature_importance_function}
 # Feature importance bar chart function
