@@ -1,0 +1,72 @@
+# Workflow that can be manually dispatched to tag existing model runs with
+# a new run type (e.g. `test`, `baseline`, `candidate`, `final`).
+#
+# Gated such that it's impossible to tag runs older than the current
+# assessment cycle, where each assessment cycle starts in April.
+
+name: tag-model-runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_type:
+        type: choice
+        description: New/replacement run type to apply to specified runs
+        options:
+        - junk
+        - rejected
+        - test
+        - baseline
+        - candidate
+        - final
+        default: test
+        required: true
+      run-ids:
+        description: >
+          Run IDs: Space-delimited list of IDs of model runs to re-tag with
+          a new run type. Note that the workflow assumes these IDs correspond
+          to model runs for the current assessment cycle, and if that's not the
+          case the tagging script will raise an error.
+        required: true
+        type: string
+        default: 2024-01-01-foo-bar 2024-01-02-bar-baz
+
+jobs:
+  tag-model-runs:
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to interact with GitHub's OIDC Token endpoint so we can auth AWS
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repo code
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install system dependencies
+        run: sudo apt-get install libgit2-dev
+        shell: bash
+
+      - name: Disable renv sandbox to speed up install time
+        run: echo "RENV_CONFIG_SANDBOX_ENABLED=FALSE" >> .Renviron
+        shell: bash
+
+      - name: Setup renv
+        uses: r-lib/actions/setup-renv@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_TAGGIN_ARN }}
+          aws-region: us-east-1
+
+      - name: Tag model runs
+        run: Rscript ./.github/scripts/tag_current_year_model_runs.R "${RUN_IDS// /,}"
+        shell: bash
+        env:
+          RUN_TYPE: ${{ inputs.run_type }}
+          RUN_IDS: ${{ inputs.run-ids }}
