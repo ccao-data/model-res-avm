@@ -4,7 +4,7 @@ import pandas as pd
 
 # The number of bins to create for when binning data by sale price; e.g. if
 # this value is 10, the data will be binned into deciles
-NUM_PRICE_BINS = 30
+NUM_PRICE_BINS = 10
 
 
 def get_comps(
