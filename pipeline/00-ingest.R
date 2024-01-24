@@ -71,6 +71,8 @@ sales_flags <- read_parquet(paste0(
 
 # Replace the old flags with the new flags by reference
 library(data.table)
+conflicts_prefer(dplyr::between)
+conflict_prefer_all("lubridate")
 setDT(training_data)
 setDT(sales_flags)
 
