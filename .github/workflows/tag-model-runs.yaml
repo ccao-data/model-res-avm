@@ -21,7 +21,7 @@ on:
         - final
         default: test
         required: true
-      run-ids:
+      run_ids:
         description: >
           Run IDs: Space-delimited list of IDs of model runs to re-tag with
           a new run type. Note that the workflow assumes these IDs correspond
@@ -69,4 +69,4 @@ jobs:
         shell: bash
         env:
           RUN_TYPE: ${{ inputs.run_type }}
-          RUN_IDS: ${{ inputs.run-ids }}
+          RUN_IDS: ${{ inputs.run_ids }}
