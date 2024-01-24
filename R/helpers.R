@@ -120,7 +120,7 @@ model_tag_run <- function(run_id, year, run_type) {
     )
   }
   arrow::read_parquet(paths$output$metadata$s3) %>%
-    dplyr::mutate(run_type = run_type) %>%
+    dplyr::mutate(run_type = {{ run_type }}) %>%
     arrow::write_parquet(paths$output$metadata$s3)
 }
 
