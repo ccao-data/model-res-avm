@@ -69,8 +69,9 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/20-container-env-var-masks-can-cause-cloudwatch-logs-link-to-get-masked
     with:
+      ref: jeancochrane/20-container-env-var-masks-can-cause-cloudwatch-logs-link-to-get-masked
       backend: "ec2"
       vcpu: "40"
       memory: "158000"
@@ -80,11 +81,8 @@ jobs:
       # Disable Batch job status polling since this workflow often takes
       # more than 6 hours
       poll_for_status: false
-    secrets:
-      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      CONTAINER_ENV_VARS: |
-        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
+      # Set these env vars in the container
+      container_env_vars: |
         WORKFLOW_RUN_TYPE=${{ inputs.run_type }}
         WORKFLOW_RUN_NOTE=${{ inputs.run_note }}
         UPLOAD_ENABLE_OVERRIDE=${{ inputs.upload_enable }}
@@ -92,3 +90,10 @@ jobs:
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
         REPORT_ADDITIONAL_PINS=${{ inputs.report_additional_pins }}
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      # Set these env vars as secrets so they get masked in the GitHub
+      # Actions logs
+      CONTAINER_ENV_VARS: |
+        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
