@@ -69,9 +69,8 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/20-container-env-var-masks-can-cause-cloudwatch-logs-link-to-get-masked
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
-      ref: jeancochrane/20-container-env-var-masks-can-cause-cloudwatch-logs-link-to-get-masked
       backend: "ec2"
       vcpu: "40"
       memory: "158000"
