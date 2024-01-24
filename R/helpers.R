@@ -5,6 +5,26 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   wd <- here::here()
   suppressPackageStartupMessages(library(magrittr))
 
+  if (!is.null(run_id)) {
+    if (run_id == "") {
+      stop("run_id cannot be an empty string")
+    } else if (!stringr::str_detect(run_id, "^[a-z0-9]+(?:[-][a-z0-9]+)*$")) {
+      stop("run_id must contain only alphanumeric characters and hyphens")
+    } else if (!stringr::str_detect(run_id, "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z]*-[a-z]*")) { # nolint
+      stop("run_id must be in the format YYYY-MM-DD-<adjective>-<person>")
+    }
+  }
+
+  if (!is.null(year)) {
+    if (year == "") {
+      stop("year cannot be an empty string")
+    } else if (!stringr::str_detect(year, "^[0-9]{4}$")) {
+      stop("year must be a four-digit number")
+    } else if (is.numeric(year)) {
+      stop("year must be a string")
+    }
+  }
+
   # Convert flat dictionary file to nested list
   dict <- read.csv(
     here::here("misc", "file_dict.csv"),
@@ -84,6 +104,24 @@ model_get_s3_artifacts_for_run <- function(run_id, year) {
 model_delete_run <- function(run_id, year) {
   model_get_s3_artifacts_for_run(run_id, year) %>%
     purrr::walk(aws.s3::delete_object)
+}
+
+# Used to tag existing runs by updating the metadata `run_type` field
+model_tag_run <- function(run_id, year, run_type) {
+  paths <- model_file_dict(run_id, year)
+  possible_run_types <- c(
+    "junk", "rejected", "test",
+    "baseline", "candidate", "final"
+  )
+  if (!run_type %in% possible_run_types) {
+    stop(
+      "Invalid run type '", run_type, "'. Must be one of: ",
+      paste0(possible_run_types, collapse = ", ")
+    )
+  }
+  arrow::read_parquet(paths$output$metadata$s3) %>%
+    dplyr::mutate(run_type = run_type) %>%
+    arrow::write_parquet(paths$output$metadata$s3)
 }
 
 # Used to fetch a run's output from S3 and populate it locally. Useful for
