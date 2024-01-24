@@ -50,6 +50,7 @@ dvc_md5_df <- bind_rows(read_yaml("dvc.lock")$stages$ingest$outs) %>%
 metadata <- tibble::tibble(
   run_id = run_id,
   run_end_timestamp = run_end_timestamp,
+  run_type = run_type,
   run_note = run_note,
   git_sha_short = substr(git_commit$sha, 1, 8),
   git_sha_long = git_commit$sha,

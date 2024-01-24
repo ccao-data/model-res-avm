@@ -1,26 +1,38 @@
-# Workflow that can be manually dispatched to delete test model runs that
-# do not need to be persisted indefinitely.
+# Workflow that can be manually dispatched to tag existing model runs with
+# a new run type (e.g. `test`, `baseline`, `candidate`, `final`).
 #
-# Gated such that it's impossible to delete runs older than the current
+# Gated such that it's impossible to tag runs older than the current
 # assessment cycle, where each assessment cycle starts in April.
 
-name: delete-model-runs
+name: tag-model-runs
 
 on:
   workflow_dispatch:
     inputs:
+      run_type:
+        type: choice
+        description: New/replacement run type to apply to specified runs
+        options:
+        - junk
+        - rejected
+        - test
+        - baseline
+        - candidate
+        - final
+        default: test
+        required: true
       run_ids:
         description: >
-          Run IDs: Space-delimited list of IDs of model runs to delete. Note
-          that the workflow assumes these IDs correspond to model runs for the
-          current assessment cycle, and if that's not the case the deletion
-          script will raise an error.
+          Run IDs: Space-delimited list of IDs of model runs to re-tag with
+          a new run type. Note that the workflow assumes these IDs correspond
+          to model runs for the current assessment cycle, and if that's not the
+          case the tagging script will raise an error.
         required: true
         type: string
         default: 2024-01-01-foo-bar 2024-01-02-bar-baz
 
 jobs:
-  delete-model-runs:
+  tag-model-runs:
     runs-on: ubuntu-latest
     permissions:
       # Needed to interact with GitHub's OIDC Token endpoint so we can auth AWS
@@ -49,11 +61,12 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_DELETION_ARN }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_MODEL_TAGGING_ARN }}
           aws-region: us-east-1
 
-      - name: Delete model runs
-        run: Rscript ./.github/scripts/delete_current_year_model_runs.R "${RUN_IDS// /,}"
+      - name: Tag model runs
+        run: Rscript ./.github/scripts/tag_current_year_model_runs.R "${RUN_IDS// /,}" "$RUN_TYPE"
         shell: bash
         env:
+          RUN_TYPE: ${{ inputs.run_type }}
           RUN_IDS: ${{ inputs.run_ids }}
