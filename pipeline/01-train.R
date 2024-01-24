@@ -32,9 +32,7 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date) %>%
-  # Log the outcome variable to lower the importance of extreme values
-  mutate(meta_sale_price = log(meta_sale_price))
+  arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -66,7 +64,8 @@ message("Creating and fitting linear baseline model")
 # Create a linear model recipe with additional imputation, transformations,
 # and feature interactions
 lin_recipe <- model_lin_recipe(
-  data = training_data_full,
+  data = training_data_full %>%
+    mutate(meta_sale_price = log(meta_sale_price)),
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -85,7 +84,7 @@ lin_wflow <- workflow() %>%
 
 # Fit the linear model on the training data
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train)
+  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
 
 
 
@@ -384,9 +383,11 @@ message("Finalizing and saving trained model")
 # Keep only the variables necessary for evaluation
 test %>%
   mutate(
-    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred),
-    pred_card_initial_fmv_lin = exp(predict(lin_wflow_final_fit, test)$.pred),
-    meta_sale_price = exp(meta_sale_price)
+    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
+    pred_card_initial_fmv_lin = exp(predict(
+      lin_wflow_final_fit,
+      test %>% mutate(meta_sale_price = log(meta_sale_price))
+    )$.pred)
   ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
