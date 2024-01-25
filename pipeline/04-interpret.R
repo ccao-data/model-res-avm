@@ -186,6 +186,11 @@ if (comp_enable) {
     mutate(pred_card_initial_fmv = floor(pred_card_initial_fmv)) %>%
     dplyr::pull("pred_card_initial_fmv")
 
+  # Make sure that the leaf node tibbles are all integers, which is what
+  # the comps algorithm expects
+  leaf_nodes <- leaf_nodes %>% mutate_all(as.integer)
+  training_leaf_nodes <- training_leaf_nodes %>% mutate_all(as.integer)
+
   # Do the comps calculation in Python because the code is simpler and faster
   message("Calling out to python/comps.py to perform comps calculation")
   comps_module <- import("python.comps")
