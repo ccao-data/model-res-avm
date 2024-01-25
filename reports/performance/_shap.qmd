@@ -199,3 +199,26 @@ shap_df_filtered_long %>%
     )
   )
 ```
+
+```{r}
+
+neighborhoods <- ccao::nbhd_shp
+
+chars_data_1year <- chars_data %>%
+  filter(meta_year == 2022) %>%
+  select(meta_pin, meta_nbhd_code) %>%
+  rename(nbhd_code = meta_nbhd_code)
+
+test1 <- shap_df_filtered %>%
+  left_join(chars_data_1year, by = c("meta_pin" = "meta_pin")) %>%
+  group_by(nbhd_code) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+test <- test %>%
+  mutate(meta_nbhd_code = as.character(meta_nbhd_code)) %>%
+  left_join(neighborhoods, by = c("meta_nbhd_code" = "town_nbhd")) 
+
+
+  
+```
+

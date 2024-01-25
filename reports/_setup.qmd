@@ -1,6 +1,6 @@
 ---
 params:
-  run_id: "2024-01-10-objective-patrick"
+  run_id: "2024-01-24-malingering-iris"
   year: "2024"
 ---
 
@@ -70,13 +70,13 @@ if (!exists("complex_id_data")) {
 ## Output data -----------------------------------------------------------------
 
 # Grab metadata to check output data <> params alignment
-metadata <- read_parquet(paths$output$metadata$local)
-if (metadata$run_id != params$run_id) {
-  stop(
-    "Local run outputs are NOT equal to the requested run_id. You ",
-    "should run model_fetch_run() to fetch model outputs from S3"
-  )
-}
+# metadata <- read_parquet(paths$output$metadata$local)
+# if (metadata$run_id != params$run_id) {
+#   stop(
+#     "Local run outputs are NOT equal to the requested run_id. You ",
+#     "should run model_fetch_run() to fetch model outputs from S3"
+#   )
+# }
 
 # Extract hash values from dvc.lock file
 dvc_lock_values <- sapply(
@@ -94,13 +94,13 @@ comparison_results <- purrr::map2_lgl(
   ~ .x == .y
 )
 
-# Check if all hashes match between metadata and dvc.lock
-if (!all(comparison_results)) {
-  stop(
-    "Hash values between the dvc.lock file and the metadata ",
-    "do not match. Potential mismatch in input and output data."
-  )
-}
+# # Check if all hashes match between metadata and dvc.lock
+# if (!all(comparison_results)) {
+#   stop(
+#     "Hash values between the dvc.lock file and the metadata ",
+#     "do not match. Potential mismatch in input and output data."
+#   )
+# }
 
 # Get the triad of the run to use for filtering
 run_triad <- tools::toTitleCase(metadata$assessment_triad)

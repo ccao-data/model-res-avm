@@ -1,0 +1,887 @@
+---
+title: "SHAP and model feature mapping function"
+format: html
+editor: visual
+---
+
+## SHAP and model feature mapping functions
+
+by Matt Jackson
+
+September 7, 2023
+
+### Introduction / documentation
+
+The purpose of this function is to produce geographic maps of Cook County, or parts thereof, for visual inspection of patterns in residential data. This includes maps of SHAPs (Shapley additive explanations) for each unit for a particular feature of interest.
+
+The main function, `residential_map()`, takes the following arguments:
+
+-   `df` (dataframe object): Should be a complete dataset of Cook County residential SHAPs, a complete dataset of features for Cook County residential units, or a complete dataset of assessed values including predictions from the model.
+
+-   `data_type` (character): should be a string specifying which kind of map to create. There are four valid options:
+
+    -   `"shap"` (for use with dataframe of SHAPs),
+
+    -   `"assess"` (for use with original feature data),
+
+    -   `"price"` (for use with assessed value data),
+
+    -   `"error"` (for use with assessed value data with a column for `prediction_error` appended by the user beforehand).
+
+-   `loc_type` (character): This should always be set to `"township"`.
+
+-   `loc_list` (character vector): Single township (e.g. `"Barrington"`) or vector of townships (e.g. `c("Hyde Park", "Lake", "Calumet")` to be mapped. These should always use the exact township names as rendered in the `meta_township_name` feature of CCAO data.
+
+-   `feature` (character): Name of particular feature to be mapped. These should always use the exact column names in CCAO data (e.g. `"prox_lake_michigan_dist_ft"`.
+
+    -   Note: This argument will be overridden and set to `pred_pin_final_fmv` if `data_type` is `"price"`.
+    -   It will be overridden and set to `prediction_error` if `data_type` is `"error"`.
+
+-   `map_type` (character): Two options:
+
+    -   `"ggplot"` : uses the `ggplot` library to render a static image, which can be viewed in-IDE or exported.
+
+    -   `"leaflet"` : uses the `leaflet` library to put the visualization on an interactive map. Intended to be viewed within RStudio.
+
+-   `log_transform` (boolean): Only has an effect if `data_type` is `"assess"`. If set to `FALSE`, original feature color scale will be as-is. If set to `TRUE`, the color scale for maps of original feature data will be transformed using base-10 logarithm. Set to `TRUE` by default.
+
+-   `title_addenda` (character): Only has an effect if `map_type` is `"ggplot"` . Any string input here will be appended to the end of the title of the map rendered on image.
+
+-   `max_price` (numeric or `"auto"`): Only has an effect if `map_type` is `"price"`.
+
+    -   If set to `"auto"`, adjusts color scale for assessed-value map so that the maximum color is reached at the 99.5th percentile AV within the mapped township(s), reducing the effect of extreme outliers on the color scheme.
+
+    -   If set to any other positive number, adjusts color-scale for assessed-value map so that the maximum color is reached at that number.
+
+-   `reverse_leaflet_colors` (boolean): Only has an effect if `data_type` is `"assess"` and `map_type` is `"leaflet"`. If set to `FALSE`, uses the typical color scale (on which bright colors indicate low values & dark colors indicate high values); if set to `TRUE`, uses the reverse color scale (dark colors: low; bright colors: high).
+
+-   `export` (boolean): Only has an effect if `data_type` is `"ggplot"`. If set to `TRUE`, saves the rendered image to a default filepath.
+
+### Setup
+
+```{r}
+library(arrow)
+library(dplyr)
+library(stringr)
+library(here)
+library(lubridate)
+library(skimr)
+library(leaflet)
+library(ccao)
+library(sf)
+library(ggmap)
+#D. Kahle and H. Wickham. ggmap: Spatial Visualization with ggplot2. The R Journal, 5(1), 144-161. URL
+#  http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf
+library(patchwork)
+library(knitr)
+
+cook_map <- read_sf("https://gis.cookcountyil.gov/traditional/rest/services/politicalBoundary/MapServer/2/query?outFields=*&where=1%3D1&f=geojson")
+
+```
+
+#### Import Data
+
+```{r eval=FALSE}
+#Run this ONLY ONCE (i.e. do not re-run every time you open file.)
+# read_parquet('https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/assessment_data.parquet') %>%
+#   write_parquet(here("input/assessment_data.parquet"))
+```
+
+```{r data_import}
+#Requires verification of AWS credentials prior to running
+
+shaps <- open_dataset(
+  "s3://ccao-model-results-us-east-1/shap/year=2023/run_id=2023-03-14-clever-damani/"
+) %>%
+  collect()
+```
+
+```{r}
+assessment_data <- read_parquet(here("model-res-avm/input/assessment_data.parquet"))
+
+assessment_data <- assessment_data %>% 
+        mutate(orig_longitude = loc_longitude,
+               orig_latitude = loc_latitude)
+
+
+#Merge actual latitude and longitude and township info into shaps data for mapping
+
+shaps <- shaps %>%
+  merge(subset(assessment_data, 
+               select=c("meta_pin", 
+                        "orig_longitude", 
+                        "orig_latitude",
+                        "meta_township_name",
+                        "meta_township_code")), 
+        by="meta_pin")
+
+```
+
+```{r}
+#Requires verification of AWS credentials prior to running
+price_data <- open_dataset('s3://ccao-model-results-us-east-1/assessment_pin/year=2023/run_id=2023-03-14-clever-damani/') %>%
+  collect()
+
+#use same lat/long nomenclature as shapes.
+price_data <- price_data %>%
+  mutate(orig_longitude = loc_longitude,
+         orig_latitude = loc_latitude,
+         prediction_error = pred_pin_final_fmv / sale_recent_1_price)
+
+#need to merge in township names
+
+price_data <- price_data %>%
+  merge(subset(assessment_data,
+               select=c("meta_pin",
+                        "meta_township_name")),
+        by="meta_pin")
+
+```
+
+Optional: Look at skimmed data for quick analysis. (Warning: This can take a few minutes.)
+
+```{r eval=FALSE}
+assessment_data_skimmed <- skim(assessment_data)
+View(assessment_data_skimmed)
+```
+
+```{r eval=FALSE}
+shap_skimmed <- skim(shaps)
+#View(shap_skimmed)
+
+shap_skimmed <- shap_skimmed %>%
+  mutate(range = numeric.p100 - numeric.p0,
+         iq_range = numeric.p75 - numeric.p25)
+```
+
+```{r}
+shap_ranges <- shap_skimmed %>%
+  select(skim_type, skim_variable, iq_range, range) %>%
+  arrange(desc(iq_range), desc(range))
+shap_ranges <- shap_ranges[1:93,]
+
+kable(shap_ranges)
+```
+
+```{r}
+shap_ranges$iq_range <- round(shap_ranges$iq_range, 2)
+```
+
+### Define some subsets of the county for mapping
+
+```{r}
+#Create lists of subsets of this city to iterate through and/or map en bloc
+
+NORTH_TRI <- c("Barrington", "Palatine", "Wheeling", "Northfield", "New Trier", "Hanover", "Schaumburg", "Elk Grove", "Maine", "Niles", "Evanston", "Leyden")
+SOUTH_TRI <- c("Proviso", "River Forest", "Oak Park", "Cicero", "Berwyn", "Riverside", "Stickney", "Lyons", "Lemont", "Palos", "Worth", "Calumet", "Orland", "Bremen", "Thornton", "Rich", "Bloom")
+COOK_SUBURBS <- c(NORTH_TRI, SOUTH_TRI)
+
+CITY_CHICAGO_NORTH_SIDE <- c("Jefferson", "Rogers Park", "Norwood Park", "Lake View", "North Chicago")
+CITY_CHICAGO_SOUTH_WEST_SIDES <- c("South Chicago", "West Chicago", "Lake", "Hyde Park")
+CITY_CHICAGO_ALL <- c(CITY_CHICAGO_NORTH_SIDE, CITY_CHICAGO_SOUTH_WEST_SIDES)
+
+COOK_ALL <- c(NORTH_TRI, CITY_CHICAGO_ALL, SOUTH_TRI)
+
+
+NT_FAR_NW_SUBURBS <- c("Barrington", "Palatine", "Wheeling", "Hanover", "Schaumburg", "Elk Grove")
+NT_NEAR_NW_SUBURBS <- c("Northfield", "Maine", "Niles", "Leyden")
+NT_NORTH_SHORE <- c("New Trier", "Evanston")
+
+CHI_NORTH_SHORE <- c("Rogers Park", "Lake View", "North Chicago")
+CHI_NW <- c("Norwood Park", "Jefferson")
+CHI_WEST <- c("West Chicago")
+CHI_SOUTH <- c("South Chicago", "Lake", "Hyde Park", "Calumet")
+
+ST_WEST_SUBURBS <- c("Proviso", "River Forest", "Oak Park", "Riverside", "Berwyn", "Cicero", "Lyons", "Stickney")
+ST_SOUTH_SUBURBS <- c("Lemont", "Palos", "Worth", "Orland", "Bremen", "Thornton", "Rich", "Bloom")
+
+
+WEALTH_OUTLIER_TOWNSHIPS = list("New Trier", "North Chicago", "Hyde Park", "Lyons")
+
+
+map_list <- list(
+  "NT_FAR_NW_SUBURBS" = c("Barrington", "Palatine", "Wheeling", "Hanover", "Schaumburg", "Elk Grove"),
+  "NT_NEAR_NW_SUBURBS" = c("Northfield", "Maine", "Niles", "Leyden"),
+  "NT_NORTH_SHORE" = c("New Trier", "Evanston"),
+  "CHI_NORTH_SHORE" = c("Rogers Park", "Lake View", "North Chicago"),
+  "CHI_NW" = c("Norwood Park", "Jefferson"),
+  "CHI_WEST" = c("West Chicago"),
+  "CHI_SOUTH" = c("South Chicago", "Lake", "Hyde Park", "Calumet"),
+  "ST_WEST_SUBURBS" = c("Proviso", "River Forest", "Oak Park", "Riverside", "Berwyn", "Cicero", "Lyons", "Stickney"),
+  "ST_SOUTH_SUBURBS" = c("Lemont", "Palos", "Worth", "Orland", "Bremen", "Thornton", "Rich", "Bloom")
+)
+
+
+all_townships <- list(
+  "Barrington" = "Barrington",
+ "Palatine" = "Palatine",
+ "Wheeling" = "Wheeling",
+ "Hanover" = "Hanover",
+ "Schaumburg" = "Schaumburg",
+ "Elk Grove" = "Elk Grove",
+  "Northfield" = "Northfield",
+ "Maine" = "Maine",
+ "Niles" = "Niles",
+ "Leyden" = "Leyden",
+  "New Trier" = "New Trier",
+ "Evanston" = "Evanston",
+  "Rogers Park" = "Rogers Park",
+ "Lake View" = "Lake View",
+ "North Chicago" = "North Chicago",
+  "Norwood Park" = "Norwood Park",
+ "Jefferson" = "Jefferson",
+  "West Chicago" = "West Chicago",
+  "South Chicago" = "South Chicago",
+ "Lake" = "Lake",
+ "Hyde Park" = "Hyde Park",
+ "Calumet" = "Calumet",
+  "Proviso" = "Proviso",
+ "River Forest" = "River Forest",
+ "Oak Park" = "Oak Park",
+ "Riverside" = "Riverside",
+ "Berwyn" = "Berwyn",
+ "Cicero" = "Cicero",
+ "Lyons" = "Lyons",
+ "Stickney" = "Stickney",
+  "Lemont" = "Lemont",
+ "Palos" = "Palos",
+ "Worth" = "Worth",
+ "Orland" = "Orland",
+ "Bremen" = "Bremen",
+ "Thornton" = "Thornton",
+ "Rich" = "Rich",
+ "Bloom" = "Bloom"
+)
+
+```
+
+## Mapping
+
+### Create a single map
+
+```{r}
+
+### HELPER FUNCTIONS ###
+
+prefix_by_datatype <- function(data_type){
+  #Call to add dollar signs to map labels where appropriate.
+  prefix <- ifelse("shap" %in% data_type | "price" %in% data_type, "$", "")
+  return(prefix)
+}
+
+get_palette <- function(map_type, data_type){
+  #Call to select a color scheme from the viridis package.
+  #Leaflet uses full names, and ggplot uses their corresponding letters
+  idx <- ifelse(map_type == "ggplot", 1, 2)
+  palette_dict <- list("shap" = list("C", "plasma"),
+                       "assess" = list("D", "viridis"),
+                       "price" = list("B", "inferno"),
+                       "error" = list("B", "inferno"))
+  
+  return(palette_dict[data_type][[1]][[idx]])
+}
+
+get_title_incipit <- function(data_type){
+  incipits <- list("shap" = "SHAP value",
+                   "assess" = "Original feature",
+                   "price" = "Assessed value",
+                   "error" = "AV / recent sale price")
+  return(incipits[data_type][[1]])
+}
+
+
+##### MAIN MAPPING FUNCTION #####
+
+residential_map <- function(df=shaps,
+                            data_type="shap",
+                            loc_type="township",
+                            loc_list="Barrington",
+                            feature="prox_lake_michigan_dist_ft",
+                            map_type="ggplot",
+                            log_transform=FALSE,
+                            title_addenda="",
+                            max_price = "auto",
+                            reverse_leaflet_colors=FALSE,
+                            export = FALSE){
+    #Validate data
+    if (!("shap" %in% data_type |
+           "assess" %in% data_type | 
+           "price" %in% data_type |
+           "error" %in% data_type)){
+      stop("Your map type should be 'shap', 'assess', 'price', or 'error'")
+    }
+  
+    if (("price" %in% data_type) & 
+        (!feature == "pred_pin_final_fmv")){
+      feature <- "pred_pin_final_fmv"
+      warning("Price map must use pred_pin_final_fmv as attribute. Rectifying input\n")
+    } else if (("error" %in% data_type) &
+               (!feature == "prediction_error")) {
+      feature <- "prediction_error"
+      warning("Error map must use prediction_error as attribute. Rectifying input\n")
+    }
+    
+    
+    MAX_INFERNO_HEX = "#fcffa4" # used for 99.5th percentile and up AVs
+    BACKGROUND = "#D8D8D8" 
+  
+    # Reduce dataset down to needed rows/columns to reduce file size of output.
+    twp_df <- df %>% 
+      filter(meta_township_name %in% loc_list) %>%
+      select(orig_longitude, orig_latitude, feature)
+    
+    if ("error" %in% data_type){
+    # make sure only rows with sale data are mapped 
+    twp_df <- twp_df %>%
+      filter(!is.na(prediction_error))
+    }
+    
+    # dynamically set max_price so full spectrum of price colors always appears
+    if ("price" %in% data_type) {
+      if (max_price == "auto") {
+        max_price = unname(quantile(twp_df[[feature]], probs=.995, na.rm=TRUE))
+      } else if (class(max_price) != "numeric"){
+        stop("max_price must be 'auto' or a numeric")
+      }
+    }
+    
+    
+    #Handle factor/levels data
+    if ((class(twp_df[[feature]]) == "factor") | 
+        (class(twp_df[[feature]]) == "logical")){
+
+      twp_df[[feature]] <- as.character(twp_df[[feature]])
+    }
+    
+    colorData <- twp_df[[feature]]
+    
+    feature_is_categorical <- class(twp_df[[feature]]) == "character"
+    
+    
+    ##### LEAFLET MAPPING #####
+    
+    if ('leaflet' %in% map_type){
+      #set color palette
+      if (feature_is_categorical) {
+        num_colors = length(unique(colorData))
+        mypal <- colorFactor(topo.colors(num_colors), colorData)
+      } else {
+        #log-transform numeric assessment data for clearer viewing
+        if ("assess" %in% data_type) {
+          if (log_transform){
+          colorData <- log(colorData + .1)
+          }
+        
+          mypal <- colorNumeric(palette = get_palette(map_type, data_type),
+                                domain = colorData,
+                                reverse = reverse_leaflet_colors)
+        
+        #Set a maximum price so outliers don't make entire map dark
+        } else if ("price" %in% data_type) {
+            mypal <- colorNumeric(palette = get_palette(map_type, data_type),
+                                  domain = c(0, max_price),
+                                  na.color = MAX_INFERNO_HEX)
+            
+        } else if ("error" %in% data_type) {
+          
+            mypal <- colorNumeric(palette = get_palette(map_type, data_type),
+                                  domain = colorData)
+          
+        } else { #shap
+            mypal <- colorNumeric(palette = get_palette(map_type, data_type),
+                                  domain = colorData)
+          
+        }
+
+      }
+      
+      #main leaflet map draw
+      map <- leaflet(twp_df) %>%
+        addTiles() %>%
+        addCircleMarkers(~orig_longitude,
+                         ~orig_latitude,
+                         radius = 3,
+                         color = ~mypal(colorData),
+                         stroke = FALSE,
+                         fillOpacity = 1) %>%
+
+        addLegend("bottomright",
+                  pal = mypal,
+                  values = colorData,
+                  title = feature,
+                  #$ prefix only for shaps and prices
+                  labFormat = labelFormat(prefix = prefix_by_datatype(data_type)),
+                  opacity = 0.5)
+      
+      ##### GGPLOT MAPPING #####
+      
+    } else if ("ggplot" %in% map_type) {
+      
+      #main ggplot map draw
+      twp_xlim <- c(min(twp_df$orig_longitude, na.rm=TRUE), 
+                    max(twp_df$orig_longitude, na.rm=TRUE))
+      twp_ylim <- c(min(twp_df$orig_latitude, na.rm=TRUE), 
+                    max(twp_df$orig_latitude, na.rm=TRUE))
+
+      map <- ggplot(data = cook_map) +
+        geom_sf(fill = "#D8D8D8") +
+        theme(panel.background = element_rect(fill = "lightblue", 
+                                              color = "lightblue"),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              plot.title = element_text(size = 10),
+              plot.subtitle = element_text(size = 8),
+              legend.key.width=unit(.2,"in"),
+              axis.title = element_blank(),
+              axis.text = element_text(size = 5)) +
+        geom_point(data = twp_df, 
+                   aes(x=orig_longitude,
+                       y = orig_latitude,
+                       color=colorData), 
+                   size = .2) +
+        labs(color = "",
+             title = paste(get_title_incipit(data_type),
+                           " - ",
+                           feature)) +
+        coord_sf(xlim = twp_xlim, ylim = twp_ylim, expand = FALSE)
+      
+      #set numeric color palette      
+      if ((!feature_is_categorical) & ("price" %in% data_type)) {
+        map <- map +
+          scale_color_viridis_c(labels = scales::dollar_format(),
+                                limits = c(0, max_price),
+                                na.value = MAX_INFERNO_HEX,
+                                option = "B")
+      } else if (!feature_is_categorical & "assess" %in% data_type) {
+          # Log-transform assessment data for clearer viewing
+        
+        if (log_transform) {
+            my_breaks <- c(-1, 0, 1, 10, 100, 1000, 10000)
+            map <- map +
+              scale_color_viridis_c(option = "D",
+                                    direction = -1,
+                                    breaks = my_breaks,
+                                    labels = my_breaks,
+                                    na.value = "#000000",
+                                    trans = scales::pseudo_log_trans(sigma = 0.001,
+                                                                     base = 10))
+        } else {
+          map <- map +
+                        scale_color_viridis_c(option = "D",
+                                    direction = -1,
+                                    na.value = "#000000")
+        }
+      } else if (!feature_is_categorical & "error" %in% data_type) {
+          map <- map +
+            scale_color_viridis_c(na.value = BACKGROUND,
+                                  option = "B")
+                                  # option = get_palette(data_type))
+      } else if (!feature_is_categorical) {
+        map <- map +
+          scale_color_viridis_c(labels = scales::dollar_format(),
+                                option = get_palette(data_type))            
+      }
+      
+      
+      if (export) {
+        datetime <- as.character(Sys.Date())
+        location <- paste(loc_list, collapse="_")
+        filepath <- paste0("maps/", datetime, data_type, feature, location, sep="_")
+        filepath <- paste0(filepath, ".png")
+        #figure out how to auto-ish set width and height
+        ggsave(filepath)
+      }
+
+      ### END GGPLOT
+    }
+    
+    return(map) 
+
+  }
+
+```
+
+#### Create side-by-side map of SHAP, assessment data(, model valuation, and error)
+
+```{r}
+joined_maps <- function(shap_df=shaps,
+                        assess_df=assessment_data,
+                        price_df=price_data,
+                        data_types = c("shap", "assess", "price", "error"),
+                        loc_type="township",
+                        loc_list="Barrington",
+                        feature="prox_lake_michigan_dist_ft",
+                        title_addenda="",
+                        max_price = "auto",
+                        export = FALSE,
+                        log_transform = FALSE,
+                        include_price_and_error = TRUE,
+                        filepath = NA){
+  
+  message("Generating shap map...")
+  shap_map <- residential_map(df = shap_df,
+                              data_type = "shap",
+                              loc_type = loc_type,
+                              loc_list = loc_list,
+                              feature = feature,
+                              map_type = "ggplot",
+                              title_addenda = title_addenda,
+                              max_price = max_price,
+                              export = FALSE) 
+
+  message("Generating map of feature data...")
+  assess_map <- residential_map(df = assess_df,
+                                data_type = "assess",
+                                loc_type = loc_type,
+                                loc_list = loc_list,
+                                feature = feature,
+                                map_type = "ggplot",
+                                title_addenda = title_addenda,
+                                max_price = max_price,
+                                log_transform=log_transform,
+                                export = FALSE) 
+  
+  if (include_price_and_error){
+  
+    message("Generating map of price data...")
+    price_map <- residential_map(df = price_df,
+                                  data_type = "price",
+                                  loc_type = loc_type,
+                                  loc_list = loc_list,
+                                  feature = "pred_pin_final_fmv",
+                                  map_type = "ggplot",
+                                  title_addenda = title_addenda,
+                                  max_price = max_price,
+                                  export = FALSE) 
+    
+    message("Generating map of sales error...")
+    error_map <- residential_map(df = price_df,
+                                data_type = "error",
+                                loc_type = loc_type,
+                                loc_list = loc_list,
+                                feature = "prediction_error",
+                                map_type = "ggplot",
+                                title_addenda = title_addenda,
+                                max_price = max_price,
+                                export = FALSE) 
+  }
+  
+  message("Joining maps...")
+  if (include_price_and_error){
+    joined_map <- shap_map + 
+                  assess_map + 
+                  price_map +
+                  error_map + plot_annotation(
+      title = paste0("Spatial information - ", feature, " - ", title_addenda)
+    )
+  } else {
+      joined_map <- shap_map + 
+                    assess_map + 
+                    plot_annotation(
+      title = paste0("Spatial information - ", feature, " - ", title_addenda)
+                  )
+  }
+
+  if (export) {
+    datetime <- as.character(Sys.Date())
+    location <- paste(loc_list, collapse="_")
+    if (is.na(filepath)) {
+      filepath <- paste("maps/", datetime, "joint", feature, location, ".png", 
+                        sep="_", 
+                        collapse="_")
+    }
+    #print(filepath)
+    #figure out how to auto-ish set width and height
+    ggsave(filepath)
+    message(paste0("Export complete - file available at ", filepath))
+}
+      
+  return(joined_map)
+}
+
+```
+
+Time sale features won't work with the standard joined map function, and don't need a map of original feature data (since it's the same for every unit). This function just does SHAP and assessed value data side-by-side for time sale features:
+
+```{r time_sale_loop}
+
+time_sale_map <- function(
+                        shap_df=shaps,
+                        price_df=price_data,
+                        data_types = c("shap", "assess", "price", "error"),
+                        loc_type="township",
+                        loc_list="Barrington",
+                        feature="prox_lake_michigan_dist_ft",
+                        title_addenda="",
+                        max_price = "auto",
+                        export = FALSE,
+                        filepath = NA
+                        ){
+  
+    message("Generating shap map...")
+    shap_map <- residential_map(df = shap_df,
+                                data_type = "shap",
+                                loc_type = loc_type,
+                                loc_list = loc_list,
+                                feature = feature,
+                                map_type = "ggplot",
+                                title_addenda = title_addenda,
+                                max_price = max_price,
+                                export = FALSE) 
+  
+    message("Generating map of price data...")
+    price_map <- residential_map(df = price_df,
+                                  data_type = "price",
+                                  loc_type = loc_type,
+                                  loc_list = loc_list,
+                                  feature = "pred_pin_final_fmv",
+                                  map_type = "ggplot",
+                                  title_addenda = title_addenda,
+                                  max_price = max_price,
+                                  export = FALSE) 
+    
+    
+    map <- shap_map + 
+           price_map + 
+      plot_annotation(
+        title = paste0("Spatial information - ", feature, " - ", title_addenda)
+      )
+    
+    if (export) {
+    datetime <- as.character(Sys.Date())
+    location <- paste(loc_list, collapse="_")
+    if (is.na(filepath)) {
+      filepath <- paste("maps/", datetime, "joint", feature, location, ".png", 
+                        sep="_", 
+                        collapse="_")
+    }
+    ggsave(filepath)
+    message(paste0("Export complete - file available at ", filepath))
+    }
+      
+  return(map)
+}
+
+
+```
+
+### Sandboxes for testing mapping
+
+```{r SINGLE_MAP_SANDBOX}
+
+map <- residential_map(df = assessment_data,
+                data_type = "assess",
+                loc_type = "township",
+                loc_list = c("Barrington"),
+                feature = "prox_nearest_water_dist_ft",
+                map_type = "leaflet",
+                title_addenda = "",
+                log_transform = TRUE,
+                max_price = "auto",
+                reverse_leaflet_colors=TRUE,
+                export = FALSE)
+map
+```
+
+```{r JOINED_MAPS_SANDBOX}
+m <- joined_maps(loc_list=c("Lake", "Stickney", "Worth", "Calumet", "Hyde Park"),
+            feature="loc_env_airport_noise_dnl",
+            title_addenda = "Midway surroundings",
+            include_price_and_error=TRUE,
+            log_transform=TRUE,
+            max_price="auto",
+            export=TRUE)
+
+m
+```
+
+```{r TIME_SALE_MAP_SANDBOX}
+tsm <- time_sale_map(feature="time_sale_year")
+tsm
+
+```
+
+### Loop through features and regions to mass-generate and export maps
+
+for visual inspection.
+
+```{r}
+
+map_all_regions <- function(chosen_feature,
+                            list_to_map=map_list,
+                            log_transform=TRUE,
+                            max_price = "auto"){
+  for(name in names(list_to_map)){
+    
+    locs <- list_to_map[[name]]
+    print(paste0("Mapping ", name, "..."))
+    
+    datetime <- as.character(Sys.Date())
+    filepath <- paste(datetime, chosen_feature, name,
+                       sep="_",
+                       collapse="_")
+    filepath <- paste0("maps/", filepath, ".png")
+    
+    #workaround for time_sale_ columns
+    if (substr(chosen_feature, 1, 5) == "time_"){
+      time_sale_map(loc_list=locs,
+                    feature=chosen_feature,
+                    export=TRUE,
+                    max_price = max_price,
+                    title_addenda = name,
+                    filepath = filepath)
+      
+    } else {
+      joined_maps(loc_list=locs,
+                  feature=chosen_feature,
+                  export=TRUE,
+                  max_price = max_price,
+                  title_addenda = name,
+                  log_transform=log_transform,
+                  filepath = filepath)
+    }
+  }
+  print("All done!")
+}
+```
+
+```{r}
+features_all <- intersect(colnames(shaps), colnames(assessment_data))
+
+#Exclude columns that aren't a real feature with a real SHAP score
+excluded_cols = c("meta_pin", "meta_year", "meta_card_num", 
+                  "orig_longitude", "orig_latitude", "meta_township_name")
+
+features_all <- setdiff(features_all, excluded_cols)
+```
+
+```{r}
+map_all_features <- function(features_list,
+                             list_to_map=map_list,
+                             log_transform=TRUE){
+  for (this_feature in features_list) {
+    print(paste0("Mapping ", this_feature, "..."))
+    map_all_regions(this_feature,
+                    list_to_map=list_to_map,
+                    log_transform=log_transform)
+  }
+}
+```
+
+#### Sandboxes for map-generation loops
+
+If one of these throws an error, use index slicing (`all_townships[13:]`, `features_all[33:]`, etc.) to subset down to maps that are after the one that throws the error.
+
+```{r MAP_ONE_FEATURE_ALL_REGIONS_SANDBOX}
+
+map_all_regions("char_bldg_sf",
+                list_to_map=all_townships,
+                log_transform=FALSE)
+
+```
+
+```{r MAP_ALL_FEATURES_ALL_REGIONS_SANDBOX}
+
+
+map_all_features(features_all, list_to_map=all_townships)
+
+```
+
+### Addendum: Mapping particular neighborhoods
+
+I used the following to generate maps of the Kenwood and UChicago-adjacent portions of Hyde Park township for the report. The `filter` can be generalized to a desired set of neighborhood codes.
+
+```{r}
+#Generate maps zoomed in on Kenwood/Hyde Park without tons of extraneous colors
+
+hp_assess <- assessment_data %>%
+  filter(meta_nbhd_code > 70009 & meta_nbhd_code < 70079)
+
+hp_shaps <- shaps %>%
+  filter(meta_pin %in% hp_assess$meta_pin)
+
+hp_price <- price_data %>%
+  filter(meta_pin %in% hp_assess$meta_pin)
+```
+
+### Known errors
+
+-   If a numeric feature doesn't vary at all within a mapping area (i.e. all units in the area have the same value for it), `joined_maps()` will fail to join the assess map with the others, throwing the error "Error in `get_labels()`: ! `breaks` and `labels` are different lengths". This is known to affect the following feature/area pairs:
+
+    -   `loc_env_flood_fema_sfha`, CHI_NORTH_SHORE (value is NA for all units)
+
+    -   `loc_env_airport_noise_dnl`, Lake View / CHI_NORTH_SHORE (value is 52.5 for all units)
+
+    -   `prox_num_bus_stops_in_half_mile` (feature 43), Barrington / NT_FAR_NW_SUBURBS (value is NULL)
+
+    -   `prox_num_school_with_rating_in_half_mile`, Barrington (value is 0 for all units)
+
+    -   `acs5_median_household_total_occupied_year_built`, Berwyn (value is 1952 for all units)
+
+    -   `other_tax_bill_rate`, River Forest (value is 10.357 for all units)
+
+```{r}
+# Error in `get_labels()`:
+# ! `breaks` and `labels` are different lengths
+# Backtrace:
+#   1. global map_all_features(features_all[39:91], list_to_map = all_townships)
+#   2. global map_all_regions(this_feature, list_to_map = list_to_map, log_transform = log_transform)
+#   3. global joined_maps(...)
+#   4. ggplot2::ggsave(filepath)
+#   6. ggplot2:::grid.draw.ggplot(plot)
+#      ...
+#  16. ggplot2:::build_guides(...)
+#  17. ggplot2:::guides_train(...)
+#  19. ggplot2:::guide_train.colorbar(guide, scale, output)
+#  20. scale$get_labels(breaks)
+#  21. ggplot2 (local) get_labels(..., self = self)
+
+```
+
+-   For similar reasons (a "variable" that doesn't vary), attempts to plot all four kinds of map for `time_sale_` variables will fail. As a work-around, `joined_map` only produces a side-by-side map of SHAP value and assessed value (since the original feature is the same for every residence anyway, it can be ignored).
+
+-   If a value is truly `NA` everywhere in a township, it won't map in ggplot, instead saying: "Error: Must request at least one color from a hue palette." This is known to affect:
+
+    -   `loc_school_elementary_district_geoid`, `loc_school_secondary_district_geoid`, Hanover township
+
+### Future TODOs / Potential updates
+
+-   Generalize the `loc_type="township"` and `loc_list` input parameters to allow for plotting neighborhood codes or defined ranges of latitude/longitude instead of just townships
+
+-   Include OpenStreetMap or Google Maps (requires API) visual information under ggplot maps. This would allow for easier visual inspection of exported maps to verify that e.g. the `prox_nearest_golf_course_dist_ft` feature gets smaller near actual golf courses.
+
+-   Hide the legend on maps of categorical data with a large number of categories (e.g. 20+), so it doesn't cover big sections of map applet (in leaflet) or squeeze the space available for actual map (in ggplot)
+
+-   Do more to ensure that maps of categorical data have a wider variety of contrasting colors, with randomized/color-contrasting regions adjacent to each other, rather than a determined spectrum of colors from lowest to highest
+
+-   Create a Shiny app which lets user navigate drop-down menus to select an area to map, a feature to map, and data type (shap / original / AV / error / joined), and then renders the map in a Web browser.
+
+-   Put a `tryCatch()` exception-handling block in the `map_all_regions` and/or `map_all_features` loops, so that the loop skips over maps that would raise an error instead of halting execution
+
+-   Update scale on error maps to display as a percentage, and choose a cutoff value for the brightest color in a `prediction_error` map so that extreme outliers don't result in an almost-entirely-dark map. (Initial inspection suggests 99.5th percentile is probably too high.) Alternately, consider making some transformation to the raw ratio. As-is, extreme outliers make error map close to unreadable in basically any part of the county
+
+-   Fix color-scale legend on leaflet maps of price, so that legend ends at 99.5th percentile, instead of continuing past it (making much of the color bar the same as max-price color and making it harder to use to tell apart differences in the bulk of the price range)
+
+-   Allow user to modify width and height of ggplot exported using `ggsave()`, and/or size of dots plotted, to allow for higher-resolution map files.
+
+    -   Trim whitespace on edges of output images, particularly top and bottom
+
+-   Update variable names containing `assess` and `price` throughout, to make more clear that they refer to original feature data and assessed value, respectively.
+
+-   Indicate somewhere in map itself (in legend for Leaflet? in title or subtitle for ggplot?) whether or not original feature data and/or color scale on `assess` maps has been log-transformed
+
+    -   Similarly: indicate somewhere in map itself that `price` (and, possibly, `error`) color scale has a cutoff, and where it is / what values exceed it
+
+    -   Standardize how log-transformation works (on Leaflet, the *actual values* are log-transformed prior to setting color palette, so the log-transformed values are what display at tick marks in legend; in ggplot, the palette is set to scale logarithmically with the original variable, so the original values are displayed at tick marks in legend)
+
+-   Reduce redundancy in the code that sets different color palettes for different types of map
+
+-   Within `joined_map`, filter down the dataframe to the locations within `loc_list` *before* passing it into the calls that make sub-maps, so it is only done once rather than 4x
+
+-   Decompose `residential_map()` into smaller helper functions for easier debugging/testing, including possibly splitting back out into separate functions for leaflet mapping and ggplot mapping
+
+-   Change title on ggplot maps so that if a named list of townships is passed in (e.g. SOUTH_TRI), that name or a standardized version of it (e.g. "South Tri") is put in the map title/filename, rather than a concatenation of all townships in that list
+
+-   Adjust the `map_all_features()` loop to take my best suggestion as to whether or not to log-transform original feature data when mapping it, for each feature. It is typically best to map the original feature data log-transformed (in this case, base 10), but some features, especially features with small ranges (like the `acs5` percentages) or that aren't related to geographic distance, visualize best with `log_transform` set to `FALSE`.
+
+-   Adjust the `export` parameter in `residential_map()` to allow for setting a specific file path for export, or add a new parameter called `filepath` like the one in `joined_map()`.
