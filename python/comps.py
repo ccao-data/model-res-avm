@@ -44,12 +44,12 @@ def get_comps(
     # reduce the number of comparison parcels that we need to search for each
     # observation
     sorted_comparison_df = comparison_df.sort_values(
-        ["meta_sale_price"]
+        ["predicted_value"]
     ).reset_index(
         drop=True
     )
     sorted_comparison_df["price_bin"] = pd.qcut(
-        sorted_comparison_df["meta_sale_price"],
+        sorted_comparison_df["predicted_value"],
         num_price_bins,
         labels=np.arange(0, num_price_bins),
     )
@@ -69,8 +69,8 @@ def get_comps(
             "id": price_bin_indices.index.astype(int),
             "argmin": bin_argmin,
             "argmax": bin_argmax,
-            "min": sorted_comparison_df["meta_sale_price"][bin_argmin].values,
-            "max": sorted_comparison_df["meta_sale_price"][bin_argmax].values
+            "min": sorted_comparison_df["predicted_value"][bin_argmin].values,
+            "max": sorted_comparison_df["predicted_value"][bin_argmax].values
         },
     )
 
@@ -96,7 +96,7 @@ def get_comps(
     # Place observations in bins. Do this in a numba-accelerated function so
     # that we can make use of fast loops
     observation_df["price_bin"] = _bin_by_price(
-        observation_df[["id", "pred_pin_final_fmv"]].values,
+        observation_df[["id", "predicted_value"]].values,
         price_bin_indices.values
     )
 
@@ -116,7 +116,7 @@ def get_comps(
             continue
 
         observation_matrix = observations.drop(
-          columns=["id", "pred_pin_final_fmv", "price_bin"]
+          columns=["id", "predicted_value", "price_bin"]
         ).values
 
         # Add a 1-bin buffer on either side in case an observation is close to
@@ -141,7 +141,7 @@ def get_comps(
         # Handle -1, which is an indicator of no match
         comp_idx_to_id[-1] = -1
         possible_comp_matrix = possible_comps.drop(
-          columns=["id", "meta_sale_price", "price_bin"]
+          columns=["id", "predicted_value", "price_bin"]
         ).values
 
         print(
@@ -309,14 +309,14 @@ if __name__ == "__main__":
     leaf_nodes = pd.DataFrame(
         np.random.randint(0, num_obs, size=[num_obs, num_trees])
     )
-    leaf_nodes["pred_pin_final_fmv"] = np.random.normal(
+    leaf_nodes["predicted_value"] = np.random.normal(
         mean_sale_price, std_deviation, size=num_obs
     ).astype(int)
 
     training_leaf_nodes = pd.DataFrame(
         np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
     )
-    training_leaf_nodes["meta_sale_price"] = np.random.normal(
+    training_leaf_nodes["predicted_value"] = np.random.normal(
         mean_sale_price, std_deviation, size=num_comparisons
     ).astype(int)
     tree_weights = np.random.dirichlet(np.ones(num_trees))
