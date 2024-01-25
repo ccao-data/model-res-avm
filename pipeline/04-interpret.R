@@ -29,7 +29,8 @@ if (shap_enable || comp_enable) {
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
-  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
+  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local)) %>%
+    distinct() # Hack to handle duplicates we're trying to remove
 
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
@@ -42,8 +43,9 @@ if (shap_enable || comp_enable) {
 if (comp_enable) {
   message("Loading predicted values for comp calculation")
 
-  predicted_data <- read_parquet(paths$output$assessment_pin$local) %>%
-    as_tibble()
+  assessment_card <- read_parquet(paths$output$assessment_card$local) %>%
+    as_tibble() %>%
+    distinct() # Hack to handle duplicates
 }
 
 
@@ -146,8 +148,8 @@ if (comp_enable) {
 
   # Calculate weights representing feature importance, so that we can weight
   # leaf node assignments based on the most important features.
-  # To do this, we need the training data so that we can compute base model
-  # error
+  # To do this, we need the training data so that we can compute the mean sale
+  # price and use it as the base model error
   message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
@@ -155,30 +157,36 @@ if (comp_enable) {
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
-    train = training_data,
-    outcome_col = "meta_sale_price",
+    mean_sale_price = mean(training_data[["meta_sale_price"]]),
+    metric = params$model$objective
   )
 
-  # Get leaf node assignments for the training data. Assume that the training
-  # data is a subset of the assessment data
-  assessment_joined_to_training <- assessment_data %>%
-    tibble::rownames_to_column() %>%
-    inner_join(training_data, by = c("meta_pin", "meta_card_num"))
+  # Get predicted values and leaf node assignments for the training data
+  training_data_prepped <- recipes::bake(
+    object = lgbm_final_full_recipe,
+    new_data = training_data,
+    all_predictors()
+  )
+  training_leaf_nodes <- predict(
+    object = lgbm_final_full_fit$fit,
+    newdata = as.matrix(training_data_prepped),
+    type = "leaf"
+  ) %>%
+    as_tibble()
+  training_leaf_nodes$predicted_value <- predict(
+    object = lgbm_final_full_fit$fit,
+    newdata = as.matrix(training_data_prepped)
+  ) %>%
+    # Round predicted values down for binning
+    floor()
 
-  assessment_train_idxs <- assessment_joined_to_training %>%
-    dplyr::pull(rowname) %>%
-    as.integer()
-  training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
-
-  # Add sale price to both training and assessment sets, so that we can use
-  # it to chunk comp comparisons
-  training_leaf_nodes$meta_sale_price <- assessment_joined_to_training %>%
-    dplyr::pull(meta_sale_price) %>%
-    as.integer()
-  leaf_nodes$pred_pin_final_fmv <- assessment_data %>%
-    left_join(predicted_data, by = "meta_pin") %>%
-    mutate(pred_pin_final_fmv = as.integer(pred_pin_final_fmv)) %>%
-    dplyr::pull("pred_pin_final_fmv")
+  # Get predicted values for the assessment set, which we already have in
+  # the assessment card set
+  leaf_nodes$predicted_value <- assessment_data %>%
+    left_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
+    # Round predicted values down for binning
+    mutate(pred_card_initial_fmv = floor(pred_card_initial_fmv)) %>%
+    dplyr::pull("pred_card_initial_fmv")
 
   # Do the comps calculation in Python because the code is simpler and faster
   message("Calling out to python/comps.py to perform comps calculation")

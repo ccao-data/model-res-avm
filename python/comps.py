@@ -22,13 +22,12 @@ def get_comps(
     for the `n` most similar comparables. More details on the underlying
     algorithm here: https://ccao-data.github.io/lightsnip/articles/finding-comps.html
 
-    The function expects that `observation_df` will have a column called
-    `pred_pin_final_fmv` and `comparison_df` will have a column called
-    `meta_sale_price`. These two columns represent the predicted value
-    and the observed value for the observations and the comparisons,
-    respectively. These columns are then used along with the `num_price_bins`
-    parameter to bin the comparison data and only compare observations to
-    comparisons that are in the three closest bins to the observation.
+    The function expects that `observation_df` and `comparison_df` will both
+    have a column called `predicted_value`. These two columns represent the
+    (integer) predicted value for the observations and the comparisons.
+    These columns are then used along with the `num_price_bins` parameter to bin
+    the comparison data and only compare observations to comparisons that are in
+    the three closest bins to the observation.
     """
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
