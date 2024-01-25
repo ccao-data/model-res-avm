@@ -29,8 +29,7 @@ if (shap_enable || comp_enable) {
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
-  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local)) %>%
-    distinct() # Hack to handle duplicates we're trying to remove
+  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
@@ -44,8 +43,7 @@ if (comp_enable) {
   message("Loading predicted values for comp calculation")
 
   assessment_card <- read_parquet(paths$output$assessment_card$local) %>%
-    as_tibble() %>%
-    distinct() # Hack to handle duplicates
+    as_tibble()
 }
 
 
