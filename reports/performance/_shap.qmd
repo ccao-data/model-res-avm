@@ -209,220 +209,21 @@ chars_data_1year <- chars_data %>%
   select(meta_pin, meta_nbhd_code) %>%
   rename(nbhd_code = meta_nbhd_code)
 
+# Combining multiple operations into a single pipeline
 test1 <- shap_df_filtered %>%
-  left_join(chars_data_1year, by = c("meta_pin" = "meta_pin")) %>%
+  left_join(chars_data_1year, by = "meta_pin") %>%
   group_by(nbhd_code) %>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)
-
-test1 <- test1 %>%
+  summarise_if(is.numeric, ~mean(abs(.), na.rm = TRUE)) %>%
   mutate(nbhd_code = as.character(nbhd_code)) %>%
-  left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) 
+  left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) %>%
+  st_as_sf()
 
-test1$meta_township_code
+# Selecting only numeric columns from the spatial dataframe
+test2 <- test1 %>% select(where(is.numeric))
 
-test1 <- st_as_sf(test1)
-
-pal <- colorNumeric(palette = "viridis", domain = test1$meta_township_code)
-
-leaflet(test1) %>%
-  addTiles() %>%
-  addPolygons(
-    fillColor = ~pal(meta_township_code),
-    weight = 1,
-    opacity = 1,
-    color = "white",
-    dashArray = "3",
-    fillOpacity = 0.7,
-    highlight = highlightOptions(
-      weight = 5,
-      color = "#666",
-      dashArray = "",
-      fillOpacity = 0.7,
-      bringToFront = TRUE
-    ),
-    label = ~as.character(meta_township_code),
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
-    )
-  )
-
-```
-
-```{r}
-
-test2 <- test1 %>%
-  select(where(is.numeric))
-
-
-create_palette <- function(column) {
-  # Define the range for the positive and negative values separately
-  range_pos <- max(column, na.rm = TRUE)
-  range_neg <- min(column, na.rm = TRUE)
-
-  # Create a function to map values to colors
-  function(value) {
-    if (value >= 0) {
-      # Scale for positive values
-      viridis((value / range_pos), option = "D")
-    } else {
-      # Scale for negative values (inverted)
-      viridis((-value / range_neg), option = "D")
-    }
-  }
-}
-
-# Create a list of color palettes for each numeric column
-palettes <- lapply(test2, function(column) {
-  if (is.numeric(column)) {
-    create_palette(column)
-  } else {
-    NULL
-  }
-})
-
-palettes <- palettes[-length(palettes)]
-
-
-leaflet(test2) %>%
-  addTiles() %>%
-    addPolygons(
-    fillColor = ~pal_yrblt(char_yrblt),
-    weight = 1,
-    opacity = 1,
-    color = "white",
-    dashArray = "3",
-    fillOpacity = 0.7,
-    group = "Year Built",
-    label = ~as.character(char_yrblt),
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
-    )
-  ) %>%
-    addPolygons(
-    fillColor = ~pal_township(meta_township_code),
-    weight = 1,
-    opacity = 1,
-    color = "white",
-    dashArray = "3",
-    fillOpacity = 0.7,
-    group = "Township Code",
-    label = ~as.character(meta_township_code),
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
-    )
-  ) %>%
-  
-  # Layer control
-  addLayersControl(
-    baseGroups = c("Year Built", "Township Code"),
-    options = layersControlOptions(collapsed = TRUE)
-  )
-
-```
-
-
-
-```{r}
-
-# Create initial leaflet map
-leaflet_map <- leaflet(test1) %>%
-  addTiles()  # Add default tiles
-
-# Iterate over each numeric column and add it as a layer
-numeric_cols <- sapply(test1, is.numeric)
-for (col in names(numeric_cols[numeric_cols])) {
-  col_sym <- sym(col)
-  pal <- colorNumeric(palette = "viridis", domain = test1[[col]])
-
-  # Unquoting the column name within the aesthetic mapping
-  leaflet_map <- leaflet_map %>% 
-    addPolygons(
-      fillColor = ~pal({{ col_sym }}),
-      weight = 1,
-      opacity = 1,
-      color = "white",
-      dashArray = "3",
-      fillOpacity = 0.7,
-      highlightOptions = highlightOptions(
-        weight = 5,
-        color = "#666",
-        dashArray = "",
-        fillOpacity = 0.7,
-        bringToFront = TRUE
-      ),
-      label = ~as.character({{ col_sym }}),
-      labelOptions = labelOptions(
-        style = list("font-weight" = "normal", padding = "3px 8px"),
-        textsize = "15px",
-        direction = "auto"
-      ),
-      group = col
-    )
-}
-
-# Add layer control
-leaflet_map <- leaflet_map %>%
-  addLayersControl(
-    overlayGroups = names(numeric_cols[numeric_cols]),
-    options = layersControlOptions(collapsed = FALSE)
-  )
-
-leaflet_map
-
-
-```
-
-```{r}
-m <- leaflet(test2) %>% addTiles()
-
-# Function to add a layer for each numeric column
-add_column_layer <- function(df, column_name, palette, map) {
-  # Assuming each palette is a vector of colors corresponding to the column values
-  color_column <- palette[df[[column_name]]]
-  map %>% addPolygons(
-    fillColor = ~color_column,
-    weight = 1,
-    opacity = 1,
-    color = "white",
-    dashArray = "3",
-    fillOpacity = 0.7,
-    group = column_name,
-    label = ~as.character(df[[column_name]]),
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto"
-    )
-  )
-}
 
 m <- leaflet(test2) %>% addTiles()
 
-# Iterate over each numeric column and apply the palette
-numeric_columns <- names(test2)[sapply(test2, is.numeric)]
-
-
-for (i in seq_along(numeric_columns)) {
-  column_name <- numeric_columns[i]
-  palette <- palettes[[i]]
-  m <- add_column_layer(test2, column_name, palette, m)
-}
-
-# Add layer control
-m <- m %>% addLayersControl(
-  baseGroups = numeric_columns,
-  options = layersControlOptions(collapsed = TRUE)
-)
-
-m # Display the map
-```
-```{r}
 add_column_layer <- function(df, column_name, map) {
   # Create a continuous color palette
   pal <- colorNumeric(palette = "viridis", domain = df[[column_name]], na.color = "transparent")
@@ -445,9 +246,6 @@ add_column_layer <- function(df, column_name, map) {
   )
 }
 
-```
-
-```{r}
 # Initialize Leaflet map
 m <- leaflet(test2) %>% addTiles()
 
@@ -464,7 +262,11 @@ m <- m %>% addLayersControl(
   options = layersControlOptions(collapsed = TRUE)
 )
 
-m # Display the map
+m
+```
+
+```{r}
+
 
 ```
 
