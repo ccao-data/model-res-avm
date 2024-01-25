@@ -187,7 +187,8 @@ if (comp_enable) {
     {
       comps <- comps_module$get_comps(
         leaf_nodes, training_leaf_nodes, tree_weights,
-        n = as.integer(20)
+        num_comps = num_comps,
+        num_price_bins = num_comp_price_bins
       )
     },
     error = function(e) {

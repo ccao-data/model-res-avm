@@ -62,8 +62,8 @@ assign(params_obj_name, read_yaml(here("params.yaml")))
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
 num_threads <- parallel::detectCores(logical = FALSE)
 
-# Override CV toggle, SHAP toggle, and S3 upload set in params.yaml.
-# Used to disable certain features for CI or limited runs
+# Override CV toggle, SHAP toggle, S3 upload set, and comps config in
+# params.yaml. Used to disable certain features for CI or limited runs
 cv_enable <- as.logical(Sys.getenv(
   "CV_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$cv_enable
@@ -75,6 +75,14 @@ shap_enable <- as.logical(Sys.getenv(
 comp_enable <- as.logical(Sys.getenv(
   "COMP_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$comp_enable
+))
+num_comps <- as.integer(Sys.getenv(
+  "NUM_COMPS_OVERRIDE",
+  unset = get(params_obj_name)$comp$num_comps
+))
+num_comp_price_bins <- as.integer(Sys.getenv(
+  "NUM_COMP_PRICE_BINS_OVERRIDE",
+  unset = get(params_obj_name)$comp$num_comp_price_bins
 ))
 upload_enable <- as.logical(Sys.getenv(
   "UPLOAD_ENABLE_OVERRIDE",

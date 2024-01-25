@@ -38,6 +38,16 @@ on:
         description: Run comparables finding
         default: false
         required: true
+      num_comps:
+        type: string
+        description: Integer number of comps to look for
+        default: "20"
+        required: false
+      num_comp_price_bins:
+        type: string
+        description: Integer number of price bins to use for comps finding
+        default: "30"
+        required: false
       shap_enable:
         type: boolean
         description: Calculate SHAP values
@@ -77,5 +87,7 @@ jobs:
         UPLOAD_ENABLE_OVERRIDE=${{ inputs.upload_enable }}
         CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
+        NUM_COMPS_OVERRIDE=${{ inputs.num_comps }}
+        NUM_COMP_PRICE_BINS_OVERRIDE=${{ inputs.num_comp_price_bins }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
         REPORT_ADDITIONAL_PINS=${{ inputs.report_additional_pins }}

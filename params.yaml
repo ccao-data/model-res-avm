@@ -430,3 +430,15 @@ ratio_study:
 export:
   triad_code: "3"
   run_id: "2023-03-14-clever-damani"
+
+
+# Comp -------------------------------------------------------------------------
+
+comp:
+  # Number of comps to generate for each card.
+  # Only used if comp_enable = TRUE
+  num_comps: 20
+  # Number of price bins to use when binning properties for the purpose of
+  # comparison. Corresponds to Ntile predicted FMV, e.g. 10 creates deciles
+  # of predicted values
+  num_comp_price_bins: 30
