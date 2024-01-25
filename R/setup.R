@@ -89,11 +89,27 @@ upload_enable <- as.logical(Sys.getenv(
   unset = get(params_obj_name)$toggle$upload_enable
 ))
 
-# If in a CI context, use the run note passed to the workflow. Otherwise, use
+# If in a CI context, use the run params passed to the workflow. Otherwise, use
 # the note included in params.yaml
 run_note <- as.character(
   Sys.getenv("WORKFLOW_RUN_NOTE", unset = get(params_obj_name)$run_note)
 )
+run_type <- as.character(
+  Sys.getenv("WORKFLOW_RUN_TYPE", unset = get(params_obj_name)$run_type)
+)
+
+# Must be one of the dedicated run types
+possible_run_types <- c(
+  "junk", "rejected", "test",
+  "baseline", "candidate", "final"
+)
+if (!run_type %in% possible_run_types) {
+  stop(
+    "Invalid run type '", run_type, "'. Must be one of: ",
+    paste0(possible_run_types, collapse = ", ")
+  )
+}
+rm(possible_run_types)
 
 # Check to see if LightGBM early stopping is enabled based on engine parameters
 early_stopping_enable <-
