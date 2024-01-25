@@ -12,8 +12,9 @@ tictoc::tic("Train")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Print a run note for context at the top of CI logs
+# Print a run note and type for context at the top of CI logs
 message("Run note: ", run_note)
+message("Run type: ", run_type)
 
 
 
