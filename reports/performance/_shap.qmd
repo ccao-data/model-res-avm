@@ -200,17 +200,22 @@ shap_df_filtered_long %>%
   )
 ```
 
-```{r}
+
+## Neighborhood Level 
+```{r _shap_township_map}
 
 neighborhoods <- ccao::nbhd_shp
 
 chars_data_1year <- chars_data %>%
   filter(meta_year == 2022) %>%
   select(meta_pin, meta_nbhd_code) %>%
-  rename(nbhd_code = meta_nbhd_code)
+  rename(nbhd_code = meta_nbhd_code) %>%
+  distinct(meta_pin, .keep_all = TRUE)
+
+
 
 # Combining multiple operations into a single pipeline
-test1 <- shap_df_filtered %>%
+Shap_map <- shap_df_filtered %>%
   left_join(chars_data_1year, by = "meta_pin") %>%
   group_by(nbhd_code) %>%
   summarise_if(is.numeric, ~mean(abs(.), na.rm = TRUE)) %>%
@@ -218,15 +223,36 @@ test1 <- shap_df_filtered %>%
   left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
 
-# Selecting only numeric columns from the spatial dataframe
-test2 <- test1 %>% select(where(is.numeric))
-
+Shap_map <- Shap_map %>%
+  select(
+    'Square Footage' = char_bldg_sf,
+    Neighborhood = meta_nbhd_code,
+    'Secondary School' = loc_school_secondary_district_geoid,
+    'Sale Timeframe ' = time_sale_day,
+    Township = meta_township_code,
+    'Median Income' = acs5_median_income_per_capita_past_year,
+    'Elementary School' = loc_school_elementary_district_geoid,
+    'Nearby Foreclosures' = prox_num_foreclosure_per_1000_pin_past_5_years,
+    Class = 'char_class',
+    'Land sq.ft.' = char_land_sf,
+    'Year Built' = char_yrblt,
+    'Graduate Degree Rate' = acs5_percent_education_graduate,
+    'Time Sale Year' = time_sale_year,
+    'Full Baths' = char_fbath,
+    'Sales in Past n Years' = meta_sale_count_past_n_years,
+    'Bachelor Degree Rate' = acs5_percent_education_bachelor,
+    'Air Type' = char_air,
+    Rooms = char_rooms,
+    'Muniticpality Name' = loc_tax_municipality_name,
+    'Post Covid Sale' = time_sale_post_covid
+  )
 
 m <- leaflet(test2) %>% addTiles()
 
+
 add_column_layer <- function(df, column_name, map) {
-  # Create a continuous color palette
-  pal <- colorNumeric(palette = "viridis", domain = df[[column_name]], na.color = "transparent")
+  # Create a continuous color palette with a single color gradient (blue)
+  pal <- colorNumeric(palette = c("white", "red"), domain = df[[column_name]], na.color = "transparent")
 
   # Add polygon layer using this color palette
   map %>% addPolygons(
@@ -237,7 +263,7 @@ add_column_layer <- function(df, column_name, map) {
     dashArray = "3",
     fillOpacity = 0.7,
     group = column_name,
-    label = ~as.character(df[[column_name]]),
+    label = ~label_dollar(accuracy = 1)(df[[column_name]]),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
@@ -246,27 +272,21 @@ add_column_layer <- function(df, column_name, map) {
   )
 }
 
-# Initialize Leaflet map
-m <- leaflet(test2) %>% addTiles()
 
-# Iterate over each numeric column
-numeric_columns <- names(test2)[sapply(test2, is.numeric)]
+m <- leaflet(Shap_map) %>% addTiles()
 
-for (column_name in numeric_columns) {
-  m <- add_column_layer(test2, column_name, m)
+columns_minus_geography <- names(Shap_map)[sapply(Shap_map, is.numeric)]
+
+for (column_name in columns_minus_geography) {
+  m <- add_column_layer(Shap_map, column_name, m)
 }
 
-# Add layer control
 m <- m %>% addLayersControl(
-  baseGroups = numeric_columns,
+  baseGroups = columns_minus_geography,
   options = layersControlOptions(collapsed = TRUE)
 )
 
 m
 ```
 
-```{r}
-
-
-```
 
