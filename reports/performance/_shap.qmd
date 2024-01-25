@@ -201,7 +201,7 @@ shap_df_filtered_long %>%
 ```
 
 
-## Neighborhood Level 
+## Neighborhood Level Means of SHAP Absolute Values
 ```{r _shap_township_map}
 
 neighborhoods <- ccao::nbhd_shp
@@ -247,11 +247,9 @@ Shap_map <- Shap_map %>%
     'Post Covid Sale' = time_sale_post_covid
   )
 
-m <- leaflet(test2) %>% addTiles()
-
+m <- leaflet(Shap_map) %>% addTiles()
 
 add_column_layer <- function(df, column_name, map) {
-  # Create a continuous color palette with a single color gradient (blue)
   pal <- colorNumeric(palette = c("white", "red"), domain = df[[column_name]], na.color = "transparent")
 
   # Add polygon layer using this color palette
@@ -263,7 +261,7 @@ add_column_layer <- function(df, column_name, map) {
     dashArray = "3",
     fillOpacity = 0.7,
     group = column_name,
-    label = ~label_dollar(accuracy = 1)(df[[column_name]]),
+    label = ~paste(column_name, label_dollar(accuracy = 1)(df[[column_name]])),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
