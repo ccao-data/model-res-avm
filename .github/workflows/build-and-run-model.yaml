@@ -33,6 +33,11 @@ on:
         description: Run cross-validation
         default: false
         required: true
+      shap_enable:
+        type: boolean
+        description: Calculate SHAP values
+        default: false
+        required: true
       comp_enable:
         type: boolean
         description: Run comparables finding
@@ -48,11 +53,6 @@ on:
         description: Integer number of price bins to use for comps finding
         default: "30"
         required: false
-      shap_enable:
-        type: boolean
-        description: Calculate SHAP values
-        default: false
-        required: true
   push:
     branches: [master]
 
