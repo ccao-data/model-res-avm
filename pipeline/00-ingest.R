@@ -63,7 +63,9 @@ training_data <- dbGetQuery(
 )
 tictoc::toc()
 
-# Grab new sales val flags
+# NOTE: This is a temporary shim to insert updated sales validation flags
+# that use slightly different groupings/methods vs the production flags. This
+# will be replaced once the production flags are stable
 sales_flags <- read_parquet(paste0(
   "s3://ccao-ci-test-township-partition-data-warehouse-us-east-1",
   "/sale/flag/2024-01-22_11:55-charming-damon.parquet"
