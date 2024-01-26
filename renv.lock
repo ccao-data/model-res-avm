@@ -765,14 +765,14 @@
     },
     "glue": {
       "Package": "glue",
-      "Version": "1.6.2",
+      "Version": "1.7.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
         "methods"
       ],
-      "Hash": "4f2596dfb05dac67b9dc558e5c6fba2e"
+      "Hash": "e0b3a53876554bd45879e596cdb10a52"
     },
     "gower": {
       "Package": "gower",
@@ -1016,7 +1016,7 @@
     },
     "lightgbm": {
       "Package": "lightgbm",
-      "Version": "4.2.0",
+      "Version": "4.3.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1030,7 +1030,7 @@
         "parallel",
         "utils"
       ],
-      "Hash": "b70457f37294d147c3e8192d99be548c"
+      "Hash": "3557a7d44ebdac1cda4cc5b5cbcb7716"
     },
     "lightsnip": {
       "Package": "lightsnip",
@@ -1040,8 +1040,8 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "jeancochrane/save-record-evals",
-      "RemoteSha": "ffd4c265f9c94244d0921359ff92f8aca3cd21cf",
+      "RemoteRef": "master",
+      "RemoteSha": "1bc65d5a152eee1e377fdfe9a63f7fe27de2d5c6",
       "Requirements": [
         "butcher",
         "dials",
@@ -1054,7 +1054,7 @@
         "tibble",
         "zip"
       ],
-      "Hash": "58f094b25aaecbb712ca5730398c5137"
+      "Hash": "d53f5a2c4fbce9c31ecd8482e5c30d5c"
     },
     "listenv": {
       "Package": "listenv",
@@ -1486,14 +1486,14 @@
     },
     "rlang": {
       "Package": "rlang",
-      "Version": "1.1.2",
+      "Version": "1.1.3",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
         "utils"
       ],
-      "Hash": "50a6dbdc522936ca35afc5e2082ea91b"
+      "Hash": "42548638fae05fd9a9b5f3f437fbbbe2"
     },
     "rpart": {
       "Package": "rpart",
@@ -1746,7 +1746,7 @@
     },
     "tidyr": {
       "Package": "tidyr",
-      "Version": "1.3.0",
+      "Version": "1.3.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1765,7 +1765,7 @@
         "utils",
         "vctrs"
       ],
-      "Hash": "e47debdc7ce599b070c8e78e8ac0cfcf"
+      "Hash": "915fb7ce036c22a6a33b5a8adb712eb1"
     },
     "tidyselect": {
       "Package": "tidyselect",
