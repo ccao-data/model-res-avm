@@ -432,15 +432,6 @@ ratio_study:
     - "20142140140000" # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
 
 
-# Export -----------------------------------------------------------------------
-
-# Final run ID(s) chosen for export to Desk Review spreadsheets and iasWorld
-# upload
-export:
-  triad_code: "3"
-  run_id: "2023-03-14-clever-damani"
-
-
 # Comp -------------------------------------------------------------------------
 
 comp:
@@ -451,3 +442,12 @@ comp:
   # comparison. Corresponds to Ntile predicted FMV, e.g. 10 creates deciles
   # of predicted values
   num_comp_price_bins: 30
+
+
+# Export -----------------------------------------------------------------------
+
+# Final run ID(s) chosen for export to Desk Review spreadsheets and iasWorld
+# upload
+export:
+  triad_code: "3"
+  run_id: "2023-03-14-clever-damani"
