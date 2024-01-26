@@ -182,16 +182,15 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
-# Extract weights for model features based on feature importance. Assumes that
+# Extract weights for model features based on tree importance. Assumes that
 # the model was trained with the `valids` parameter set such that error metrics
 # are saved for each tree on the model$record_evals attribute. The output
 # weights are useful for computing comps using leaf node assignments
-extract_weights <- function(model, mean_sale_price, metric = "rmse") {
+extract_weights <- function(model, init_score, metric = "rmse") {
   # Index into the errors list, and un-list so it is a flat/1dim list
   record_evals <- model$record_evals
   errors <- unlist(record_evals$tree_errors[[metric]]$eval)
-  # Use the mean sale price as the initial error
-  errors <- c(mean_sale_price, errors)
+  errors <- c(init_score, errors)
   diff_in_errors <- diff(errors, 1, 1)
 
   # Take proportion of diff in errors over total diff in
