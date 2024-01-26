@@ -213,9 +213,7 @@ if (comp_enable) {
 
   # Translate comp indexes to PINs
   comps[[1]] <- comps[[1]] %>%
-    mutate_all(\(idx_row) {
-      assessment_data[assessment_train_idxs[idx_row], ]$meta_pin
-    }) %>%
+    mutate_all(\(idx_row) { training_data[idx_row, ]$meta_pin }) %>%
     cbind(
       pin = assessment_data$meta_pin,
       card = assessment_data$meta_card_num
