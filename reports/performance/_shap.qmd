@@ -203,7 +203,6 @@ shap_df_filtered_long %>%
 
 ## Neighborhood Level Means of SHAP Absolute Values
 ```{r _shap_township_map}
-
 neighborhoods <- ccao::nbhd_shp
 
 chars_data_1year <- chars_data %>%
@@ -218,33 +217,33 @@ chars_data_1year <- chars_data %>%
 Shap_map <- shap_df_filtered %>%
   left_join(chars_data_1year, by = "meta_pin") %>%
   group_by(nbhd_code) %>%
-  summarise_if(is.numeric, ~mean(abs(.), na.rm = TRUE)) %>%
+  summarise_if(is.numeric, ~ mean(abs(.), na.rm = TRUE)) %>%
   mutate(nbhd_code = as.character(nbhd_code)) %>%
   left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
 
 Shap_map <- Shap_map %>%
   select(
-    'Square Footage' = char_bldg_sf,
+    "Square Footage" = char_bldg_sf,
     Neighborhood = meta_nbhd_code,
-    'Secondary School' = loc_school_secondary_district_geoid,
-    'Sale Timeframe ' = time_sale_day,
+    "Secondary School" = loc_school_secondary_district_geoid,
+    "Sale Timeframe " = time_sale_day,
     Township = meta_township_code,
-    'Median Income' = acs5_median_income_per_capita_past_year,
-    'Elementary School' = loc_school_elementary_district_geoid,
-    'Nearby Foreclosures' = prox_num_foreclosure_per_1000_pin_past_5_years,
-    Class = 'char_class',
-    'Land sq.ft.' = char_land_sf,
-    'Year Built' = char_yrblt,
-    'Graduate Degree Rate' = acs5_percent_education_graduate,
-    'Time Sale Year' = time_sale_year,
-    'Full Baths' = char_fbath,
-    'Sales in Past n Years' = meta_sale_count_past_n_years,
-    'Bachelor Degree Rate' = acs5_percent_education_bachelor,
-    'Air Type' = char_air,
+    "Median Income" = acs5_median_income_per_capita_past_year,
+    "Elementary School" = loc_school_elementary_district_geoid,
+    "Nearby Foreclosures" = prox_num_foreclosure_per_1000_pin_past_5_years,
+    Class = "char_class",
+    "Land sq.ft." = char_land_sf,
+    "Year Built" = char_yrblt,
+    "Graduate Degree Rate" = acs5_percent_education_graduate,
+    "Time Sale Year" = time_sale_year,
+    "Full Baths" = char_fbath,
+    "Sales in Past n Years" = meta_sale_count_past_n_years,
+    "Bachelor Degree Rate" = acs5_percent_education_bachelor,
+    "Air Type" = char_air,
     Rooms = char_rooms,
-    'Muniticpality Name' = loc_tax_municipality_name,
-    'Post Covid Sale' = time_sale_post_covid
+    "Muniticpality Name" = loc_tax_municipality_name,
+    "Post Covid Sale" = time_sale_post_covid
   )
 
 m <- leaflet(Shap_map) %>% addTiles()
@@ -254,14 +253,14 @@ add_column_layer <- function(df, column_name, map) {
 
   # Add polygon layer using this color palette
   map %>% addPolygons(
-    fillColor = ~pal(df[[column_name]]),
+    fillColor = ~ pal(df[[column_name]]),
     weight = 1,
     opacity = 1,
     color = "white",
     dashArray = "3",
     fillOpacity = 0.7,
     group = column_name,
-    label = ~paste(column_name, label_dollar(accuracy = 1)(df[[column_name]])),
+    label = ~ paste(column_name, label_dollar(accuracy = 1)(df[[column_name]])),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
