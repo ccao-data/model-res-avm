@@ -90,6 +90,8 @@ metadata <- tibble::tibble(
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
   shap_enable = shap_enable,
   comp_enable = comp_enable,
+  num_comps = num_comps,
+  num_comp_price_bins = num_comp_price_bins,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,
