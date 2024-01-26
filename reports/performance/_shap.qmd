@@ -203,8 +203,6 @@ shap_df_filtered_long %>%
 
 ## Neighborhood Level Means of SHAP Absolute Values
 ```{r _shap_township_map}
-neighborhoods <- ccao::nbhd_shp
-
 chars_data_1year <- chars_data %>%
   filter(meta_year == 2022) %>%
   select(meta_pin, meta_nbhd_code) %>%
@@ -213,13 +211,12 @@ chars_data_1year <- chars_data %>%
 
 
 
-# Combining multiple operations into a single pipeline
 Shap_map <- shap_df_filtered %>%
   left_join(chars_data_1year, by = "meta_pin") %>%
   group_by(nbhd_code) %>%
   summarise_if(is.numeric, ~ mean(abs(.), na.rm = TRUE)) %>%
   mutate(nbhd_code = as.character(nbhd_code)) %>%
-  left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) %>%
+  left_join(ccao::nbhd_shp, by = c("nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
 
 Shap_map <- Shap_map %>%
@@ -227,7 +224,7 @@ Shap_map <- Shap_map %>%
     "Square Footage" = char_bldg_sf,
     Neighborhood = meta_nbhd_code,
     "Secondary School" = loc_school_secondary_district_geoid,
-    "Sale Timeframe " = time_sale_day,
+    "Time Sale Day" = time_sale_day,
     Township = meta_township_code,
     "Median Income" = acs5_median_income_per_capita_past_year,
     "Elementary School" = loc_school_elementary_district_geoid,
@@ -285,5 +282,3 @@ m <- m %>% addLayersControl(
 
 m
 ```
-
-
