@@ -76,16 +76,12 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     step_novel(all_of(cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
     step_unknown(all_of(cat_vars), -has_role("ID")) %>%
-    # Perform categorical embedding
-    embed::step_lencode_glm(
-      all_of(cat_vars), -has_role("ID"),
-      outcome = vars(meta_sale_price)
-    ) %>%
+    # Dummify categorical predictors
+    step_dummy(all_of(cat_vars), -has_role("ID")) %>%
     # Drop any predictors with near-zero variance, add interactions, and
     # perform transforms
     step_nzv(all_predictors()) %>%
-    step_interact(terms = ~ meta_township_code * time_sale_day) %>%
-    step_interact(terms = ~ meta_township_code * char_bldg_sf) %>%
+    step_interact(terms = ~ starts_with("meta_township_code"):char_bldg_sf) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
       acs5_median_income_household_past_year,
