@@ -50,6 +50,7 @@ Config/renv/profiles/reporting/dependencies:
     backports,
     brio,
     broom,
+    callr,
     DBI,
     decor,
     desc,
