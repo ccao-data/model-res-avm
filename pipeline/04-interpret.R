@@ -116,7 +116,7 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Calculate comps -----------------------------------------------------------
+# 4. Find Comparables  ---------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (comp_enable) {
@@ -155,7 +155,7 @@ if (comp_enable) {
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
-    mean_sale_price = mean(training_data$meta_sale_price, na.rm = TRUE),
+    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
     metric = params$model$objective
   )
 
