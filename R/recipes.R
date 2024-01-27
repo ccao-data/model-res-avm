@@ -64,6 +64,8 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
+    # Drop extra location predictors that aren't nbhd or township
+    step_rm(starts_with("loc_"), -all_numeric_predictors()) %>%
     # Transforms and imputations
     step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
     step_mutate_at(
@@ -71,21 +73,18 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       starts_with("ccao_is"),
       fn = as.numeric
     ) %>%
-    step_impute_median(all_numeric(), -all_outcomes(), -has_role("ID")) %>%
+    step_impute_median(all_numeric_predictors(), -has_role("ID")) %>%
+    step_impute_mode(all_nominal_predictors(), -has_role("ID")) %>%
+    step_zv(all_predictors()) %>%
     # Replace novel levels with "new"
-    step_novel(all_of(cat_vars), -has_role("ID")) %>%
+    step_novel(all_nominal_predictors(), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
-    step_unknown(all_of(cat_vars), -has_role("ID")) %>%
-    # Perform categorical embedding
-    embed::step_lencode_glm(
-      all_of(cat_vars), -has_role("ID"),
-      outcome = vars(meta_sale_price)
-    ) %>%
+    step_unknown(all_nominal_predictors(), -has_role("ID")) %>%
+    # Dummify categorical predictors
+    step_dummy(all_nominal_predictors(), -has_role("ID"), one_hot = TRUE) %>%
     # Drop any predictors with near-zero variance, add interactions, and
     # perform transforms
-    step_nzv(all_predictors()) %>%
-    step_interact(terms = ~ meta_township_code * time_sale_day) %>%
-    step_interact(terms = ~ meta_township_code * char_bldg_sf) %>%
+    step_interact(terms = ~ starts_with("meta_township_"):char_bldg_sf) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
       acs5_median_income_household_past_year,
