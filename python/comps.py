@@ -31,7 +31,7 @@ def get_comps(
     """
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
-    weights_arr = np.asarray(weights, dtype=np.float64)
+    weights_arr = np.asarray(weights, dtype=np.float32)
 
     # Add ID columns so that we can keep track of the initial position of
     # each row as we sort them. This is necessary to allow the caller to
@@ -205,7 +205,7 @@ def _bin_by_price(observation_matrix, price_bin_matrix):
     num_observations = len(observation_matrix)
     price_bin_idx, price_bin_min_idx, price_bin_max_idx = 0, 3, 4
     observation_price_idx = 1
-    output_matrix = np.zeros(num_observations, dtype=np.int64)
+    output_matrix = np.zeros(num_observations, dtype=np.int32)
 
     for obs_idx in nb.prange(num_observations):
         observation = observation_matrix[obs_idx]
@@ -238,8 +238,8 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     num_observations = len(leaf_node_matrix)
     num_comparisons = len(comparison_leaf_node_matrix)
     weights = weights.T
-    idx_dtype = np.int64
-    score_dtype = np.float64
+    idx_dtype = np.int32
+    score_dtype = np.float32
 
     # Store scores and indexes in two separate arrays rather than a 3d matrix
     # for simplicity (array of tuples does not convert to pandas properly).
