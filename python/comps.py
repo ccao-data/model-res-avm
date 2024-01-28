@@ -2,19 +2,15 @@ import numpy as np
 import numba as nb
 import pandas as pd
 
-# The number of bins to create for when binning data by sale price; e.g. if
-# this value is 10, the data will be binned into deciles
-NUM_PRICE_BINS = 30
-
 
 def get_comps(
     observation_df,
     comparison_df,
     weights,
-    n=20,
-    num_price_bins=NUM_PRICE_BINS,
+    num_comps=20,
+    num_price_bins=10,
 ):
-    """Fast algorithm to get the top `n` comps from a dataframe of lightgbm
+    """Fast algorithm to get the top `num_comps` comps from a dataframe of lightgbm
     leaf node assignments (`observation_df`) compared to a second dataframe of
     assignments (`comparison_df`). Leaf nodes are weighted according to a tree
     importance vector `weights` and used to generate a similarity score and
@@ -146,7 +142,7 @@ def get_comps(
 
         print(
             (
-                f"Getting top {n} comps for price bin {bin['id'] + 1}/"
+                f"Getting top {num_comps} comps for price bin {bin['id'] + 1}/"
                 f"{len(price_bin_indices)} (${price_min:,} to ${price_max:,}) - "
                 f"{len(observations)}/{total_num_observations} observations, "
                 f"{len(possible_comps)}/{total_num_possible_comps} possible comps"
@@ -155,7 +151,7 @@ def get_comps(
         )
 
         comp_ids, comp_scores = _get_top_n_comps(
-            observation_matrix, possible_comp_matrix, weights_arr, n
+            observation_matrix, possible_comp_matrix, weights_arr, num_comps
         )
 
         # Match comp and observation IDs back to the original dataframes since
@@ -187,11 +183,11 @@ def get_comps(
     # the input data
     indexes_df = pd.DataFrame(
         np.asarray(sorted_binned_ids),
-        columns=[f"comp_idx_{idx}" for idx in range(1, n+1)]
+        columns=[f"comp_idx_{idx}" for idx in range(1, num_comps + 1)]
     )
     scores_df = pd.DataFrame(
         np.asarray(sorted_binned_scores),
-        columns=[f"comp_score_{idx}" for idx in range(1, n+1)]
+        columns=[f"comp_score_{idx}" for idx in range(1, num_comps + 1)]
     )
 
     return indexes_df, scores_df
@@ -229,14 +225,16 @@ def _bin_by_price(observation_matrix, price_bin_matrix):
 
 
 @nb.njit(fastmath=True, parallel=True)
-def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
+def _get_top_n_comps(
+    leaf_node_matrix, comparison_leaf_node_matrix, weights, num_comps
+):
     """Helper function that takes matrices of leaf node assignments for
     observations in a tree model, an array of weights for each tree, and an
-    integer N, and returns a matrix where each observation is scored by
-    similarity to observations in the comparison matrix and the top N scores
+    integer `num_comps`, and returns a matrix where each observation is scored
+    by similarity to observations in the comparison matrix and the top N scores
     are returned along with the indexes of the comparison observations."""
     num_observations = len(leaf_node_matrix)
-    num_comparisons = len(comparison_leaf_node_matrix)
+    num_possible_comparisons = len(comparison_leaf_node_matrix)
     weights = weights.T
     idx_dtype = np.int32
     score_dtype = np.float32
@@ -245,17 +243,17 @@ def _get_top_n_comps(leaf_node_matrix, comparison_leaf_node_matrix, weights, n):
     # for simplicity (array of tuples does not convert to pandas properly).
     # Indexes default to -1, which is an impossible index and so is a signal
     # that no comp was found
-    all_top_n_idxs = np.full((num_observations, n), -1, dtype=idx_dtype)
-    all_top_n_scores = np.zeros((num_observations, n), dtype=score_dtype)
+    all_top_n_idxs = np.full((num_observations, num_comps), -1, dtype=idx_dtype)
+    all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
 
     for x_i in nb.prange(num_observations):
-        top_n_idxs = np.full(n, -1, dtype=idx_dtype)
-        top_n_scores = np.zeros(n, dtype=score_dtype)
+        top_n_idxs = np.full(num_comps, -1, dtype=idx_dtype)
+        top_n_scores = np.zeros(num_comps, dtype=score_dtype)
 
         # TODO: We could probably speed this up by skipping comparisons we've
         # already made; we just need to do it in a way that will have a
         # low memory footprint
-        for y_i in range(num_comparisons):
+        for y_i in range(num_possible_comparisons):
             similarity_score = 0.0
             for tree_idx in range(len(leaf_node_matrix[x_i])):
                 similarity_score += (
