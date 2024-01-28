@@ -1,66 +1,61 @@
 {{< include ../_setup.qmd >}}
 
-## Comps
+## Comparables
 
-This map shows the target parcel alongside the 20 most similar parcels, where
-similarity is determined by the number of matching leaf node assignments that
-the model gives to each parcel weighted by the relative importance of each tree.
-See [this
+This map shows the target parcel alongside the `r metadata$comp_num_comps` most
+similar parcels, where similarity is determined by the number of matching leaf
+node assignments that the model gives to each parcel weighted by the relative
+importance of each tree. See [this
 vignette](https://ccao-data.github.io/lightsnip/articles/finding-comps.html)
 for more background on the similarity algorithm.
 
 ```{r _comp_map}
 comp_df_filtered <- comp_df %>%
   filter(pin == target_pin) %>%
-  tidyr::pivot_longer(c(comp_pin_1:comp_pin_20), values_to = "comp_pin") %>%
+  tidyr::pivot_longer(starts_with("comp_pin_"), values_to = "comp_pin") %>%
   select(-name, -starts_with("comp_score_")) %>%
   bind_cols(
     comp_df %>%
       filter(pin == target_pin) %>%
       tidyr::pivot_longer(
-        c(comp_score_1:comp_score_20),
+        starts_with("comp_score_"),
         values_to = "comp_score"
       ) %>%
       select(-name, -starts_with("comp_pin_"), -pin)
   ) %>%
-  mutate(type = "comp") %>%
+  mutate(type = "Comp.") %>%
   left_join(
     training_data,
     by = c("comp_pin" = "meta_pin"),
     relationship = "many-to-many"
   ) %>%
   select(
-    pin,
-    comp_pin,
-    comp_score,
-    meta_sale_date,
-    meta_sale_price,
-    loc_latitude, loc_longitude,
-    meta_class,
-    char_bldg_sf,
-    char_yrblt,
-    char_ext_wall,
-    type
+    pin, comp_pin, comp_score, meta_1yr_pri_board_tot,
+    meta_sale_date, meta_sale_price,
+    loc_latitude, loc_longitude, meta_class,
+    char_bldg_sf, char_yrblt, char_ext_wall, type
   ) %>%
   group_by(comp_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
   bind_rows(
     tibble::tribble(
-      ~pin, ~year, ~comp_pin, ~comp_score, ~type,
-      target_pin, "2023", target_pin, 1, "target"
+      ~pin, ~comp_pin, ~comp_score, ~type,
+      target_pin, target_pin, 1, "target"
     ) %>%
       left_join(
         assessment_data %>%
           select(
-            meta_pin, meta_class, char_bldg_sf, char_yrblt, char_ext_wall,
+            meta_pin, meta_class, meta_1yr_pri_board_tot,
+            char_bldg_sf, char_yrblt, char_ext_wall,
             loc_latitude, loc_longitude
           ),
         by = c("pin" = "meta_pin"),
       ) %>%
-      mutate(type = "target")
-  )
+      mutate(type = "Target")
+  ) %>%
+  mutate(meta_1yr_pri_board_tot = meta_1yr_pri_board_tot * 10)
 
-palette <-
+comp_palette <-
   colorFactor(
     palette = "Set1",
     domain = comp_df_filtered$type
@@ -74,20 +69,21 @@ leaflet() %>%
     ~loc_latitude,
     opacity = 1,
     fillOpacity = 1,
-    radius = 1.5,
-    color = ~ palette(type),
+    radius = 2,
+    color = ~ comp_palette(type),
     popup = ~ paste0(
-      "Comp. PIN: ",
+      type, " PIN: ",
       "<a target='_blank' rel='noopener noreferrer' ",
       "href='https://www.cookcountyassessor.com/pin/", comp_pin,
       "'>", comp_pin, "</a>",
-      "<br>Score: ", scales::percent(comp_score),
+      "<br>Score: ", scales::percent(comp_score, accuracy = 0.01),
       "<br>Class: ", meta_class,
+      "<br>BoR FMV: ", scales::dollar(meta_1yr_pri_board_tot, accuracy = 1),
       "<hr>",
       "Sale Date: ", meta_sale_date,
-      "<br>Sale Price: ", meta_sale_price,
+      "<br>Sale Price: ", scales::dollar(meta_sale_price, accuracy = 1),
       "<hr>",
-      "Bldg Sqft: ", char_bldg_sf,
+      "Bldg Sqft: ", scales::comma(char_bldg_sf),
       "<br>Year Built: ", char_yrblt,
       "<br>Ext. Wall: ", char_ext_wall
     )
