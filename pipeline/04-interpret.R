@@ -158,6 +158,9 @@ if (comp_enable) {
     init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
     metric = params$model$objective
   )
+  if (length(tree_weights) == 0 || sum(tree_weights) != 1) {
+    stop("Unable to extract tree weights: length 0 or weight sum != 1")
+  }
 
   # Get predicted values and leaf node assignments for the training data
   training_data_prepped <- recipes::bake(
