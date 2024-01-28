@@ -89,7 +89,7 @@ stages:
     - output/test_card/model_test_card.parquet
     - output/assessment_pin/model_assessment_pin.parquet
     params:
-    - assessment.data_year
+    - assessment
     - ratio_study
     outs:
     - output/performance/model_performance_test.parquet:
@@ -110,9 +110,13 @@ stages:
       importance metrics for each feature
     deps:
     - input/assessment_data.parquet
+    - input/training_data.parquet
+    - output/assessment_card/model_assessment_card.parquet
     - output/workflow/fit/model_workflow_fit.zip
     - output/workflow/recipe/model_workflow_recipe.rds
     params:
+    - toggle.shap_enable
+    - toggle.comp_enable
     - model.predictor.all
     outs:
     - output/shap/model_shap.parquet:
