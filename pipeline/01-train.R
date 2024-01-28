@@ -355,7 +355,7 @@ lgbm_model_final <- lgbm_model %>%
     stop_iter = NULL,
     validation = 0,
     trees = lgbm_final_params$num_iterations,
-    save_tree_errors = comp_enable
+    save_tree_error = comp_enable
   )
 
 # Fit the final model using the training data and our final hyperparameters
