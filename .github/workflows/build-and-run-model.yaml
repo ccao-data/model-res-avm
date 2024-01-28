@@ -14,6 +14,18 @@ on:
     types: [opened, reopened, synchronize, closed]
   workflow_dispatch:
     inputs:
+      run_type:
+        type: choice
+        description: Run type or purpose
+        options:
+        - junk
+        - rejected
+        - test
+        - baseline
+        - candidate
+        - final
+        default: test
+        required: true
       run_note:
         type: string
         description: Note to include with run
@@ -68,14 +80,19 @@ jobs:
       # Disable Batch job status polling since this workflow often takes
       # more than 6 hours
       poll_for_status: false
-    secrets:
-      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      CONTAINER_ENV_VARS: |
-        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
+      # Set these env vars in the container
+      container_env_vars: |
+        WORKFLOW_RUN_TYPE=${{ inputs.run_type }}
         WORKFLOW_RUN_NOTE=${{ inputs.run_note }}
         UPLOAD_ENABLE_OVERRIDE=${{ inputs.upload_enable }}
         CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
         REPORT_ADDITIONAL_PINS=${{ inputs.report_additional_pins }}
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      # Set these env vars as secrets so they get masked in the GitHub
+      # Actions logs
+      CONTAINER_ENV_VARS: |
+        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}

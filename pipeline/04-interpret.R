@@ -42,7 +42,7 @@ if (shap_enable || comp_enable) {
 if (comp_enable) {
   message("Loading predicted values for comp calculation")
 
-  predicted_data <- read_parquet(paths$output$assessment_pin$local) %>%
+  assessment_card <- read_parquet(paths$output$assessment_card$local) %>%
     as_tibble()
 }
 
@@ -116,11 +116,11 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Calculate comps -----------------------------------------------------------
+# 4. Find Comparables  ---------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (comp_enable) {
-  message("Calculating comps")
+  message("Finding comparables")
 
   # Calculate the leaf node assignments for every predicted value.
   # Due to integer overflow problems with leaf node assignment, we need to
@@ -146,8 +146,8 @@ if (comp_enable) {
 
   # Calculate weights representing feature importance, so that we can weight
   # leaf node assignments based on the most important features.
-  # To do this, we need the training data so that we can compute base model
-  # error
+  # To do this, we need the training data so that we can compute the mean sale
+  # price and use it as the base model error
   message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
@@ -155,30 +155,46 @@ if (comp_enable) {
 
   tree_weights <- extract_weights(
     model = lgbm_final_full_fit$fit,
-    train = training_data,
-    outcome_col = "meta_sale_price",
+    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
+    metric = params$model$objective
   )
+  if (length(tree_weights) == 0 || sum(tree_weights) != 1) {
+    stop("Unable to extract tree weights: length 0 or weight sum != 1")
+  }
 
-  # Get leaf node assignments for the training data. Assume that the training
-  # data is a subset of the assessment data
-  assessment_joined_to_training <- assessment_data %>%
-    tibble::rownames_to_column() %>%
-    inner_join(training_data, by = c("meta_pin", "meta_card_num"))
+  # Get predicted values and leaf node assignments for the training data
+  training_data_prepped <- recipes::bake(
+    object = lgbm_final_full_recipe,
+    new_data = training_data,
+    all_predictors()
+  )
+  training_leaf_nodes <- predict(
+    object = lgbm_final_full_fit$fit,
+    newdata = as.matrix(training_data_prepped),
+    type = "leaf"
+  ) %>%
+    as_tibble()
+  training_leaf_nodes$predicted_value <- predict(
+    object = lgbm_final_full_fit$fit,
+    newdata = as.matrix(training_data_prepped)
+  ) %>%
+    # Round predicted values down for binning
+    floor()
 
-  assessment_train_idxs <- assessment_joined_to_training %>%
-    dplyr::pull(rowname) %>%
-    as.integer()
-  training_leaf_nodes <- leaf_nodes[assessment_train_idxs, ]
+  # Get predicted values for the assessment set, which we already have in
+  # the assessment card set
+  leaf_nodes$predicted_value <- assessment_data %>%
+    left_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
+    # Round predicted values down for binning
+    mutate(pred_card_initial_fmv = floor(pred_card_initial_fmv)) %>%
+    dplyr::pull(pred_card_initial_fmv)
 
-  # Add sale price to both training and assessment sets, so that we can use
-  # it to chunk comp comparisons
-  training_leaf_nodes$meta_sale_price <- assessment_joined_to_training %>%
-    dplyr::pull(meta_sale_price) %>%
-    as.integer()
-  leaf_nodes$pred_pin_final_fmv <- assessment_data %>%
-    left_join(predicted_data, by = "meta_pin") %>%
-    mutate(pred_pin_final_fmv = as.integer(pred_pin_final_fmv)) %>%
-    dplyr::pull("pred_pin_final_fmv")
+  # Make sure that the leaf node tibbles are all integers, which is what
+  # the comps algorithm expects
+  leaf_nodes <- leaf_nodes %>%
+    mutate(across(everything(), ~ as.integer(.x)))
+  training_leaf_nodes <- training_leaf_nodes %>%
+    mutate(across(everything(), ~ as.integer(.x)))
 
   # Do the comps calculation in Python because the code is simpler and faster
   message("Calling out to python/comps.py to perform comps calculation")
@@ -187,7 +203,8 @@ if (comp_enable) {
     {
       comps <- comps_module$get_comps(
         leaf_nodes, training_leaf_nodes, tree_weights,
-        n = as.integer(20)
+        num_comps = as.integer(params$comp$num_comps),
+        num_price_bins = as.integer(params$comp$num_price_bins)
       )
     },
     error = function(e) {
@@ -202,9 +219,9 @@ if (comp_enable) {
 
   # Translate comp indexes to PINs
   comps[[1]] <- comps[[1]] %>%
-    mutate_all(\(idx_row) {
-      assessment_data[assessment_train_idxs[idx_row], ]$meta_pin
-    }) %>%
+    mutate(across(everything(), \(idx_row) {
+      training_data[idx_row, ]$meta_pin
+    })) %>%
     cbind(
       pin = assessment_data$meta_pin,
       card = assessment_data$meta_card_num

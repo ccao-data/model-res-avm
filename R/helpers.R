@@ -5,6 +5,26 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   wd <- here::here()
   suppressPackageStartupMessages(library(magrittr))
 
+  if (!is.null(run_id)) {
+    if (run_id == "") {
+      stop("run_id cannot be an empty string")
+    } else if (!stringr::str_detect(run_id, "^[a-z0-9]+(?:[-][a-z0-9]+)*$")) {
+      stop("run_id must contain only alphanumeric characters and hyphens")
+    } else if (!stringr::str_detect(run_id, "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z]*-[a-z]*")) { # nolint
+      stop("run_id must be in the format YYYY-MM-DD-<adjective>-<person>")
+    }
+  }
+
+  if (!is.null(year)) {
+    if (year == "") {
+      stop("year cannot be an empty string")
+    } else if (!stringr::str_detect(year, "^[0-9]{4}$")) {
+      stop("year must be a four-digit number")
+    } else if (is.numeric(year)) {
+      stop("year must be a string")
+    }
+  }
+
   # Convert flat dictionary file to nested list
   dict <- read.csv(
     here::here("misc", "file_dict.csv"),
@@ -86,6 +106,24 @@ model_delete_run <- function(run_id, year) {
     purrr::walk(aws.s3::delete_object)
 }
 
+# Used to tag existing runs by updating the metadata `run_type` field
+model_tag_run <- function(run_id, year, run_type) {
+  paths <- model_file_dict(run_id, year)
+  possible_run_types <- c(
+    "junk", "rejected", "test",
+    "baseline", "candidate", "final"
+  )
+  if (!run_type %in% possible_run_types) {
+    stop(
+      "Invalid run type '", run_type, "'. Must be one of: ",
+      paste0(possible_run_types, collapse = ", ")
+    )
+  }
+  arrow::read_parquet(paths$output$metadata$s3) %>%
+    dplyr::mutate(run_type = {{ run_type }}) %>%
+    arrow::write_parquet(paths$output$metadata$s3)
+}
+
 # Used to fetch a run's output from S3 and populate it locally. Useful for
 # running reports and performing local troubleshooting
 # nolint start: cyclocomp_linter
@@ -144,18 +182,11 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
-# Extract weights for model features based on feature importance. Assumes that
+# Extract weights for model features based on tree importance. Assumes that
 # the model was trained with the `valids` parameter set such that error metrics
 # are saved for each tree on the model$record_evals attribute. The output
 # weights are useful for computing comps using leaf node assignments
-extract_weights <- function(model, train, outcome_col, metric = "rmse") {
-  train_lgb <- lgb.Dataset(as.matrix(train), label = train[[outcome_col]])
-
-  # Get the initial error for base model before the first tree
-  set_field(train_lgb, "init_score", as.matrix(train[[outcome_col]]))
-  initial_predictions <- get_field(train_lgb, "init_score")
-  init_score <- mean(initial_predictions)
-
+extract_weights <- function(model, init_score, metric = "rmse") {
   # Index into the errors list, and un-list so it is a flat/1dim list
   record_evals <- model$record_evals
   errors <- unlist(record_evals$tree_errors[[metric]]$eval)

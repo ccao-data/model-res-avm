@@ -82,4 +82,5 @@ if (!all(valid_run_ids)) {
   glue::glue() %>%
   print()
 
-run_ids %>% sapply(model_delete_run, year = year)
+run_ids %>%
+  purrr::walk(~ model_delete_run(run_id = .x, year = year))

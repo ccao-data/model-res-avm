@@ -50,6 +50,7 @@ dvc_md5_df <- bind_rows(read_yaml("dvc.lock")$stages$ingest$outs) %>%
 metadata <- tibble::tibble(
   run_id = run_id,
   run_end_timestamp = run_end_timestamp,
+  run_type = run_type,
   run_note = run_note,
   git_sha_short = substr(git_commit$sha, 1, 8),
   git_sha_long = git_commit$sha,
@@ -63,6 +64,7 @@ metadata <- tibble::tibble(
   assessment_data_year = params$assessment$data_year,
   input_min_sale_year = params$input$min_sale_year,
   input_max_sale_year = params$input$max_sale_year,
+  input_n_years_prior = params$input$n_years_prior,
   input_complex_match_exact = list(params$input$complex$match_exact),
   input_complex_match_fuzzy_name = list(
     names(params$input$complex$match_fuzzy)
@@ -88,6 +90,8 @@ metadata <- tibble::tibble(
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
   shap_enable = shap_enable,
   comp_enable = comp_enable,
+  comp_num_comps = params$comp$num_comps,
+  comp_num_price_bins = params$comp$num_price_bins,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,

@@ -143,7 +143,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 
       # Assessment-specific ratio stats
       rs_lst = rs_fns_list %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ truth }})) %>%
+        map(., \(f) exec(f, pmax({{ estimate }}, 1), {{ truth }})) %>%
         list(),
       median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
 

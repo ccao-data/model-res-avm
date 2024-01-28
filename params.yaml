@@ -9,6 +9,10 @@
 
 # Run Control ------------------------------------------------------------------
 
+# Model tag used to identify the purpose of the run. Must be one of:
+# "junk", "rejected", "test", "baseline", "candidate", or "final"
+run_type: "test"
+
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
@@ -39,7 +43,7 @@ assessment:
   year: "2024"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2023-10-01"
+  date: "2024-01-01"
 
   # Added context for model artifacts stored in S3. Does not change behavior
   triad: "city"
@@ -148,7 +152,7 @@ model:
       - "meta_township_code"
       - "meta_nbhd_code"
       - "meta_modeling_group"
-      - "meta_tieback_proration_rate"
+      - "meta_sale_count_past_n_years"
       - "char_yrblt"
       - "char_air"
       - "char_apts"
@@ -158,10 +162,10 @@ model:
       - "char_bldg_sf"
       - "char_bsmt"
       - "char_bsmt_fin"
+      - "char_class"
       - "char_ext_wall"
       - "char_fbath"
       - "char_frpl"
-      - "char_gar1_area"
       - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
@@ -173,14 +177,11 @@ model:
       - "char_roof_cnst"
       - "char_rooms"
       - "char_tp_dsgn"
-      - "char_tp_plan"
       - "char_type_resd"
       - "char_recent_renovation"
       - "loc_longitude"
       - "loc_latitude"
-      - "loc_env_flood_fema_sfha"
       - "loc_env_flood_fs_factor"
-      - "loc_env_flood_fs_risk_direction"
       - "loc_env_airport_noise_dnl"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
@@ -206,6 +207,8 @@ model:
       - "prox_nearest_park_dist_ft"
       - "prox_nearest_railroad_dist_ft"
       - "prox_nearest_secondary_road_dist_ft"
+      - "prox_nearest_university_dist_ft"
+      - "prox_nearest_vacant_land_dist_ft"
       - "prox_nearest_water_dist_ft"
       - "prox_nearest_golf_course_dist_ft"
       - "acs5_percent_age_children"
@@ -231,7 +234,9 @@ model:
       - "other_tax_bill_rate"
       - "other_school_district_elementary_avg_rating"
       - "other_school_district_secondary_avg_rating"
+      - "ccao_is_active_exe_homeowner"
       - "ccao_is_corner_lot"
+      - "ccao_n_years_exe_homeowner"
       - "time_sale_year"
       - "time_sale_day"
       - "time_sale_quarter_of_year"
@@ -240,7 +245,6 @@ model:
       - "time_sale_day_of_month"
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
-      - "char_class"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
@@ -255,8 +259,8 @@ model:
       - "char_attic_type"
       - "char_bsmt"
       - "char_bsmt_fin"
+      - "char_class"
       - "char_ext_wall"
-      - "char_gar1_area"
       - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
@@ -264,13 +268,11 @@ model:
       - "char_porch"
       - "char_roof_cnst"
       - "char_tp_dsgn"
-      - "char_tp_plan"
       - "char_type_resd"
       - "loc_tax_municipality_name"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
       - "time_sale_quarter_of_year"
-      - "char_class"
 
     # List of identifiers for each observation, can be ignored
     id:
@@ -421,6 +423,20 @@ ratio_study:
     - "14321100320000" # Lincoln Park 206, 4 bed, 3 bath, 4000 sqft
     - "16054270120000" # Austin 205, 6 bed, 2 bath, 2000 sqft
     - "20142140140000" # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
+
+
+# Comparables ------------------------------------------------------------------
+
+# Parameters related to the experimental comparables finding feature
+# in the interpret pipeline stage. Only used if comp_enable = TRUE
+comp:
+  # Number of comps to generate for each PIN/card
+  num_comps: 20
+
+  # Number of price bins to use when binning properties for the purpose of
+  # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
+  # of predicted values. Larger deciles = larger comparables search range
+  num_price_bins: 20
 
 
 # Export -----------------------------------------------------------------------

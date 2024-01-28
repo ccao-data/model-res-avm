@@ -63,6 +63,25 @@ training_data <- dbGetQuery(
 )
 tictoc::toc()
 
+# NOTE: This is a temporary shim to insert updated sales validation flags
+# that use slightly different groupings/methods vs the production flags. This
+# will be replaced once the production flags are stable
+sales_flags <- read_parquet(paste0(
+  "s3://ccao-ci-test-township-partition-data-warehouse-us-east-1",
+  "/sale/flag/2024-01-22_11:55-charming-damon.parquet"
+))
+
+# Replace the old flags with the new flags by reference
+library(data.table)
+conflicts_prefer(dplyr::between)
+conflict_prefer_all("lubridate")
+setDT(training_data)
+setDT(sales_flags)
+
+training_data[sales_flags, c("sv_is_outlier", "sv_outlier_type") := {
+  .(i.sv_is_outlier, i.sv_outlier_type)
+}, on = .(meta_sale_document_num)]
+
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
 tictoc::tic("HIE data pulled")
@@ -290,6 +309,8 @@ training_data_clean <- training_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
     # Miscellanous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
+    ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
     across(where(is.character), \(x) na_if(x, ""))
   ) %>%
   # Get a count of the number of sales that have occurred in the last n years
@@ -367,6 +388,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
+    ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
+    ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
     across(where(is.character), \(x) na_if(x, ""))
   ) %>%
   # Get a count of the number of sales that have occurred in the last n years
@@ -382,6 +405,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
       # as.duration(1) excludes the same sale from being identified as within
       # 3 years of itself
       mutate(within_n_years = between(
+        # Here we're looking back from the lien date instead of the sale date,
+        # as in the training data
         ymd(params$assessment$date) - as_date(meta_sale_date),
         as.duration(1),
         as.duration(years(params$input$n_years_prior))
@@ -389,8 +414,14 @@ assessment_data_clean <- assessment_data_w_hie %>%
       # Distinct is necessary because of multicard sales
       distinct() %>%
       summarise(
+        # Subtract 1 from the count of prior sales. The reasoning here is
+        # difficult, but basically: in the training data, this feature only has
+        # a count > 0 conditional on multiple sales. In the assessment data, if
+        # we count the lien date as a sale, the "multiple sales" conditional
+        # isn't technically true. Therefore, we subtract 1 from the count to
+        # make the feature consistent between the training and assessment data
         meta_sale_count_past_n_years = as.numeric(
-          sum(within_n_years, na.rm = TRUE)
+          pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
         .by = "meta_pin"
       ),
