@@ -120,7 +120,7 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (comp_enable) {
-  message("Calculating comps")
+  message("Finding comparables")
 
   # Calculate the leaf node assignments for every predicted value.
   # Due to integer overflow problems with leaf node assignment, we need to
