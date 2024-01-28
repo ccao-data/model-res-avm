@@ -425,16 +425,18 @@ ratio_study:
     - "20142140140000" # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
 
 
-# Comp -------------------------------------------------------------------------
+# Comparables ------------------------------------------------------------------
 
+# Parameters related to the experimental comparables finding feature
+# in the interpret pipeline stage. Only used if comp_enable = TRUE
 comp:
-  # Number of comps to generate for each card.
-  # Only used if comp_enable = TRUE
+  # Number of comps to generate for each PIN/card
   num_comps: 20
+
   # Number of price bins to use when binning properties for the purpose of
-  # comparison. Corresponds to Ntile predicted FMV, e.g. 10 creates deciles
-  # of predicted values
-  num_comp_price_bins: 30
+  # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
+  # of predicted values. Larger deciles = larger comparables search range
+  num_price_bins: 30
 
 
 # Export -----------------------------------------------------------------------
