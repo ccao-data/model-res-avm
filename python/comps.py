@@ -236,8 +236,8 @@ def _get_top_n_comps(
     num_observations = len(leaf_node_matrix)
     num_possible_comparisons = len(comparison_leaf_node_matrix)
     weights = weights.T
-    idx_dtype = np.int64
-    score_dtype = np.float64
+    idx_dtype = np.int32
+    score_dtype = np.float32
 
     # Store scores and indexes in two separate arrays rather than a 3d matrix
     # for simplicity (array of tuples does not convert to pandas properly).
