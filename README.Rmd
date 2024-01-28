@@ -790,9 +790,9 @@ Our goal in maintaining multiple lockfiles is to keep the list of dependencies r
 
 ### Using Lockfiles for Local Development
 
-When working on the model locally, you'll typically want to install non-core dependencies _on top of_ the core dependencies. To do this, simply run `renv::restore("<path_to_lockfile")` to install all dependencies from the lockfile.
+When working on the model locally, you'll typically want to install non-core dependencies _on top of_ the core dependencies. To do this, simply run `renv::restore(lockfile = "<path_to_lockfile")` to install all dependencies from the lockfile.
 
-For example, if you're working on the `ingest` stage and want to install all its dependencies, start with the main profile (run `renv::activate()`), then install the `dev` profile dependencies on top of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
+For example, if you're working on the `ingest` stage and want to install all its dependencies, start with the main profile (run `renv::activate()`), then install the `dev` profile dependencies on top of it (run `renv::restore(lockfile = "renv/profiles/dev/renv.lock")`).
 
 > :warning: WARNING: Installing dependencies from a dev lockfile will **overwrite** any existing version installed by the core one. For example, if `ggplot2@3.3.0` is installed by the core lockfile, and `ggplot2@3.2.1` is installed by the dev lockfile, renv will **overwrite** `ggplot2@3.3.0` with `ggplot2@3.2.1`.
 
