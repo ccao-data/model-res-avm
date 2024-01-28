@@ -204,6 +204,20 @@ if (upload_enable) {
     relocate(run_id) %>%
     write_parquet(paths$output$feature_importance$s3)
 
+  # Upload comps
+  if (comp_enable) {
+    message("Uploading comps")
+    read_parquet(paths$output$comp$local) %>%
+      mutate(run_id = run_id, year = params$assessment$working_year) %>%
+      group_by(year, run_id) %>%
+      arrow::write_dataset(
+        path = paths$output$comp$s3,
+        format = "parquet",
+        hive_style = TRUE,
+        compression = "snappy"
+      )
+  }
+
 
   # 2.5. Finalize --------------------------------------------------------------
   message("Uploading run metadata, timings, and reports")

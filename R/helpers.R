@@ -182,6 +182,24 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
+# Extract weights for model features based on tree importance. Assumes that
+# the model was trained with the `valids` parameter set such that error metrics
+# are saved for each tree on the model$record_evals attribute. The output
+# weights are useful for computing comps using leaf node assignments
+extract_weights <- function(model, init_score, metric = "rmse") {
+  # Index into the errors list, and un-list so it is a flat/1dim list
+  record_evals <- model$record_evals
+  errors <- unlist(record_evals$tree_errors[[metric]]$eval)
+  errors <- c(init_score, errors)
+  diff_in_errors <- diff(errors, 1, 1)
+
+  # Take proportion of diff in errors over total diff in
+  # errors from all trees
+  weights <- diff_in_errors / sum(diff_in_errors)
+
+  return(weights)
+}
+
 # Given the result of a CV search, get the number of iterations from the
 # result set with the best performing hyperparameters
 select_iterations <- function(tune_results, metric, type = "mean") {

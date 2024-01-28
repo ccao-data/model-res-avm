@@ -89,6 +89,7 @@ metadata <- tibble::tibble(
   ratio_study_near_column = params$ratio_study$near_column,
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
   shap_enable = shap_enable,
+  comp_enable = comp_enable,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,
