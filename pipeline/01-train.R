@@ -145,7 +145,9 @@ lgbm_model <- parsnip::boost_tree(
     # using floor(log2(num_leaves)) + add_to_linked_depth. Useful since
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
-    save_tree_error = comp_enable,
+    # Always initialize save_tree_error to false until we're ready to train
+    # the final model, since it's incompatible with CV
+    save_tree_error = FALSE,
 
     ### 4.1.2. Tuned Parameters ------------------------------------------------
 
@@ -346,12 +348,14 @@ if (cv_enable) {
 
 # Finalize the model specification by disabling early stopping, instead using
 # the maximum number of iterations used during the best cross-validation round
-# OR the default `num_iterations` if CV was not performed
+# OR the default `num_iterations` if CV was not performed. Also enable comps
+# if they're configured to run, since they're incompatible with CV
 lgbm_model_final <- lgbm_model %>%
   set_args(
     stop_iter = NULL,
     validation = 0,
-    trees = lgbm_final_params$num_iterations
+    trees = lgbm_final_params$num_iterations,
+    save_tree_error = comp_enable
   )
 
 # Fit the final model using the training data and our final hyperparameters
