@@ -252,11 +252,11 @@ shap_map <- leaflet(Shap_map_dataset) %>%
 
 add_column_layer <- function(df, column_name, map, total_value) {
   # Define the color palette function
-  pal <- colorNumeric(palette = c("white", "red"), domain = df[[column_name]], na.color = "transparent")
+  pal <- colorNumeric(palette = c("white", "red"), domain = df[[column_name]] / total_value * 100, na.color = "transparent")
 
   # Add polygon layer using this color palette
   map %>% addPolygons(
-    fillColor = ~ pal(df[[column_name]]),
+    fillColor = ~ pal(df[[column_name]] / total_value * 100),
     weight = 1,
     opacity = 1,
     color = "black",
