@@ -63,25 +63,6 @@ training_data <- dbGetQuery(
 )
 tictoc::toc()
 
-# NOTE: This is a temporary shim to insert updated sales validation flags
-# that use slightly different groupings/methods vs the production flags. This
-# will be replaced once the production flags are stable
-sales_flags <- read_parquet(paste0(
-  "s3://ccao-ci-test-township-partition-data-warehouse-us-east-1",
-  "/sale/flag/2024-01-22_11:55-charming-damon.parquet"
-))
-
-# Replace the old flags with the new flags by reference
-library(data.table)
-conflicts_prefer(dplyr::between)
-conflict_prefer_all("lubridate")
-setDT(training_data)
-setDT(sales_flags)
-
-training_data[sales_flags, c("sv_is_outlier", "sv_outlier_type") := {
-  .(i.sv_is_outlier, i.sv_outlier_type)
-}, on = .(meta_sale_document_num)]
-
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
 tictoc::tic("HIE data pulled")
