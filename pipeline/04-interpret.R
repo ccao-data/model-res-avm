@@ -116,7 +116,7 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 4. Find Comparables  ---------------------------------------------------------
+# 5. Find Comparables  ---------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if (comp_enable) {
@@ -153,11 +153,17 @@ if (comp_enable) {
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     as_tibble()
 
-  tree_weights <- extract_weights(
+  tree_weights <- extract_tree_weights(
     model = lgbm_final_full_fit$fit,
-    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    metric = params$model$objective
+    init_score = get_init_score(
+      training_data$meta_sale_price,
+      mean(training_data$meta_sale_price, na.rm = TRUE),
+      metric = params$model$parameter$validation_metric,
+      na.rm = TRUE
+    ),
+    metric = params$model$parameter$validation_metric
   )
+
   if (length(tree_weights) == 0 || sum(tree_weights) != 1) {
     stop("Unable to extract tree weights: length 0 or weight sum != 1")
   }
