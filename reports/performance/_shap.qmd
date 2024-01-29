@@ -203,7 +203,7 @@ shap_df_filtered_long %>%
 
 ## Neighborhood Level Means of SHAP Absolute Values
 
-Colors in the map are displayed by the percentages of 
+The following map demonstrates the impact of 20 key indicators on neighborhood-level housing values. Colors in the map are scaled to each characteristics percentage of *total absolute values* for all characteristics. 
 ```{r _shap_township_map}
 neighborhoods <- ccao::nbhd_shp
 
