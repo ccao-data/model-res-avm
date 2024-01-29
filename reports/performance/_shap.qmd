@@ -203,7 +203,6 @@ shap_df_filtered_long %>%
 
 ## Neighborhood Level Means of SHAP Absolute Values
 ```{r _shap_township_map}
-
 neighborhoods <- ccao::nbhd_shp
 
 chars_data_1year <- chars_data %>%
@@ -245,9 +244,9 @@ Shap_map_dataset <- Shap_map_dataset %>%
     "Muniticpality Name" = loc_tax_municipality_name,
     "Post Covid Sale" = time_sale_post_covid,
     "Total Estimated Value" = pred_card_initial_fmv
-  ) 
+  )
 
-shap_map <- leaflet(Shap_map_dataset) %>% 
+shap_map <- leaflet(Shap_map_dataset) %>%
   addProviderTiles(providers$CartoDB.Positron)
 
 add_column_layer <- function(df, column_name, map, total_value) {
@@ -262,8 +261,10 @@ add_column_layer <- function(df, column_name, map, total_value) {
     color = "black",
     fillOpacity = 0.7,
     group = column_name,
-    label = ~ paste(column_name, ": ", label_dollar(accuracy = 1)(df[[column_name]]), 
-                    sprintf("(%.2f%%)", df[[column_name]] / total_value * 100)),
+    label = ~ paste(
+      column_name, ": ", label_dollar(accuracy = 1)(df[[column_name]]),
+      sprintf("(%.2f%%)", df[[column_name]] / total_value * 100)
+    ),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
