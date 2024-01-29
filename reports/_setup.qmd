@@ -94,7 +94,7 @@ comparison_results <- purrr::map2_lgl(
   ~ .x == .y
 )
 
-# # Check if all hashes match between metadata and dvc.lock
+# Check if all hashes match between metadata and dvc.lock
 if (!all(comparison_results)) {
   stop(
     "Hash values between the dvc.lock file and the metadata ",
