@@ -202,6 +202,8 @@ shap_df_filtered_long %>%
 
 
 ## Neighborhood Level Means of SHAP Absolute Values
+
+Colors in the map are displayed by the percentages of 
 ```{r _shap_township_map}
 neighborhoods <- ccao::nbhd_shp
 
@@ -218,7 +220,7 @@ absolute_values <- shap_df_filtered %>%
   mutate(total_abs = rowSums(select(., all_of(shap_predictors)), na.rm = TRUE)) %>%
   group_by(nbhd_code) %>%
   summarise(mean(total_abs))
-  
+
 
 Shap_map_dataset <- shap_df_filtered %>%
   left_join(chars_data_1year, by = "meta_pin") %>%
@@ -253,7 +255,7 @@ Shap_map_dataset <- Shap_map_dataset %>%
     Rooms = char_rooms,
     "Muniticpality Name" = loc_tax_municipality_name,
     "Post Covid Sale" = time_sale_post_covid,
-    "Total of Absolute Values" = 'mean(total_abs)'
+    "Total of Absolute Values" = "mean(total_abs)"
   )
 
 shap_map <- leaflet(Shap_map_dataset) %>%
@@ -297,7 +299,6 @@ shap_map <- shap_map %>% addLayersControl(
 )
 
 shap_map
-
 ```
 
 
