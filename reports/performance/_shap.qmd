@@ -206,18 +206,28 @@ shap_df_filtered_long %>%
 neighborhoods <- ccao::nbhd_shp
 
 chars_data_1year <- chars_data %>%
-  filter(meta_year == 2022) %>%
+  filter(meta_year == max(meta_year)) %>%
   select(meta_pin, meta_nbhd_code) %>%
   rename(nbhd_code = meta_nbhd_code) %>%
   distinct(meta_pin, .keep_all = TRUE)
 
+
+absolute_values <- shap_df_filtered %>%
+  mutate(across(where(is.numeric), abs)) %>%
+  left_join(chars_data_1year, by = "meta_pin") %>%
+  mutate(total_abs = rowSums(select(., all_of(shap_predictors)), na.rm = TRUE)) %>%
+  group_by(nbhd_code) %>%
+  summarise(mean(total_abs))
+  
+
 Shap_map_dataset <- shap_df_filtered %>%
   left_join(chars_data_1year, by = "meta_pin") %>%
-  left_join(assessment_card, by = "meta_pin", "meta_card_num") %>%
   group_by(nbhd_code) %>%
-  summarise_if(is.numeric, ~ mean(abs(.), na.rm = TRUE)) %>%
+  mutate(across(where(is.numeric), abs)) %>%
+  summarise_at(vars(all_of(shap_predictors)), ~ mean(.), na.rm = TRUE) %>%
   mutate(nbhd_code = as.character(nbhd_code)) %>%
   left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) %>%
+  left_join(absolute_values, by = c("nbhd_code" = "nbhd_code")) %>%
   st_as_sf()
 
 
@@ -243,7 +253,7 @@ Shap_map_dataset <- Shap_map_dataset %>%
     Rooms = char_rooms,
     "Muniticpality Name" = loc_tax_municipality_name,
     "Post Covid Sale" = time_sale_post_covid,
-    "Total Estimated Value" = pred_card_initial_fmv
+    "Total of Absolute Values" = 'mean(total_abs)'
   )
 
 shap_map <- leaflet(Shap_map_dataset) %>%
@@ -273,13 +283,10 @@ add_column_layer <- function(df, column_name, map, total_value) {
   )
 }
 
-# Assuming total_value is a single number representing 'Total Estimated Value' for the whole dataset
-total_value <- Shap_map_dataset$`Total Estimated Value`
+total_value <- Shap_map_dataset$`Total of Absolute Values`
 
-# Filtering numeric columns
 columns_minus_geography <- names(Shap_map_dataset)[sapply(Shap_map_dataset, is.numeric)]
 
-# Applying the add_column_layer function
 for (column_name in columns_minus_geography) {
   shap_map <- add_column_layer(Shap_map_dataset, column_name, shap_map, total_value)
 }
@@ -291,22 +298,7 @@ shap_map <- shap_map %>% addLayersControl(
 
 shap_map
 
-
-
-
-
-# saveWidget(shap_map, file ="shap_map.html", selfcontained = TRUE)
 ```
-## Test
-
-```{r}
-library(widgetframe)
-
-test <- frameWidget(shap_map)
-
-test
-```
-
 
 
 
