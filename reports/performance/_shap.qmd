@@ -203,23 +203,26 @@ shap_df_filtered_long %>%
 
 ## Neighborhood Level Means of SHAP Absolute Values
 ```{r _shap_township_map}
+
+neighborhoods <- ccao::nbhd_shp
+
 chars_data_1year <- chars_data %>%
   filter(meta_year == 2022) %>%
   select(meta_pin, meta_nbhd_code) %>%
   rename(nbhd_code = meta_nbhd_code) %>%
   distinct(meta_pin, .keep_all = TRUE)
 
-
-
-Shap_map <- shap_df_filtered %>%
+Shap_map_dataset <- shap_df_filtered %>%
   left_join(chars_data_1year, by = "meta_pin") %>%
+  left_join(assessment_card, by = "meta_pin", "meta_card_num") %>%
   group_by(nbhd_code) %>%
   summarise_if(is.numeric, ~ mean(abs(.), na.rm = TRUE)) %>%
   mutate(nbhd_code = as.character(nbhd_code)) %>%
-  left_join(ccao::nbhd_shp, by = c("nbhd_code" = "town_nbhd")) %>%
+  left_join(neighborhoods, by = c("nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
 
-Shap_map <- Shap_map %>%
+
+Shap_map_dataset <- Shap_map_dataset %>%
   select(
     "Square Footage" = char_bldg_sf,
     Neighborhood = meta_nbhd_code,
@@ -240,24 +243,30 @@ Shap_map <- Shap_map %>%
     "Air Type" = char_air,
     Rooms = char_rooms,
     "Muniticpality Name" = loc_tax_municipality_name,
-    "Post Covid Sale" = time_sale_post_covid
-  )
+    "Post Covid Sale" = time_sale_post_covid,
+    "Total Estimated Value" = pred_card_initial_fmv
+  ) 
 
-m <- leaflet(Shap_map) %>% addTiles()
+shap_map <- leaflet(Shap_map_dataset) %>% 
+  addProviderTiles(providers$CartoDB.Positron)
 
-add_column_layer <- function(df, column_name, map) {
-  pal <- colorNumeric(palette = c("white", "red"), domain = df[[column_name]], na.color = "transparent")
+add_column_layer <- function(df, column_name, map, total_value_column) {
+  # Calculate the percentage for shading
+  df[[paste0(column_name, "_perc")]] <- df[[column_name]] / df[[total_value_column]] * 100
+
+  # Define the color palette function based on the percentage
+  pal <- colorNumeric(palette = c("white", "red"), domain = df[[paste0(column_name, "_perc")]], na.color = "transparent")
 
   # Add polygon layer using this color palette
   map %>% addPolygons(
-    fillColor = ~ pal(df[[column_name]]),
+    fillColor = ~ pal(df[[paste0(column_name, "_perc")]]),
     weight = 1,
     opacity = 1,
-    color = "white",
-    dashArray = "3",
+    color = "black",
     fillOpacity = 0.7,
     group = column_name,
-    label = ~ paste(column_name, label_dollar(accuracy = 1)(df[[column_name]])),
+    label = ~ paste(column_name, ": ", label_dollar(accuracy = 1)(df[[column_name]]), 
+                    sprintf("(%.2f%%)", df[[column_name]] / df[[total_value_column]] * 100)),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
@@ -267,18 +276,40 @@ add_column_layer <- function(df, column_name, map) {
 }
 
 
-m <- leaflet(Shap_map) %>% addTiles()
+# Assuming total_value is a single number representing 'Total Estimated Value' for the whole dataset
+total_value <- Shap_map_dataset$`Total Estimated Value`
 
-columns_minus_geography <- names(Shap_map)[sapply(Shap_map, is.numeric)]
+# Filtering numeric columns
+columns_minus_geography <- names(Shap_map_dataset)[sapply(Shap_map_dataset, is.numeric)]
 
+# Applying the add_column_layer function
 for (column_name in columns_minus_geography) {
-  m <- add_column_layer(Shap_map, column_name, m)
+  shap_map <- add_column_layer(Shap_map_dataset, column_name, shap_map, total_value)
 }
 
-m <- m %>% addLayersControl(
+shap_map <- shap_map %>% addLayersControl(
   baseGroups = columns_minus_geography,
   options = layersControlOptions(collapsed = TRUE)
 )
 
-m
+shap_map
+
+
+
+
+
+saveWidget(shap_map, file ="shap_map.html", selfcontained = TRUE)
 ```
+## Test
+
+```{r}
+library(widgetframe)
+
+test <- frameWidget(shap_map)
+
+test
+```
+
+
+
+
