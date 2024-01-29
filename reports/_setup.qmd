@@ -1,6 +1,6 @@
 ---
 params:
-  run_id: "2024-01-24-malingering-iris"
+  run_id: "2024-01-10-objective-patrick"
   year: "2024"
 ---
 
@@ -70,7 +70,7 @@ if (!exists("complex_id_data")) {
 ## Output data -----------------------------------------------------------------
 
 # Grab metadata to check output data <> params alignment
-# metadata <- read_parquet(paths$output$metadata$local)
+metadata <- read_parquet(paths$output$metadata$local)
 # if (metadata$run_id != params$run_id) {
 #   stop(
 #     "Local run outputs are NOT equal to the requested run_id. You ",
