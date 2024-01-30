@@ -307,40 +307,100 @@ training_data_clean <- training_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
-    # Miscellanous column-level cleanup
+    # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
     ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
-    across(where(is.character), \(x) na_if(x, ""))
+    across(where(is.character), \(x) na_if(x, "")),
+    across(where(bit64::is.integer64), \(x) as.numeric(x))
   ) %>%
   # Get a count of the number of sales that have occurred in the last n years
+  # and the maximum price of the most recent valid sale in the last n years,
+  # both EXCLUDING the current sale
   left_join(
     left_join(
       training_data %>%
         select(meta_pin, meta_sale_document_num, meta_sale_date),
       training_data %>%
         filter(!sv_is_outlier) %>%
-        select(meta_pin, meta_sale_date),
+        select(meta_pin, meta_sale_date, meta_sale_price) %>%
+        mutate(meta_sale_price = as.numeric(meta_sale_price)),
       by = "meta_pin",
       relationship = "many-to-many"
     ) %>%
-      # as.duration(1) excludes the same sale from being identified as within
-      # 3 years of itself
-      mutate(within_n_years = between(
-        meta_sale_date.x - meta_sale_date.y,
-        as.duration(1),
-        as.duration(years(params$input$n_years_prior))
-      )) %>%
-      # Distinct is necessary because of multicard sales
-      distinct() %>%
-      summarise(
+      # as.duration(1) excludes the target sale from being identified as within
+      # N years of itself
+      mutate(
+        within_n_years = between(
+          meta_sale_date.x - meta_sale_date.y,
+          as.duration(1),
+          as.duration(years(params$input$n_years_prior))
+        ),
+        price_within_n_years = ifelse(within_n_years, meta_sale_price, NA_real_)
+      ) %>%
+      # Distinct is necessary because of multi-card sales
+      distinct(
+        meta_pin,
+        meta_sale_date.x,
+        meta_sale_date.y,
+        .keep_all = TRUE
+      ) %>%
+      mutate(price_within_n_years = replace_na(price_within_n_years, 0)) %>%
+      summarize(
         meta_sale_count_past_n_years = as.numeric(
           sum(within_n_years, na.rm = TRUE)
         ),
+        meta_sale_price_past_n_years = max(price_within_n_years, na.rm = TRUE),
         .by = c("meta_pin", "meta_sale_document_num")
       ),
     by = c("meta_pin", "meta_sale_document_num")
   ) %>%
+  mutate(
+    # Construct the "strata price", which is the most recent available price for
+    # a given sale EXCLUDING that target sale's price. In descending order of
+    # preference, strata price is:
+    # - The max sale price of the past N years
+    # - The finalized Board of Review value of the prior year
+    # - The finalized certified value of the prior year
+    # - The finalized Board of Review value of the prior year
+    meta_sale_price_past_n_years = na_if(meta_sale_price_past_n_years, 0),
+    meta_strata_price = case_when(
+      !is.na(meta_sale_price_past_n_years) & meta_sale_price_past_n_years != 0 ~
+        meta_sale_price_past_n_years,
+      !is.na(meta_board_tot) & meta_board_tot != 0 ~
+        meta_board_tot * 10,
+      !is.na(meta_certified_tot) & meta_certified_tot != 0 ~
+        meta_certified_tot * 10,
+      TRUE ~ meta_1yr_pri_board_tot * 10
+    ),
+    # Construct price bins using grouped quantiles of the strata price. This is
+    # what actually gets used as a predictor in the model
+    meta_strata_1 = as.character(
+      ntile(meta_strata_price, params$input$strata$k_1)
+    ),
+    .by = params$input$strata$group_var
+  ) %>%
+  mutate(
+    # If the sale price is extremely far from the strata price for a given
+    # property, bin it into a separate uncertainty strata. In other words, if
+    # the current sale is very far from the prior year's sales or BoR value,
+    # stick it in its own strata
+    lsale = log(meta_sale_price),
+    lsp = log(meta_strata_price),
+    mlsp = mean(lsp, na.rm = TRUE),
+    slsp = sd(lsp, na.rm = TRUE),
+    meta_strata_1 = ifelse(
+      lsale <= mlsp - 3 * slsp, "uncertain_low", meta_strata_1
+    ),
+    meta_strata_1 = ifelse(
+      lsale >= mlsp + 3 * slsp, "uncertain_high", meta_strata_1
+    ),
+    .by = c("meta_strata_1")
+  ) %>%
+  select(-c(
+    meta_sale_price_past_n_years, meta_strata_price,
+    lsale, lsp, mlsp, slsp
+  )) %>%
   # Create time/date features using lubridate
   mutate(
     # Calculate interval periods and time since the start of the sales sample
@@ -361,7 +421,10 @@ training_data_clean <- training_data_w_hie %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
-  relocate("meta_sale_count_past_n_years", .after = meta_sale_buyer_name) %>%
+  relocate(
+    c("meta_sale_count_past_n_years", "meta_strata_1"),
+    .after = meta_sale_buyer_name
+  ) %>%
   filter(between(
     meta_sale_date,
     make_date(params$input$min_sale_year, 1, 1),
@@ -398,21 +461,26 @@ assessment_data_clean <- assessment_data_w_hie %>%
       assessment_data %>% select(meta_pin),
       training_data %>%
         filter(!sv_is_outlier) %>%
-        select(meta_pin, meta_sale_date),
+        select(meta_pin, meta_sale_date, meta_sale_price) %>%
+        mutate(meta_sale_price = as.numeric(meta_sale_price)),
       by = "meta_pin",
       relationship = "many-to-many"
     ) %>%
       # as.duration(1) excludes the same sale from being identified as within
       # 3 years of itself
-      mutate(within_n_years = between(
-        # Here we're looking back from the lien date instead of the sale date,
-        # as in the training data
-        ymd(params$assessment$date) - as_date(meta_sale_date),
-        as.duration(1),
-        as.duration(years(params$input$n_years_prior))
-      )) %>%
-      # Distinct is necessary because of multicard sales
-      distinct() %>%
+      mutate(
+        within_n_years = between(
+          # Here we're looking back from the lien date instead of the sale date,
+          # as in the training data
+          ymd(params$assessment$date) - as_date(meta_sale_date),
+          as.duration(1),
+          as.duration(years(params$input$n_years_prior))
+        ),
+        price_within_n_years = ifelse(within_n_years, meta_sale_price, NA_real_)
+      ) %>%
+      # Distinct is necessary because of multi-card sales
+      distinct(meta_pin, meta_sale_date, .keep_all = TRUE) %>%
+      mutate(price_within_n_years = replace_na(price_within_n_years, 0)) %>%
       summarise(
         # Subtract 1 from the count of prior sales. The reasoning here is
         # difficult, but basically: in the training data, this feature only has
@@ -423,11 +491,47 @@ assessment_data_clean <- assessment_data_w_hie %>%
         meta_sale_count_past_n_years = as.numeric(
           pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
+        meta_sale_price_past_n_years = max(price_within_n_years, na.rm = TRUE),
         .by = "meta_pin"
       ),
     by = "meta_pin",
     relationship = "many-to-many"
   ) %>%
+  mutate(
+    meta_sale_price_past_n_years = na_if(meta_sale_price_past_n_years, 0),
+    meta_strata_price = case_when(
+      !is.na(meta_sale_price_past_n_years) & meta_sale_price_past_n_years != 0 ~
+        meta_sale_price_past_n_years,
+      !is.na(meta_board_tot) & meta_board_tot != 0 ~
+        meta_board_tot * 10,
+      !is.na(meta_certified_tot) & meta_certified_tot != 0 ~
+        meta_certified_tot * 10,
+      TRUE ~ meta_1yr_pri_board_tot * 10
+    ),
+    # Construct price bins using grouped quantiles of the strata price. This is
+    # what actually gets used as a predictor in the model
+    meta_strata_1 = as.character(
+      ntile(meta_strata_price, params$input$strata$k_1)
+    ),
+    .by = params$input$strata$group_var
+  ) %>%
+  mutate(
+    lsale = log(meta_strata_price),
+    lsp = log(meta_strata_price),
+    mlsp = mean(lsp, na.rm = TRUE),
+    slsp = sd(lsp, na.rm = TRUE),
+    meta_strata_1 = ifelse(
+      lsale <= mlsp - 3 * slsp, "uncertain_low", meta_strata_1
+    ),
+    meta_strata_1 = ifelse(
+      lsale >= mlsp + 3 * slsp, "uncertain_high", meta_strata_1
+    ),
+    .by = c("meta_strata_1")
+  ) %>%
+  select(-c(
+    meta_sale_price_past_n_years, meta_strata_price,
+    lsale, lsp, mlsp, slsp
+  )) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
@@ -449,7 +553,10 @@ assessment_data_clean <- assessment_data_w_hie %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
-  relocate(starts_with("meta_sale_"), .after = hie_num_expired) %>%
+  relocate(
+    c(starts_with("meta_sale_"), meta_strata_1),
+    .after = hie_num_expired
+  ) %>%
   as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 

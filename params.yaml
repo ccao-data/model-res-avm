@@ -66,6 +66,16 @@ input:
   # Number of years back to look for count_past_n_years feature
   n_years_prior: 4
 
+  # Parameters used to construct price strata feature(s)
+  strata:
+    # Number of bins to use to construct prior year price strata
+    k_1: 5
+
+    # Grouping variables used in the construction of price strata
+    group_var:
+    - "meta_year"
+    - "meta_township_code"
+
   # Parameters used to generate townhome complex identifiers
   complex:
     # Townhomes (class 210/295) should match exactly on these variables to be
