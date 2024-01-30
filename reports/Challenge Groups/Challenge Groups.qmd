@@ -1,5 +1,5 @@
 ---
-title: "Difficult Categories"
+title: "Challenge Groups"
 subtitle: "Run ID: `r params$run_id`"
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
@@ -22,14 +22,13 @@ editor: source
 params:
   run_id: "2024-01-07-great-ida"
   year: "2024"
-  pin: "01273080020000"
 ---
 
 {{< include ../_setup.qmd >}}
 
-## Difficult Categories
+## Topline Stats
 
-```{r}
+```{r _challenge_groups_topline_stats}
 large_lots <- assessment_pin %>%
   filter(flag_land_gte_95_percentile == TRUE) %>%
   select(meta_pin, pred_pin_initial_fmv, sale_recent_1_price, loc_latitude, loc_longitude, prior_near_tot) %>%
@@ -95,7 +94,6 @@ rs_fns_list <- list(
 apply_functions <- function(dataset, dataset_name) {
   count <- nrow(dataset)
   median_prior_near_tot <- median(dataset$prior_near_tot, na.rm = TRUE)
-  median_estimate <- median(dataset$pred_pin_initial_fmv, na.rm = TRUE)
 
   x <- dataset$pred_pin_initial_fmv
   y <- dataset$sale_recent_1_price
@@ -151,8 +149,8 @@ results2 <- bind_rows(
 
 table <- cbind(results1, results2) %>%
   as.data.frame() %>%
-  mutate(median_ratio = median_estimate / median_prior_near_tot) %>%
-  select(dataset, median_ratio, cod, prb, prd, mki, min, q25, median, q75, max, rmse, r_squared, mae, mpe, mape, mdape, median_prior_near_tot, median_estimate) %>%
+  mutate(median_ratio = median / median_prior_near_tot) %>%
+  select(dataset, median_ratio, cod, prb, prd, mki, min, q25, median, q75, max, rmse, r_squared, mae, mpe, mape, mdape, median_prior_near_tot) %>%
   kable(format = "html", digits = 2, row.names = FALSE) %>%  
   kable_styling()
 
@@ -160,7 +158,7 @@ table
 ```
 
 
-```{r}
+```{r _challenge_groups_plot_function}
 
 datasets <- list(
   "Large Lots" = large_lots,
@@ -172,6 +170,7 @@ datasets <- list(
 plots <- imap(datasets, ~ {
   ggplot(.x, aes(x = sale_recent_1_price, y = pred_pin_initial_fmv)) + 
     geom_point() +
+    geom_abline(intercept = 0, slope = 1, color = "red") +  
     xlim(0, 3000000) +  
     ylim(0, 3000000) +  
     theme_bw(base_size = 18) +
@@ -184,7 +183,7 @@ plots <- imap(datasets, ~ {
 ## Relationship Between Sale and Assessed Values
 ::: {.panel-tabset}
 
-```{r, results = 'asis'}
+```{r _challenge_groups_plot_output, results = 'asis'}
 
 iwalk(plots, ~ {
   cat('## ', .y, '\n\n')  
@@ -198,7 +197,7 @@ iwalk(plots, ~ {
 ```
 :::
 
-```{r}
+```{r _challenge_groups_map_function}
 process_and_plot <- function(data) {
   # Load town shape data
   town_shp <- ccao::town_shp
@@ -229,7 +228,7 @@ Values are capped at an increase of 300% to increase legibility.
 
 ::: {.panel-tabset}
 
-```{r, results = 'asis'}
+```{r _challenge_groups_map_output, results = 'asis'}
 
 iwalk(plots, ~ {
   cat('## ', .y, '\n\n')

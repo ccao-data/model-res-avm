@@ -25,56 +25,56 @@ multifamily <- assessment_pin %>%
   filter(!is.na(sale_recent_1_price))
 
 top_decile <- assessment_pin %>%
-  filter(flag_prior_near_fmv_top_decile  == TRUE) %>%
+  filter(flag_prior_near_fmv_top_decile == TRUE) %>%
   select(pred_pin_initial_fmv, sale_recent_1_price) %>%
   filter(!is.na(sale_recent_1_price))
 
 critical_values_missing <- assessment_pin %>%
-  filter(flag_char_missing_critical_value  == TRUE) %>%
+  filter(flag_char_missing_critical_value == TRUE) %>%
   select(pred_pin_initial_fmv, sale_recent_1_price) %>%
   filter(!is.na(sale_recent_1_price))
 
 
-  gte_n <- \(n_sales, min_n, fn, na_type) {
-    ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
-  }
+gte_n <- \(n_sales, min_n, fn, na_type) {
+  ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
+}
 
 min_n <- 10
 
 rs_fns_list <- list(
-    cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE), NA_real_),
-    prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE), NA_real_),
-    prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE), NA_real_),
-    mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE), NA_real_),
-    cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE), NA_real_),
-    cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE)), NA),
-    prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE), NA_real_),
-    prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE)), NA),
-    prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE), NA_real_),
-    prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE)), NA),
-    mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE), NA_real_),
-    mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)), NA),
-    min = \(x) min(x, na.rm = TRUE),
-    q25 = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
-    median = \(x) median(x, na.rm = TRUE),
-    q75 = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
-    max = \(x) max(x, na.rm = TRUE)
-  )
-  
-  ys_fns_list <- list(
-    rmse        = rmse_vec,
-    r_squared   = rsq_vec,
-    mae         = mae_vec,
-    mpe         = mpe_vec,
-    mape        = mape_vec,
-    mdape       = mdape_vec # From R/helpers.R
-  )
+  cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE), NA_real_),
+  prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE), NA_real_),
+  prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE), NA_real_),
+  mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE), NA_real_),
+  cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE), NA_real_),
+  cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE)), NA),
+  prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE), NA_real_),
+  prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE)), NA),
+  prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE), NA_real_),
+  prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE)), NA),
+  mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE), NA_real_),
+  mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)), NA),
+  min = \(x) min(x, na.rm = TRUE),
+  q25 = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
+  median = \(x) median(x, na.rm = TRUE),
+  q75 = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
+  max = \(x) max(x, na.rm = TRUE)
+)
+
+ys_fns_list <- list(
+  rmse        = rmse_vec,
+  r_squared   = rsq_vec,
+  mae         = mae_vec,
+  mpe         = mpe_vec,
+  mape        = mape_vec,
+  mdape       = mdape_vec # From R/helpers.R
+)
 
 
 apply_functions <- function(dataset) {
   x <- dataset$pred_pin_initial_fmv
   y <- dataset$sale_recent_1_price
-  
+
   # Assuming rs_fns_list is defined as in your provided code
   results_rs <- lapply(rs_fns_list, function(f) {
     # Check if the function expects two arguments
@@ -86,13 +86,13 @@ apply_functions <- function(dataset) {
       f(x)
     }
   })
-  
+
   # Convert the list to a data frame
   results_df <- as.data.frame(results_rs)
-  
+
   # Add a column to identify the dataset
   results_df$dataset <- deparse(substitute(dataset))
-  
+
   return(results_df)
 }
 
@@ -109,13 +109,13 @@ results1 <- bind_rows(
 apply_functions <- function(dataset) {
   truth <- dataset$pred_pin_initial_fmv
   estimate <- dataset$sale_recent_1_price
-  
+
   results_ys <- map(ys_fns_list, function(f) f(truth, estimate))
 
   results_df <- as.data.frame(results_ys)
-  
+
   results_df$dataset_2 <- deparse(substitute(dataset))
-  
+
   return(results_df)
 }
 
@@ -131,9 +131,8 @@ results2 <- bind_rows(
 table <- cbind(results1, results2) %>%
   as.data.frame() %>%
   select(dataset, cod, prb, prd, mki, min, q25, median, q75, max, rmse, r_squared, mae, mpe, mape, mdape) %>%
-  kable(format = "html", digits = 2, row.names = FALSE) %>%  
+  kable(format = "html", digits = 2, row.names = FALSE) %>%
   kable_styling()
-
 ```
 ```
 
