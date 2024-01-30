@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
   library(DBI)
   library(openxlsx)
   library(RJDBC)
+  library(readr)
 })
 
 # Setup the Athena JDBC driver
@@ -30,6 +31,9 @@ AWS_ATHENA_CONN_JDBC <- dbConnect(
   Schema = "Default",
   WorkGroup = "read-only-with-scan-limit"
 )
+
+# Allow Java to use more memory
+options(java.parameters = "-Xmx10g")
 
 
 
@@ -80,13 +84,13 @@ vacant_land <- dbGetQuery(
       uni.pin AS meta_pin,
       uni.class AS meta_class,
       uni.nbhd_code AS meta_nbhd_code,
-      uni.prop_address_full AS loc_property_address,
-      uni.prop_address_city_name As loc_property_city,
-      uni.prop_address_state AS loc_property_state,
-      uni.prop_address_zipcode_1 AS loc_property_zip,
-      uni.cook_municipality_name AS loc_cook_municipality_name,
-      uni.tieback_key_pin AS meta_tieback_key_pin,
-      uni.tieback_proration_rate AS meta_tieback_proration_rate,
+      uni.tax_municipality_name AS loc_cook_municipality_name,
+      addr.prop_address_full AS loc_property_address,
+      addr.prop_address_city_name As loc_property_city,
+      addr.prop_address_state AS loc_property_state,
+      addr.prop_address_zipcode_1 AS loc_property_zip,
+      char.tieback_key_pin AS meta_tieback_key_pin,
+      char.tieback_proration_rate AS meta_tieback_proration_rate,
       hist.mailed_bldg AS meta_mailed_bldg,
       hist.mailed_land AS meta_mailed_land,
       hist.mailed_tot AS meta_mailed_tot,
@@ -103,9 +107,16 @@ vacant_land <- dbGetQuery(
       hist.twoyr_pri_board_land AS meta_2yr_pri_board_land,
       hist.twoyr_pri_board_tot AS meta_2yr_pri_board_tot
   FROM default.vw_pin_universe uni
+  LEFT JOIN default.vw_pin_address addr
+      ON uni.pin = addr.pin
+      AND uni.year = addr.year
+  LEFT JOIN default.vw_card_res_char char
+      ON uni.pin = char.pin
+      AND uni.year = char.year
   LEFT JOIN default.vw_pin_history hist
       ON uni.pin = hist.pin
       AND uni.year = hist.year
+
   WHERE uni.year = '{params$assessment$data_year}'
   AND uni.class IN ('200', '201', '241')
   AND triad_code = '{params$export$triad_code}'
@@ -144,7 +155,7 @@ vacant_land_sales <- dbGetQuery(
 
 # Transform sales data from long to wide, keeping most recent 2 sales
 vacant_land_sales_trans <- vacant_land_sales %>%
-  mutate(meta_sale_date = ymd_hms(meta_sale_date)) %>%
+  mutate(meta_sale_date = ymd(meta_sale_date)) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
   distinct(
