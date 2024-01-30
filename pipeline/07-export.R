@@ -5,6 +5,9 @@
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
 
+# Allow Java to use more memory
+options(java.parameters = "-Xmx20g")
+
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
@@ -12,28 +15,13 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 suppressPackageStartupMessages({
   library(DBI)
   library(openxlsx)
-  library(RJDBC)
+  library(noctua)
   library(readr)
 })
 
-# Setup the Athena JDBC driver
-aws_athena_jdbc_driver <- RJDBC::JDBC(
-  driverClass = "com.simba.athena.jdbc.Driver",
-  classPath = list.files("~/drivers", "^Athena.*jar$", full.names = TRUE),
-  identifier.quote = "'"
-)
-
 # Establish Athena connection
-AWS_ATHENA_CONN_JDBC <- dbConnect(
-  aws_athena_jdbc_driver,
-  url = Sys.getenv("AWS_ATHENA_JDBC_URL"),
-  aws_credentials_provider_class = Sys.getenv("AWS_CREDENTIALS_PROVIDER_CLASS"),
-  Schema = "Default",
-  WorkGroup = "read-only-with-scan-limit"
-)
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
-# Allow Java to use more memory
-options(java.parameters = "-Xmx10g")
 
 
 
@@ -49,7 +37,7 @@ message("Pulling vacant land data from Athena")
 # Each land PIN can have multiple "lines" that potentially receive different
 # rates, here we grab the lines and square footage for each PIN
 land <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT
       taxyr AS meta_year,
       parid AS meta_pin,
@@ -78,7 +66,7 @@ land <- land %>%
 # To include land with the desk review spreadsheets we need to pull the same
 # columns for land PINs as the model output (assessment_pin)
 vacant_land <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT
       uni.township_code,
       uni.pin AS meta_pin,
@@ -136,7 +124,7 @@ vacant_land_trans <- vacant_land %>%
 # Grab single-PIN sales for vacant land classes. Only used for reference, not
 # to create values
 vacant_land_sales <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT
       sale.pin AS meta_pin,
       sale.year AS meta_year,
@@ -174,7 +162,7 @@ vacant_land_sales_trans <- vacant_land_sales %>%
 
 # Load neighborhood level land rates
 land_nbhd_rate <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT
       town_nbhd AS meta_nbhd_code,
       class AS meta_class,
@@ -250,7 +238,7 @@ message("Pulling model data from Athena")
 # Pull the PIN-level assessment data, which contains all the fields needed to
 # create the review spreadsheets
 assessment_pin <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM model.assessment_pin
   WHERE run_id = '{params$export$run_id}'
@@ -261,7 +249,7 @@ assessment_pin <- dbGetQuery(
 # Pull card-level data only for all PINs. Needed for upload, since values are
 # tracked by card, even though they're presented by PIN
 assessment_card <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_JDBC, glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT c.*
   FROM model.assessment_card c
   INNER JOIN (
@@ -302,7 +290,7 @@ if (comp_enable) {
   # columns via wildcard in SQL is complicated, so just query everything and
   # then drop metadata columns in R
   comps <- dbGetQuery(
-    conn = AWS_ATHENA_CONN_JDBC, glue("
+    conn = AWS_ATHENA_CONN_NOCTUA, glue("
     SELECT *
     FROM model.comp
     WHERE run_id = '{params$export$run_id}'
@@ -322,6 +310,11 @@ if (comp_enable) {
     select(
       -starts_with("comp_pin_") | matches("^comp_pin_1$|^comp_pin_2$")
     )
+
+  training_data <- read_parquet(paths$input$training$local) %>%
+    filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+    group_by(meta_pin) %>%
+    filter(meta_sale_date == max(meta_sale_date))
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -335,6 +328,7 @@ if (comp_enable) {
         comp_score_2 = rep(NA, each = nrow(assessment_pin_merged)),
       )
     )
+  training_data <- tibble()
 }
 
 # Prep data with a few additional columns + put everything in the right
@@ -381,15 +375,6 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     property_full_address = str_remove_all(
       property_full_address,
       "[^[:alnum:]|' ',.-]"
-    ),
-    across(
-      starts_with("comp_pin_"),
-      ~ ifelse(
-        is.na(.x),
-        NA,
-        # TODO: Use get_comp_coordinate
-        as.character(.x)
-      )
     )
   )
 
@@ -427,13 +412,132 @@ assessment_card_prepped <- assessment_card %>%
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
 
-
-  ## 5.1. PIN-Level ------------------------------------------------------------
+  workbook_name <- glue(
+    params$assessment$year,
+    str_replace(town_convert(town), " ", "_"),
+    "Initial_Model_Values.xlsx",
+    .sep = "_"
+  )
 
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
     select(-township_code)
+
+  # 5.3 Comp details -----------------------------------------------------------
+
+  training_data_filtered_1 <- training_data %>%
+    inner_join(
+      assessment_pin_filtered %>% select(comp_pin_1),
+      by = join_by(meta_pin == comp_pin_1)
+    )
+
+  training_data_filtered_2 <- training_data %>%
+    inner_join(
+      assessment_pin_filtered %>% select(comp_pin_2),
+      by = join_by(meta_pin == comp_pin_2)
+    )
+
+  training_data_filtered <- bind_rows(
+    training_data_filtered_1, training_data_filtered_2
+  ) %>%
+    unique()
+
+  training_data_selected <- training_data_filtered %>%
+    select(
+      meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
+      char_yrblt, loc_property_address, char_beds, char_ext_wall,
+      char_heat, char_bldg_sf, char_type_resd, char_land_sf
+    )
+
+  comp_sheet_name <- "Comp Detail"
+  class(training_data_selected$meta_pin) <- c(
+    class(training_data_selected$meta_pin), "formula"
+  )
+
+  # Get range of rows in the comp data + number of header rows
+  comp_row_range <- 5:(nrow(training_data_selected) + 6)
+
+  # Load the excel workbook template from file
+  wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
+
+  # Create formatting styles
+  style_price <- createStyle(numFmt = "$#,##0")
+  style_2digit <- createStyle(numFmt = "$#,##0.00")
+  style_pct <- createStyle(numFmt = "PERCENTAGE")
+  style_comma <- createStyle(numFmt = "COMMA")
+
+  # Add styles to comp sheet
+  addStyle(
+    wb, comp_sheet_name,
+    style = style_price,
+    rows = comp_row_range, cols = c(2), gridExpand = TRUE
+  )
+  addStyle(
+    wb, comp_sheet_name,
+    style = style_comma,
+    rows = comp_row_range, cols = c(11, 13), gridExpand = TRUE
+  )
+  addFilter(wb, comp_sheet_name, 4, 1:13)
+
+  # Write comp data to workbook
+  writeData(
+    wb, comp_sheet_name, training_data_selected,
+    startCol = 1, startRow = 5, colNames = FALSE
+  )
+  # Write formulas to workbook
+  writeFormula(
+    wb, comp_sheet_name, training_data_selected$meta_pin,
+    startRow = 5
+  )
+
+  ## 5.2. PIN-Level ------------------------------------------------------------
+
+  # Update PIN-level data to link to comps detail sheet
+  training_data_ids <- training_data_filtered %>%
+    tibble::rowid_to_column("comp_detail_id") %>%
+    select(meta_pin, comp_detail_id)
+
+  assessment_pin_filtered <- assessment_pin_filtered %>%
+    left_join(training_data_ids, by = join_by(comp_pin_1 == meta_pin)) %>%
+    rename(comp_pin_1_coord = comp_detail_id) %>%
+    left_join(training_data_ids, by = join_by(comp_pin_2 == meta_pin)) %>%
+    rename(comp_pin_2_coord = comp_detail_id) %>%
+    mutate(
+      across(
+        matches("_coord"),
+        ~ ifelse(
+          is.na(.x),
+          NA,
+          getCellRefs(data.frame(row = .x + 5, column = 1))
+        )
+      )
+    ) %>%
+    mutate(
+      comp_pin_1 = ifelse(
+        is.na(comp_pin_1_coord),
+        NA,
+        glue::glue(
+          '=HYPERLINK("[{workbook_name}]{comp_sheet_name}!',
+          '{comp_pin_1_coord}","{comp_pin_1}")'
+        )
+      ),
+      comp_pin_2 = ifelse(
+        is.na(comp_pin_2_coord),
+        NA,
+        glue::glue(
+          '=HYPERLINK("[{workbook_name}]{comp_sheet_name}!',
+          '{comp_pin_2_coord}","{comp_pin_2}")'
+        )
+      )
+    )
+
+  class(assessment_pin_filtered$comp_pin_1) <- c(
+    class(assessment_pin_filtered$comp_pin_1), "formula"
+  )
+  class(assessment_pin_filtered$comp_pin_2) <- c(
+    class(assessment_pin_filtered$comp_pin_2), "formula"
+  )
 
   # Generate sheet and column headers
   model_header <- str_to_title(paste(
@@ -442,7 +546,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   comp_header <- str_to_title(paste(
     params$ratio_study$near_year, params$ratio_study$near_stage
   ))
-  sheet_header <- str_to_title(glue(
+  sheet_header <- str_to_title(glue::glue(
     comp_header, "Values vs.", model_header, "Values - Parcel-Level Results",
     .sep = " "
   ))
@@ -454,15 +558,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Get range of rows in the PIN data + number of header rows
   pin_row_range <- 7:(nrow(assessment_pin_filtered) + 9)
-
-  # Load the excel workbook template from file
-  wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
-
-  # Create formatting styles
-  style_price <- createStyle(numFmt = "$#,##0")
-  style_2digit <- createStyle(numFmt = "$#,##0.00")
-  style_pct <- createStyle(numFmt = "PERCENTAGE")
-  style_comma <- createStyle(numFmt = "COMMA")
 
   # Add styles to PIN sheet
   addStyle(
@@ -486,6 +581,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     rows = pin_row_range, cols = c(33, 35), gridExpand = TRUE
   )
   addFilter(wb, pin_sheet_name, 6, 1:48)
+  conditionalFormatting(
+    wb, pin_sheet_name,
+    cols = c(36),
+    rows = pin_row_range,
+    style = c("red", "blue"),
+    rule = c(0, 100),
+    type = "colourScale"
+  )
 
   # Write PIN-level data to workbook
   writeData(
@@ -517,7 +620,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
 
 
-  # 5.2. Card-Level ------------------------------------------------------------
+  # 5.3. Card-Level ------------------------------------------------------------
 
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
@@ -567,17 +670,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     startCol = 5, startRow = 3, colNames = FALSE
   )
 
+  # 5.4 Save output ------------------------------------------------------------
+
   # Save workbook to file based on town name
   saveWorkbook(
     wb,
     here(
-      "output", "desk_review",
-      glue(
-        params$assessment$year,
-        str_replace(town_convert(town), " ", "_"),
-        "Initial_Model_Values.xlsx",
-        .sep = "_"
-      )
+      "output", "desk_review", workbook_name
     ),
     overwrite = TRUE
   )
@@ -588,7 +687,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 5. Prep iasWorld Upload ------------------------------------------------------
+# 6. Prep iasWorld Upload ------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Preparing data for iasWorld export")
 
@@ -636,7 +735,7 @@ upload_data <- assessment_pin %>%
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 6. Export iasWorld Upload ----------------------------------------------------
+# 7. Export iasWorld Upload ----------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Write each town to a CSV for mass upload
