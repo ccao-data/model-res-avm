@@ -296,6 +296,47 @@ assessment_pin_merged <- assessment_pin %>%
   filter(!is.na(pred_pin_final_fmv_land)) %>%
   mutate(across(ends_with("_date"), as_date))
 
+if (comp_enable) {
+  message("Pulling comp data from Athena")
+  # We don't know how many comp_score_{x} columns there are, and selecting
+  # columns via wildcard in SQL is complicated, so just query everything and
+  # then drop metadata columns in R
+  comps <- dbGetQuery(
+    conn = AWS_ATHENA_CONN_JDBC, glue("
+    SELECT *
+    FROM model.comp
+    WHERE run_id = '{params$export$run_id}'
+    ")
+  ) %>%
+    select(-run_id, -year, -card)
+
+  assessment_pin_merged <- assessment_pin_merged %>%
+    left_join(comps, by = join_by(meta_pin == pin)) %>%
+    mutate(
+      overall_comp_score = select(., starts_with('comp_score_')) %>%
+        rowMeans(na.rm = TRUE)
+    ) %>%
+    select(
+      -starts_with("comp_score_") | matches("^comp_score_1$|^comp_score_2$")
+    ) %>%
+    select(
+      -starts_with("comp_pin_") | matches("^comp_pin_1$|^comp_pin_2$")
+    )
+} else {
+  # Add NA columns for comps so that assessment_pin_merged has the same
+  # shape in both conditional branches
+  assessment_pin_merged <- assessment_pin_merged %>%
+    cbind(
+      tibble(
+        overall_comp_score = rep(NA, each = nrow(assessment_pin_merged)),
+        comp_pin_1 = rep(NA, each = nrow(assessment_pin_merged)),
+        comp_score_1 = rep(NA, each = nrow(assessment_pin_merged)),
+        comp_pin_2 = rep(NA, each = nrow(assessment_pin_merged)),
+        comp_score_2 = rep(NA, each = nrow(assessment_pin_merged)),
+      )
+    )
+}
+
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
 assessment_pin_prepped <- assessment_pin_merged %>%
@@ -322,6 +363,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_recent_1_date, sale_recent_1_price, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price, sale_recent_2_document_num,
     char_yrblt, char_total_bldg_sf, char_type_resd, char_land_sf,
+    overall_comp_score, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
@@ -339,6 +381,15 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     property_full_address = str_remove_all(
       property_full_address,
       "[^[:alnum:]|' ',.-]"
+    ),
+    across(
+      starts_with("comp_pin_"),
+      ~ ifelse(
+        is.na(.x),
+        NA,
+        # TODO: Use get_comp_coordinate
+        as.character(.x)
+      )
     )
   )
 
@@ -427,7 +478,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 36, 38, 40), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
