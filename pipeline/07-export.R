@@ -342,7 +342,10 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       loc_property_address,
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
-    )
+    ),
+    # TODO: Remove these lines once we query outlier flags
+    sale_recent_1_outlier_type = NA,
+    sale_recent_2_outlier_type = NA
   ) %>%
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
@@ -354,8 +357,10 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     pred_pin_final_fmv_round, land_rate_per_sqft, pred_pin_land_rate_effective,
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
-    sale_recent_1_date, sale_recent_1_price, sale_recent_1_document_num,
-    sale_recent_2_date, sale_recent_2_price, sale_recent_2_document_num,
+    sale_recent_1_date, sale_recent_1_price,
+    sale_recent_1_outlier_type, sale_recent_1_document_num,
+    sale_recent_2_date, sale_recent_2_price,
+    sale_recent_2_outlier_type, sale_recent_2_document_num,
     char_yrblt, char_total_bldg_sf, char_type_resd, char_land_sf,
     overall_comp_score, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
     flag_pin_is_prorated, flag_proration_sum_not_1,
@@ -448,12 +453,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
       char_yrblt, loc_property_address, char_beds, char_ext_wall,
       char_heat, char_bldg_sf, char_type_resd, char_land_sf
-    )
+    ) %>%
+    ccao::vars_recode(type = "long")
 
-  comp_sheet_name <- "Comp Detail"
-  class(training_data_selected$meta_pin) <- c(
-    class(training_data_selected$meta_pin), "formula"
-  )
+  comp_sheet_name <- "Sales"
 
   # Get range of rows in the comp data + number of header rows
   comp_row_range <- 5:(nrow(training_data_selected) + 6)
@@ -466,6 +469,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_2digit <- createStyle(numFmt = "$#,##0.00")
   style_pct <- createStyle(numFmt = "PERCENTAGE")
   style_comma <- createStyle(numFmt = "COMMA")
+  style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
 
   # Add styles to comp sheet
   addStyle(
@@ -484,11 +488,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeData(
     wb, comp_sheet_name, training_data_selected,
     startCol = 1, startRow = 5, colNames = FALSE
-  )
-  # Write formulas to workbook
-  writeFormula(
-    wb, comp_sheet_name, training_data_selected$meta_pin,
-    startRow = 5
   )
 
   ## 5.2. PIN-Level ------------------------------------------------------------
@@ -509,7 +508,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
         ~ ifelse(
           is.na(.x),
           NA,
-          getCellRefs(data.frame(row = .x + 5, column = 1))
+          getCellRefs(data.frame(row = .x + 4, column = 1))
         )
       )
     ) %>%
@@ -530,7 +529,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
           '{comp_pin_2_coord}","{comp_pin_2}")'
         )
       )
-    )
+    ) %>%
+    select(-ends_with("_coord"))
 
   class(assessment_pin_filtered$comp_pin_1) <- c(
     class(assessment_pin_filtered$comp_pin_1), "formula"
@@ -563,7 +563,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_price,
-    rows = pin_row_range, cols = c(10:12, 16:19, 24, 27, 30), gridExpand = TRUE
+    rows = pin_row_range, cols = c(10:12, 16:19, 24, 27, 31), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -573,20 +573,28 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 36, 38, 40), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 38, 40, 42), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
     style = style_comma,
-    rows = pin_row_range, cols = c(33, 35), gridExpand = TRUE
+    rows = pin_row_range, cols = c(35, 37), gridExpand = TRUE
   )
-  addFilter(wb, pin_sheet_name, 6, 1:48)
+  # For some reason comp links do not get autoformatted as links, possibly
+  # due to Excel not parsing within-sheet links as hyperlinks for the purposes
+  # of styling
+  addStyle(
+    wb, pin_sheet_name,
+    style = style_link,
+    rows = pin_row_range, cols = c(39, 41), gridExpand = TRUE
+  )
+  addFilter(wb, pin_sheet_name, 6, 1:53)
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(36),
+    cols = c(38, 40, 42),
     rows = pin_row_range,
-    style = c("red", "blue"),
-    rule = c(0, 100),
+    style = c("#F8696B", "#FFFFFF", "#00B0F0"),
+    rule = c(0, 0.5, 1),
     type = "colourScale"
   )
 
