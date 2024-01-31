@@ -342,10 +342,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       loc_property_address,
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
-    ),
-    # TODO: Remove these lines once we query outlier flags
-    sale_recent_1_outlier_type = NA,
-    sale_recent_2_outlier_type = NA
+    )
   ) %>%
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
@@ -596,6 +593,25 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
     type = "colourScale"
+  )
+  conditionalFormatting(
+    wb, pin_sheet_name,
+    cols = 26:29,
+    rows = pin_row_range,
+    style = createStyle(bgFill = "#FF9999"),
+    rule = '$AB7!=""',
+    type = "expression"
+  )
+  # For some reason vector cols don't work with expressions, so we have
+  # to duplicate the conditionalFormatting above for the second range
+  # of columns
+  conditionalFormatting(
+    wb, pin_sheet_name,
+    cols = 30:33,
+    rows = pin_row_range,
+    style = createStyle(bgFill = "#FF9999"),
+    rule = '$AF7!=""',
+    type = "expression"
   )
 
   # Write PIN-level data to workbook
