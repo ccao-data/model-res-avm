@@ -27,6 +27,9 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
     step_mutate_at(where(is.logical), fn = ~ as.integer(.x)) %>%
+    step_impute_median(all_numeric_predictors(), -has_role("ID")) %>%
+    step_impute_mode(all_nominal_predictors(), -has_role("ID")) %>%
+    step_zv(all_predictors()) %>%
     # Replace novel levels with "new"
     step_novel(all_of(!!cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
