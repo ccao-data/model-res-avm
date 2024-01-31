@@ -249,8 +249,8 @@ shap_nbhd_map <- leaflet(shap_df_imp_by_nbhd_fil) %>%
 
 add_column_layer <- function(map, df, column_name) {
   rel_imp_col <- paste0("rel_imp_", column_name)
-  mean_shap_col  <- paste0("mean_shap_", column_name)
-  
+  mean_shap_col <- paste0("mean_shap_", column_name)
+
   pal <- colorNumeric(
     palette = "BuPu",
     domain = df[[rel_imp_col]],
