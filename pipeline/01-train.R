@@ -173,8 +173,8 @@ test %>%
   ) %>%
   as_tibble() %>%
   filter(meta_triad_code == "1") %>%
-  mutate(town_name = ccao::town_convert(meta_township_code))
-filter(is.finite(pred_card_initial_fmv)) %>%
+  mutate(town_name = ccao::town_convert(meta_township_code)) %>%
+  filter(is.finite(pred_card_initial_fmv)) %>%
   group_by(town_name) %>%
   summarize(
     count = n(),
