@@ -34,6 +34,7 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     step_novel(all_of(!!cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
     step_unknown(all_of(!!cat_vars), -has_role("ID")) %>%
+    step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
       acs5_median_income_household_past_year,
