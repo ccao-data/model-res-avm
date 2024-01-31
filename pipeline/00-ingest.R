@@ -288,11 +288,12 @@ training_data_clean <- training_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
-    # Miscellanous column-level cleanup
+    # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
     ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
-    across(where(is.character), \(x) na_if(x, ""))
+    across(where(is.character), \(x) na_if(x, "")),
+    across(where(bit64::is.integer64), \(x) as.numeric(x))
   ) %>%
   # Get a count of the number of sales that have occurred in the last n years
   left_join(
@@ -371,7 +372,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
     ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
-    across(where(is.character), \(x) na_if(x, ""))
+    across(where(is.character), \(x) na_if(x, "")),
+    across(where(bit64::is.integer64), \(x) as.numeric(x))
   ) %>%
   # Get a count of the number of sales that have occurred in the last n years
   left_join(

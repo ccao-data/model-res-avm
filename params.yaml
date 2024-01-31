@@ -27,6 +27,9 @@ toggle:
   # desirable to save time when testing many models
   shap_enable: FALSE
 
+  # Should comps be calculated for this run in the interpret stage?
+  comp_enable: FALSE
+
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
   upload_enable: TRUE
@@ -149,7 +152,6 @@ model:
       - "meta_township_code"
       - "meta_nbhd_code"
       - "meta_modeling_group"
-      - "meta_tieback_proration_rate"
       - "meta_sale_count_past_n_years"
       - "char_yrblt"
       - "char_air"
@@ -164,7 +166,6 @@ model:
       - "char_ext_wall"
       - "char_fbath"
       - "char_frpl"
-      - "char_gar1_area"
       - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
@@ -176,14 +177,11 @@ model:
       - "char_roof_cnst"
       - "char_rooms"
       - "char_tp_dsgn"
-      - "char_tp_plan"
       - "char_type_resd"
       - "char_recent_renovation"
       - "loc_longitude"
       - "loc_latitude"
-      - "loc_env_flood_fema_sfha"
       - "loc_env_flood_fs_factor"
-      - "loc_env_flood_fs_risk_direction"
       - "loc_env_airport_noise_dnl"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
@@ -263,7 +261,6 @@ model:
       - "char_bsmt_fin"
       - "char_class"
       - "char_ext_wall"
-      - "char_gar1_area"
       - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
@@ -271,7 +268,6 @@ model:
       - "char_porch"
       - "char_roof_cnst"
       - "char_tp_dsgn"
-      - "char_tp_plan"
       - "char_type_resd"
       - "loc_tax_municipality_name"
       - "loc_school_elementary_district_geoid"
@@ -427,6 +423,20 @@ ratio_study:
     - "14321100320000" # Lincoln Park 206, 4 bed, 3 bath, 4000 sqft
     - "16054270120000" # Austin 205, 6 bed, 2 bath, 2000 sqft
     - "20142140140000" # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
+
+
+# Comparables ------------------------------------------------------------------
+
+# Parameters related to the experimental comparables finding feature
+# in the interpret pipeline stage. Only used if comp_enable = TRUE
+comp:
+  # Number of comps to generate for each PIN/card
+  num_comps: 20
+
+  # Number of price bins to use when binning properties for the purpose of
+  # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
+  # of predicted values. Larger deciles = larger comparables search range
+  num_price_bins: 20
 
 
 # Export -----------------------------------------------------------------------

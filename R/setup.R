@@ -72,6 +72,10 @@ shap_enable <- as.logical(Sys.getenv(
   "SHAP_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$shap_enable
 ))
+comp_enable <- as.logical(Sys.getenv(
+  "COMP_ENABLE_OVERRIDE",
+  unset = get(params_obj_name)$toggle$comp_enable
+))
 upload_enable <- as.logical(Sys.getenv(
   "UPLOAD_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$upload_enable
