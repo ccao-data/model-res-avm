@@ -73,6 +73,7 @@ input:
 
     # Grouping variables used in the construction of price strata
     group_var:
+    - "meta_triad_code"
     - "meta_year"
 
   # Parameters used to generate townhome complex identifiers
