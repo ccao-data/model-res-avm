@@ -45,4 +45,10 @@ if (shap_exists) {
 }
 ```
 
+```{r, results='asis'}
+if (comp_exists) {
+  comp_qmd <- knitr::knit_child("_comp.qmd", quiet = TRUE)
+  cat(comp_qmd, sep = "\n")
+}
+```
 {{< include _stats.qmd >}}
