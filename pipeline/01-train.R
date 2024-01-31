@@ -16,7 +16,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 message("Run note: ", run_note)
 message("Run type: ", run_type)
 
-cl <- makePSOCKcluster(14)
+cl <- makePSOCKcluster(20)
 registerDoParallel(cl)
 
 
