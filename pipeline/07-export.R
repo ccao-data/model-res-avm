@@ -297,6 +297,7 @@ if (comp_enable) {
   ) %>%
     select(-run_id, -year, -card)
 
+  # Merge comp data into assessment data
   assessment_pin_merged <- assessment_pin_merged %>%
     left_join(comps, by = join_by(meta_pin == pin)) %>%
     mutate(
@@ -310,6 +311,7 @@ if (comp_enable) {
       -starts_with("comp_pin_") | matches("^comp_pin_1$|^comp_pin_2$")
     )
 
+  # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     group_by(meta_pin) %>%
@@ -427,18 +429,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # 5.3 Comp details -----------------------------------------------------------
 
+  # Filter the training data so that we only display sales that are referenced
+  # in comps
   training_data_filtered_1 <- training_data %>%
     inner_join(
       assessment_pin_filtered %>% select(comp_pin_1),
       by = join_by(meta_pin == comp_pin_1)
     )
-
   training_data_filtered_2 <- training_data %>%
     inner_join(
       assessment_pin_filtered %>% select(comp_pin_2),
       by = join_by(meta_pin == comp_pin_2)
     )
-
   training_data_filtered <- bind_rows(
     training_data_filtered_1, training_data_filtered_2
   ) %>%
@@ -452,6 +454,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     ) %>%
     ccao::vars_recode(type = "long")
 
+  # It seems like Excel can only handle between-sheet links if the linked
+  # sheet name has no spaces... Perhaps there's an undocumented workaround,
+  # but for now, use a sheet name with no spaces for the comp detail view
   comp_sheet_name <- "Sales"
 
   # Get range of rows in the comp data + number of header rows
@@ -528,6 +533,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     ) %>%
     select(-ends_with("_coord"))
 
+  # Make comp PIN fields formulas so Excel understands the links
   class(assessment_pin_filtered$comp_pin_1) <- c(
     class(assessment_pin_filtered$comp_pin_1), "formula"
   )
@@ -585,6 +591,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     rows = pin_row_range, cols = c(39, 41), gridExpand = TRUE
   )
   addFilter(wb, pin_sheet_name, 6, 1:53)
+
+  # Format comp score columns with a range of colors from low (red) to high
+  # (blue)
   conditionalFormatting(
     wb, pin_sheet_name,
     cols = c(38, 40, 42),
@@ -593,6 +602,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     rule = c(0, 0.5, 1),
     type = "colourScale"
   )
+  # Format sale columns such that they are red if the sale has an outlier flag
   conditionalFormatting(
     wb, pin_sheet_name,
     cols = 26:29,
@@ -602,8 +612,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     type = "expression"
   )
   # For some reason vector cols don't work with expressions, so we have
-  # to duplicate the conditionalFormatting above for the second range
-  # of columns
+  # to duplicate the conditional formatting for the sale outlier flag above
+  # to apply it to the second range of columns
   conditionalFormatting(
     wb, pin_sheet_name,
     cols = 30:33,
