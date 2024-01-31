@@ -9,7 +9,6 @@ Depends:
     ccao,
     conflicted,
     Cubist,
-    doFuture,
     doParallel,
     dplyr,
     furrr,

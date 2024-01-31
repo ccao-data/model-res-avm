@@ -5,7 +5,6 @@
 library(rules)
 library(Cubist)
 library(doParallel)
-library(doFuture)
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
@@ -17,9 +16,8 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 message("Run note: ", run_note)
 message("Run type: ", run_type)
 
-registerDoFuture()
-cl <- makeCluster(num_threads)
-plan(cluster, workers = cl)
+cl <- makePSOCKcluster(14)
+registerDoParallel(cl)
 
 
 
