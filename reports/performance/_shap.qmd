@@ -85,7 +85,7 @@ shapviz::shapviz(
 ```
 
 ```{r _shap_triad_table}
-shap_df_filtered_long %>%
+shap_df_imp_overall <- shap_df_filtered_long %>%
   group_by(feature) %>%
   summarize(
     `Mean Abs.` = mean(abs(shap)),
@@ -103,7 +103,9 @@ shap_df_filtered_long %>%
     across(`Mean Abs.`:`Max.`, ~ scales::dollar(.x, accuracy = 0.01)),
     `Rel. Imp.` = scales::percent(`Rel. Imp.`, accuracy = 0.01)
   ) %>%
-  rename(Feature = feature) %>%
+  rename(Feature = feature)
+
+shap_df_imp_overall %>%
   datatable(
     rownames = FALSE,
     options = list(
@@ -198,4 +200,96 @@ shap_df_filtered_long %>%
       )
     )
   )
+```
+
+## Neighborhood-Level SHAP Map
+
+The following map shows the impact of 20 key predictors for neighborhood-level housing values. Colors in the map are scaled to each characteristic's _relative importance for the neighborhood_. The number shown is the _mean SHAP value_ for that predictor. This is the same method used to calculate the relative importance in the bar graphs and tables above.
+
+```{r _shap_map}
+shap_df_imp_by_nbhd <- shap_df_filtered %>%
+  left_join(
+    assessment_card %>%
+      select(meta_year, meta_pin, meta_card_num, nbhd_code = meta_nbhd_code),
+    by = c("meta_pin", "meta_card_num", "meta_year")
+  ) %>%
+  select(nbhd_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
+  ) %>%
+  group_by(feature, nbhd_code) %>%
+  summarize(
+    mean_abs = mean(abs(shap)),
+    mean_shap = mean(shap)
+  ) %>%
+  group_by(nbhd_code) %>%
+  mutate(rel_imp = mean_abs / sum(mean_abs)) %>%
+  ungroup()
+
+shap_top_n_features <- shap_df_imp_overall %>%
+  slice_max(order_by = `Rel. Imp.`, n = 20) %>%
+  arrange(desc(`Rel. Imp.`)) %>%
+  pull(Feature)
+
+shap_df_imp_by_nbhd_fil <- shap_df_imp_by_nbhd %>%
+  filter(feature %in% shap_top_n_features) %>%
+  pivot_wider(
+    id_cols = nbhd_code,
+    names_from = feature,
+    values_from = c(mean_shap, rel_imp)
+  ) %>%
+  left_join(ccao::nbhd_shp, by = c("nbhd_code" = "town_nbhd")) %>%
+  st_as_sf()
+
+# Create actual leaflet map
+shap_nbhd_map <- leaflet(shap_df_imp_by_nbhd_fil) %>%
+  addProviderTiles(providers$CartoDB.Positron)
+
+add_column_layer <- function(map, df, column_name) {
+  rel_imp_col <- paste0("rel_imp_", column_name)
+  mean_shap_col <- paste0("mean_shap_", column_name)
+
+  pal <- colorNumeric(
+    palette = "BuPu",
+    domain = df[[rel_imp_col]],
+    na.color = "transparent"
+  )
+
+  # Add polygon layer using this color palette
+  map %>% addPolygons(
+    fillColor = ~ pal(df[[rel_imp_col]]),
+    weight = 1,
+    opacity = 0.7,
+    color = "black",
+    fillOpacity = 0.7,
+    group = column_name,
+    label = ~ paste0(
+      column_name, ": ", dollar(df[[mean_shap_col]], accuracy = 1),
+      sprintf(" (%.2f%%)", df[[rel_imp_col]])
+    ),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    )
+  )
+}
+
+for (col in shap_top_n_features) {
+  shap_nbhd_map <- add_column_layer(
+    shap_nbhd_map,
+    shap_df_imp_by_nbhd_fil,
+    col
+  )
+}
+
+shap_nbhd_map <- shap_nbhd_map %>%
+  addLayersControl(
+    baseGroups = shap_top_n_features,
+    options = layersControlOptions(collapsed = TRUE)
+  )
+
+shap_nbhd_map
 ```
