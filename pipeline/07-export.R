@@ -104,7 +104,6 @@ vacant_land <- dbGetQuery(
   LEFT JOIN default.vw_pin_history hist
       ON uni.pin = hist.pin
       AND uni.year = hist.year
-
   WHERE uni.year = '{params$assessment$data_year}'
   AND uni.class IN ('200', '201', '241')
   AND triad_code = '{params$export$triad_code}'
@@ -301,7 +300,7 @@ if (comp_enable) {
   assessment_pin_merged <- assessment_pin_merged %>%
     left_join(comps, by = join_by(meta_pin == pin)) %>%
     mutate(
-      overall_comp_score = select(., starts_with('comp_score_')) %>%
+      overall_comp_score = select(., starts_with("comp_score_")) %>%
         rowMeans(na.rm = TRUE)
     ) %>%
     select(
