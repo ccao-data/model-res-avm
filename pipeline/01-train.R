@@ -227,7 +227,7 @@ if (cv_enable) {
       date_col = meta_sale_date,
       val_prop = params$model$parameter$validation_prop,
       train_includes_val = params$model$parameter$validation_prop > 0,
-      cumulative = TRUE
+      cumulative = FALSE
     )
   }
 
