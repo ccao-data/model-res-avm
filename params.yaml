@@ -69,7 +69,7 @@ input:
   # Parameters used to construct price strata feature(s)
   strata:
     # Number of bins to use to construct prior year price strata
-    k_1: 5
+    k_1: 4
 
     # Grouping variables used in the construction of price strata
     group_var:
