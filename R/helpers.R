@@ -186,7 +186,7 @@ extract_num_iterations <- function(x) {
 # the model was trained with the `valids` parameter set such that error metrics
 # are saved for each tree on the model$record_evals attribute. The output
 # weights are useful for computing comps using leaf node assignments
-extract_weights <- function(model, init_score, metric = "rmse") {
+extract_tree_weights <- function(model, init_score, metric = "rmse") {
   # Index into the errors list, and un-list so it is a flat/1dim list
   record_evals <- model$record_evals
   errors <- unlist(record_evals$tree_errors[[metric]]$eval)
@@ -198,6 +198,23 @@ extract_weights <- function(model, init_score, metric = "rmse") {
   weights <- diff_in_errors / sum(diff_in_errors)
 
   return(weights)
+}
+
+# Find an initial validation metric score for use with extract_tree_weights
+# function. For regression models this seems to be the validation metric as
+# calculated using the mean outcome variable
+get_init_score <- function(truth, estimate, metric = "rmse", ...) {
+  stopifnot(metric %in% c("rmse", "mae", "mape"))
+  if (length(estimate) == 1) estimate <- rep(estimate, length(truth))
+  metric_fun <- switch(metric,
+    rmse = yardstick::rmse_vec,
+    mae = yardstick::mae_vec,
+    mape = yardstick::mape_vec
+  )
+
+  out <- metric_fun(truth, estimate, ...)
+
+  return(out)
 }
 
 # Given the result of a CV search, get the number of iterations from the
