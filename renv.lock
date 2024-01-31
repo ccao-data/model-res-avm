@@ -326,14 +326,14 @@
     },
     "cli": {
       "Package": "cli",
-      "Version": "3.6.2",
+      "Version": "3.6.1",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "R",
         "utils"
       ],
-      "Hash": "1216ac65ac55ec0058a6f75d7ca0fd52"
+      "Hash": "89e6d8219950eac806ae0c489052048a"
     },
     "clock": {
       "Package": "clock",
