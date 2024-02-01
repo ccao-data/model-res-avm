@@ -365,8 +365,10 @@ sales_data_two_most_recent <- sales_data %>%
     meta_sale_price, meta_sale_date, meta_sale_document_num,
     sv_outlier_type, sv_run_id
   ) %>%
-  rename(meta_sale_outlier_type = sv_outlier_type,
-         meta_sale_sv_run_id = sv_run_id) %>%
+  rename(
+    meta_sale_outlier_type = sv_outlier_type,
+    meta_sale_sv_run_id = sv_run_id
+  ) %>%
   mutate(
     meta_sale_outlier_type = ifelse(
       meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
@@ -378,11 +380,13 @@ sales_data_two_most_recent <- sales_data %>%
   tidyr::pivot_wider(
     id_cols = meta_pin,
     names_from = mr,
-    values_from = c(meta_sale_date,
-                    meta_sale_price,
-                    meta_sale_document_num,
-                    meta_sale_outlier_type,
-                    meta_sale_sv_run_id),
+    values_from = c(
+      meta_sale_date,
+      meta_sale_price,
+      meta_sale_document_num,
+      meta_sale_outlier_type,
+      meta_sale_sv_run_id
+    ),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
   ) %>%
   select(meta_pin, contains("1"), contains("2")) %>%
