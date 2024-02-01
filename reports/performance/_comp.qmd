@@ -1,0 +1,183 @@
+{{< include ../_setup.qmd >}}
+
+
+```{r}
+
+report_pins <- unique(c(
+   model_params$ratio_study$pins,
+  Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
+    str_split(" ") %>%
+    unlist() %>%
+    str_trim() %>%
+    discard(~ .x == "")
+))
+```
+
+
+## Mean Comparison Score for Properties in Each Neighborhood
+```{r}
+
+base_data <- assessment_pin %>% 
+  select(meta_pin, meta_nbhd_code, meta_class) %>%
+  left_join(comp_df, by = c("meta_pin" = "pin"))
+
+mean_comp <- base_data %>%
+  mutate(mean_comp = rowMeans(select(., starts_with("comp_score_")), na.rm = TRUE)) %>%
+  group_by(meta_nbhd_code) %>%
+  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf
+
+ggplot(mean_comp) +
+  geom_sf(aes(fill = mean_comp)) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(fill = "Mean Comparison") +  
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank())
+
+
+
+```
+
+
+```{r}
+res_single_family <- base_data %>%
+  filter(meta_class %in% c(202, 203, 204, 205, 206, 207, 208, 209, 210, 218, 219, 234, 278, 295)) %>%
+  group_by(meta_nbhd_code) %>%
+  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf
+
+res_multi_family <- base_data %>%
+  filter(meta_class %in% c(211, 212)) %>%
+  group_by(meta_nbhd_code) %>%
+  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf
+
+
+create_plot <- function(data, title) {
+  ggplot(data) +
+    geom_sf(aes(fill = mean_comp)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(fill = "Mean Comparison", title = title)
+}
+
+create_plot <- function(data, title) {
+  ggplot(data) +
+    geom_sf(aes(fill = mean_comp)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(fill = "Mean Comparison", title = title)
+}
+
+# Creating a list of ggplot objects
+plots <- list(
+  single_family_plot = create_plot(res_single_family, "Single Family"),
+  multi_family_plot = create_plot(res_multi_family, "Multi Family"))
+  
+```
+  
+
+
+```{r}
+comp_df_filtered <- comp_df %>%
+  filter(pin %in% report_pins) %>%
+  tidyr::pivot_longer(starts_with("comp_pin_"), values_to = "comp_pin") %>%
+  select(-name, -starts_with("comp_score_")) %>%
+  bind_cols(
+    comp_df %>%
+      filter(pin %in% report_pins) %>%
+      tidyr::pivot_longer(
+        starts_with("comp_score_"),
+        values_to = "comp_score"
+      ) %>%
+      select(-name, -starts_with("comp_pin_"), -pin)
+  ) %>%
+  mutate(type = "Comp.") %>%
+  left_join(
+    training_data,
+    by = c("comp_pin" = "meta_pin"),
+    relationship = "many-to-many"
+  ) %>%
+  select(
+    pin, comp_pin, comp_score, meta_1yr_pri_board_tot,
+    meta_sale_date, meta_sale_price,
+    loc_latitude, loc_longitude, meta_class,
+    char_bldg_sf, char_yrblt, char_ext_wall, type
+  ) %>%
+  group_by(comp_pin) %>%
+  filter(meta_sale_date == max(meta_sale_date))
+
+Target_pin <- comp_df %>%
+  select(pin) %>%
+  filter(pin %in% report_pins) %>%
+      left_join(
+        assessment_data %>%
+          select(
+            meta_pin, meta_class, meta_1yr_pri_board_tot,
+            char_bldg_sf, char_yrblt, char_ext_wall,
+            loc_latitude, loc_longitude
+          ),
+        by = c("pin" = "meta_pin"),
+      ) %>%
+      mutate(type = "Target") %>%
+  mutate(meta_1yr_pri_board_tot = meta_1yr_pri_board_tot * 10) %>%
+  mutate(comp_pin = pin) %>%
+  select(pin, comp_pin, everything()) 
+
+
+comp_palette <-
+  colorFactor(
+    palette = "Set3",
+    domain = comp_df_filtered$pin
+  )
+
+
+comp_plot_data <- rbind(comp_df_filtered, Target_pin) %>%
+  mutate(
+    circle_color = ifelse(type == "Target", "black", comp_palette(pin))
+  )
+
+leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addCircleMarkers(
+    data = comp_plot_data,
+    ~loc_longitude,
+    ~loc_latitude,
+    opacity = 1,
+    fillOpacity = 1,
+    radius = 2,
+    color = ~circle_color,
+    popup = ~paste0(
+      type, "<br>Comp PIN: ",
+      "<a target='_blank' rel='noopener noreferrer' href='https://www.cookcountyassessor.com/pin/", comp_pin, "'>", comp_pin, "</a> ",
+      "<br>Target PIN: ",
+      "<a target='_blank' rel='noopener noreferrer' href='https://www.cookcountyassessor.com/pin/", pin, "'>", pin, "</a>",      
+      "<br>Score: ", scales::percent(comp_score, accuracy = 0.01),
+      "<br>Class: ", meta_class,
+      "<br>BoR FMV: ", scales::dollar(meta_1yr_pri_board_tot, accuracy = 1),
+      "<hr>",
+      "Sale Date: ", meta_sale_date,
+      "<br>Sale Price: ", scales::dollar(meta_sale_price, accuracy = 1),
+      "<hr>",
+      "Bldg Sqft: ", scales::comma(char_bldg_sf),
+      "<br>Year Built: ", char_yrblt,
+      "<br>Ext. Wall: ", char_ext_wall
+    )
+  ) %>%
+  setView(
+    lng = mean(comp_df_filtered$loc_longitude),
+    lat = mean(comp_df_filtered$loc_latitude),
+    zoom = 10
+  )
+
+
+
+```
+
