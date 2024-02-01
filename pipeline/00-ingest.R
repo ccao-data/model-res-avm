@@ -338,12 +338,16 @@ training_data_clean <- training_data_w_hie %>%
   ) %>%
   mutate(
     # Construct the "strata price", which is the most recent available price for
-    # a given sale. In descending order of preference, strata price is:
+    # a given sale EXCLUDING that target sale's price. In descending order of
+    # preference, strata price is:
+    # - The max sale price of the past N years
     # - The finalized Board of Review value of the prior year
     # - The finalized certified value of the prior year
     # - The finalized Board of Review value of the prior year
     meta_sale_price_past_n_years = na_if(meta_sale_price_past_n_years, 0),
     meta_strata_price = case_when(
+      !is.na(meta_sale_price_past_n_years) & meta_sale_price_past_n_years != 0 ~
+        meta_sale_price_past_n_years,
       !is.na(meta_board_tot) & meta_board_tot != 0 ~
         meta_board_tot * 10,
       !is.na(meta_certified_tot) & meta_certified_tot != 0 ~
@@ -362,7 +366,7 @@ training_data_clean <- training_data_w_hie %>%
     # property, bin it into a separate uncertainty strata. In other words, if
     # the current sale is very far from the prior year's sales or BoR value,
     # stick it in its own strata
-    lsale = log(meta_strata_price),
+    lsale = log(meta_sale_price),
     lsp = log(meta_strata_price),
     mlsp = mean(lsp, na.rm = TRUE),
     slsp = sd(lsp, na.rm = TRUE),
@@ -478,6 +482,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
   mutate(
     meta_sale_price_past_n_years = na_if(meta_sale_price_past_n_years, 0),
     meta_strata_price = case_when(
+      !is.na(meta_sale_price_past_n_years) & meta_sale_price_past_n_years != 0 ~
+        meta_sale_price_past_n_years,
       !is.na(meta_board_tot) & meta_board_tot != 0 ~
         meta_board_tot * 10,
       !is.na(meta_certified_tot) & meta_certified_tot != 0 ~
