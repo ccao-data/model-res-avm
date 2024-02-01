@@ -66,12 +66,10 @@ model_township_stats_df <- model_performance_test_merged %>%
   select(
     stage,
     township_name,
-    sale_fmv_median,
-    estimate_fmv_median,
     cod, prd, prb, mki,
     median_ratio,
     rmse, mdape, r_squared,
-    cod_met, prd_met, prb_met, mki_met,
+    cod_met, prd_met, prb_met, mki_met
   ) %>%
   mutate(
     ratio_met = between(median_ratio, 0.95, 1.05),
@@ -86,13 +84,11 @@ generate_model_township_stats <- function(df) {
     thead(
       tr(
         th("Township"),
-        th("Median Sale Price"),
-        th("Median Estimate"),
         th("COD"),
         th("PRD"),
         th("PRB"),
         th("MKI"),
-        th("Median Ratio"),
+        th("Med. Ratio"),
         th("RMSE"),
         th("MdAPE"),
         th("R2")
@@ -120,12 +116,7 @@ generate_model_township_stats <- function(df) {
           ),
           list(
             className = "dt-right",
-            targets = c(
-              "sale_fmv_median",
-              "estimate_fmv_median",
-              "rmse",
-              "mdape"
-            )
+            targets = c("rmse", "mdape")
           )
         )
       )
@@ -143,6 +134,7 @@ generate_model_township_stats <- function(df) {
       )
     )
 }
+
 ```
 
 ## Topline Statistics
@@ -179,8 +171,7 @@ model_township_stats_assessment_df <- model_performance_assessment %>%
   ) %>%
   mutate(township_name = ccao::town_convert(geography_id)) %>%
   select(
-    township_name, sale_fmv_median, estimate_fmv_median,
-    cod, prd, prb, mki, median_ratio,
+    township_name, cod, prd, prb, mki, median_ratio,
     rmse, mdape, r_squared,
     cod_met, prd_met, prb_met, mki_met
   ) %>%
@@ -195,6 +186,76 @@ model_township_stats_assessment_df %>%
 ```
 
 :::
+
+Prior year values (latest stage available for each year) compared to target year sales and estimates.
+The median percent change is comparing the nearest assessed value to the estimated value.
+PIN and sale counts include residential, regression-class properties only.
+
+```{r _model_township_outcomes}
+generate_model_township_outcomes <- function(df) {
+  headers <- htmltools::withTags(table(
+    class = "display",
+    thead(
+      tr(
+        th("Township"),
+        th(paste("Med.", tools::toTitleCase(m_assess_stage_far), "Value")),
+        th(paste("Med.", tools::toTitleCase(m_assess_stage_near), "Value")),
+        th("Median Sale Price"),
+        th("Median Estimate"),
+        th("Median Percent Change"),
+        th("Number of Sales"),
+        th("Number of PINs"),
+        th("Percent Sold")
+      )
+    )
+  ))
+
+  df %>%
+    select(-any_of("stage")) %>%
+    datatable(
+      rownames = FALSE,
+      filter = "none",
+      selection = "none",
+      container = headers,
+      escape = FALSE,
+      options = list(
+        autoWidth = TRUE,
+        paging = FALSE,
+        searching = FALSE,
+        info = FALSE,
+        columnDefs = list(
+          list(
+            className = "dt-right",
+            targets = c(1:8)
+          )
+        )
+      )
+    )
+}
+
+model_performance_assessment %>%
+  filter(
+    geography_type == "township_code",
+    triad_code == run_triad_code,
+    !by_class
+  ) %>%
+  mutate(township_name = ccao::town_convert(geography_id)) %>%
+  select(
+    township_name,
+    prior_far_fmv_median,
+    prior_near_fmv_median,
+    sale_fmv_median,
+    estimate_fmv_median,
+    prior_near_yoy_pct_chg_median,
+    num_sale, num_pin, pct_of_pin_sold
+  ) %>%
+  mutate(
+    across(ends_with("_fmv_median"), ~ scales::dollar(.x, accuracy = 1)),
+    across(contains("pct"), ~ scales::percent(.x, accuracy = 0.01)),
+    across(starts_with("num_"), ~ scales::comma(.x)) 
+  ) %>%
+  generate_model_township_outcomes()
+```
 
 ## Ratio Curves
 
