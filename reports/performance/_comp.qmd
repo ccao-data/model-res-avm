@@ -1,25 +1,13 @@
 {{< include ../_setup.qmd >}}
 
 
-```{r}
-
-report_pins <- unique(c(
-   model_params$ratio_study$pins,
-  Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
-    str_split(" ") %>%
-    unlist() %>%
-    str_trim() %>%
-    discard(~ .x == "")
-))
-```
-
 
 ## Mean Comparison Score for Properties in Each Neighborhood
 ```{r}
-base_data <- assessment_pin %>% 
+base_data <- assessment_pin %>%
   select(meta_pin, meta_nbhd_code, meta_class) %>%
   left_join(comp_df, by = c("meta_pin" = "pin"))
-  
+
 
 res_single_family <- base_data %>%
   filter(meta_class %in% c(202, 203, 204, 205, 206, 207, 208, 209, 210, 218, 219, 234, 278, 295)) %>%
@@ -50,7 +38,7 @@ generate_plot <- function(data, title) {
     geom_sf(aes(fill = mean_comp)) +
     scale_fill_viridis_c() +
     theme_minimal() +
-    labs(fill = "Mean Comparison", title = title) +  
+    labs(fill = "Mean Comparison", title = title) +
     theme(
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
@@ -60,10 +48,9 @@ generate_plot <- function(data, title) {
 }
 
 plots <- list()
-plots$'Overall' <- generate_plot(mean_comp, "Overall Mean Comparison")
-plots$'Single Family' <- generate_plot(res_single_family, "Single Family Residence")
-plots$'Multifamily' <- generate_plot(res_multi_family, "Multi Family Residence")
-
+plots$"Overall" <- generate_plot(mean_comp, "Overall Mean Comparison")
+plots$"Single Family" <- generate_plot(res_single_family, "Single Family Residence")
+plots$"Multifamily" <- generate_plot(res_multi_family, "Multi Family Residence")
 ```
 
 ::: {.panel-tabset}
@@ -71,14 +58,12 @@ plots$'Multifamily' <- generate_plot(res_multi_family, "Multi Family Residence")
 #| results: asis
 
 iwalk(plots, ~ {
-  cat('## ', .y, '\n\n')
-  
-  print(.x)
-  
-  cat('\n\n')
-  
-})
+  cat("## ", .y, "\n\n")
 
+  print(.x)
+
+  cat("\n\n")
+})
 ```
 
 :::
@@ -113,29 +98,29 @@ comp_df_filtered <- comp_df %>%
     char_bldg_sf, char_yrblt, char_ext_wall, type
   ) %>%
   group_by(comp_pin) %>%
+  left_join(select(assessment_pin, meta_pin, pred_pin_final_fmv_round_no_prorate), by = c("comp_pin" = "meta_pin")) %>%
   filter(meta_sale_date == max(meta_sale_date))
+
 
 Target_pin <- comp_df %>%
   select(pin) %>%
   filter(pin %in% report_pins) %>%
-      left_join(
-        assessment_data %>%
-          select(
-            meta_pin, meta_class, meta_1yr_pri_board_tot,
-            char_bldg_sf, char_yrblt, char_ext_wall,
-            loc_latitude, loc_longitude
-          ),
-        by = c("pin" = "meta_pin"),
-      ) %>%
-      mutate(type = "Target") %>%
+  left_join(
+    assessment_data %>%
+      select(
+        meta_pin, meta_class, meta_1yr_pri_board_tot,
+        char_bldg_sf, char_yrblt, char_ext_wall,
+        loc_latitude, loc_longitude
+      ),
+    by = c("pin" = "meta_pin"),
+  ) %>%
+  mutate(type = "Target") %>%
   mutate(meta_1yr_pri_board_tot = meta_1yr_pri_board_tot * 10) %>%
+  left_join(select(assessment_pin, meta_pin, pred_pin_final_fmv_round_no_prorate, sale_recent_1_date, sale_recent_1_price), by = c("pin" = "meta_pin")) %>%
   mutate(comp_pin = pin) %>%
-  select(pin, comp_pin, everything()) 
+  rename(meta_sale_date = sale_recent_1_date, meta_sale_price = sale_recent_1_price) %>%
+  select(pin, comp_pin, everything())
 
-comp_plot_data <- rbind(comp_df_filtered, Target_pin) %>%
-  mutate(
-    circle_color = ifelse(type == "Target", "black", comp_palette(pin))
-  )
 
 comp_palette <-
   colorFactor(
@@ -143,7 +128,10 @@ comp_palette <-
     domain = comp_df_filtered$pin
   )
 
-
+comp_plot_data <- rbind(comp_df_filtered, Target_pin) %>%
+  mutate(
+    circle_color = ifelse(type == "Target", "black", comp_palette(pin))
+  )
 
 
 leaflet() %>%
@@ -156,14 +144,15 @@ leaflet() %>%
     fillOpacity = 1,
     radius = 2,
     color = ~circle_color,
-    popup = ~paste0(
+    popup = ~ paste0(
       type, "<br>Comp PIN: ",
       "<a target='_blank' rel='noopener noreferrer' href='https://www.cookcountyassessor.com/pin/", comp_pin, "'>", comp_pin, "</a> ",
       "<br>Target PIN: ",
-      "<a target='_blank' rel='noopener noreferrer' href='https://www.cookcountyassessor.com/pin/", pin, "'>", pin, "</a>",      
+      "<a target='_blank' rel='noopener noreferrer' href='https://www.cookcountyassessor.com/pin/", pin, "'>", pin, "</a>",
       "<br>Score: ", scales::percent(comp_score, accuracy = 0.01),
       "<br>Class: ", meta_class,
       "<br>BoR FMV: ", scales::dollar(meta_1yr_pri_board_tot, accuracy = 1),
+      "<br>Model FMV: ", scales::dollar(pred_pin_final_fmv_round_no_prorate, accuracy = 1),
       "<hr>",
       "Sale Date: ", meta_sale_date,
       "<br>Sale Price: ", scales::dollar(meta_sale_price, accuracy = 1),
@@ -178,8 +167,5 @@ leaflet() %>%
     lat = mean(comp_df_filtered$loc_latitude),
     zoom = 10
   )
-
-
-
 ```
 
