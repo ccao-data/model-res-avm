@@ -1,9 +1,6 @@
 {{< include ../_setup.qmd >}}
 
-{{< include ../_setup.qmd >}}
-
-
-## Mean Comparison Score for Properties in Each Neighborhood
+## Mean of the Mean Comparison Score for Properties in Each Neighborhood
 ```{r}
 base_data <- assessment_pin %>%
   select(meta_pin, meta_nbhd_code, meta_class) %>%
