@@ -66,12 +66,10 @@ model_township_stats_df <- model_performance_test_merged %>%
   select(
     stage,
     township_name,
-    sale_fmv_median,
-    estimate_fmv_median,
     cod, prd, prb, mki,
     median_ratio,
     rmse, mdape, r_squared,
-    cod_met, prd_met, prb_met, mki_met,
+    cod_met, prd_met, prb_met, mki_met
   ) %>%
   mutate(
     ratio_met = between(median_ratio, 0.95, 1.05),
@@ -86,13 +84,11 @@ generate_model_township_stats <- function(df) {
     thead(
       tr(
         th("Township"),
-        th("Median Sale Price"),
-        th("Median Estimate"),
         th("COD"),
         th("PRD"),
         th("PRB"),
         th("MKI"),
-        th("Median Ratio"),
+        th("Med. Ratio"),
         th("RMSE"),
         th("MdAPE"),
         th("R2")
@@ -120,12 +116,7 @@ generate_model_township_stats <- function(df) {
           ),
           list(
             className = "dt-right",
-            targets = c(
-              "sale_fmv_median",
-              "estimate_fmv_median",
-              "rmse",
-              "mdape"
-            )
+            targets = c("rmse", "mdape")
           )
         )
       )
@@ -179,8 +170,7 @@ model_township_stats_assessment_df <- model_performance_assessment %>%
   ) %>%
   mutate(township_name = ccao::town_convert(geography_id)) %>%
   select(
-    township_name, sale_fmv_median, estimate_fmv_median,
-    cod, prd, prb, mki, median_ratio,
+    township_name, cod, prd, prb, mki, median_ratio,
     rmse, mdape, r_squared,
     cod_met, prd_met, prb_met, mki_met
   ) %>%
@@ -195,6 +185,76 @@ model_township_stats_assessment_df %>%
 ```
 
 :::
+
+Prior year values (latest stage available for each year) compared to target year sales and estimates.
+The median percent change is comparing the nearest assessed value to the estimated value.
+PIN and sale counts include residential, regression-class properties only.
+
+```{r _model_township_outcomes}
+generate_model_township_outcomes <- function(df) {
+  headers <- htmltools::withTags(table(
+    class = "display",
+    thead(
+      tr(
+        th("Township"),
+        th(paste("Med.", tools::toTitleCase(m_assess_stage_far), "Value")),
+        th(paste("Med.", tools::toTitleCase(m_assess_stage_near), "Value")),
+        th("Median Sale Price"),
+        th("Median Estimate"),
+        th("Median Percent Change"),
+        th("Number of Sales"),
+        th("Number of PINs"),
+        th("Percent Sold")
+      )
+    )
+  ))
+
+  df %>%
+    select(-any_of("stage")) %>%
+    datatable(
+      rownames = FALSE,
+      filter = "none",
+      selection = "none",
+      container = headers,
+      escape = FALSE,
+      options = list(
+        autoWidth = TRUE,
+        paging = FALSE,
+        searching = FALSE,
+        info = FALSE,
+        columnDefs = list(
+          list(
+            className = "dt-right",
+            targets = c(1:8)
+          )
+        )
+      )
+    )
+}
+
+model_performance_assessment %>%
+  filter(
+    geography_type == "township_code",
+    triad_code == run_triad_code,
+    !by_class
+  ) %>%
+  mutate(township_name = ccao::town_convert(geography_id)) %>%
+  select(
+    township_name,
+    prior_far_fmv_median,
+    prior_near_fmv_median,
+    sale_fmv_median,
+    estimate_fmv_median,
+    prior_near_yoy_pct_chg_median,
+    num_sale, num_pin, pct_of_pin_sold
+  ) %>%
+  mutate(
+    across(ends_with("_fmv_median"), ~ scales::dollar(.x, accuracy = 1)),
+    across(contains("pct"), ~ scales::percent(.x, accuracy = 0.01)),
+    across(starts_with("num_"), ~ scales::comma(.x))
+  ) %>%
+  generate_model_township_outcomes()
+```
 
 ## Ratio Curves
 
@@ -617,7 +677,7 @@ for (township in model_townships_list) {
 
 ## Estimate vs Actual (Individual Obs.)
 
-Scatterplot of predicted vs actual sale price for each PIN in the **test set**. The goal is for all points to be close to the 45-degree line; the farther away from the line, the worse the model is at predicting that PIN. 
+Scatterplot of predicted vs actual sale price for each PIN in the **test set**. The goal is for all points to be close to the 45-degree line; the farther away from the line, the worse the model is at predicting that PIN.
 
 _NOTE: Click any of the dots on the plot below to open the Assessor's website for that PIN._
 
@@ -785,7 +845,7 @@ est_v_actual_plotly_class(test_card, pred_card_initial_fmv_lin)
 - **Frequency** is the percentage representing the relative number of times a particular feature occurs in the trees of the model. In the above example, if `feature1` occurred in 2 splits, 1 split and 3 splits in each of `tree1`, `tree2` and `tree3`; then the weight for `feature1` will be `2 + 1 + 3 = 6`. The frequency for `feature1` is calculated as its percentage weight over weights of all features.
 
 _NOTE: These metrics apply to ALL triads, not just the triad being re-assessed._
-  
+
 ***CRITICAL NOTE: Feature importance metrics for categorical features do not always align with reality/intuition when mixed with numeric predictors. Use the SHAP feature importance metrics below if available. See [here](https://www.kaggle.com/code/mlisovyi/beware-of-categorical-features-in-lgbm) for a minimal example of this behavior.***
 
 ```{r _model_feature_importance_function}
