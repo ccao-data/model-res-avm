@@ -16,74 +16,75 @@ report_pins <- unique(c(
 
 ## Mean Comparison Score for Properties in Each Neighborhood
 ```{r}
-
 base_data <- assessment_pin %>% 
   select(meta_pin, meta_nbhd_code, meta_class) %>%
   left_join(comp_df, by = c("meta_pin" = "pin"))
+  
+
+res_single_family <- base_data %>%
+  filter(meta_class %in% c(202, 203, 204, 205, 206, 207, 208, 209, 210, 218, 219, 234, 278, 295)) %>%
+  mutate(mean_comp = rowMeans(select(., starts_with("comp_score_")), na.rm = TRUE)) %>%
+  group_by(meta_nbhd_code) %>%
+  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf()
+
+res_multi_family <- base_data %>%
+  filter(meta_class %in% c(211, 212)) %>%
+  mutate(mean_comp = rowMeans(select(., starts_with("comp_score_")), na.rm = TRUE)) %>%
+  group_by(meta_nbhd_code) %>%
+  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
+  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf()
+
 
 mean_comp <- base_data %>%
   mutate(mean_comp = rowMeans(select(., starts_with("comp_score_")), na.rm = TRUE)) %>%
   group_by(meta_nbhd_code) %>%
   summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
   left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  st_as_sf
+  st_as_sf()
 
-ggplot(mean_comp) +
-  geom_sf(aes(fill = mean_comp)) +
-  scale_fill_viridis_c() +
-  theme_minimal() +
-  labs(fill = "Mean Comparison") +  
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.ticks.y = element_blank())
+generate_plot <- function(data, title) {
+  ggplot(data) +
+    geom_sf(aes(fill = mean_comp)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(fill = "Mean Comparison", title = title) +  
+    theme(
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank()
+    )
+}
 
-
+plots <- list()
+plots$'Overall' <- generate_plot(mean_comp, "Overall Mean Comparison")
+plots$'Single Family' <- generate_plot(res_single_family, "Single Family Residence")
+plots$'Multifamily' <- generate_plot(res_multi_family, "Multi Family Residence")
 
 ```
 
-
+::: {.panel-tabset}
 ```{r}
-res_single_family <- base_data %>%
-  filter(meta_class %in% c(202, 203, 204, 205, 206, 207, 208, 209, 210, 218, 219, 234, 278, 295)) %>%
-  group_by(meta_nbhd_code) %>%
-  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
-  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  st_as_sf
+#| results: asis
 
-res_multi_family <- base_data %>%
-  filter(meta_class %in% c(211, 212)) %>%
-  group_by(meta_nbhd_code) %>%
-  summarise(mean_comp = mean(mean_comp, na.rm = TRUE)) %>%
-  left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  st_as_sf
-
-
-create_plot <- function(data, title) {
-  ggplot(data) +
-    geom_sf(aes(fill = mean_comp)) +
-    scale_fill_viridis_c() +
-    theme_minimal() +
-    labs(fill = "Mean Comparison", title = title)
-}
-
-create_plot <- function(data, title) {
-  ggplot(data) +
-    geom_sf(aes(fill = mean_comp)) +
-    scale_fill_viridis_c() +
-    theme_minimal() +
-    labs(fill = "Mean Comparison", title = title)
-}
-
-# Creating a list of ggplot objects
-plots <- list(
-  single_family_plot = create_plot(res_single_family, "Single Family"),
-  multi_family_plot = create_plot(res_multi_family, "Multi Family"))
+iwalk(plots, ~ {
+  cat('## ', .y, '\n\n')
   
+  print(.x)
+  
+  cat('\n\n')
+  
+})
+
 ```
-  
 
+:::
+
+## Map of Comparable Sales
+Black dots represent the target pin, while the colored dots represent the comparable sales. The color is grouped by the target pin. 
 
 ```{r}
 comp_df_filtered <- comp_df %>%
@@ -131,6 +132,10 @@ Target_pin <- comp_df %>%
   mutate(comp_pin = pin) %>%
   select(pin, comp_pin, everything()) 
 
+comp_plot_data <- rbind(comp_df_filtered, Target_pin) %>%
+  mutate(
+    circle_color = ifelse(type == "Target", "black", comp_palette(pin))
+  )
 
 comp_palette <-
   colorFactor(
@@ -139,10 +144,7 @@ comp_palette <-
   )
 
 
-comp_plot_data <- rbind(comp_df_filtered, Target_pin) %>%
-  mutate(
-    circle_color = ifelse(type == "Target", "black", comp_palette(pin))
-  )
+
 
 leaflet() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
