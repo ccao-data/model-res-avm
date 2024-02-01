@@ -64,7 +64,7 @@ input:
   max_sale_year: "2023"
 
   # Number of years back to look for count_past_n_years feature
-  n_years_prior: 4
+  n_years_prior: 5
 
   # Parameters used to construct price strata feature(s)
   strata:
@@ -163,7 +163,7 @@ model:
       - "meta_nbhd_code"
       - "meta_modeling_group"
       - "meta_sale_count_past_n_years"
-      - "meta_strata_1"
+      - "meta_strata_price"
       - "char_yrblt"
       - "char_air"
       - "char_apts"
@@ -264,7 +264,7 @@ model:
       - "meta_township_code"
       - "meta_nbhd_code"
       - "meta_modeling_group"
-      - "meta_strata_1"
+      - "meta_strata_price"
       - "char_air"
       - "char_apts"
       - "char_attic_fnsh"

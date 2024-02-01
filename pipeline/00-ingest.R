@@ -345,14 +345,20 @@ training_data_clean <- training_data_w_hie %>%
     # - The finalized certified value of the prior year
     # - The finalized Board of Review value of the prior year
     meta_sale_price_past_n_years = na_if(meta_sale_price_past_n_years, 0),
-    meta_strata_price = case_when(
+    meta_strata_type = case_when(
       !is.na(meta_sale_price_past_n_years) & meta_sale_price_past_n_years != 0 ~
-        meta_sale_price_past_n_years,
+        "lag_sale",
       !is.na(meta_board_tot) & meta_board_tot != 0 ~
-        meta_board_tot * 10,
+        "board",
       !is.na(meta_certified_tot) & meta_certified_tot != 0 ~
-        meta_certified_tot * 10,
-      TRUE ~ meta_1yr_pri_board_tot * 10
+        "certified",
+      TRUE ~ "1yr_pri_board"
+    ),
+    meta_strata_price = case_when(
+      meta_strata_type == "lag_sale" ~ meta_sale_price_past_n_years,
+      meta_strata_type == "board" ~ meta_board_tot * 10,
+      meta_strata_type == "certified" ~ meta_certified_tot * 10,
+      meta_strata_type == "1yr_pri_board" ~ meta_1yr_pri_board_tot * 10,
     ),
     # Construct price bins using grouped quantiles of the strata price. This is
     # what actually gets used as a predictor in the model
@@ -378,10 +384,7 @@ training_data_clean <- training_data_w_hie %>%
     ),
     .by = c("meta_strata_1")
   ) %>%
-  select(-c(
-    meta_sale_price_past_n_years, meta_strata_price,
-    lsale, lsp, mlsp, slsp
-  )) %>%
+  select(-c(lsale, lsp, mlsp, slsp)) %>%
   # Create time/date features using lubridate
   mutate(
     # Calculate interval periods and time since the start of the sales sample
@@ -481,14 +484,20 @@ assessment_data_clean <- assessment_data_w_hie %>%
   ) %>%
   mutate(
     meta_sale_price_past_n_years = na_if(meta_sale_price_past_n_years, 0),
-    meta_strata_price = case_when(
+    meta_strata_type = case_when(
       !is.na(meta_sale_price_past_n_years) & meta_sale_price_past_n_years != 0 ~
-        meta_sale_price_past_n_years,
+        "lag_sale",
       !is.na(meta_board_tot) & meta_board_tot != 0 ~
-        meta_board_tot * 10,
+        "board",
       !is.na(meta_certified_tot) & meta_certified_tot != 0 ~
-        meta_certified_tot * 10,
-      TRUE ~ meta_1yr_pri_board_tot * 10
+        "certified",
+      TRUE ~ "1yr_pri_board"
+    ),
+    meta_strata_price = case_when(
+      meta_strata_type == "lag_sale" ~ meta_sale_price_past_n_years,
+      meta_strata_type == "board" ~ meta_board_tot * 10,
+      meta_strata_type == "certified" ~ meta_certified_tot * 10,
+      meta_strata_type == "1yr_pri_board" ~ meta_1yr_pri_board_tot * 10,
     ),
     # Construct price bins using grouped quantiles of the strata price. This is
     # what actually gets used as a predictor in the model
@@ -510,10 +519,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
     ),
     .by = c("meta_strata_1")
   ) %>%
-  select(-c(
-    meta_sale_price_past_n_years, meta_strata_price,
-    lsale, lsp, mlsp, slsp
-  )) %>%
+  select(-c(lsale, lsp, mlsp, slsp)) %>%
   # Create sale date features BASED ON THE ASSESSMENT DATE. The model predicts
   # the sale price of properties on the date of assessment. Not the date of an
   # actual sale
