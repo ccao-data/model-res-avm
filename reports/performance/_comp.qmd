@@ -47,7 +47,7 @@ generate_plot <- function(data, title) {
 }
 
 plots <- list()
-plots$"Overall" <- generate_plot(mean_comp, "Overall Mean Comparison")
+plots$"Overall" <- generate_plot(mean_comp, "Overall")
 plots$"Single Family" <- generate_plot(res_single_family, "Single Family Residence")
 plots$"Multifamily" <- generate_plot(res_multi_family, "Multi Family Residence")
 ```
