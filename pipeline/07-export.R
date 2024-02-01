@@ -272,7 +272,7 @@ assessment_card <- dbGetQuery(
 message("Preparing data for Desk Review export")
 
 # Merge vacant land data with data from the residential AVM
-assessment_pin_merged <- assessment_pin %>%
+assessment_pin_merged_w_land <- assessment_pin %>%
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
     across(ends_with("_date"), ymd),
@@ -287,7 +287,7 @@ if (comp_enable) {
   message("Pulling comp data from Athena")
   # We don't know how many comp_score_{x} columns there are, and selecting
   # columns via wildcard in SQL is complicated, so just query everything and
-  # then drop metadata columns in R
+  # then select the necessary columns in R
   comps <- dbGetQuery(
     conn = AWS_ATHENA_CONN_NOCTUA, glue("
     SELECT *
@@ -295,21 +295,40 @@ if (comp_enable) {
     WHERE run_id = '{params$export$run_id}'
     ")
   ) %>%
-    select(-run_id, -year, -card)
-
-  # Merge comp data into assessment data
-  assessment_pin_merged <- assessment_pin_merged %>%
-    left_join(comps, by = join_by(meta_pin == pin)) %>%
     mutate(
       overall_comp_score = select(., starts_with("comp_score_")) %>%
         rowMeans(na.rm = TRUE)
     ) %>%
     select(
-      -starts_with("comp_score_") | matches("^comp_score_1$|^comp_score_2$")
-    ) %>%
-    select(
-      -starts_with("comp_pin_") | matches("^comp_pin_1$|^comp_pin_2$")
+      pin, overall_comp_score,
+      comp_pin_1, comp_score_1, comp_pin_2, comp_score_2
     )
+
+  # Merge comp data into assessment data. Start with single-card PINs, where
+  # the comps for the card are the same as the comps for the parcel
+  assessment_pin_single_card <- assessment_pin_merged_w_land %>%
+    filter(meta_pin_num_cards == 1 | is.na(meta_pin_num_cards)) %>%
+    left_join(comps, by = join_by(meta_pin == pin))
+
+  # In cases where the PIN has multiple cards, choose the highest-performing
+  # comps across all cards as the top two. This is necessary because comps are
+  # defined at the card level and not the parcel level.
+  # To start, group the comps by PIN and select the comps with the top
+  # overall_score. This is ugly datatable code but it is much faster than the
+  # dplyr version using group_by and slice_max
+  comps_by_top_score <- comps[
+    comps[, .I[overall_comp_score == max(overall_comp_score)], by = pin]$V1
+  ] %>%
+    distinct()
+  # Next, join the PIN-level data to the top-scoring comps
+  assessment_pin_multicard <- assessment_pin_merged_w_land %>%
+    filter(meta_pin_num_cards > 1) %>%
+    left_join(comps_by_top_score, by = join_by(meta_pin == pin))
+  # Finally, combine both single and multicard PINs
+  assessment_pin_merged <- bind_rows(
+    assessment_pin_single_card, assessment_pin_multicard
+  ) %>%
+    arrange(meta_pin)
 
   # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
@@ -429,23 +448,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # 5.3 Comp details -----------------------------------------------------------
 
-  # Filter the training data so that we only display sales that are referenced
-  # in comps
-  training_data_filtered_1 <- training_data %>%
-    inner_join(
-      assessment_pin_filtered %>% select(comp_pin_1),
-      by = join_by(meta_pin == comp_pin_1)
-    )
-  training_data_filtered_2 <- training_data %>%
-    inner_join(
-      assessment_pin_filtered %>% select(comp_pin_2),
-      by = join_by(meta_pin == comp_pin_2)
-    )
-  training_data_filtered <- bind_rows(
-    training_data_filtered_1, training_data_filtered_2
-  ) %>%
-    unique()
-
+  # Filter the training data so that we only display sales that are referenced.
+  # First, get the indexes of every sale whose comp is referenced in
+  # the PIN-level details
+  training_pin_in_comps <- training_data$meta_pin %in% (
+    assessment_pin_filtered %>%
+      select(comp_pin_1, comp_pin_2) %>%
+      unlist()
+  )
+  # Next, filter the training data so only referenced sales are included.
+  # This is ugly but faster than the equivalent filter() operation
+  training_data_filtered <- training_data[training_pin_in_comps, ]
+  # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
       meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
@@ -457,7 +471,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # It seems like Excel can only handle between-sheet links if the linked
   # sheet name has no spaces... Perhaps there's an undocumented workaround,
   # but for now, use a sheet name with no spaces for the comp detail view
-  comp_sheet_name <- "Sales"
+  comp_sheet_name <- "Comparables"
 
   # Get range of rows in the comp data + number of header rows
   comp_row_range <- 5:(nrow(training_data_selected) + 6)
@@ -565,7 +579,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_price,
-    rows = pin_row_range, cols = c(10:12, 16:19, 24, 27, 31), gridExpand = TRUE
+    rows = pin_row_range, cols = c(10:12, 16:18, 24, 27, 31), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -582,6 +596,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_comma,
     rows = pin_row_range, cols = c(35, 37), gridExpand = TRUE
   )
+  addStyle(
+    wb, pin_sheet_name,
+    style = createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0"),
+    rows = pin_row_range, cols = c(19), gridExpand = TRUE
+  )
   # For some reason comp links do not get autoformatted as links, possibly
   # due to Excel not parsing within-sheet links as hyperlinks for the purposes
   # of styling
@@ -590,7 +609,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_link,
     rows = pin_row_range, cols = c(39, 41), gridExpand = TRUE
   )
-  addFilter(wb, pin_sheet_name, 6, 1:53)
+  addFilter(wb, pin_sheet_name, 6, 1:55)
 
   # Format comp score columns with a range of colors from low (red) to high
   # (blue)
@@ -600,6 +619,15 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
+    type = "colourScale"
+  )
+  # Format YoY % change column with a range of colors from low to high
+  conditionalFormatting(
+    wb, pin_sheet_name,
+    cols = c(25),
+    rows = pin_row_range,
+    style = c("#F8696B", "#FFFFFF", "#00B0F0"),
+    rule = c(-1, 0, 1),
     type = "colourScale"
   )
   # Format sale columns such that they are red if the sale has an outlier flag
