@@ -372,8 +372,8 @@ sales_data_two_most_recent <- sales_data %>%
   mutate(
     meta_sale_outlier_type = ifelse(
       meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
-      )
-    ) %>%
+    )
+  ) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
   mutate(mr = paste0("sale_recent_", row_number())) %>%
