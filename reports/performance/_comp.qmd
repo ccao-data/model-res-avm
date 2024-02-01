@@ -1,8 +1,10 @@
 {{< include ../_setup.qmd >}}
 
-## Neighborhood Level Means for each Property's Comparison Score
-Each property has 20 comparable sales. The mean is taken for these scores, before taking the average for the total neighborhood (Mean of a mean).
-```{r}
+## Neighborhood Level Means for a Property's Comparison Score
+Each property has 20 comparable sales. The mean is taken for these scores, before taking the average for the neighborhood (mean of a mean).
+
+
+```{r _comps_neighborhood_means_coding}
 base_data <- assessment_pin %>%
   select(meta_pin, meta_nbhd_code, meta_class) %>%
   left_join(comp_df, by = c("meta_pin" = "pin"))
@@ -53,8 +55,8 @@ plots$"Multifamily" <- generate_plot(res_multi_family, "Multi Family Residence")
 ```
 
 ::: {.panel-tabset}
-```{r}
-#| results: asis
+
+```{r _comp_neighborhood_level_means, results='asis'}
 
 iwalk(plots, ~ {
   cat("## ", .y, "\n\n")
@@ -70,7 +72,7 @@ iwalk(plots, ~ {
 ## Map of Comparable Sales
 Black dots represent the target pin, while the colored dots represent the comparable sales. The color is grouped by the target pin. 
 
-```{r}
+```{r _comps_map_of_comparative_sales}
 comp_df_filtered <- comp_df %>%
   filter(pin %in% report_pins) %>%
   tidyr::pivot_longer(starts_with("comp_pin_"), values_to = "comp_pin") %>%
