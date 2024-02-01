@@ -319,7 +319,7 @@ assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
     meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
-    all_of(params$model$predictor$all), township_code
+    all_of(params$model$predictor$all), township_code, all_of(starts_with("sv_"))
   ) %>%
   mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
   ccao::vars_recode(
@@ -362,15 +362,27 @@ sales_data_ratio_study <- sales_data %>%
 sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
-    meta_sale_price, meta_sale_date, meta_sale_document_num
+    meta_sale_price, meta_sale_date, meta_sale_document_num,
+    sv_outlier_type, sv_run_id
   ) %>%
+  rename(meta_sale_outlier_type = sv_outlier_type,
+         meta_sale_sv_run_id = sv_run_id) %>%
+  mutate(
+    meta_sale_outlier_type = ifelse(
+      meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
+      )
+    ) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
   mutate(mr = paste0("sale_recent_", row_number())) %>%
   tidyr::pivot_wider(
     id_cols = meta_pin,
     names_from = mr,
-    values_from = c(meta_sale_date, meta_sale_price, meta_sale_document_num),
+    values_from = c(meta_sale_date,
+                    meta_sale_price,
+                    meta_sale_document_num,
+                    meta_sale_outlier_type,
+                    meta_sale_sv_run_id),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
   ) %>%
   select(meta_pin, contains("1"), contains("2")) %>%
