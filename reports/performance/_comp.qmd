@@ -1,6 +1,7 @@
 {{< include ../_setup.qmd >}}
 
-## Neighborhood Level Means for each Property's Mean Comparison Score
+## Neighborhood Level Means for each Property's Comparison Score
+Each property has 20 comparable sales. The mean is taken for these scores, before taking the average for the total neighborhoo (Mean of a mean).
 ```{r}
 base_data <- assessment_pin %>%
   select(meta_pin, meta_nbhd_code, meta_class) %>%
