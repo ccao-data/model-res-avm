@@ -319,7 +319,7 @@ assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
     meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
-    all_of(params$model$predictor$all), township_code, all_of(starts_with("sv_"))
+    all_of(params$model$predictor$all), township_code
   ) %>%
   mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
   ccao::vars_recode(
