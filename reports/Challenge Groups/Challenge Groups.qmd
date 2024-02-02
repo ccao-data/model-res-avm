@@ -163,7 +163,6 @@ ys_fns_list <- list(
 
 ## Some functions require 2 or 1 arguments.
 apply_functions <- function(dataset, dataset_name) {
-
   x <- dataset$pred_pin_initial_fmv
   y <- dataset$sale_ratio_study_price
 
@@ -222,15 +221,16 @@ cbind(results1, results2) %>%
 ## Interactive elements are hashed out in order to produce rendered version
 plots <- imap(datasets_sold, ~ {
   # Create a ggplot object
-  p <- ggplot(.x, aes(x = sale_ratio_study_price / 1000, y = pred_pin_initial_fmv / 1000
-                      # , tooltip = "pin" = meta_pin
+  p <- ggplot(.x, aes(
+    x = sale_ratio_study_price / 1000, y = pred_pin_initial_fmv / 1000
+    # , tooltip = "pin" = meta_pin
   )) +
     geom_point() +
-    geom_abline(intercept = 0, slope = 1, color = "red") + 
+    geom_abline(intercept = 0, slope = 1, color = "red") +
     scale_x_continuous(
       name = "Actual FMV (Sale Price in $K)",
       limits = c(0, 2000)
-    ) + 
+    ) +
     scale_y_continuous(
       name = "Estimated FMV (in $K)",
       limits = c(0, 2000)
@@ -238,8 +238,6 @@ plots <- imap(datasets_sold, ~ {
     theme_bw(base_size = 12)
   # ggplotly(p, tooltip = "text")
 })
-
-
 ```
 ## Relationship Between Sale and Assessed Values
 ::: {.panel-tabset}
@@ -258,7 +256,6 @@ iwalk(plots, ~ {
 :::
 
 ```{r _challenge_groups_map_function}
-
 process_and_plot <- function(data) {
   town_shp <- ccao::town_shp
   spatial_data <- st_as_sf(data, coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
