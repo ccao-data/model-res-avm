@@ -179,7 +179,7 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
       # Use the fixed late value first (unless it exceeds the land % cap)
       !is.na(land_rate_per_pin) &
         (land_rate_per_pin > pred_pin_final_fmv_round_no_prorate *
-          params$pv$land_pct_of_total_cap) ~
+           params$pv$land_pct_of_total_cap) ~
         pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       !is.na(land_rate_per_pin) ~ land_rate_per_pin,
       # nolint end
@@ -362,17 +362,7 @@ sales_data_ratio_study <- sales_data %>%
 sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
-    meta_sale_price, meta_sale_date, meta_sale_document_num,
-    sv_outlier_type, sv_run_id
-  ) %>%
-  rename(
-    meta_sale_outlier_type = sv_outlier_type,
-    meta_sale_sv_run_id = sv_run_id
-  ) %>%
-  mutate(
-    meta_sale_outlier_type = ifelse(
-      meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
-    )
+    meta_sale_price, meta_sale_date, meta_sale_document_num
   ) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
@@ -380,13 +370,7 @@ sales_data_two_most_recent <- sales_data %>%
   tidyr::pivot_wider(
     id_cols = meta_pin,
     names_from = mr,
-    values_from = c(
-      meta_sale_date,
-      meta_sale_price,
-      meta_sale_document_num,
-      meta_sale_outlier_type,
-      meta_sale_sv_run_id
-    ),
+    values_from = c(meta_sale_date, meta_sale_price, meta_sale_document_num),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
   ) %>%
   select(meta_pin, contains("1"), contains("2")) %>%
@@ -515,7 +499,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
   mutate(
     flag_prior_near_to_pred_unchanged =
       prior_near_tot >= pred_pin_final_fmv_round - 100 &
-        prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
+      prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
     flag_pred_initial_to_final_changed = ccao::val_round_fmv(
       pred_pin_initial_fmv,
       breaks = params$pv$round_break,
