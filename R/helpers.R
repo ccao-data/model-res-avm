@@ -186,16 +186,38 @@ extract_num_iterations <- function(x) {
 # the model was trained with the `valids` parameter set such that error metrics
 # are saved for each tree on the model$record_evals attribute. The output
 # weights are useful for computing comps using leaf node assignments
-extract_tree_weights <- function(model, init_score, metric = "rmse") {
-  # Index into the errors list, and un-list so it is a flat/1dim list
-  record_evals <- model$record_evals
-  errors <- unlist(record_evals$tree_errors[[metric]]$eval)
-  errors <- c(init_score, errors)
-  diff_in_errors <- diff(errors, 1, 1)
+extract_tree_weights <- function(model, init_score, training_data, outcome) {
+  # Infer the number of trees in the model based on the error vector
+  record_evals <- model$record_evals$tree_errors[[metric]]$eval
+  num_iterations <- length(record_evals)
+  tree_predictions <- matrix(
+    nrow = nrow(training_data),
+    ncol = num_iterations
+  )
+  for (num_iteration in seq_len(ncol(tree_predictions))) {
+    if (num_iteration %% 10 == 0) {
+      message(
+        glue::glue("Extracting weights for tree {num_iteration}")
+      )
+    }
+    tree_predictions[, num_iteration] <- predict(
+      object = model,
+      newdata = as.matrix(training_data),
+      num_iteration = num_iteration
+    )
+  }
+  tree_errors <- abs(outcome - tree_predictions)
+  combined_errors <- cbind(init_score, tree_errors)
+  # Get a lagged diff of the error matrix by row. Since diff() operates on
+  # matrix columns, we need to transpose the input
+  diff_in_errors <- combined_errors %>%
+    t() %>%
+    diff(1, 1) %>%
+    t()
 
   # Take proportion of diff in errors over total diff in
   # errors from all trees
-  weights <- diff_in_errors / sum(diff_in_errors)
+  weights <- diff_in_errors / rowSums(diff_in_errors)
 
   return(weights)
 }

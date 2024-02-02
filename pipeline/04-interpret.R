@@ -152,6 +152,11 @@ if (comp_enable) {
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     as_tibble()
+  training_data_prepped <- recipes::bake(
+    object = lgbm_final_full_recipe,
+    new_data = training_data,
+    all_predictors()
+  )
 
   tree_weights <- extract_tree_weights(
     model = lgbm_final_full_fit$fit,
@@ -161,19 +166,17 @@ if (comp_enable) {
       metric = params$model$parameter$validation_metric,
       na.rm = TRUE
     ),
-    metric = params$model$parameter$validation_metric
+    training_data = training_data_prepped,
+    outcome = training_data$meta_sale_price
   )
 
-  if (length(tree_weights) == 0 || sum(tree_weights) != 1) {
+  if (length(tree_weights) == 0 || sum(tree_weights) != nrow(tree_weights)) {
     stop("Unable to extract tree weights: length 0 or weight sum != 1")
   }
 
+  message("Getting leaf node assignments for the training data")
+
   # Get predicted values and leaf node assignments for the training data
-  training_data_prepped <- recipes::bake(
-    object = lgbm_final_full_recipe,
-    new_data = training_data,
-    all_predictors()
-  )
   training_leaf_nodes <- predict(
     object = lgbm_final_full_fit$fit,
     newdata = as.matrix(training_data_prepped),
