@@ -26,41 +26,111 @@ params:
 
 {{< include ../_setup.qmd >}}
 
-## Topline Stats
+Within the universe of assessed properties, there are characteristics which make it difficult to predict their market value. These properties are separated out and analyzed in the following report. All outputs are calculated on county-level data. Data for sold properties is calculated from sales in the prior year.
 
-```{r _challenge_groups_topline_stats}
+
+## Definitions
+
+**Large Lots:** Indicator for a PIN with land square footage larger than 95% of other properties for this year and township.
+
+**Multicard:** Indicates a PIN with more than one building (ADU, coach house, etc.).
+
+**Multifamily:** Indicates a PIN with a class code of 211.
+
+**Missing Critical Value:** Indicates a Pin where one of the following variables are missing (meta_year, meta_pin, char_yrblt, char_bldg_sf, char_land_sf, char_beds, char_fbath, char_apts)
+
+**Top Decile:** Indicator for the top 10% of assessed values by township from the prior year.
+
+## Topline Stats for All Properties
+
+```{r _challenge_groups_topline_stats_all}
+
 large_lots <- assessment_pin %>%
   filter(flag_land_gte_95_percentile == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_recent_1_price, loc_latitude, loc_longitude, prior_near_tot) %>%
-  filter(!is.na(sale_recent_1_price))
+  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code) 
 
 multicard <- assessment_pin %>%
   filter(flag_pin_is_multicard == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_recent_1_price, loc_latitude, loc_longitude, prior_near_tot) %>%
-  filter(!is.na(sale_recent_1_price))
+  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
 multifamily <- assessment_pin %>%
   filter(meta_class == "211") %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_recent_1_price, loc_latitude, loc_longitude, prior_near_tot) %>%
-  filter(!is.na(sale_recent_1_price))
+  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
 top_decile <- assessment_pin %>%
   filter(flag_prior_near_fmv_top_decile  == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_recent_1_price, loc_latitude, loc_longitude, prior_near_tot) %>%
-  filter(!is.na(sale_recent_1_price))
+  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
 critical_values_missing <- assessment_pin %>%
   filter(flag_char_missing_critical_value  == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_recent_1_price, loc_latitude, loc_longitude, prior_near_tot) %>%
-  filter(!is.na(sale_recent_1_price))
+  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
 
-  gte_n <- \(n_sales, min_n, fn, na_type) {
+full_data_functions <- function(dataset, dataset_name) {
+  N <- nrow(dataset)
+  
+  median_pred <- median(dataset$pred_pin_initial_fmv, na.rm = TRUE)
+  median_prior <- median(dataset$prior_near_tot, na.rm = TRUE)
+  
+  percent_change <- with(dataset, (pred_pin_initial_fmv - prior_near_tot) / prior_near_tot * 100)
+  median_percent_change <- median(percent_change, na.rm = TRUE)
+
+  results_df <- data.frame(
+    Dataset = dataset_name,
+    N = N,
+    'Median Prior' = median_prior,
+    'Median Predicted' = median_pred,
+    'Median Percent Change' = median_percent_change
+  )
+  
+  return(results_df)
+}
+
+
+bind_rows(
+  full_data_functions(large_lots, "Large Lots"),
+  full_data_functions(multicard, "Multicard"),
+  full_data_functions(multifamily, "Multifamily"),
+  full_data_functions(top_decile, "Top Decile"),
+  full_data_functions(critical_values_missing, "Missing Critical Values")
+) %>%
+  rename("Median Prior" = "Median.Prior", "Median Predicted" = "Median.Predicted", "Median Percent Change" = "Median.Percent.Change") %>%
+  kable(format = "html", digits = 2, row.names = FALSE) %>%
+  kable_styling()
+
+
+```
+## Ratio Stats for Sold Properties
+
+
+```{r _challenge_groups_topline_stats_sold}
+
+large_lots_sold <- large_lots %>%
+  filter(!is.na(sale_ratio_study_price))
+multicard_sold <- multicard %>%
+  filter(!is.na(sale_ratio_study_price))
+multifamily_sold <- multifamily %>%
+  filter(!is.na(sale_ratio_study_price))
+top_decile_sold <- top_decile %>% 
+  filter(!is.na(sale_ratio_study_price))
+critical_values_missing_sold <- critical_values_missing %>%
+  filter(!is.na(sale_ratio_study_price))
+
+
+datasets_sold <- list(
+  "Large Lots" = large_lots_sold,
+  "Multicard" = multicard_sold,
+  "Multifamily" = multifamily_sold,
+  "Top Decile" = top_decile_sold,
+  "Critical Values Missing" = critical_values_missing_sold
+)
+
+
+gte_n <- \(n_sales, min_n, fn, na_type) {
     ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
   }
 
 min_n <- 10
-
 
 rs_fns_list <- list(
     cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE), NA_real_),
@@ -88,7 +158,7 @@ rs_fns_list <- list(
     mae         = mae_vec,
     mpe         = mpe_vec,
     mape        = mape_vec,
-    mdape       = mdape_vec # From R/helpers.R
+    mdape       = mdape_vec 
   )
 
 apply_functions <- function(dataset, dataset_name) {
@@ -96,7 +166,7 @@ apply_functions <- function(dataset, dataset_name) {
   median_prior_near_tot <- median(dataset$prior_near_tot, na.rm = TRUE)
 
   x <- dataset$pred_pin_initial_fmv
-  y <- dataset$sale_recent_1_price
+  y <- dataset$sale_ratio_study_price
   
   results_rs <- lapply(rs_fns_list, function(f) {
     if (length(formals(f)) == 2) {
@@ -110,78 +180,81 @@ apply_functions <- function(dataset, dataset_name) {
   results_df$dataset <- dataset_name
   results_df$count <- count
   results_df$median_prior_near_tot <- median_prior_near_tot
-  results_df$median_estimate <- median_estimate
-  
+
   return(results_df)
 }
 
-# Apply the function to each dataset and combine the results
 results1 <- bind_rows(
-  apply_functions(large_lots, "large_lots"),
-  apply_functions(multicard, "multicard"),
-  apply_functions(multifamily, "multifamily"),
-  apply_functions(top_decile, "top_decile"),
-  apply_functions(critical_values_missing, "critical_values_missing")
+  lapply(names(datasets_sold), function(dataset_name) {
+    apply_functions(datasets_sold[[dataset_name]], dataset_name)
+  })
 )
 
 
-apply_functions <- function(dataset) {
-  truth <- dataset$pred_pin_initial_fmv
-  estimate <- dataset$sale_recent_1_price
+
+
+apply_functions <- function(dataset, dataset_name) {
+  truth <- dataset$sale_ratio_study_price 
+  estimate <- dataset$pred_pin_initial_fmv
   
   results_ys <- map(ys_fns_list, function(f) f(truth, estimate))
 
   results_df <- as.data.frame(results_ys)
-  
-  results_df$dataset_2 <- deparse(substitute(dataset))
+  results_df$dataset_2 <- dataset_name
   
   return(results_df)
 }
 
 results2 <- bind_rows(
-  apply_functions(large_lots),
-  apply_functions(multicard),
-  apply_functions(multifamily),
-  apply_functions(top_decile),
-  apply_functions(critical_values_missing)
+  lapply(names(datasets_sold), function(dataset_name) {
+    apply_functions(datasets_sold[[dataset_name]], dataset_name)
+  })
 )
 
 
-table <- cbind(results1, results2) %>%
+cbind(results1, results2) %>%
   as.data.frame() %>%
   mutate(median_ratio = median / median_prior_near_tot) %>%
-  select(dataset, median_ratio, cod, prb, prd, mki, min, q25, median, q75, max, rmse, r_squared, mae, mpe, mape, mdape, median_prior_near_tot) %>%
+  select(dataset, count, 'median ratio' = median_ratio, cod, prb, prd, mki, min, q25, median, 'median previous estimate' = median_prior_near_tot, q75, max, rmse, 'r squared' = r_squared, mae, mpe, mape, mdape) %>%
   kable(format = "html", digits = 2, row.names = FALSE) %>%  
   kable_styling()
 
-table
-```
 
+```
 
 ```{r _challenge_groups_plot_function}
 
-datasets <- list(
-  "Large Lots" = large_lots,
-  "Multicard" = multicard,
-  "Multifamily" = multifamily,
-  "Top Decile" = top_decile,
-  "Critical Values Missing" = critical_values_missing
-)
-plots <- imap(datasets, ~ {
-  ggplot(.x, aes(x = sale_recent_1_price, y = pred_pin_initial_fmv)) + 
+
+plots <- imap(datasets_sold, ~ {
+  p <- ggplot(.x, aes(x = sale_ratio_study_price / 1000000, y = pred_pin_initial_fmv / 1000000, 
+                      text = paste("Pin:", meta_pin, 
+                                   "<br>Township:", ccao::town_convert(meta_township_code), 
+                                   "<br>Sale Price:", scales::dollar(sale_ratio_study_price), 
+                                   "<br>Estimated Price:", scales::dollar(pred_pin_initial_fmv)))) + 
     geom_point() +
-    geom_abline(intercept = 0, slope = 1, color = "red") +  
-    xlim(0, 3000000) +  
-    ylim(0, 3000000) +  
-    theme_bw(base_size = 18) +
-    xlab("Sale Price") + 
-    ylab("Predicted Price")   
+    geom_abline(intercept = 0, slope = 1, color = "red") + 
+    scale_x_continuous(
+      name = "Actual FMV (Sale Price in $Million)",
+      limits = c(0, 2)
+    ) + 
+    scale_y_continuous(
+      name = "Estimated FMV (in $Million)",
+      limits = c(0, 2)  
+    ) +
+    theme_bw(base_size = 18)
+
+  ggplotly(p, tooltip = "text")
 })
+
+
+
 
 
 ```
 ## Relationship Between Sale and Assessed Values
 ::: {.panel-tabset}
+
+Sale and assessed values are capped at $2million to increase legibility. 
 
 ```{r _challenge_groups_plot_output, results = 'asis'}
 
@@ -199,32 +272,41 @@ iwalk(plots, ~ {
 
 ```{r _challenge_groups_map_function}
 process_and_plot <- function(data) {
-  # Load town shape data
   town_shp <- ccao::town_shp
 
-  # Convert your data to spatial data
   spatial_data <- st_as_sf(data, coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
     mutate(Increase = pmin(100 * (pred_pin_initial_fmv / prior_near_tot), 300))
 
-  # Ensure town_shp is in the same CRS
   town_shp <- st_transform(town_shp, crs = st_crs(spatial_data))
 
   # Create the plot
   ggplot() +
-    geom_sf(data = spatial_data, aes(color = Increase)) +  # Plot your data
-    geom_sf(data = town_shp, fill = NA, color = "black") +  # Plot town boundaries
+    geom_sf(data = spatial_data, aes(color = Increase)) +  
+    geom_sf(data = town_shp, fill = NA, color = "black") + 
     theme_minimal() +
     labs(color = "Increase (%)") +
+    scale_color_continuous(breaks = c(0, 100, 200, 300), limits = c(0, 300)) +  # Ensure consistent color scales
     theme(axis.title.x = element_blank(),    
           axis.title.y = element_blank(),   
           axis.text.x = element_blank(),    
           axis.text.y = element_blank())    
 }
-plots <- lapply(datasets, process_and_plot)
+
+datasets_unsold <- list(
+  "Large Lots" = large_lots,
+  "Multicard" = multicard,
+  "Multifamily" = multifamily,
+  "Top Decile" = top_decile,
+  "Critical Values Missing" = critical_values_missing
+) %>%
+  map(~filter(.x, !is.na(loc_latitude) & !is.na(loc_longitude)))
+
+plots <- lapply(datasets_unsold, process_and_plot)
+
 ```
 
-## Map of YoY Assessed Price Changes
-Values are capped at an increase of 300% to increase legibility.
+## Map of YoY Changes in Assessed Value
+Values are capped at an increase of 300% to increase legibility. This includes sold and unsold properties. 
 
 ::: {.panel-tabset}
 
@@ -241,4 +323,7 @@ iwalk(plots, ~ {
 
 ```
 :::
+
+
+
 
