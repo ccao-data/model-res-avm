@@ -275,20 +275,19 @@ message("Preparing data for Desk Review export")
 # char_apts is recorded on the card level, we need to aggregate them to
 # the PIN level
 num_apts_by_pin <- assessment_card %>%
-  filter(
-    char_class == "211" | char_class == "212",
-    char_apts != "None",
-    !is.na(char_apts)
-  ) %>%
+  filter(char_class == "211" | char_class == "212") %>%
   select(meta_pin, char_apts) %>%
+  # Convert the long format for char_apts to a shorter one that's easier
+  # to scan in a spreadsheet
   mutate(
     char_apts = case_when(
+      char_apts == "None" | is.na(char_apts) ~ "Missing",
       char_apts == "Two" ~ "2",
       char_apts == "Three" ~ "3",
       char_apts == "Four" ~ "4",
       char_apts == "Five" ~ "5",
       char_apts == "Six" ~ "6",
-      TRUE ~ NA
+      TRUE ~ "Missing"
     )
   ) %>%
   # Adding the number of units might get confusing, since these classes are only
@@ -431,7 +430,15 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     property_full_address = str_remove_all(
       property_full_address,
       "[^[:alnum:]|' ',.-]"
-    )
+    ),
+    # char_apts should only apply to 211s and 212s
+    char_apts = ifelse(
+      (meta_class != "211" & meta_class != "212"),
+      NA,
+      char_apts
+    ),
+    # char_ncu should only apply to 212s
+    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   )
 
 # Get all PINs with multiple cards, break out into supplemental data set to
@@ -454,14 +461,27 @@ assessment_card_prepped <- assessment_card %>%
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
       "{meta_pin}")'
     ),
+    # Make sure the format of char_apts matches the short format we used to
+    # generate assessment_pin_prepped
     char_apts = case_when(
+      char_apts == "None" | is.na(char_apts) ~ "Missing",
       char_apts == "Two" ~ "2",
       char_apts == "Three" ~ "3",
       char_apts == "Four" ~ "4",
       char_apts == "Five" ~ "5",
       char_apts == "Six" ~ "6",
-      TRUE ~ NA
+      TRUE ~ "Missing"
     )
+  ) %>%
+  mutate(
+    # char_apts should only apply to 211s and 212s
+    char_apts = ifelse(
+      (meta_class != "211" & meta_class != "212"),
+      NA,
+      char_apts
+    ),
+    # char_ncu should only apply to 212s
+    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
 
