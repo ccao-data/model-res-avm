@@ -186,7 +186,8 @@ extract_num_iterations <- function(x) {
 # the model was trained with the `valids` parameter set such that error metrics
 # are saved for each tree on the model$record_evals attribute. The output
 # weights are useful for computing comps using leaf node assignments
-extract_tree_weights <- function(model, init_score, training_data, outcome) {
+extract_tree_weights <- function(
+    model, init_score, training_data, outcome, metric) {
   # Infer the number of trees in the model based on the error vector
   record_evals <- model$record_evals$tree_errors[[metric]]$eval
   num_iterations <- length(record_evals)

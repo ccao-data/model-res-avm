@@ -167,7 +167,8 @@ if (comp_enable) {
       na.rm = TRUE
     ),
     training_data = training_data_prepped,
-    outcome = training_data$meta_sale_price
+    outcome = training_data$meta_sale_price,
+    metric = params$model$parameter$validation_metric
   )
 
   if (length(tree_weights) == 0 || sum(tree_weights) != nrow(tree_weights)) {
