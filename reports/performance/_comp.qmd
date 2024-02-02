@@ -57,7 +57,6 @@ plots$"Multifamily" <- generate_plot(res_multi_family, "Multi Family Residence")
 ::: {.panel-tabset}
 
 ```{r _comp_neighborhood_level_means, results='asis'}
-
 iwalk(plots, ~ {
   cat("## ", .y, "\n\n")
 
