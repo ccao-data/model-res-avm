@@ -7,12 +7,10 @@ shap_predictors <- unlist(metadata$model_predictor_all_name)
 
 shap_df_filtered <- shap_df %>%
   mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
-  filter(meta_triad == run_triad_code) %>%
   arrange(meta_pin, meta_card_num)
 
 assessment_card_filtered <- assessment_card %>%
   mutate(meta_triad = ccao::town_get_triad(as.character(township_code))) %>%
-  filter(meta_triad == run_triad_code) %>%
   arrange(meta_pin, meta_card_num)
 
 shap_townships_to_iterate <- shap_df_filtered %>%

@@ -267,7 +267,7 @@ add_column_layer <- function(map, df, column_name) {
     group = column_name,
     label = ~ paste0(
       column_name, ": ", dollar(df[[mean_shap_col]], accuracy = 1),
-      sprintf(" (%.2f%%)", df[[rel_imp_col]])
+      " (", percent(df[[rel_imp_col]], accuracy = 0.01), ")"
     ),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
