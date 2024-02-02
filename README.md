@@ -310,13 +310,16 @@ proportion, including:
 
 | LightGBM Parameter                                                                                 | CV Search Range | Parameter Description                                                              |
 |:---------------------------------------------------------------------------------------------------|:----------------|:-----------------------------------------------------------------------------------|
-| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | 50 - 2000       | Maximum number of leaves in each tree. Main parameter to control model complexity. |
+| [num_iterations](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations)         | 100 - 2500      | NA                                                                                 |
+| [learning_rate](https://lightgbm.readthedocs.io/en/latest/Parameters.html#learning_rate)           | -3 - -0.4       | NA                                                                                 |
+| [max_bin](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_bin)                       | 50 - 512        | Maximum number of bins used to bucket continuous features                          |
+| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | 32 - 2048       | Maximum number of leaves in each tree. Main parameter to control model complexity. |
 | [add_to_linked_depth](https://ccao-data.github.io/lightsnip/reference/train_lightgbm.html)         | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.           |
 | [feature_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)     | 0.3 - 0.7       | The random subset of features selected for a tree, as a percentage.                |
 | [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)   | 0.001 - 10000   | The minimum gain needed to create a split.                                         |
-| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)     | 2 - 300         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
+| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)     | 2 - 400         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
 | [max_cat_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)   | 10 - 250        | Maximum number of split points for categorical features                            |
-| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group) | 4 - 300         | Minimum number of observations per categorical group                               |
+| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group) | 2 - 400         | Minimum number of observations per categorical group                               |
 | [cat_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                 | 10 - 200        | Categorical smoothing. Used to reduce noise.                                       |
 | [cat_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                         | 0.001 - 100     | Categorical-specific L2 regularization                                             |
 | [lambda_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                   | 0.001 - 100     | L1 regularization                                                                  |
@@ -350,7 +353,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2023-12-20.
+model as of 2024-01-22.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                              | Notes                                                                                                             |
 |:------------------------------------------------------------------------|:---------------|:------------|:-----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
@@ -1112,8 +1115,7 @@ following stages:
 The entire end-to-end pipeline can also be run using
 [DVC](https://dvc.org/). DVC will track the dependencies and parameters
 required to run each stage, cache intermediate files, and store
-versioned input data on S3. The packages `dvc` and `dvc[s3]` are required
-for the following commands.
+versioned input data on S3.
 
 To pull all the necessary input data based on the information in
 `dvc.lock`, run:
@@ -1232,6 +1234,7 @@ Uploaded Parquet files are converted into the following Athena tables:
 |:---------------------|:-----------------------------------|:-----------------------------------------------------------------------------|:--------------------------------------------------------------------------------------|
 | assessment_card      | card                               | year, run_id, township_code, meta_pin, meta_card_num                         | Assessment results at the card level AKA raw model output                             |
 | assessment_pin       | pin                                | year, run_id, township_code, meta_pin                                        | Assessment results at the PIN level AKA aggregated and cleaned                        |
+| comp                 | card                               | year, run_id, meta_pin, meta_card_num                                        | Comparables for each card (computed using leaf node assignments)                      |
 | feature_importance   | predictor                          | year, run_id, model_predictor_all_name                                       | Feature importance values (gain, cover, and frequency) for the run                    |
 | metadata             | model run                          | year, run_id                                                                 | Information about each run, including parameters, run ID, git info, etc.              |
 | parameter_final      | model run                          | year, run_id                                                                 | Chosen set of hyperparameters for each run                                            |
@@ -1347,13 +1350,13 @@ benefit of a more maintainable model over the long term.
 
 When working on the model locally, you’ll typically want to install
 non-core dependencies *on top of* the core dependencies. To do this,
-simply run `renv::restore("<path_to_lockfile")` to install all
-dependencies from the lockfile.
+simply run `renv::restore(lockfile = "<path_to_lockfile")` to install
+all dependencies from the lockfile.
 
 For example, if you’re working on the `ingest` stage and want to install
 all its dependencies, start with the main profile (run
 `renv::activate()`), then install the `dev` profile dependencies on top
-of it (run `renv::restore("renv/profiles/dev/renv.lock")`).
+of it (run `renv::restore(lockfile = "renv/profiles/dev/renv.lock")`).
 
 > :warning: WARNING: Installing dependencies from a dev lockfile will
 > **overwrite** any existing version installed by the core one. For

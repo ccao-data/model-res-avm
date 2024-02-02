@@ -14,9 +14,9 @@ ENV RENV_PATHS_CACHE /setup/cache
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
         libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev git \
-        libudunits2-dev python3-dev python3-pip libgdal-dev libgeos-dev \
-        libproj-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev pandoc \
-        curl gdebi-core && \
+        libudunits2-dev python3-dev python3-pip python3-venv libgdal-dev \
+        libgeos-dev libproj-dev libfontconfig1-dev libharfbuzz-dev \
+        libfribidi-dev pandoc curl gdebi-core && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Quarto
@@ -28,7 +28,7 @@ RUN gdebi -n quarto-linux-amd64.deb
 RUN pip install --no-cache-dir dvc[s3]
 
 # Copy R bootstrap files into the image
-COPY renv.lock .Rprofile DESCRIPTION ./
+COPY renv.lock .Rprofile DESCRIPTION requirements.txt ./
 COPY renv/profiles/reporting/renv.lock reporting-renv.lock
 COPY renv/ renv/
 

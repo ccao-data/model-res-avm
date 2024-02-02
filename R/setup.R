@@ -72,6 +72,10 @@ shap_enable <- as.logical(Sys.getenv(
   "SHAP_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$shap_enable
 ))
+comp_enable <- as.logical(Sys.getenv(
+  "COMP_ENABLE_OVERRIDE",
+  unset = get(params_obj_name)$toggle$comp_enable
+))
 upload_enable <- as.logical(Sys.getenv(
   "UPLOAD_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$upload_enable
@@ -107,7 +111,7 @@ early_stopping_enable <-
 
 # Load any additional PINs to generate reports for from environment
 report_pins <- unique(c(
-  params$ratio_study$pins,
+  get(params_obj_name)$ratio_study$pins,
   Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
     str_split(" ") %>%
     unlist() %>%

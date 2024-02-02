@@ -51,6 +51,11 @@ if (!exists("training_data")) {
   training_data <- read_parquet(paths$input$training$local)
 }
 
+# Load assessment set used for this run
+if (!exists("assessment_data")) {
+  assessment_data <- read_parquet(paths$input$assessment$local)
+}
+
 # Load Home Improvement Exemption data
 if (!exists("hie_data")) {
   hie_data <- read_parquet(paths$input$hie$local)
@@ -157,6 +162,14 @@ if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
   shap_exists <- nrow(shap_df) > 0
 } else {
   shap_exists <- FALSE
+}
+
+# Load comp data if it exists
+if (file.exists(paths$output$comp$local) & metadata$comp_enable) {
+  comp_df <- read_parquet(paths$output$comp$local)
+  comp_exists <- nrow(comp_df) > 0
+} else {
+  comp_exists <- FALSE
 }
 
 # Add colors to re-use across plots
