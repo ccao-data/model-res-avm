@@ -100,11 +100,11 @@ cv:
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
   # time, with each chunk/period calculated automatically
-  num_folds: 5
+  num_folds: 10
 
   # The number of months time-based folds should overlap each other. Only
   # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
-  fold_overlap: 15
+  fold_overlap: 9
 
   # Number of initial iterations to create before tuning. Recommend this number
   # be greater than the number of hyperparameters being tuned
@@ -162,7 +162,6 @@ model:
       - "char_bldg_sf"
       - "char_bsmt"
       - "char_bsmt_fin"
-      - "char_class"
       - "char_ext_wall"
       - "char_fbath"
       - "char_frpl"
@@ -181,6 +180,7 @@ model:
       - "char_recent_renovation"
       - "loc_longitude"
       - "loc_latitude"
+      - "loc_census_tract_geoid"
       - "loc_env_flood_fs_factor"
       - "loc_env_airport_noise_dnl"
       - "loc_school_elementary_district_geoid"
@@ -259,7 +259,6 @@ model:
       - "char_attic_type"
       - "char_bsmt"
       - "char_bsmt_fin"
-      - "char_class"
       - "char_ext_wall"
       - "char_gar1_att"
       - "char_gar1_cnst"
@@ -269,6 +268,7 @@ model:
       - "char_roof_cnst"
       - "char_tp_dsgn"
       - "char_type_resd"
+      - "loc_census_tract_geoid"
       - "loc_tax_municipality_name"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
@@ -288,7 +288,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
-    validation_type: "recent"
+    validation_type: "random"
     validation_metric: "rmse"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
@@ -436,7 +436,7 @@ comp:
   # Number of price bins to use when binning properties for the purpose of
   # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
   # of predicted values. Larger deciles = larger comparables search range
-  num_price_bins: 20
+  num_price_bins: 10
 
 
 # Export -----------------------------------------------------------------------

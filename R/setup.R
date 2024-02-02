@@ -111,7 +111,7 @@ early_stopping_enable <-
 
 # Load any additional PINs to generate reports for from environment
 report_pins <- unique(c(
-  params$ratio_study$pins,
+  get(params_obj_name)$ratio_study$pins,
   Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
     str_split(" ") %>%
     unlist() %>%
