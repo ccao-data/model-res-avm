@@ -311,7 +311,7 @@ model:
       # for setting this parameter is to discover a good fixed value using CV,
       # then manually set that value for non-CV runs (which don't use
       # early stopping by default)
-      num_iterations: 1575
+      num_iterations: 300
       learning_rate: 0.015
 
       # Maximum number of bins for discretizing continuous features. Lower uses
