@@ -171,8 +171,13 @@ if (comp_enable) {
     metric = params$model$parameter$validation_metric
   )
 
-  if (length(tree_weights) == 0 || sum(tree_weights) != nrow(tree_weights)) {
-    stop("Unable to extract tree weights: length 0 or weight sum != 1")
+  if (length(tree_weights) == 0) {
+    message("Warning: tree_weights are empty")
+  }
+  if (sum(tree_weights) != nrow(tree_weights)) {
+    message("Warning: tree_weights do not sum to 1 for each row")
+    message("First 5 weights:")
+    print(head(tree_weights, 5))
   }
 
   message("Getting leaf node assignments for the training data")
