@@ -160,15 +160,10 @@ if (comp_enable) {
 
   tree_weights <- extract_tree_weights(
     model = lgbm_final_full_fit$fit,
-    init_score = get_init_score(
-      training_data$meta_sale_price,
-      mean(training_data$meta_sale_price, na.rm = TRUE),
-      metric = params$model$parameter$validation_metric,
-      na.rm = TRUE
-    ),
+    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
     training_data = training_data_prepped,
     outcome = training_data$meta_sale_price,
-    metric = params$model$parameter$validation_metric
+    num_iterations = lgbm_final_full_fit$fit$params$num_iterations
   )
 
   if (length(tree_weights) == 0) {
