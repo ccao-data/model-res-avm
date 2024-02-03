@@ -196,7 +196,7 @@ extract_tree_weights <- function(
     ncol = num_iterations
   )
   for (num_iteration in seq_len(ncol(tree_predictions))) {
-    if (num_iteration %% 10 == 0) {
+    if (num_iteration %% 100 == 0) {
       message(
         glue::glue("Extracting weights for tree {num_iteration}")
       )
