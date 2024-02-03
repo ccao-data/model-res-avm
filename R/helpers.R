@@ -244,7 +244,13 @@ select_iterations <- function(tune_results, metric, type = "mean") {
         tidyr::unnest(cols = .extracts) %>%
         dplyr::select(!dplyr::where(is.list), -.config, -.iter)
     ) %>%
-    dplyr::inner_join(tune::select_best(tune_results, metric = metric)) %>%
+    dplyr::inner_join(
+      tune::select_by_one_std_err(
+        x = tune_results,
+        num_leaves, desc(learning_rate),
+        metric = {{ metric }}
+      )
+    ) %>%
     suppressMessages() %>%
     dplyr::summarize(num_iterations = ceiling(func(.extracts)))
 }

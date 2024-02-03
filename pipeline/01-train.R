@@ -311,7 +311,11 @@ if (cv_enable) {
       select_iterations(lgbm_search, metric = params$cv$best_metric)
     ) %>%
     bind_cols(
-      select_best(lgbm_search, metric = params$cv$best_metric) %>%
+      select_by_one_std_err(
+        x = lgbm_search,
+        num_leaves, desc(learning_rate),
+        metric = params$cv$best_metric
+      ) %>%
         select(-any_of("trees"))
     ) %>%
     select(configuration = .config, everything()) %>%
