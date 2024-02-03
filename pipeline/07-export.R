@@ -271,8 +271,40 @@ assessment_card <- dbGetQuery(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Preparing data for Desk Review export")
 
+# Get the number of apartments for class 211 and 212 properties. Since
+# char_apts is recorded on the card level, we need to aggregate them to
+# the PIN level
+num_apts_by_pin <- assessment_card %>%
+  filter(char_class == "211" | char_class == "212") %>%
+  select(meta_pin, char_apts) %>%
+  # Convert the long format for char_apts to a shorter one that's easier
+  # to scan in a spreadsheet
+  mutate(
+    char_apts = case_when(
+      char_apts == "None" | is.na(char_apts) ~ "Missing",
+      char_apts == "Two" ~ "2",
+      char_apts == "Three" ~ "3",
+      char_apts == "Four" ~ "4",
+      char_apts == "Five" ~ "5",
+      char_apts == "Six" ~ "6",
+      TRUE ~ "Missing"
+    )
+  ) %>%
+  # Adding the number of units might get confusing, since these classes are only
+  # supposed to have 2-6 units, so concatenate them as strings instead
+  summarize(char_apts = paste(char_apts, collapse = ", "), .by = "meta_pin")
+
+num_commercial_units_by_pin <- assessment_card %>%
+  filter(char_class == "212") %>%
+  select(meta_pin, char_ncu) %>%
+  summarize(char_ncu = paste(char_ncu, collapse = ", "), .by = "meta_pin")
+
+assessment_pin_w_num_units <- assessment_pin %>%
+  left_join(num_apts_by_pin, by = "meta_pin") %>%
+  left_join(num_commercial_units_by_pin, by = "meta_pin")
+
 # Merge vacant land data with data from the residential AVM
-assessment_pin_merged_w_land <- assessment_pin %>%
+assessment_pin_w_land <- assessment_pin_w_num_units %>%
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
     across(ends_with("_date"), ymd),
@@ -306,7 +338,7 @@ if (comp_enable) {
 
   # Merge comp data into assessment data. Start with single-card PINs, where
   # the comps for the card are the same as the comps for the parcel
-  assessment_pin_single_card <- assessment_pin_merged_w_land %>%
+  assessment_pin_single_card <- assessment_pin_w_land %>%
     filter(meta_pin_num_cards == 1 | is.na(meta_pin_num_cards)) %>%
     left_join(comps, by = join_by(meta_pin == pin))
 
@@ -321,7 +353,7 @@ if (comp_enable) {
   ] %>%
     distinct()
   # Next, join the PIN-level data to the top-scoring comps
-  assessment_pin_multicard <- assessment_pin_merged_w_land %>%
+  assessment_pin_multicard <- assessment_pin_w_land %>%
     filter(meta_pin_num_cards > 1) %>%
     left_join(comps_by_top_score, by = join_by(meta_pin == pin))
   # Finally, combine both single and multicard PINs
@@ -379,6 +411,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_recent_2_date, sale_recent_2_price,
     sale_recent_2_outlier_type, sale_recent_2_document_num,
     char_yrblt, char_total_bldg_sf, char_type_resd, char_land_sf,
+    char_apts, char_ncu,
     overall_comp_score, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
@@ -397,7 +430,15 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     property_full_address = str_remove_all(
       property_full_address,
       "[^[:alnum:]|' ',.-]"
-    )
+    ),
+    # char_apts should only apply to 211s and 212s
+    char_apts = ifelse(
+      (meta_class != "211" & meta_class != "212"),
+      NA,
+      char_apts
+    ),
+    # char_ncu should only apply to 212s
+    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   )
 
 # Get all PINs with multiple cards, break out into supplemental data set to
@@ -413,13 +454,34 @@ assessment_card_prepped <- assessment_card %>%
     township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
     char_yrblt, char_beds, char_ext_wall, char_heat, char_bldg_sf,
-    char_type_resd, char_land_sf
+    char_type_resd, char_land_sf, char_apts, char_ncu
   ) %>%
   mutate(
     meta_pin = glue(
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
       "{meta_pin}")'
+    ),
+    # Make sure the format of char_apts matches the short format we used to
+    # generate assessment_pin_prepped
+    char_apts = case_when(
+      char_apts == "None" | is.na(char_apts) ~ "Missing",
+      char_apts == "Two" ~ "2",
+      char_apts == "Three" ~ "3",
+      char_apts == "Four" ~ "4",
+      char_apts == "Five" ~ "5",
+      char_apts == "Six" ~ "6",
+      TRUE ~ "Missing"
     )
+  ) %>%
+  mutate(
+    # char_apts should only apply to 211s and 212s
+    char_apts = ifelse(
+      (meta_class != "211" & meta_class != "212"),
+      NA,
+      char_apts
+    ),
+    # char_ncu should only apply to 212s
+    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
 
@@ -485,6 +547,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_pct <- createStyle(numFmt = "PERCENTAGE")
   style_comma <- createStyle(numFmt = "COMMA")
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
+  style_right_align <- createStyle(halign = "right")
 
   # Add styles to comp sheet
   addStyle(
@@ -589,7 +652,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 38, 40, 42), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 40, 42, 44), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -601,21 +664,26 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0"),
     rows = pin_row_range, cols = c(19), gridExpand = TRUE
   )
+  addStyle(
+    wb, pin_sheet_name,
+    style = style_right_align,
+    rows = pin_row_range, cols = c(38, 39), gridExpand = TRUE
+  )
   # For some reason comp links do not get autoformatted as links, possibly
   # due to Excel not parsing within-sheet links as hyperlinks for the purposes
   # of styling
   addStyle(
     wb, pin_sheet_name,
     style = style_link,
-    rows = pin_row_range, cols = c(39, 41), gridExpand = TRUE
+    rows = pin_row_range, cols = c(41, 43), gridExpand = TRUE
   )
-  addFilter(wb, pin_sheet_name, 6, 1:55)
+  addFilter(wb, pin_sheet_name, 6, 1:57)
 
   # Format comp score columns with a range of colors from low (red) to high
   # (blue)
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(38, 40, 42),
+    cols = c(40, 42, 44),
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
@@ -712,7 +780,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_comma,
     rows = card_row_range, cols = c(12, 14), gridExpand = TRUE
   )
-  addFilter(wb, card_sheet_name, 4, 1:14)
+  addStyle(
+    wb, card_sheet_name,
+    style = style_right_align,
+    rows = card_row_range, cols = c(15, 16), gridExpand = TRUE
+  )
+  addFilter(wb, card_sheet_name, 4, 1:16)
 
   # Write card-level data to workbook
   writeData(
