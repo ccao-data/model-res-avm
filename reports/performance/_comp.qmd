@@ -1,0 +1,247 @@
+{{< include ../_setup.qmd >}}
+
+# Comparables
+
+Each card in the **assessment set** has 20 comparable sales from the training data.
+These comparables sales are extracted from the model structure and given a score
+(0 - 100%) based on how closely they share the same terminal leaf nodes as the
+target property. See [this
+vignette](https://ccao-data.github.io/lightsnip/articles/finding-comps.html)
+for more background on the algorithm.
+
+## Neighborhood-Level Mean Comparison Score
+
+The maps below show the _mean comparable score_ for PINs in a given neighborhood.
+A higher mean comparable score suggests that the neighborhood has more similar /
+homogenous properties.
+
+```{r _comp_neighborhood_means_coding}
+base_data <- assessment_card %>%
+  mutate(triad = ccao::town_get_triad(as.character(township_code))) %>%
+  select(
+    meta_pin, meta_nbhd_code, meta_class, triad,
+    meta_card_num, meta_modeling_group
+  ) %>%
+  left_join(comp_df, by = c("meta_pin" = "pin", "meta_card_num" = "card"))
+
+generate_plot <- function(df) {
+  df_sum <- df %>%
+    mutate(mean_comp = rowMeans(
+      select(., starts_with("comp_score_")),
+      na.rm = TRUE
+    )) %>%
+    group_by(meta_nbhd_code) %>%
+    summarise(mean_comp = mean(mean_comp, na.rm = TRUE))
+
+  ccao::nbhd_shp %>%
+    filter(triad_code == run_triad_code) %>%
+    left_join(df_sum, by = c("town_nbhd" = "meta_nbhd_code")) %>%
+    st_as_sf() %>%
+    ggplot() +
+    geom_sf(aes(fill = mean_comp)) +
+    scale_fill_distiller(
+      palette = "YlGnBu",
+      direction = 1,
+      na.value = "grey90",
+      labels = scales::percent_format()
+    ) +
+    theme_minimal() +
+    labs(fill = "Mean\nComparable\nScore") +
+    theme(
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank()
+    )
+}
+
+plots <- list()
+plots$"Overall" <- base_data %>%
+  filter(triad == run_triad_code) %>%
+  generate_plot()
+plots$"Single-Family" <- base_data %>%
+  filter(meta_modeling_group == "SF", triad == run_triad_code) %>%
+  generate_plot()
+plots$"Multi-Family" <- base_data %>%
+  filter(meta_modeling_group == "MF", triad == run_triad_code) %>%
+  generate_plot()
+```
+
+::: {.panel-tabset}
+
+```{r _comp_neighborhood_level_means, results='asis'}
+iwalk(plots, ~ {
+  cat("## ", .y, "\n\n")
+
+  print(.x)
+
+  cat("\n\n")
+})
+```
+
+:::
+
+## Map of Select Comparable Sets
+
+This map shows a selection of PINs and their 20 comparable sales. Black dots
+represent the target pin, while the colored dots represent the comparable sales.
+Each color represents a group of comparables given a target PIN.
+
+```{r _comp_map}
+comp_df_filtered <- comp_df %>%
+  filter(pin %in% report_pins) %>%
+  select(-starts_with("comp_score_")) %>%
+  tidyr::pivot_longer(
+    starts_with("comp_pin_"),
+    values_to = "comp_pin",
+    names_to = "comp",
+    names_pattern = "comp_pin_([0-9]*)"
+  ) %>%
+  left_join(
+    comp_df %>%
+      filter(pin %in% report_pins) %>%
+      select(-starts_with("comp_pin_")) %>%
+      tidyr::pivot_longer(
+        starts_with("comp_score_"),
+        values_to = "comp_score",
+        names_to = "comp",
+        names_pattern = "comp_score_([0-9]*)"
+      ),
+    by = c("pin", "card", "comp"),
+    relationship = "one-to-one"
+  ) %>%
+  filter(card == min(card), .by = "pin") %>%
+  mutate(type = "Comp.") %>%
+  left_join(
+    training_data %>%
+      select(
+        meta_pin, meta_card_num, meta_sale_price, meta_sale_date,
+        loc_latitude, loc_longitude,
+        meta_class, char_bldg_sf, char_yrblt, char_ext_wall
+      ),
+    by = c("comp_pin" = "meta_pin", "card" = "meta_card_num"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    assessment_card %>%
+      select(meta_pin, meta_card_num, pred_card_initial_fmv),
+    by = c("comp_pin" = "meta_pin", "card" = "meta_card_num"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    assessment_data %>%
+      select(meta_pin, meta_card_num, meta_certified_tot),
+    by = c("comp_pin" = "meta_pin", "card" = "meta_card_num"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    pin_card = interaction(pin, card, sep = "_"),
+    meta_certified_tot = meta_certified_tot * 10
+  ) %>%
+  filter(
+    meta_sale_date == max(meta_sale_date),
+    .by = c("pin", "card", "comp_pin")
+  )
+
+target_df <- comp_df %>%
+  select(pin, card) %>%
+  filter(pin %in% report_pins) %>%
+  filter(card == min(card), .by = "pin") %>%
+  mutate(type = "Target") %>%
+  left_join(
+    training_data %>%
+      select(
+        meta_pin, meta_card_num, meta_sale_price, meta_sale_date
+      ),
+    by = c("pin" = "meta_pin", "card" = "meta_card_num"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    assessment_card %>%
+      select(
+        meta_pin, meta_card_num, pred_card_initial_fmv,
+        loc_latitude, loc_longitude,
+        meta_class, char_bldg_sf, char_yrblt, char_ext_wall
+      ),
+    by = c("pin" = "meta_pin", "card" = "meta_card_num"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    assessment_data %>%
+      select(meta_pin, meta_card_num, meta_certified_tot),
+    by = c("pin" = "meta_pin", "card" = "meta_card_num"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    pin_card = interaction(pin, card, sep = "_"),
+    meta_certified_tot = meta_certified_tot * 10
+  ) %>%
+  filter(
+    meta_sale_date == max(meta_sale_date) | is.na(meta_sale_date),
+    .by = c("pin", "card")
+  )
+
+comp_palette <- colorFactor(
+  palette = "Set3",
+  domain = comp_df_filtered$pin_card
+)
+
+comp_plot_data <- bind_rows(comp_df_filtered, target_df) %>%
+  mutate(
+    circle_color = ifelse(type == "Target", "black", comp_palette(pin_card)),
+    comp_link = ifelse(
+      !is.na(comp_pin),
+      paste0(
+        "<br>Comp PIN: ",
+        "<a target='_blank' rel='noopener noreferrer'",
+        "href='https://www.cookcountyassessor.com/pin/",
+        comp_pin, "'>", comp_pin, "</a> "
+      ),
+      ""
+    ),
+    comp_score = ifelse(
+      !is.na(comp_score),
+      paste0("<br>Score: ", scales::percent(comp_score, accuracy = 0.01)),
+      ""
+    )
+  )
+
+leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addCircleMarkers(
+    data = comp_plot_data,
+    ~loc_longitude,
+    ~loc_latitude,
+    opacity = 1,
+    fillOpacity = 1,
+    radius = 2,
+    color = ~circle_color,
+    popup = ~ paste0(
+      "<br>Target PIN: ",
+      "<a target='_blank' rel='noopener noreferrer'",
+      "href='https://www.cookcountyassessor.com/pin/",
+      pin, "'>", pin, "</a>",
+      comp_link,
+      comp_score,
+      "<hr>",
+      "Certified FMV: ",
+      scales::dollar(meta_certified_tot, accuracy = 1),
+      "<br>Inital Card FMV: ",
+      scales::dollar(pred_card_initial_fmv, accuracy = 1),
+      "<hr>",
+      "Sale Date: ", meta_sale_date,
+      "<br>Sale Price: ", scales::dollar(meta_sale_price, accuracy = 1),
+      "<hr>",
+      "Class: ", meta_class,
+      "<br>Bldg Sqft: ", scales::comma(char_bldg_sf),
+      "<br>Year Built: ", char_yrblt,
+      "<br>Ext. Wall: ", char_ext_wall
+    )
+  ) %>%
+  setView(
+    lng = mean(comp_plot_data$loc_longitude),
+    lat = mean(comp_plot_data$loc_latitude),
+    zoom = 10
+  )
+```
+
