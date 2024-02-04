@@ -438,7 +438,7 @@ comp:
   # Number of price bins to use when binning properties for the purpose of
   # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
   # of predicted values. Larger deciles = larger comparables search range
-  num_price_bins: 10
+  num_price_bins: 20
 
 
 # Export -----------------------------------------------------------------------
