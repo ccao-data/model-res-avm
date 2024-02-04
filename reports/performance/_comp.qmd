@@ -13,7 +13,7 @@ for more background on the algorithm.
 
 The maps below show the _mean comparable score_ for PINs in a given neighborhood.
 A higher mean comparable score suggests that the neighborhood has more similar /
-homogenous properties.
+homogeneous properties.
 
 ```{r _comp_neighborhood_means_coding}
 base_data <- assessment_card %>%
