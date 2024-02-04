@@ -138,6 +138,7 @@ comp_df_filtered <- comp_df %>%
     pin_card = interaction(pin, card, sep = "_"),
     meta_certified_tot = meta_certified_tot * 10
   ) %>%
+  ccao::vars_recode(cols = any_of(c("char_ext_wall"))) %>%
   filter(
     meta_sale_date == max(meta_sale_date),
     .by = c("pin", "card", "comp_pin")
