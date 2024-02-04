@@ -216,9 +216,13 @@ extract_tree_weights <- function(model,
     diff(1, 1) %>%
     t() * -1
 
+  diff_in_errors <- diff_in_errors %>%
+    apply(2, function(x) ifelse(x < 0, 0, x))
+
   # Take proportion of diff in errors over total diff in
   # errors from all trees
   weights <- diff_in_errors / rowSums(diff_in_errors)
+  weights[is.nan(weights)] <- 0
 
   return(weights)
 }

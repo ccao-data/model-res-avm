@@ -169,8 +169,8 @@ if (comp_enable) {
   if (length(tree_weights) == 0) {
     message("Warning: tree_weights are empty")
   }
-  if (sum(tree_weights) != nrow(tree_weights)) {
-    message("Warning: tree_weights do not sum to 1 for each row")
+  if (all(rowSums(tree_weights) %in% c(0, 1))) {
+    message("Warning: tree_weights do not sum to 1 or 0 for each row")
     message("First 5 weights:")
     print(head(tree_weights, 5))
   }

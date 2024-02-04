@@ -13,7 +13,7 @@ for more background on the algorithm.
 
 The maps below show the _mean comparable score_ for PINs in a given neighborhood.
 A higher mean comparable score suggests that the neighborhood has more similar /
-homogenous properties.
+homogeneous properties.
 
 ```{r _comp_neighborhood_means_coding}
 base_data <- assessment_card %>%
@@ -138,6 +138,7 @@ comp_df_filtered <- comp_df %>%
     pin_card = interaction(pin, card, sep = "_"),
     meta_certified_tot = meta_certified_tot * 10
   ) %>%
+  ccao::vars_recode(cols = any_of(c("char_ext_wall"))) %>%
   filter(
     meta_sale_date == max(meta_sale_date),
     .by = c("pin", "card", "comp_pin")
