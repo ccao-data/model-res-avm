@@ -270,6 +270,25 @@ training_data_clean <- training_data_w_hie %>%
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  # Recode the number of apartments from its numeric code to its actual number
+  # of units. Additionally, ensure non-multi-family PINs always have NONE apts
+  ccao::vars_recode(
+    cols = all_of("char_apts"),
+    type = "short",
+    as_factor = FALSE
+  ) %>%
+  mutate(
+    char_apts = case_when(
+      char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
+      char_class %in% c("211", "212") & is.na(char_apts) ~ "UNKNOWN",
+      TRUE ~ "NONE"
+    ),
+    char_apts = factor(
+      char_apts,
+      levels = c("TWO", "THREE", "FOUR", "FIVE", "SIX", "UNKNOWN", "NONE")
+    ),
+    char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
+  ) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
@@ -341,6 +360,7 @@ training_data_clean <- training_data_w_hie %>%
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
+  # Reorder resulting columns
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
@@ -361,6 +381,23 @@ training_data_clean <- training_data_w_hie %>%
 # time variables and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  ccao::vars_recode(
+    cols = all_of("char_apts"),
+    type = "short",
+    as_factor = FALSE
+  ) %>%
+  mutate(
+    char_apts = case_when(
+      char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
+      char_class %in% c("211", "212") & is.na(char_apts) ~ "UNKNOWN",
+      TRUE ~ "NONE"
+    ),
+    char_apts = factor(
+      char_apts,
+      levels = c("TWO", "THREE", "FOUR", "FIVE", "SIX", "UNKNOWN", "NONE")
+    ),
+    char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
+  ) %>%
   mutate(across(
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
