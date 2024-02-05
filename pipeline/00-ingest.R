@@ -55,6 +55,7 @@ training_data <- dbGetQuery(
       BETWEEN CAST({params$input$min_sale_year} AS int) -
         {params$input$n_years_prior}
       AND CAST({params$input$max_sale_year} AS int)
+  AND sale.deed_type IN ('01', '02', '05')
   AND NOT sale.is_multisale
   AND NOT sale.sale_filter_same_sale_within_365
   AND NOT sale.sale_filter_less_than_10k
@@ -270,6 +271,25 @@ training_data_clean <- training_data_w_hie %>%
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  # Recode the number of apartments from its numeric code to its actual number
+  # of units. Additionally, ensure non-multi-family PINs always have NONE apts
+  ccao::vars_recode(
+    cols = all_of("char_apts"),
+    type = "short",
+    as_factor = FALSE
+  ) %>%
+  mutate(
+    char_apts = case_when(
+      char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
+      char_class %in% c("211", "212") & is.na(char_apts) ~ "UNKNOWN",
+      TRUE ~ "NONE"
+    ),
+    char_apts = factor(
+      char_apts,
+      levels = c("TWO", "THREE", "FOUR", "FIVE", "SIX", "UNKNOWN", "NONE")
+    ),
+    char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
+  ) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
@@ -289,6 +309,8 @@ training_data_clean <- training_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED"),
     # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
@@ -341,15 +363,22 @@ training_data_clean <- training_data_w_hie %>%
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
   ) %>%
+  # Reorder resulting columns
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
   relocate("meta_sale_count_past_n_years", .after = meta_sale_buyer_name) %>%
-  filter(between(
-    meta_sale_date,
-    make_date(params$input$min_sale_year, 1, 1),
-    make_date(params$input$max_sale_year, 12, 31)
-  )) %>%
+  # Drop invalid sales outside the sample date range or with obvious incorrect
+  # square footage values
+  filter(
+    between(
+      meta_sale_date,
+      make_date(params$input$min_sale_year, 1, 1),
+      make_date(params$input$max_sale_year, 12, 31)
+    ),
+    !(char_bldg_sf < 300 & !ind_pin_is_multicard),
+    !(char_land_sf < 300 & !ind_pin_is_multicard)
+  ) %>%
   as_tibble() %>%
   write_parquet(paths$input$training$local)
 
@@ -361,6 +390,23 @@ training_data_clean <- training_data_w_hie %>%
 # time variables and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
   ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  ccao::vars_recode(
+    cols = all_of("char_apts"),
+    type = "short",
+    as_factor = FALSE
+  ) %>%
+  mutate(
+    char_apts = case_when(
+      char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
+      char_class %in% c("211", "212") & is.na(char_apts) ~ "UNKNOWN",
+      TRUE ~ "NONE"
+    ),
+    char_apts = factor(
+      char_apts,
+      levels = c("TWO", "THREE", "FOUR", "FIVE", "SIX", "UNKNOWN", "NONE")
+    ),
+    char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
+  ) %>%
   mutate(across(
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
@@ -370,6 +416,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED"),
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
     ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
