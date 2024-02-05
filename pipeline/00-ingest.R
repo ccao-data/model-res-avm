@@ -55,6 +55,7 @@ training_data <- dbGetQuery(
       BETWEEN CAST({params$input$min_sale_year} AS int) -
         {params$input$n_years_prior}
       AND CAST({params$input$max_sale_year} AS int)
+  AND sale.deed_type IN ('01', '02', '05')
   AND NOT sale.is_multisale
   AND NOT sale.sale_filter_same_sale_within_365
   AND NOT sale.sale_filter_less_than_10k
