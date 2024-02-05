@@ -309,6 +309,8 @@ training_data_clean <- training_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED"),
     # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
@@ -408,6 +410,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
     across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
     across(starts_with("loc_tax_"), \(x) na_if(x, "")),
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED"),
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
     ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
