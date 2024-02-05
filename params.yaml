@@ -311,26 +311,26 @@ model:
       # for setting this parameter is to discover a good fixed value using CV,
       # then manually set that value for non-CV runs (which don't use
       # early stopping by default)
-      num_iterations: 2600
-      learning_rate: 0.00915
+      num_iterations: 2470
+      learning_rate: 0.01125
 
       # Maximum number of bins for discretizing continuous features. Lower uses
       # less memory and speeds up training
-      max_bin: 475
+      max_bin: 512
 
       # See docs for details on each of the remaining parameters:
       # https://lightgbm.readthedocs.io/en/latest/Parameters.html
-      num_leaves: 115
-      add_to_linked_depth: 6
-      feature_fraction: 0.47
-      min_gain_to_split: 0.15
-      min_data_in_leaf: 6
-      max_cat_threshold: 58
-      min_data_per_group: 104
-      cat_smooth: 96.37
+      num_leaves: 1300
+      add_to_linked_depth: 1
+      feature_fraction: 0.41
+      min_gain_to_split: 25.5
+      min_data_in_leaf: 21
+      max_cat_threshold: 234
+      min_data_per_group: 194
+      cat_smooth: 42.49
       cat_l2: 0.001
-      lambda_l1: 0.085
-      lambda_l2: 0.0283
+      lambda_l1: 0.001
+      lambda_l2: 0.003
 
     # Range of possible hyperparameter values for tuning to explore
     range:
