@@ -10,9 +10,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
-  library(DBI)
   library(openxlsx)
-  library(RJDBC)
 })
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
@@ -39,17 +37,10 @@ towns <- ccao::town_dict %>%
 dict <- ccao::vars_dict %>%
   filter(
     var_data_type == "categorical",
-    var_name_model %in% predictors,
-    var_name_model != "meta_modeling_group"
+    var_name_model %in% predictors
   ) %>%
   distinct(var_name_pretty, var_code, var_value)
 
-dict <- bind_rows(
-  dict,
-  ccao::vars_dict %>%
-    filter(var_name_model == "meta_modeling_group") %>%
-    distinct(var_name_pretty, var_code = var_value_short, var_value)
-)
 
 # Typically the most important predictors in CCAO models
 top_predictors <- c(
@@ -88,7 +79,6 @@ for (town in towns) {
       meta_pin, meta_card_num, meta_class, pred_card_initial_fmv,
       api_prediction, api_prediction_rounded,
       all_of(top_predictors),
-      meta_modeling_group, meta_tieback_proration_rate,
       starts_with("char_"),
       starts_with("loc_"),
       starts_with("time"),
@@ -178,9 +168,9 @@ for (town in towns) {
   # OpenXLSX is not perfect and messes up the macros and formatting on saved
   # workbooks. To finish each workbook, you must manually:
 
-  # 1. Hide row 3 (model API variable names)
+  # 1. Hide row 4 (model API variable names)
   # 2. Developer tab > Visual Basic. Under Microsoft Excel Objects in the
-  #    explorer panel, copy the code from Sheet1 to Sheet2 (Cards).
+  #    explorer panel, copy the code from Sheet1 to Sheet3 (Cards).
   # 3. Save, then close and re-open the workbook. Test the API by changing a
   #    characteristic.
 }
