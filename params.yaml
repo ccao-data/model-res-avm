@@ -151,7 +151,6 @@ model:
     all:
       - "meta_township_code"
       - "meta_nbhd_code"
-      - "meta_modeling_group"
       - "meta_sale_count_past_n_years"
       - "char_yrblt"
       - "char_air"
@@ -253,7 +252,6 @@ model:
     categorical:
       - "meta_township_code"
       - "meta_nbhd_code"
-      - "meta_modeling_group"
       - "char_air"
       - "char_apts"
       - "char_attic_fnsh"
@@ -438,7 +436,7 @@ comp:
   # Number of price bins to use when binning properties for the purpose of
   # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
   # of predicted values. Larger deciles = larger comparables search range
-  num_price_bins: 10
+  num_price_bins: 20
 
 
 # Export -----------------------------------------------------------------------
