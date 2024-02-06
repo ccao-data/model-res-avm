@@ -281,12 +281,12 @@ num_apts_by_pin <- assessment_card %>%
   # to scan in a spreadsheet
   mutate(
     char_apts = case_when(
-      char_apts == "None" | is.na(char_apts) ~ "Missing",
-      char_apts == "Two" ~ "2",
-      char_apts == "Three" ~ "3",
-      char_apts == "Four" ~ "4",
-      char_apts == "Five" ~ "5",
-      char_apts == "Six" ~ "6",
+      char_apts %in% c("NONE", "UNKNOWN") | is.na(char_apts) ~ "Missing",
+      char_apts == "TWO" ~ "2",
+      char_apts == "THREE" ~ "3",
+      char_apts == "FOUR" ~ "4",
+      char_apts == "FIVE" ~ "5",
+      char_apts == "FIX" ~ "6",
       TRUE ~ "Missing"
     )
   ) %>%
@@ -456,12 +456,12 @@ assessment_card_prepped <- assessment_card %>%
     # Make sure the format of char_apts matches the short format we used to
     # generate assessment_pin_prepped
     char_apts = case_when(
-      char_apts == "None" | is.na(char_apts) ~ "Missing",
-      char_apts == "Two" ~ "2",
-      char_apts == "Three" ~ "3",
-      char_apts == "Four" ~ "4",
-      char_apts == "Five" ~ "5",
-      char_apts == "Six" ~ "6",
+      char_apts %in% c("NONE", "UNKNOWN") | is.na(char_apts) ~ "Missing",
+      char_apts == "TWO" ~ "2",
+      char_apts == "THREE" ~ "3",
+      char_apts == "FOUR" ~ "4",
+      char_apts == "FIVE" ~ "5",
+      char_apts == "FIX" ~ "6",
       TRUE ~ "Missing"
     )
   ) %>%
