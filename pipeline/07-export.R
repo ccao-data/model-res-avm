@@ -525,7 +525,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   training_data_selected <- training_data_filtered %>%
     select(
       meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
-      char_yrblt, loc_property_address, char_beds, char_ext_wall,
+      loc_property_address, char_yrblt, char_beds, char_ext_wall,
       char_heat, char_bldg_sf, char_type_resd, char_land_sf
     ) %>%
     ccao::vars_recode(type = "long")
