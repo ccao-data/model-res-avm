@@ -312,6 +312,10 @@ message("Saving card-level data")
 
 # Keep only card-level variables of interest, including: ID variables (run_id,
 # pin, card), characteristics, and predictions
+char_vars <- params$model$predictor$all[
+  grepl("^char_", params$model$predictor$all)
+]
+char_vars <- char_vars[!char_vars %in% c("char_apts", "char_recent_renovation")]
 assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
@@ -320,13 +324,10 @@ assessment_card_data_merged %>%
   ) %>%
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
-    ccao_n_years_exe_homeowner = as.integer(ccao_n_years_exe_homeowner)
+    ccao_n_years_exe_homeowner = as.integer(ccao_n_years_exe_homeowner),
+    char_apts = as.character(char_apts)
   ) %>%
-  ccao::vars_recode(
-    starts_with("char_"),
-    type = "long",
-    as_factor = FALSE
-  ) %>%
+  ccao::vars_recode(any_of(char_vars), type = "long", as_factor = FALSE) %>%
   write_parquet(paths$output$assessment_card$local)
 
 
