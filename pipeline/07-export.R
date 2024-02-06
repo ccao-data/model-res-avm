@@ -281,12 +281,12 @@ num_apts_by_pin <- assessment_card %>%
   # to scan in a spreadsheet
   mutate(
     char_apts = case_when(
-      char_apts == "None" | is.na(char_apts) ~ "Missing",
-      char_apts == "Two" ~ "2",
-      char_apts == "Three" ~ "3",
-      char_apts == "Four" ~ "4",
-      char_apts == "Five" ~ "5",
-      char_apts == "Six" ~ "6",
+      char_apts == "NONE" | is.na(char_apts) ~ NA_character_,
+      char_apts == "TWO" ~ "2",
+      char_apts == "THREE" ~ "3",
+      char_apts == "FOUR" ~ "4",
+      char_apts == "FIVE" ~ "5",
+      char_apts == "FIX" ~ "6",
       TRUE ~ "Missing"
     )
   ) %>%
@@ -431,12 +431,6 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       property_full_address,
       "[^[:alnum:]|' ',.-]"
     ),
-    # char_apts should only apply to 211s and 212s
-    char_apts = ifelse(
-      (meta_class != "211" & meta_class != "212"),
-      NA,
-      char_apts
-    ),
     # char_ncu should only apply to 212s
     char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   )
@@ -464,21 +458,13 @@ assessment_card_prepped <- assessment_card %>%
     # Make sure the format of char_apts matches the short format we used to
     # generate assessment_pin_prepped
     char_apts = case_when(
-      char_apts == "None" | is.na(char_apts) ~ "Missing",
-      char_apts == "Two" ~ "2",
-      char_apts == "Three" ~ "3",
-      char_apts == "Four" ~ "4",
-      char_apts == "Five" ~ "5",
-      char_apts == "Six" ~ "6",
+      char_apts == "NONE" | is.na(char_apts) ~ NA_character_,
+      char_apts == "TWO" ~ "2",
+      char_apts == "THREE" ~ "3",
+      char_apts == "FOUR" ~ "4",
+      char_apts == "FIVE" ~ "5",
+      char_apts == "FIX" ~ "6",
       TRUE ~ "Missing"
-    )
-  ) %>%
-  mutate(
-    # char_apts should only apply to 211s and 212s
-    char_apts = ifelse(
-      (meta_class != "211" & meta_class != "212"),
-      NA,
-      char_apts
     ),
     # char_ncu should only apply to 212s
     char_ncu = ifelse(meta_class != "212", NA, char_ncu)
@@ -508,7 +494,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     filter(township_code == town) %>%
     select(-township_code)
 
-  # 5.3 Comp details -----------------------------------------------------------
+  ## 5.1 Comp details ----------------------------------------------------------
 
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
@@ -525,7 +511,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   training_data_selected <- training_data_filtered %>%
     select(
       meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
-      char_yrblt, loc_property_address, char_beds, char_ext_wall,
+      loc_property_address, char_yrblt, char_beds, char_ext_wall,
       char_heat, char_bldg_sf, char_type_resd, char_land_sf
     ) %>%
     ccao::vars_recode(type = "long")
@@ -568,7 +554,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     startCol = 1, startRow = 5, colNames = FALSE
   )
 
-  ## 5.2. PIN-Level ------------------------------------------------------------
+  # 5.2. PIN-Level -------------------------------------------------------------
 
   # Update PIN-level data to link to comps detail sheet
   training_data_ids <- training_data_filtered %>%
@@ -859,10 +845,9 @@ upload_data <- assessment_pin %>%
   ungroup() %>%
   select(
     township_code,
-    PARID = meta_pin, CARD = meta_card_num,
-    USER37 = pred_card_final_fmv_no_prorate,
-    USER24 = meta_tieback_proration_rate.x,
-    OVRRCNLD = pred_card_final_fmv
+    PARID = meta_pin,
+    CARD = meta_card_num,
+    MV = pred_card_final_fmv_no_prorate
   )
 
 

@@ -18,10 +18,7 @@ homogeneous properties.
 ```{r _comp_neighborhood_means_coding}
 base_data <- assessment_card %>%
   mutate(triad = ccao::town_get_triad(as.character(township_code))) %>%
-  select(
-    meta_pin, meta_nbhd_code, meta_class, triad,
-    meta_card_num, meta_modeling_group
-  ) %>%
+  select(meta_pin, meta_nbhd_code, meta_class, triad, meta_card_num) %>%
   left_join(comp_df, by = c("meta_pin" = "pin", "meta_card_num" = "card"))
 
 generate_plot <- function(df) {
@@ -60,10 +57,10 @@ plots$"Overall" <- base_data %>%
   filter(triad == run_triad_code) %>%
   generate_plot()
 plots$"Single-Family" <- base_data %>%
-  filter(meta_modeling_group == "SF", triad == run_triad_code) %>%
+  filter(!(meta_class %in% c("211", "212")), triad == run_triad_code) %>%
   generate_plot()
 plots$"Multi-Family" <- base_data %>%
-  filter(meta_modeling_group == "MF", triad == run_triad_code) %>%
+  filter(meta_class %in% c("211", "212"), triad == run_triad_code) %>%
   generate_plot()
 ```
 
@@ -227,7 +224,7 @@ leaflet() %>%
       "<hr>",
       "Certified FMV: ",
       scales::dollar(meta_certified_tot, accuracy = 1),
-      "<br>Inital Card FMV: ",
+      "<br>Initial Card FMV: ",
       scales::dollar(pred_card_initial_fmv, accuracy = 1),
       "<hr>",
       "Sale Date: ", meta_sale_date,

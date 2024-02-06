@@ -81,7 +81,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # For prorated PINs with multiple cards, take the average of the card
   # (building) across PINs. This is because the same prorated building spread
   # across multiple PINs sometimes receives different values from the model
-  group_by(meta_tieback_key_pin, meta_card_num) %>%
+  group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
     pred_card_intermediate_fmv = ifelse(
       is.na(meta_tieback_key_pin),
@@ -208,18 +208,16 @@ message("Prorating buildings")
 assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
   group_by(meta_tieback_key_pin) %>%
   mutate(
-    tieback_total_land_fmv = ifelse(
+    # 1. Determine the mean, unprorated building value for buildings that span
+    # multiple PINs. This is the mean value of the predicted value minus land
+    pred_pin_final_fmv_bldg_no_prorate = ifelse(
       is.na(meta_tieback_key_pin),
-      pred_pin_final_fmv_land,
-      sum(pred_pin_final_fmv_land)
+      pred_pin_final_fmv_round_no_prorate - pred_pin_final_fmv_land,
+      mean(pred_pin_final_fmv_round_no_prorate - pred_pin_final_fmv_land)
     )
   ) %>%
   ungroup() %>%
   mutate(
-    # 1. Subtract the TOTAL value of the land of all linked PINs. This leaves
-    # only the value of the building that spans the PINs
-    pred_pin_final_fmv_bldg_no_prorate =
-      pred_pin_final_fmv_round_no_prorate - tieback_total_land_fmv,
     # 2. Multiply the building by the proration rate of each PIN/card. This is
     # the proportion of the building's value held by each PIN
     pred_pin_final_fmv_bldg =
@@ -314,18 +312,22 @@ message("Saving card-level data")
 
 # Keep only card-level variables of interest, including: ID variables (run_id,
 # pin, card), characteristics, and predictions
+char_vars <- params$model$predictor$all[
+  grepl("^char_", params$model$predictor$all)
+]
+char_vars <- char_vars[!char_vars %in% c("char_apts", "char_recent_renovation")]
 assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
     meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv, char_class,
     all_of(params$model$predictor$all), township_code
   ) %>%
-  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
-  ccao::vars_recode(
-    starts_with("char_"),
-    type = "long",
-    as_factor = FALSE
+  mutate(
+    meta_complex_id = as.numeric(meta_complex_id),
+    ccao_n_years_exe_homeowner = as.integer(ccao_n_years_exe_homeowner),
+    char_apts = as.character(char_apts)
   ) %>%
+  ccao::vars_recode(any_of(char_vars), type = "long", as_factor = FALSE) %>%
   write_parquet(paths$output$assessment_card$local)
 
 
