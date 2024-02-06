@@ -81,7 +81,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # For prorated PINs with multiple cards, take the average of the card
   # (building) across PINs. This is because the same prorated building spread
   # across multiple PINs sometimes receives different values from the model
-  group_by(meta_tieback_key_pin, meta_card_num) %>%
+  group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
     pred_card_intermediate_fmv = ifelse(
       is.na(meta_tieback_key_pin),
@@ -208,18 +208,16 @@ message("Prorating buildings")
 assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
   group_by(meta_tieback_key_pin) %>%
   mutate(
-    tieback_total_land_fmv = ifelse(
+    # 1. Determine the mean, unprorated building value for buildings that span
+    # multiple PINs. This is the mean value of the predicted value minus land
+    pred_pin_final_fmv_bldg_no_prorate = ifelse(
       is.na(meta_tieback_key_pin),
-      pred_pin_final_fmv_land,
-      sum(pred_pin_final_fmv_land)
+      pred_pin_final_fmv_round_no_prorate - pred_pin_final_fmv_land,
+      mean(pred_pin_final_fmv_round_no_prorate - pred_pin_final_fmv_land)
     )
   ) %>%
   ungroup() %>%
   mutate(
-    # 1. Subtract the TOTAL value of the land of all linked PINs. This leaves
-    # only the value of the building that spans the PINs
-    pred_pin_final_fmv_bldg_no_prorate =
-      pred_pin_final_fmv_round_no_prorate - tieback_total_land_fmv,
     # 2. Multiply the building by the proration rate of each PIN/card. This is
     # the proportion of the building's value held by each PIN
     pred_pin_final_fmv_bldg =
