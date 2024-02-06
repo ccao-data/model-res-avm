@@ -16,7 +16,7 @@ run_type: "test"
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Cutover to 2024 model (Chicago reassessment) using 2023 data
+  Final 2024 residential model with updated data and new features
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -25,10 +25,10 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: FALSE
+  shap_enable: TRUE
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: FALSE
+  comp_enable: TRUE
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
