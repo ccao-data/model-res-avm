@@ -94,7 +94,14 @@ for (town in towns) {
       across(where(is.numeric), ~ round(.x, 8)),
       meta_pin = ccao::pin_format_pretty(meta_pin, full_length = TRUE)
     ) %>%
-    var_encode(cols = starts_with("char_"))
+    var_encode(
+      # The column selection here is a little hacky, but gets around the fact
+      # that the `cols` attribute can't handle a select clause
+      # like `(starts_with(x) & !y)`
+      cols = card_data %>%
+        select(starts_with("char_") & !char_apts) %>%
+        names()
+    )
 
   # Load workbook and styles
   wb <- loadWorkbook(here("misc", "model_api_template.xlsm"))
