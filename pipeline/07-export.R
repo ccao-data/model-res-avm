@@ -430,7 +430,15 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     property_full_address = str_remove_all(
       property_full_address,
       "[^[:alnum:]|' ',.-]"
-    )
+    ),
+    # char_apts should only apply to 211s and 212s
+    char_apts = ifelse(
+      (meta_class != "211" & meta_class != "212"),
+      NA,
+      char_apts
+    ),
+    # char_ncu should only apply to 212s
+    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   )
 
 # Get all PINs with multiple cards, break out into supplemental data set to
