@@ -136,6 +136,7 @@ rs_fns_list <- list(
   min = \(x) min(x, na.rm = TRUE),
   q25 = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
   median = \(x) median(x, na.rm = TRUE),
+  median_sale = \(x, y) median(y, na.rm = TRUE),
   median_ratio = \(x, y) median(x / y, na.rm = TRUE),
   q75 = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
   max = \(x) max(x, na.rm = TRUE)
@@ -210,7 +211,7 @@ cbind(results1, results2) %>%
     q75 = round(q75),
     max = round(max)
   ) %>%
-  select(dataset, count, "median change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, median, "median previous estimate" = median_prior_near_tot, q75, max, rmse, "r squared" = r_squared, mae, mpe, mape, mdape) %>%
+  select(dataset, count, "median change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, median, "median sale" = median_sale, "median previous estimate" = median_prior_near_tot, q75, max, rmse, "r squared" = r_squared, mae, mpe, mape, mdape) %>%
   kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ",")) %>%
   kable_styling()
 ```
