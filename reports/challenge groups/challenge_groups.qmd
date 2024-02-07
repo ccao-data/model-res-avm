@@ -112,7 +112,8 @@ datasets_sold <- list(
   "Large Lots" = large_lots_sold,
   "Multicard" = multicard_sold,
   "Multifamily" = multifamily_sold,
-  "Top Decile" = top_decile_sold)
+  "Top Decile" = top_decile_sold
+)
 
 
 gte_n <- \(n_sales, min_n, fn, na_type) {
@@ -272,7 +273,8 @@ datasets_unsold <- list(
   "Large Lots" = large_lots,
   "Multicard" = multicard,
   "Multifamily" = multifamily,
-  "Top Decile" = top_decile) %>%
+  "Top Decile" = top_decile
+) %>%
   map(~ filter(.x, !is.na(loc_latitude) & !is.na(loc_longitude)))
 
 plots <- lapply(datasets_unsold, process_and_plot)
