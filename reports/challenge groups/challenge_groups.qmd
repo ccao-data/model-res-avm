@@ -203,7 +203,15 @@ results2 <- bind_rows(
 
 cbind(results1, results2) %>%
   as.data.frame() %>%
-  mutate(median_change = median / median_prior_near_tot) %>%
+  mutate(
+    median_change = median / median_prior_near_tot,
+    min = round(min),
+    q25 = round(q25),
+    median = round(median),
+    `median previous estimate` = round(median_prior_near_tot),
+    q75 = round(q75),
+    max = round(max)
+  ) %>%
   select(dataset, count, "median change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, median, "median previous estimate" = median_prior_near_tot, q75, max, rmse, "r squared" = r_squared, mae, mpe, mape, mdape) %>%
   kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ",")) %>%
   kable_styling()
