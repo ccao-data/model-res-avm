@@ -37,8 +37,6 @@ For assessed properties, there are characteristics which make it difficult to pr
 
 **Multifamily:** Indicates a PIN with a class code of 211.
 
-**Missing Critical Value:** Indicates a Pin where one of the following variables are missing (meta_year, meta_pin, char_yrblt, char_bldg_sf, char_land_sf, char_beds, char_fbath, char_apts)
-
 **Top Decile:** Indicator for the top 10% of assessed values by township from the prior year.
 
 ## Topline Stats for All Properties
@@ -74,7 +72,7 @@ full_data_functions <- function(dataset, dataset_name) {
     Dataset = dataset_name,
     Count = N,
     "Median Prior" = median_prior,
-    "Median Predicted" = median_pred,
+    "Median Predicted" = round(median_pred),
     "Median Percent Change" = median_percent_change
   )
 
