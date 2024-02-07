@@ -20,7 +20,7 @@ knitr:
     out.width: "100%"
 editor: source
 params:
-  run_id: "2024-01-07-great-ida"
+  run_id: "2024-02-06-relaxed-tristan"
   year: "2024"
 ---
 
@@ -61,11 +61,6 @@ top_decile <- assessment_pin %>%
   filter(flag_prior_near_fmv_top_decile == TRUE) %>%
   select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
-critical_values_missing <- assessment_pin %>%
-  filter(flag_char_missing_critical_value == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
-
-
 full_data_functions <- function(dataset, dataset_name) {
   N <- nrow(dataset)
 
@@ -77,7 +72,7 @@ full_data_functions <- function(dataset, dataset_name) {
 
   results_df <- data.frame(
     Dataset = dataset_name,
-    N = N,
+    Count = N,
     "Median Prior" = median_prior,
     "Median Predicted" = median_pred,
     "Median Percent Change" = median_percent_change
@@ -92,10 +87,9 @@ bind_rows(
   full_data_functions(multicard, "Multicard"),
   full_data_functions(multifamily, "Multifamily"),
   full_data_functions(top_decile, "Top Decile"),
-  full_data_functions(critical_values_missing, "Critical Values Missing")
 ) %>%
   rename("Median Prior" = "Median.Prior", "Median Predicted" = "Median.Predicted", "Median Percent Change" = "Median.Percent.Change") %>%
-  kable(format = "html", digits = 2, row.names = FALSE) %>%
+  kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ",")) %>%
   kable_styling()
 ```
 ## Ratio Stats for Sold Properties
@@ -112,17 +106,13 @@ multifamily_sold <- multifamily %>%
   filter(!is.na(sale_ratio_study_price))
 top_decile_sold <- top_decile %>%
   filter(!is.na(sale_ratio_study_price))
-critical_values_missing_sold <- critical_values_missing %>%
-  filter(!is.na(sale_ratio_study_price))
 
 
 datasets_sold <- list(
   "Large Lots" = large_lots_sold,
   "Multicard" = multicard_sold,
   "Multifamily" = multifamily_sold,
-  "Top Decile" = top_decile_sold,
-  "Critical Values Missing" = critical_values_missing_sold
-)
+  "Top Decile" = top_decile_sold)
 
 
 gte_n <- \(n_sales, min_n, fn, na_type) {
@@ -147,6 +137,7 @@ rs_fns_list <- list(
   min = \(x) min(x, na.rm = TRUE),
   q25 = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
   median = \(x) median(x, na.rm = TRUE),
+  median_ratio = \(x, y) median(x / y, na.rm = TRUE),
   q75 = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
   max = \(x) max(x, na.rm = TRUE)
 )
@@ -211,16 +202,15 @@ results2 <- bind_rows(
 
 cbind(results1, results2) %>%
   as.data.frame() %>%
-  mutate(median_ratio = median / median_prior_near_tot) %>%
-  select(dataset, count, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, median, "median previous estimate" = median_prior_near_tot, q75, max, rmse, "r squared" = r_squared, mae, mpe, mape, mdape) %>%
-  kable(format = "html", digits = 2, row.names = FALSE) %>%
+  mutate(median_change = median / median_prior_near_tot) %>%
+  select(dataset, count, "median change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, median, "median previous estimate" = median_prior_near_tot, q75, max, rmse, "r squared" = r_squared, mae, mpe, mape, mdape) %>%
+  kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ",")) %>%
   kable_styling()
 ```
 
 ```{r _challenge_groups_plot_function, results = 'asis'}
 ## Interactive elements are hashed out in order to produce rendered version
 plots <- imap(datasets_sold, ~ {
-  # Create a ggplot object
   p <- ggplot(.x, aes(
     x = sale_ratio_study_price / 1000, y = pred_pin_initial_fmv / 1000
     # , tooltip = "pin" = meta_pin
@@ -264,13 +254,12 @@ process_and_plot <- function(data) {
 
   town_shp <- st_transform(town_shp, crs = st_crs(spatial_data))
 
-  # Create the plot
   ggplot() +
     geom_sf(data = spatial_data, aes(color = Change)) +
     geom_sf(data = town_shp, fill = NA, color = "black") +
     theme_minimal() +
     labs(color = "Change (%)") +
-    scale_color_gradient2(midpoint = 0, low = "blue", mid = "lightgrey", high = "red", limits = c(-100, 300)) + # Use gradient for coloring
+    scale_color_gradient2(midpoint = 0, low = "blue", mid = "lightgrey", high = "red", limits = c(-100, 300)) +
     theme(
       axis.title.x = element_blank(),
       axis.title.y = element_blank(),
@@ -283,9 +272,7 @@ datasets_unsold <- list(
   "Large Lots" = large_lots,
   "Multicard" = multicard,
   "Multifamily" = multifamily,
-  "Top Decile" = top_decile,
-  "Critical Values Missing" = critical_values_missing
-) %>%
+  "Top Decile" = top_decile) %>%
   map(~ filter(.x, !is.na(loc_latitude) & !is.na(loc_longitude)))
 
 plots <- lapply(datasets_unsold, process_and_plot)
