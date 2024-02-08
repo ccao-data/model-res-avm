@@ -766,7 +766,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(59, 60), widths = 1,
+    c(59, 60),
+    widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
 
