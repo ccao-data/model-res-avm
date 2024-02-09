@@ -655,7 +655,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 41, 43, 45), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 42, 44, 45), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
