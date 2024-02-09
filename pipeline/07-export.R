@@ -394,7 +394,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       loc_property_address,
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
-    )
+    ),
+    valuations_note = NA, # Empty notes field for Valuations to fill out
   ) %>%
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
@@ -405,14 +406,14 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     pred_pin_final_fmv, pred_pin_final_fmv_land, pred_pin_final_fmv_bldg,
     pred_pin_final_fmv_round, land_rate_per_sqft, pred_pin_land_rate_effective,
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
-    prior_near_yoy_change_nom, prior_near_yoy_change_pct,
+    prior_near_yoy_change_nom, prior_near_yoy_change_pct, valuations_note,
     sale_recent_1_date, sale_recent_1_price,
     sale_recent_1_outlier_type, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price,
     sale_recent_2_outlier_type, sale_recent_2_document_num,
     char_yrblt, char_total_bldg_sf, char_type_resd, char_land_sf,
     char_apts, char_ncu,
-    overall_comp_score, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
+    comp_pin_1, comp_score_1, comp_pin_2, comp_score_2, overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
@@ -481,13 +482,6 @@ assessment_card_prepped <- assessment_card %>%
 # Write raw data to sheets for parcel details
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
-
-  workbook_name <- glue(
-    params$assessment$year,
-    str_replace(town_convert(town), " ", "_"),
-    "Initial_Model_Values.xlsx",
-    .sep = "_"
-  )
 
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
@@ -581,20 +575,45 @@ for (town in unique(assessment_pin_prepped$township_code)) {
         is.na(comp_pin_1_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("[{workbook_name}]{comp_sheet_name}!',
-          '{comp_pin_1_coord}","{comp_pin_1}")'
+          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_1_coord}),',
+          '"{comp_pin_1}")'
         )
       ),
       comp_pin_2 = ifelse(
         is.na(comp_pin_2_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("[{workbook_name}]{comp_sheet_name}!',
-          '{comp_pin_2_coord}","{comp_pin_2}")'
+          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_2_coord}),',
+          '"{comp_pin_2}")'
         )
       )
     ) %>%
     select(-ends_with("_coord"))
+
+  # Get range of rows in the PIN data + number of header rows
+  num_head <- 6 # Number of header rows
+  pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
+  pin_row_range_w_header <- c(num_head, pin_row_range)
+  pin_col_range <- 1:60
+
+  # Calculate AVs so we can store them as separate, hidden columns for use
+  # in the neighborhood breakouts pivot table
+  assessment_pin_avs <- assessment_pin_filtered %>%
+    tibble::rowid_to_column("row_id") %>%
+    mutate(
+      row_id = row_id + num_head,
+      total_av = glue::glue("=S{row_id} * 0.1"),
+      av_difference = glue::glue("=(S{row_id} * 0.1) - (L{row_id} * 0.1)")
+    ) %>%
+    select(total_av, av_difference)
+
+  # Make AV fields formulas
+  class(assessment_pin_avs$total_av) <- c(
+    class(assessment_pin_avs$total_av), "formula"
+  )
+  class(assessment_pin_avs$av_difference) <- c(
+    class(assessment_pin_avs$av_difference), "formula"
+  )
 
   # Make comp PIN fields formulas so Excel understands the links
   class(assessment_pin_filtered$comp_pin_1) <- c(
@@ -621,14 +640,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     class(assessment_pin_filtered$meta_pin), "formula"
   )
 
-  # Get range of rows in the PIN data + number of header rows
-  pin_row_range <- 7:(nrow(assessment_pin_filtered) + 9)
-
   # Add styles to PIN sheet
   addStyle(
     wb, pin_sheet_name,
     style = style_price,
-    rows = pin_row_range, cols = c(10:12, 16:18, 24, 27, 31), gridExpand = TRUE
+    rows = pin_row_range,
+    cols = c(10:12, 16:18, 24, 28, 32, 59, 60), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -638,12 +655,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 40, 42, 44), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 42, 44, 45), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
     style = style_comma,
-    rows = pin_row_range, cols = c(35, 37), gridExpand = TRUE
+    rows = pin_row_range, cols = c(36, 38), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -653,7 +670,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_right_align,
-    rows = pin_row_range, cols = c(38, 39), gridExpand = TRUE
+    rows = pin_row_range, cols = c(39, 40), gridExpand = TRUE
   )
   # For some reason comp links do not get autoformatted as links, possibly
   # due to Excel not parsing within-sheet links as hyperlinks for the purposes
@@ -663,13 +680,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_link,
     rows = pin_row_range, cols = c(41, 43), gridExpand = TRUE
   )
-  addFilter(wb, pin_sheet_name, 6, 1:57)
+  addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
   # Format comp score columns with a range of colors from low (red) to high
   # (blue)
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(40, 42, 44),
+    cols = c(41, 43, 45),
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
@@ -687,10 +704,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Format sale columns such that they are red if the sale has an outlier flag
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = 26:29,
+    cols = 27:30,
     rows = pin_row_range,
     style = createStyle(bgFill = "#FF9999"),
-    rule = '$AB7!=""',
+    rule = '$AC7!=""',
     type = "expression"
   )
   # For some reason vector cols don't work with expressions, so we have
@@ -698,10 +715,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # to apply it to the second range of columns
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = 30:33,
+    cols = 31:34,
     rows = pin_row_range,
     style = createStyle(bgFill = "#FF9999"),
-    rule = '$AF7!=""',
+    rule = '$AG7!=""',
     type = "expression"
   )
 
@@ -732,6 +749,34 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeData(
     wb, pin_sheet_name, tibble(model_header),
     startCol = 16, startRow = 5, colNames = FALSE
+  )
+
+  # Write hidden formulas
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_avs$total_av,
+    startCol = 59,
+    startRow = 7
+  )
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_avs$av_difference,
+    startCol = 60,
+    startRow = 7
+  )
+  setColWidths(
+    wb, pin_sheet_name,
+    c(59, 60),
+    widths = 1,
+    hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
+  )
+
+  # Add a named range for the PIN-level data, which the template will use
+  # to populate the Neighborhood Breakouts pivot table
+  createNamedRegion(
+    wb, pin_sheet_name,
+    cols = pin_col_range, rows = pin_row_range_w_header,
+    name = "pin_detail_range", overwrite = TRUE
   )
 
 
@@ -793,6 +838,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # 5.4 Save output ------------------------------------------------------------
 
   # Save workbook to file based on town name
+  workbook_name <- glue(
+    params$assessment$year,
+    str_replace(town_convert(town), " ", "_"),
+    "Initial_Model_Values.xlsx",
+    .sep = "_"
+  )
   saveWorkbook(
     wb,
     here(
@@ -802,6 +853,17 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   rm(wb)
 }
+
+### NOTE ###
+# OpenXLSX is not perfect and messes up the macros and formatting on saved
+# workbooks. To finish each workbook, you must manually:
+
+# 1. Open the Neighborhood Breakouts sheet and ensure that the values are
+#    all formatted correctly in the pivot table; if not (e.g. if
+#    `Average of YoY ∆ %` is formatted as a date when it should be a percentage)
+#    then manually update the formatting by selecting
+#    PivotTable Fields > Values > {fieldname} > Value Field Settings... >
+#    Number Format.
 
 
 
