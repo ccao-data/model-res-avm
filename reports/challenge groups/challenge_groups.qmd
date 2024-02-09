@@ -59,6 +59,14 @@ top_decile <- assessment_pin %>%
   filter(flag_prior_near_fmv_top_decile == TRUE) %>%
   select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
+
+datasets_full <- list(
+  "Large Lots" = large_lots,
+  "Multicard" = multicard,
+  "Multifamily" = multifamily,
+  "Top Decile" = top_decile
+)
+
 full_data_functions <- function(dataset, dataset_name) {
   N <- nrow(dataset)
 
@@ -79,22 +87,20 @@ full_data_functions <- function(dataset, dataset_name) {
   return(results_df)
 }
 
+results_list <- lapply(names(datasets_full), function(name) {
+  full_data_functions(datasets_full[[name]], name)
+})
 
-bind_rows(
-  full_data_functions(large_lots, "Large Lots"),
-  full_data_functions(multicard, "Multicard"),
-  full_data_functions(multifamily, "Multifamily"),
-  full_data_functions(top_decile, "Top Decile"),
-) %>%
+do.call(bind_rows, results_list) %>%
   rename("Median Prior" = "Median.Prior", "Median Predicted" = "Median.Predicted", "Median Percent Change" = "Median.Percent.Change") %>%
-  kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ",")) %>%
+  kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ","), align = rep("l", 5)) %>%
   kable_styling()
 ```
 ## Ratio Stats for Sold Properties
 
 
 ```{r _challenge_groups_topline_stats_sold}
-## Utilizes two lists of functions in the evaluate stage to calculate stats for the list of Challenge Group Datasets.
+## Utilizes a list of functions in the evaluate stage to calculate stats for the list of Challenge Group Datasets.
 
 large_lots_sold <- large_lots %>%
   filter(!is.na(sale_ratio_study_price))
@@ -142,16 +148,6 @@ rs_fns_list <- list(
   max = \(x) max(x, na.rm = TRUE)
 )
 
-ys_fns_list <- list(
-  rmse        = rmse_vec,
-  r_squared   = rsq_vec,
-  mae         = mae_vec,
-  mpe         = mpe_vec,
-  mape        = mape_vec,
-  mdape       = mdape_vec
-)
-
-
 ## Some functions require 2 or 1 arguments.
 apply_functions <- function(dataset, dataset_name) {
   x <- dataset$pred_pin_initial_fmv
@@ -173,34 +169,13 @@ apply_functions <- function(dataset, dataset_name) {
   return(results_df)
 }
 
-results1 <- bind_rows(
+results <- bind_rows(
   lapply(names(datasets_sold), function(dataset_name) {
     apply_functions(datasets_sold[[dataset_name]], dataset_name)
   })
 )
 
-
-apply_functions <- function(dataset, dataset_name) {
-  ## The truth-estimate / x-y is switched for this and the previous function
-  truth <- dataset$sale_ratio_study_price
-  estimate <- dataset$pred_pin_initial_fmv
-
-  results_ys <- map(ys_fns_list, function(f) f(truth, estimate))
-
-  results_df <- as.data.frame(results_ys)
-  results_df$dataset_2 <- dataset_name
-
-  return(results_df)
-}
-
-results2 <- bind_rows(
-  lapply(names(datasets_sold), function(dataset_name) {
-    apply_functions(datasets_sold[[dataset_name]], dataset_name)
-  })
-)
-
-
-cbind(results1, results2) %>%
+results %>%
   as.data.frame() %>%
   mutate(
     median_change = ((median - median_prior_near_tot) / median_prior_near_tot) * 100,
@@ -211,8 +186,8 @@ cbind(results1, results2) %>%
     q75 = round(q75),
     max = round(max)
   ) %>%
-  select(dataset, count, "median yoy change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, median, "median sale" = median_sale, "median previous estimate", q75, max, rmse, "r squared" = r_squared, mae, mpe, mape, mdape) %>%
-  kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ",")) %>%
+  select(dataset, count, "median yoy change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, "median predicted" = median, "median sale" = median_sale, "median previous estimate", q75, max) %>%
+  kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ","), align = rep("l", 15)) %>%
   kable_styling()
 ```
 
@@ -276,7 +251,7 @@ process_and_plot <- function(data) {
     )
 }
 
-datasets_unsold <- list(
+datasets_minus_missing_location <- list(
   "Large Lots" = large_lots,
   "Multicard" = multicard,
   "Multifamily" = multifamily,
@@ -284,7 +259,7 @@ datasets_unsold <- list(
 ) %>%
   map(~ filter(.x, !is.na(loc_latitude) & !is.na(loc_longitude)))
 
-plots <- lapply(datasets_unsold, process_and_plot)
+plots <- lapply(datasets_minus_missing_location, process_and_plot)
 ```
 
 ## Map of YoY Changes in Assessed Value
