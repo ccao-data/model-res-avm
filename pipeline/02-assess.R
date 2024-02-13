@@ -283,7 +283,7 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
   ) %>%
   # More fractional rounding to deal with card values being split into cents
   group_by(meta_year, meta_pin) %>%
-  arrange(meta_year, meta_pin, desc(temp_bldg_frac_prop)) %>%
+  arrange(meta_year, meta_pin, desc(temp_card_frac_prop)) %>%
   mutate(
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
