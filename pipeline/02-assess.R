@@ -228,7 +228,7 @@ assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
   # 3. Assign the fractional portion of a building (cents) to whichever portion
   # is largest i.e. [1.59, 1.41] becomes [2, 1]
   group_by(meta_tieback_key_pin) %>%
-  arrange(desc(temp_bldg_frac_prop)) %>%
+  arrange(meta_tieback_key_pin, desc(temp_bldg_frac_prop)) %>%
   mutate(
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_bldg_frac_prop > 0.1e-7
@@ -283,7 +283,7 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
   ) %>%
   # More fractional rounding to deal with card values being split into cents
   group_by(meta_year, meta_pin) %>%
-  arrange(desc(temp_card_frac_prop)) %>%
+  arrange(meta_year, meta_pin, desc(temp_bldg_frac_prop)) %>%
   mutate(
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
@@ -401,7 +401,7 @@ message("Collapsing card-level data to PIN level")
 # each PIN but summing the total square footage of all buildings
 assessment_pin_data_base <- assessment_card_data_merged %>%
   group_by(meta_year, meta_pin) %>%
-  arrange(desc(char_bldg_sf)) %>%
+  arrange(meta_year, meta_pin, desc(char_bldg_sf)) %>%
   mutate(
     # Keep the sum of the initial card level values
     pred_pin_initial_fmv = sum(pred_card_initial_fmv),
