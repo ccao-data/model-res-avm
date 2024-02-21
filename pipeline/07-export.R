@@ -450,8 +450,8 @@ assessment_card_prepped <- assessment_card %>%
   select(
     township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
-    char_yrblt, char_beds, char_ext_wall, char_heat, char_bldg_sf,
-    char_type_resd, char_land_sf, char_apts, char_ncu
+    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin,
+    char_heat, char_bldg_sf, char_type_resd, char_land_sf, char_apts, char_ncu
   ) %>%
   mutate(
     meta_pin = glue(
@@ -507,8 +507,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   training_data_selected <- training_data_filtered %>%
     select(
       meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
-      loc_property_address, char_yrblt, char_beds, char_ext_wall,
-      char_heat, char_bldg_sf, char_type_resd, char_land_sf
+      loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
+      char_bsmt_fin, char_heat, char_bldg_sf, char_type_resd, char_land_sf
     ) %>%
     ccao::vars_recode(type = "long")
 
@@ -541,9 +541,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, comp_sheet_name,
     style = style_comma,
-    rows = comp_row_range, cols = c(11, 13), gridExpand = TRUE
+    rows = comp_row_range, cols = c(13, 15), gridExpand = TRUE
   )
-  addFilter(wb, comp_sheet_name, 4, 1:13)
+  addFilter(wb, comp_sheet_name, 4, 1:15)
 
   # Write comp data to workbook
   writeData(
@@ -837,14 +837,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, card_sheet_name,
     style = style_comma,
-    rows = card_row_range, cols = c(12, 14), gridExpand = TRUE
+    rows = card_row_range, cols = c(14, 16), gridExpand = TRUE
   )
   addStyle(
     wb, card_sheet_name,
     style = style_right_align,
-    rows = card_row_range, cols = c(15, 16), gridExpand = TRUE
+    rows = card_row_range, cols = c(17, 18), gridExpand = TRUE
   )
-  addFilter(wb, card_sheet_name, 4, 1:16)
+  addFilter(wb, card_sheet_name, 4, 1:18)
 
   # Write card-level data to workbook
   writeData(
