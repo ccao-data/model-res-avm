@@ -396,6 +396,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       ", ", loc_property_zip
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
+    sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
@@ -406,7 +407,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     pred_pin_final_fmv, pred_pin_final_fmv_land, pred_pin_final_fmv_bldg,
     pred_pin_final_fmv_round, land_rate_per_sqft, pred_pin_land_rate_effective,
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
-    prior_near_yoy_change_nom, prior_near_yoy_change_pct, valuations_note,
+    prior_near_yoy_change_nom, prior_near_yoy_change_pct,
+    sale_ratio, valuations_note,
     sale_recent_1_date, sale_recent_1_price,
     sale_recent_1_outlier_type, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price,
@@ -523,7 +525,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Create formatting styles
   style_price <- createStyle(numFmt = "$#,##0")
-  style_2digit <- createStyle(numFmt = "$#,##0.00")
+  style_2digit_price <- createStyle(numFmt = "$#,##0.00")
+  style_2digit_num <- createStyle(numFmt = "0.00")
   style_pct <- createStyle(numFmt = "PERCENTAGE")
   style_comma <- createStyle(numFmt = "COMMA")
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
@@ -594,25 +597,40 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:60
+  pin_col_range <- 1:61
+
+  assessment_pin_w_row_ids <- assessment_pin_filtered %>%
+    tibble::rowid_to_column("row_id") %>%
+    mutate(row_id = row_id + num_head)
 
   # Calculate AVs so we can store them as separate, hidden columns for use
   # in the neighborhood breakouts pivot table
-  assessment_pin_avs <- assessment_pin_filtered %>%
-    tibble::rowid_to_column("row_id") %>%
+  assessment_pin_avs <- assessment_pin_w_row_ids %>%
     mutate(
-      row_id = row_id + num_head,
       total_av = glue::glue("=S{row_id} * 0.1"),
       av_difference = glue::glue("=(S{row_id} * 0.1) - (L{row_id} * 0.1)")
     ) %>%
     select(total_av, av_difference)
 
-  # Make AV fields formulas
+  # Calculate sales ratios, and use a formula so that they update dynamically
+  # if the spreadsheet user updates the FMV
+  assessment_pin_sale_ratios <- assessment_pin_w_row_ids %>%
+    mutate(
+      sale_ratio = glue::glue(
+        '=IF(ISBLANK(AC{row_id}), "", S{row_id} / AC{row_id})'
+      )
+    )
+
+  # Mark AV fields and sales ratio fields as formulas, since these fields
+  # compute values based on other fields
   class(assessment_pin_avs$total_av) <- c(
     class(assessment_pin_avs$total_av), "formula"
   )
   class(assessment_pin_avs$av_difference) <- c(
     class(assessment_pin_avs$av_difference), "formula"
+  )
+  class(assessment_pin_sale_ratios$sale_ratio) <- c(
+    class(assessment_pin_sale_ratios$sale_ratio), "formula"
   )
 
   # Make comp PIN fields formulas so Excel understands the links
@@ -645,22 +663,27 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 28, 32, 59, 60), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 60, 61), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
-    style = style_2digit,
+    style = style_2digit_price,
     rows = pin_row_range, cols = c(13:14, 20:22), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
+    style = style_2digit_num,
+    rows = pin_row_range, cols = c(26), gridExpand = TRUE
+  )
+  addStyle(
+    wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 42, 44, 45), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 43, 45, 46), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
     style = style_comma,
-    rows = pin_row_range, cols = c(36, 38), gridExpand = TRUE
+    rows = pin_row_range, cols = c(37, 39), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -670,7 +693,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_right_align,
-    rows = pin_row_range, cols = c(39, 40), gridExpand = TRUE
+    rows = pin_row_range, cols = c(40, 41), gridExpand = TRUE
   )
   # For some reason comp links do not get autoformatted as links, possibly
   # due to Excel not parsing within-sheet links as hyperlinks for the purposes
@@ -678,7 +701,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_link,
-    rows = pin_row_range, cols = c(41, 43), gridExpand = TRUE
+    rows = pin_row_range, cols = c(42, 44), gridExpand = TRUE
   )
   addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
@@ -686,7 +709,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # (blue)
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(41, 43, 45),
+    cols = c(42, 44, 46),
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
@@ -704,10 +727,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Format sale columns such that they are red if the sale has an outlier flag
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = 27:30,
+    cols = 28:31,
     rows = pin_row_range,
     style = createStyle(bgFill = "#FF9999"),
-    rule = '$AC7!=""',
+    rule = '$AD7!=""',
     type = "expression"
   )
   # For some reason vector cols don't work with expressions, so we have
@@ -715,10 +738,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # to apply it to the second range of columns
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = 31:34,
+    cols = 32:35,
     rows = pin_row_range,
     style = createStyle(bgFill = "#FF9999"),
-    rule = '$AG7!=""',
+    rule = '$AH7!=""',
     type = "expression"
   )
 
@@ -733,6 +756,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     assessment_pin_filtered$meta_pin,
     startRow = 7
+  )
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_sale_ratios$sale_ratio,
+    startCol = 26, startRow = 7
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
@@ -755,18 +783,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$total_av,
-    startCol = 59,
+    startCol = 60,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$av_difference,
-    startCol = 60,
+    startCol = 61,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(59, 60),
+    c(60, 61),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
