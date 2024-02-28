@@ -321,13 +321,13 @@ summarized_card_chars <- assessment_card %>%
   # Aggregate card-level chars by PIN and output them as comma-separated
   # lists of unique values
   summarize(
-    char_air = summarize_char(char_air),
-    char_apts = summarize_char(char_apts),
-    char_beds = summarize_char(char_beds),
-    char_bsmt = summarize_char(char_bsmt),
-    char_bsmt_fin = summarize_char(char_bsmt_fin),
-    char_heat = summarize_char(char_heat),
-    char_ncu = summarize_char(char_apts),
+    across(
+      all_of(c(
+        "char_air", "char_apts", "char_beds", "char_bsmt", "char_bsmt_fin",
+        "char_heat", "char_ncu"
+      )),
+      ~ summarize_char(.x)
+    ),
     .by = "meta_pin"
   )
 
