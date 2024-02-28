@@ -41,7 +41,7 @@ The duty of the Cook County Assessor's Office is to value property in a fair, ac
 * [An outline of ongoing data quality issues that affect assessed values](#ongoing-issues)
 * [Instructions to replicate our valuation process and results](#installation)
 
-The repository itself contains the [code](./pipeline) and [data](./input) for the Automated Valuation Model (AVM) used to generate initial assessed values for single- and multi-family residential properties in Cook County. This system is effectively an advanced machine learning model (hereafter referred to as "the model"). It uses previous sales to generate estimated sale values (assessments) for all properties.
+The repository itself contains the [code](./pipeline) for the Automated Valuation Model (AVM) used to generate initial assessed values for single- and multi-family residential properties in Cook County. This system is effectively an advanced machine learning model (hereafter referred to as "the model"). It uses previous sales to generate estimated sale values (assessments) for all properties.
 
 ## How It Works
 
@@ -234,6 +234,8 @@ library(purrr)
 # nolint start
 hardcoded_descriptions <- tribble(
   ~"column", ~"description",
+  "meta_sale_count_past_n_years",
+  "Number of sales within previous N years of sale/lien date",
   "sale_year", "Sale year calculated as the number of years since 0 B.C.E",
   "sale_day",
   "Sale day calculated as the number of days since January 1st, 1997",
