@@ -346,7 +346,6 @@ We rely on numerous third-party sources to add new features to our data. These f
 | Tax rate                                          | Cook County Clerk's Office                                                                                                                                                                                                                                                                               |
 | Airport noise                                     | Noise monitoring stations via the Chicago Department of Aviation                                                                                                                                                                                                                                         |
 | Road proximity                                    | Buffering [OpenStreetMap](https://www.openstreetmap.org/#map=10/41.8129/-87.6871) motorway, trunk, and primary roads                                                                                                                                                                                     |
-| Flood indicator                                   | [FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/)                                                                                                                                                                                                                            |
 | Flood risk and direction                          | [First Street](https://firststreet.org/risk-factor/flood-factor/) flood data                                                                                                                                                                                                                                         |
 | All Census features                               | [ACS 5-year estimates](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2018/5-year.html) for each respective year                                                                                                                                        |
 | Elementary school district or attendance boundary | [Cook County school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-Elementary-School-Tax-Distric/an6r-bw5a) and [CPS attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-Elementary-School-Attendanc/7edu-z2e8)              |
@@ -369,6 +368,7 @@ Many people have intuitive assumptions about what drives the value of their home
 | Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                            |
 | Pictures of property                                   | We don't have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                              |
 | Comparable properties                                  | The model will automatically find and use comparable properties when producing an estimate. However, the model _does not_ explicitly use or produce a set of comparable properties.                                                       |
+| Flood indicator                                   | Between the First Street flood risk and direction data, distance to water, and precise latitude and longitude for each parcel, the contribution of {FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/) to the model approached zero.                                                                                                                                                                                                                             |
 
 ### Data Used
 
@@ -419,7 +419,9 @@ These sale prices are our initial prediction for what each property is worth. Th
 
 The pipeline also uses a few secondary data sets in the valuation process. These data sets are included in [`input/`](./input) but are not actually used by the model itself. They include:
 
+* [`char_data`](#getting-data) - The complete `assessment_data` set as well as the same data for the previous year. This data is used for automated model performance reporting rather than valuation.
 * [`complex_id_data`](#getting-data) - Complex identifiers for class 210 and 295 town/rowhomes. Intended to group like units together to ensure that nearly identical units in close proximity receive the same assessed value. This is accomplished with a "fuzzy grouping" strategy that allows slightly dissimilar characteristics.
+* [`hie_data`](#getting-data) - Home improvement exemption data used to evaluate whether the pipeline correctly updates card-level characteristics triggered by the expiration of home improvement exemptions.
 * [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department.
 * [`land_nbhd_rate_data`](#getting-data) - Fixed $/sqft land rates by assessor neighborhood for residential property classes except 210 and 295. Provided by the Valuations department.
 
@@ -495,7 +497,7 @@ This repository represents a significant departure from the old [residential mod
 * Dropped explicit spatial lag generation in the ingest stage.
 * Lots of other bugfixes and minor improvements.
 
-### `assessment-year-2024` (WIP)
+### [`assessment-year-2024`](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year)
 
 * Moved sales validation to a dedicated repository located at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
 * Infrastructure improvements
@@ -766,6 +768,16 @@ Public users can download data for each assessment year using the links below. E
 - [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/land_nbhd_rate_data.parquet)
 - [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/land_site_rate_data.parquet)
 - [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/training_data.parquet)
+
+#### 2024
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 
