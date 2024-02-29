@@ -234,7 +234,7 @@ library(purrr)
 # nolint start
 hardcoded_descriptions <- tribble(
   ~"column", ~"description",
-  "meta_sale_count_past_n_years",
+  "sale_count_past_n_years",
   "Number of sales within previous N years of sale/lien date",
   "sale_year", "Sale year calculated as the number of years since 0 B.C.E",
   "sale_day",
