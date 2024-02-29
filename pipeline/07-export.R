@@ -305,18 +305,10 @@ summarize_char <- function(col) {
 # we can display them in the PIN Detail sheet
 summarized_card_chars <- assessment_card %>%
   mutate(
-    char_apts = ifelse(
-      # char_apts is only relevant for class 211 and 212 properties
-      char_class == "211" | char_class == "212",
-      format_char_apts(char_apts),
-      NA
-    ),
-    char_ncu = ifelse(
-      # char_ncu is only relevant for class 212 properties
-      char_class == "212",
-      char_ncu,
-      NA
-    )
+    char_apts = format_char_apts(char_apts),
+    # At the ingest stage, char_ncu is set to 0 for non-212 properties, so
+    # cast this case to null
+    char_ncu = ifelse(char_class == "212", char_ncu, NA)
   ) %>%
   # Aggregate card-level chars by PIN and output them as comma-separated
   # lists of unique values
@@ -397,7 +389,8 @@ if (comp_enable) {
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     group_by(meta_pin) %>%
-    filter(meta_sale_date == max(meta_sale_date))
+    filter(meta_sale_date == max(meta_sale_date)) %>%
+    ungroup()
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -466,8 +459,6 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       property_full_address,
       "[^[:alnum:]|' ',.-]"
     ),
-    # char_ncu should only apply to 212s
-    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   )
 
 # Get all PINs with multiple cards, break out into supplemental data set to
@@ -480,7 +471,7 @@ assessment_card_prepped <- assessment_card %>%
     by = "meta_pin"
   ) %>%
   select(
-    township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
+    township_code, meta_pin, meta_card_num, char_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
     char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_bldg_sf, char_type_resd, char_land_sf, char_apts, char_ncu
@@ -491,8 +482,8 @@ assessment_card_prepped <- assessment_card %>%
       "{meta_pin}")'
     ),
     char_apts = format_char_apts(char_apts),
-    # char_ncu should only apply to 212s
-    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
+    # Convert char_ncu from 0 to null for non-212s
+    char_ncu = ifelse(char_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
 
@@ -528,19 +519,15 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
-      meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
+      meta_pin, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
       loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
       char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
       char_land_sf, char_apts, char_ncu
     ) %>%
     ccao::vars_recode(type = "long") %>%
     mutate(
-      char_apts = ifelse(
-        meta_class == "211" | meta_class == "212",
-        format_char_apts(char_apts),
-        NA
-      ),
-      char_ncu = ifelse(meta_class == "212", char_ncu, NA)
+      char_apts = format_char_apts(char_apts),
+      char_ncu = ifelse(char_class == "212", char_ncu, NA)
     )
 
   # It seems like Excel can only handle between-sheet links if the linked
