@@ -271,40 +271,63 @@ assessment_card <- dbGetQuery(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Preparing data for Desk Review export")
 
-# Get the number of apartments for class 211 and 212 properties. Since
-# char_apts is recorded on the card level, we need to aggregate them to
-# the PIN level
-num_apts_by_pin <- assessment_card %>%
-  filter(char_class == "211" | char_class == "212") %>%
-  select(meta_pin, char_apts) %>%
-  # Convert the long format for char_apts to a shorter one that's easier
+format_char_apts <- function(char_apts) {
+  # Convert the long format for char_apts to a shorter format that's easier
   # to scan in a spreadsheet
-  mutate(
-    char_apts = case_when(
-      char_apts == "NONE" | is.na(char_apts) ~ NA_character_,
-      char_apts == "TWO" ~ "2",
-      char_apts == "THREE" ~ "3",
-      char_apts == "FOUR" ~ "4",
-      char_apts == "FIVE" ~ "5",
-      char_apts == "FIX" ~ "6",
+  return(
+    case_when(
+      is.na(char_apts) | tolower(char_apts) == "none" ~ NA_character_,
+      tolower(char_apts) == "two" ~ "2",
+      tolower(char_apts) == "three" ~ "3",
+      tolower(char_apts) == "four" ~ "4",
+      tolower(char_apts) == "five" ~ "5",
+      tolower(char_apts) == "six" ~ "6",
       TRUE ~ "Missing"
     )
+  )
+}
+
+summarize_char <- function(col) {
+  # Summary function that can take a column name `col` and return a
+  # comma-separated string of all the distinct, not-null values in that column.
+  # Note that nulls are preserved if and only if _all_ values in the column
+  # are null
+  return(
+    ifelse(
+      all(is.na(col)),
+      NA,
+      paste(unique(na.omit(col)), collapse = ", ")
+    )
+  )
+}
+
+# Aggregate a set of chars that are only recorded on the card level so that
+# we can display them in the PIN Detail sheet
+summarized_card_chars <- assessment_card %>%
+  mutate(
+    char_apts = format_char_apts(char_apts),
+    # At the ingest stage, char_ncu is set to 0 for non-212 properties, so
+    # cast this case to null
+    char_ncu = ifelse(char_class == "212", char_ncu, NA)
   ) %>%
-  # Adding the number of units might get confusing, since these classes are only
-  # supposed to have 2-6 units, so concatenate them as strings instead
-  summarize(char_apts = paste(char_apts, collapse = ", "), .by = "meta_pin")
+  # Aggregate card-level chars by PIN and output them as comma-separated
+  # lists of unique values
+  summarize(
+    across(
+      all_of(c(
+        "char_air", "char_apts", "char_beds", "char_bsmt", "char_bsmt_fin",
+        "char_heat", "char_ncu"
+      )),
+      ~ summarize_char(.x)
+    ),
+    .by = "meta_pin"
+  )
 
-num_commercial_units_by_pin <- assessment_card %>%
-  filter(char_class == "212") %>%
-  select(meta_pin, char_ncu) %>%
-  summarize(char_ncu = paste(char_ncu, collapse = ", "), .by = "meta_pin")
-
-assessment_pin_w_num_units <- assessment_pin %>%
-  left_join(num_apts_by_pin, by = "meta_pin") %>%
-  left_join(num_commercial_units_by_pin, by = "meta_pin")
+assessment_pin_w_card_chars <- assessment_pin %>%
+  left_join(summarized_card_chars, by = "meta_pin")
 
 # Merge vacant land data with data from the residential AVM
-assessment_pin_w_land <- assessment_pin_w_num_units %>%
+assessment_pin_w_land <- assessment_pin_w_card_chars %>%
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
     across(ends_with("_date"), ymd),
@@ -366,7 +389,8 @@ if (comp_enable) {
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     group_by(meta_pin) %>%
-    filter(meta_sale_date == max(meta_sale_date))
+    filter(meta_sale_date == max(meta_sale_date)) %>%
+    ungroup()
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -413,8 +437,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_recent_1_outlier_type, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price,
     sale_recent_2_outlier_type, sale_recent_2_document_num,
-    char_yrblt, char_total_bldg_sf, char_type_resd, char_land_sf,
-    char_apts, char_ncu,
+    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
+    char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
+    char_ncu,
     comp_pin_1, comp_score_1, comp_pin_2, comp_score_2, overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
@@ -434,8 +459,6 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       property_full_address,
       "[^[:alnum:]|' ',.-]"
     ),
-    # char_ncu should only apply to 212s
-    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
   )
 
 # Get all PINs with multiple cards, break out into supplemental data set to
@@ -448,9 +471,9 @@ assessment_card_prepped <- assessment_card %>%
     by = "meta_pin"
   ) %>%
   select(
-    township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
+    township_code, meta_pin, meta_card_num, char_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
-    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin,
+    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_bldg_sf, char_type_resd, char_land_sf, char_apts, char_ncu
   ) %>%
   mutate(
@@ -458,19 +481,9 @@ assessment_card_prepped <- assessment_card %>%
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
       "{meta_pin}")'
     ),
-    # Make sure the format of char_apts matches the short format we used to
-    # generate assessment_pin_prepped
-    char_apts = case_when(
-      char_apts == "NONE" | is.na(char_apts) ~ NA_character_,
-      char_apts == "TWO" ~ "2",
-      char_apts == "THREE" ~ "3",
-      char_apts == "FOUR" ~ "4",
-      char_apts == "FIVE" ~ "5",
-      char_apts == "FIX" ~ "6",
-      TRUE ~ "Missing"
-    ),
-    # char_ncu should only apply to 212s
-    char_ncu = ifelse(meta_class != "212", NA, char_ncu)
+    char_apts = format_char_apts(char_apts),
+    # Convert char_ncu from 0 to null for non-212s
+    char_ncu = ifelse(char_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
 
@@ -506,11 +519,16 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
-      meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
+      meta_pin, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
       loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
-      char_bsmt_fin, char_heat, char_bldg_sf, char_type_resd, char_land_sf
+      char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
+      char_land_sf, char_apts, char_ncu
     ) %>%
-    ccao::vars_recode(type = "long")
+    ccao::vars_recode(type = "long") %>%
+    mutate(
+      char_apts = format_char_apts(char_apts),
+      char_ncu = ifelse(char_class == "212", char_ncu, NA)
+    )
 
   # It seems like Excel can only handle between-sheet links if the linked
   # sheet name has no spaces... Perhaps there's an undocumented workaround,
@@ -541,9 +559,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, comp_sheet_name,
     style = style_comma,
-    rows = comp_row_range, cols = c(13, 15), gridExpand = TRUE
+    rows = comp_row_range, cols = c(14, 16), gridExpand = TRUE
   )
-  addFilter(wb, comp_sheet_name, 4, 1:15)
+  addStyle(
+    wb, comp_sheet_name,
+    style = style_right_align,
+    rows = comp_row_range, cols = 17:18, gridExpand = TRUE
+  )
+  addFilter(wb, comp_sheet_name, 4, 1:18)
 
   # Write comp data to workbook
   writeData(
@@ -597,7 +620,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:61
+  pin_col_range <- 1:67 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -663,7 +686,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 60, 61), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 66, 67), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -678,12 +701,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 43, 45, 46), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 49, 51, 52), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
     style = style_comma,
-    rows = pin_row_range, cols = c(37, 39), gridExpand = TRUE
+    rows = pin_row_range, cols = c(43, 45), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -693,7 +716,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_right_align,
-    rows = pin_row_range, cols = c(40, 41), gridExpand = TRUE
+    rows = pin_row_range, cols = c(37, 46, 47), gridExpand = TRUE
   )
   # For some reason comp links do not get autoformatted as links, possibly
   # due to Excel not parsing within-sheet links as hyperlinks for the purposes
@@ -701,7 +724,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_link,
-    rows = pin_row_range, cols = c(42, 44), gridExpand = TRUE
+    rows = pin_row_range, cols = c(48, 50), gridExpand = TRUE
   )
   addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
@@ -709,7 +732,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # (blue)
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(42, 44, 46),
+    cols = c(49, 51, 52),
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
@@ -783,18 +806,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$total_av,
-    startCol = 60,
+    startCol = 66,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$av_difference,
-    startCol = 61,
+    startCol = 67,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(60, 61),
+    c(66, 67),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
@@ -837,14 +860,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, card_sheet_name,
     style = style_comma,
-    rows = card_row_range, cols = c(14, 16), gridExpand = TRUE
+    rows = card_row_range, cols = c(15, 17), gridExpand = TRUE
   )
   addStyle(
     wb, card_sheet_name,
     style = style_right_align,
-    rows = card_row_range, cols = c(17, 18), gridExpand = TRUE
+    rows = card_row_range, cols = c(18, 19), gridExpand = TRUE
   )
-  addFilter(wb, card_sheet_name, 4, 1:18)
+  addFilter(wb, card_sheet_name, 4, 1:19)
 
   # Write card-level data to workbook
   writeData(
