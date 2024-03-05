@@ -251,6 +251,12 @@ The downsides of LightGBM are that it is:
 - Prone to over-fitting if not trained carefully, unlike other methods
   such as random forest.
 
+For a more in depth report on the performance and accuracy trade-offs
+between LightGBM and XGBoost specific to our use case, please see our
+[Model
+Benchmark](https://github.com/ccao-data/report-model-benchmark?tab=readme-ov-file#model-benchmark)
+repository.
+
 ### Framework Selection
 
 We use [Tidymodels](https://www.tidymodels.org/) as our primary
@@ -453,6 +459,7 @@ model as of 2024-03-05.
 | Corner Lot                                                              | ccao           | logical     |                                                                      | Corner lot indicator                                                                                                                                  |
 | Active Homeowner Exemption                                              | ccao           | logical     |                                                                      | Parcel has an active homeowner exemption                                                                                                              |
 | Number of Years Active Homeowner Exemption                              | ccao           | numeric     |                                                                      | Number of years parcel has had an active homeowner exemption                                                                                          |
+
 
 #### Data Sources
 

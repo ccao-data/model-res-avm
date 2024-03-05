@@ -123,6 +123,8 @@ The downsides of LightGBM are that it is:
 * Painful to train, since it has a large number of hyperparameters.
 * Prone to over-fitting if not trained carefully, unlike other methods such as random forest.
 
+For a more in depth report on the performance and accuracy trade-offs between LightGBM and XGBoost specific to our use case, please see our [Model Benchmark](https://github.com/ccao-data/report-model-benchmark?tab=readme-ov-file#model-benchmark) repository.
+
 ### Framework Selection
 
 We use [Tidymodels](https://www.tidymodels.org/) as our primary machine-learning framework. Tidymodels is a set of R packages that work well together and with the [Tidyverse](https://www.tidyverse.org/). These packages abstract away complicated machine-learning logic and allow us to focus on improving our data and models.
