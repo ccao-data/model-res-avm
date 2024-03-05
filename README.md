@@ -353,7 +353,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2024-02-29.
+model as of 2024-03-05.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                 |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -797,6 +797,19 @@ the following major changes to the residential modeling codebase:
   - Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to
     render a performance report using Quarto and factored S3/SNS
     operations out into [pipeline/06-upload.R](pipeline/06-upload.R).
+- Added additional [regressivity metrics
+  (MKI)](https://researchexchange.iaao.org/jptaa/vol17/iss2/2/) to
+  measure model performance.
+- Switched cross-validation to
+  [V-fold](https://rsample.tidymodels.org/reference/vfold_cv.html)
+  instead of time-based.
+- Added new model features: corner lots, distance to vacant
+  land/university/secondary roads, homeowner exemption indicator and
+  length of exemption, number of recent sales, class.
+- Added linear baseline model for comparison against LightGBM to
+  [pipeline/01-train](pipeline/01-train.R).
+- Added experimental comparable sales generation using LightGBM leaf
+  nodes to [pipeline/04-interpret](pipeline/04-interpret.R).
 
 # Ongoing Issues
 
