@@ -460,7 +460,6 @@ model as of 2024-03-05.
 | Active Homeowner Exemption                                              | ccao           | logical     |                                                                      | Parcel has an active homeowner exemption                                                                                                              |
 | Number of Years Active Homeowner Exemption                              | ccao           | numeric     |                                                                      | Number of years parcel has had an active homeowner exemption                                                                                          |
 
-
 #### Data Sources
 
 We rely on numerous third-party sources to add new features to our data.
