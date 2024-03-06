@@ -30,6 +30,7 @@ This repository contains code, data, and documentation for the Cook County Asses
 | 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year) |
 | 2022        | North     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year) |
 | 2023        | South     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year) |
+| 2024        | City      | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year) |
 
 # Model Overview
 
@@ -40,7 +41,7 @@ The duty of the Cook County Assessor's Office is to value property in a fair, ac
 * [An outline of ongoing data quality issues that affect assessed values](#ongoing-issues)
 * [Instructions to replicate our valuation process and results](#installation)
 
-The repository itself contains the [code](./pipeline) and [data](./input) for the Automated Valuation Model (AVM) used to generate initial assessed values for single- and multi-family residential properties in Cook County. This system is effectively an advanced machine learning model (hereafter referred to as "the model"). It uses previous sales to generate estimated sale values (assessments) for all properties.
+The repository itself contains the [code](./pipeline) for the Automated Valuation Model (AVM) used to generate initial assessed values for single- and multi-family residential properties in Cook County. This system is effectively an advanced machine learning model (hereafter referred to as "the model"). It uses previous sales to generate estimated sale values (assessments) for all properties.
 
 ## How It Works
 
@@ -235,6 +236,8 @@ library(purrr)
 # nolint start
 hardcoded_descriptions <- tribble(
   ~"column", ~"description",
+  "sale_count_past_n_years",
+  "Number of sales within previous N years of sale/lien date",
   "sale_year", "Sale year calculated as the number of years since 0 B.C.E",
   "sale_day",
   "Sale day calculated as the number of days since January 1st, 1997",
@@ -345,7 +348,6 @@ We rely on numerous third-party sources to add new features to our data. These f
 | Tax rate                                          | Cook County Clerk's Office                                                                                                                                                                                                                                                                               |
 | Airport noise                                     | Noise monitoring stations via the Chicago Department of Aviation                                                                                                                                                                                                                                         |
 | Road proximity                                    | Buffering [OpenStreetMap](https://www.openstreetmap.org/#map=10/41.8129/-87.6871) motorway, trunk, and primary roads                                                                                                                                                                                     |
-| Flood indicator                                   | [FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/)                                                                                                                                                                                                                            |
 | Flood risk and direction                          | [First Street](https://firststreet.org/risk-factor/flood-factor/) flood data                                                                                                                                                                                                                                         |
 | All Census features                               | [ACS 5-year estimates](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2018/5-year.html) for each respective year                                                                                                                                        |
 | Elementary school district or attendance boundary | [Cook County school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-Elementary-School-Tax-Distric/an6r-bw5a) and [CPS attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-Elementary-School-Attendanc/7edu-z2e8)              |
@@ -368,6 +370,7 @@ Many people have intuitive assumptions about what drives the value of their home
 | Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                            |
 | Pictures of property                                   | We don't have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                              |
 | Comparable properties                                  | The model will automatically find and use comparable properties when producing an estimate. However, the model _does not_ explicitly use or produce a set of comparable properties.                                                       |
+| Flood indicator                                   | Between the First Street flood risk and direction data, distance to water, and precise latitude and longitude for each parcel, the contribution of {FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/) to the model approached zero.                                                                                                                                                                                                                             |
 
 ### Data Used
 
@@ -418,7 +421,9 @@ These sale prices are our initial prediction for what each property is worth. Th
 
 The pipeline also uses a few secondary data sets in the valuation process. These data sets are included in [`input/`](./input) but are not actually used by the model itself. They include:
 
+* [`char_data`](#getting-data) - The complete `assessment_data` set as well as the same data for the previous year. This data is used for automated model performance reporting rather than valuation.
 * [`complex_id_data`](#getting-data) - Complex identifiers for class 210 and 295 town/rowhomes. Intended to group like units together to ensure that nearly identical units in close proximity receive the same assessed value. This is accomplished with a "fuzzy grouping" strategy that allows slightly dissimilar characteristics.
+* [`hie_data`](#getting-data) - Home improvement exemption data used to evaluate whether the pipeline correctly updates card-level characteristics triggered by the expiration of home improvement exemptions.
 * [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department.
 * [`land_nbhd_rate_data`](#getting-data) - Fixed $/sqft land rates by assessor neighborhood for residential property classes except 210 and 295. Provided by the Valuations department.
 
@@ -494,13 +499,18 @@ This repository represents a significant departure from the old [residential mod
 * Dropped explicit spatial lag generation in the ingest stage.
 * Lots of other bugfixes and minor improvements.
 
-### `assessment-year-2024` (WIP)
+### [`assessment-year-2024`](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year)
 
 * Moved sales validation to a dedicated repository located at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
 * Infrastructure improvements
   * Added [`build-and-run-model`](https://github.com/ccao-data/model-res-avm/actions/workflows/build-and-run-model.yaml) workflow to run the model using GitHub Actions and AWS Batch.
   * Added [`delete-model-run`](https://github.com/ccao-data/model-res-avm/actions/workflows/delete-model-runs.yaml) workflow to delete test run artifacts in S3 using GitHub Actions.
   * Updated [pipeline/05-finalize](pipeline/05-finalize.R) step to render a performance report using Quarto and factored S3/SNS operations out into [pipeline/06-upload.R](pipeline/06-upload.R).
+* Added additional [regressivity metrics (MKI)](https://researchexchange.iaao.org/jptaa/vol17/iss2/2/) to measure model performance.
+* Switched cross-validation to [V-fold](https://rsample.tidymodels.org/reference/vfold_cv.html) instead of time-based.
+* Added new model features: corner lots, distance to vacant land/university/secondary roads, homeowner exemption indicator and length of exemption, number of recent sales, class.
+* Added linear baseline model for comparison against LightGBM to [pipeline/01-train](pipeline/01-train.R).
+* Added experimental comparable sales generation using LightGBM leaf nodes to [pipeline/04-interpret](pipeline/04-interpret.R).
 
 # Ongoing Issues
 
@@ -765,6 +775,16 @@ Public users can download data for each assessment year using the links below. E
 - [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/land_nbhd_rate_data.parquet)
 - [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/land_site_rate_data.parquet)
 - [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2023/training_data.parquet)
+
+#### 2024
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 
