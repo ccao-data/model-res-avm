@@ -1,6 +1,7 @@
 ---
 title: "PIN: `r sprintf('<a target=_blank href=https://www.cookcountyassessor.com/pin/%s>%s</a>', params$pin, params$pin)`"
 subtitle: "Run ID: `r params$run_id`"
+
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
 abstract-title: "Run Note"
@@ -20,9 +21,9 @@ knitr:
     out.width: "100%"
 editor: source
 params:
-  run_id: "2024-01-07-great-ida"
+  run_id: "2024-01-29-boring-carly"
   year: "2024"
-  pin: "01273080020000"
+  pin: "05174150240000"
 ---
 
 {{< include ../_setup.qmd >}}
@@ -44,9 +45,202 @@ hie_data_subset <- hie_data %>%
   mutate(hie = TRUE)
 ```
 
-## Values
+```{r _helpers}
+library(gt)
+# Tables with list columns containing NULL or zero-length items cannot be
+# rendered by shiny. This function will replace those values with NA
+help_clean_tables <- function(df) {
+  
+  null_to_na <- function(x) as.character(ifelse(is.null(x) | length(x) == 0, NA, x))
+  df %>% mutate(across(.fns = ~ sapply(.x, null_to_na)))
+}
 
-```{r, _pin_predicted_model_value}
+```
+
+```{r}
+char_table_data <- chars_data %>%
+  filter(meta_pin == target_pin) %>%
+  left_join(
+    hie_data_subset %>%
+      select(pin, hie),
+    by = c("meta_pin" = "pin")
+  ) %>%
+  mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
+  filter(year == max(year)) %>%
+  ccao::vars_recode(
+    cols = starts_with("char_"),
+    type = "short",
+    as_factor = FALSE)
+
+url_pin <- paste0(
+  substr(target_pin, 1, 3),
+  "-",
+  substr(target_pin, 4, 5),
+  "/",
+  substr(target_pin, 6, 8)
+)
+```
+
+::: {layout-ncol=2}
+
+**PIN**: `r target_pin`\
+**Address**: `r unique(glue("{char_table_data$loc_property_address}, {char_table_data$loc_property_city}", .na = NULL))`\
+**Triad**: `r unique(char_table_data$meta_triad_name)`\
+**Neighborhood**: `r unique(char_table_data$meta_nbhd_code)`\
+**Township**: `r unique(char_table_data$meta_township_name)`\
+**Land Area**: `r unique(scales::comma(char_table_data$char_land_sf))` sq. ft.\
+
+![](https://prodassets.cookcountyassessor.com/s3fs-public/pin_detail/`r url_pin`/`r target_pin`_AB.jpg){fig-align="right"}
+:::
+
+::: {.panel-tabset}
+## Characteristics 
+
+```{r _pin_characteristics}
+char_table_data <- char_table_data %>% 
+  mutate(
+    char_porch = case_when(
+      char_porch == "NONE" ~ "None",
+      char_porch == "FRAM" ~ "Frame enclosed",
+      char_porch == "MSRY" ~ "Masonry enclosed"
+    ),
+    char_heat = case_when(    
+      char_heat == "FURN" ~ "Central air/furnace",
+      char_heat == "STM"  ~ "Steam/radiator",
+      char_heat == "ELEC" ~ "Electric",
+      char_heat == "NONE" ~ "No heat"
+    ),
+    char_air = case_when(
+      char_air == "YES" ~ "Central A/C",
+      char_air == "NO"  ~ "No central A/C"
+    ),
+    char_bsmt = case_when(
+      char_bsmt == "FL" ~ "Full",
+      char_bsmt == "SL" ~ "Slab",
+      char_bsmt == "PT" ~ "Partial",
+      char_bsmt == "CR" ~ "Crawl"
+    ),
+    char_bsmt_fin = case_when(
+      char_bsmt_fin == "REC" ~ "Finished/formal rec room",
+      char_bsmt_fin == "APT" ~ "Apartment",
+      char_bsmt_fin == "UNF" ~ "Unfinished"
+    ),
+    char_gar1_size = case_when(
+      char_gar1_size == "1CAR"   ~ "1 car",
+      char_gar1_size == "1.5CAR" ~ "1.5 cars",
+      char_gar1_size == "2CAR"   ~ "2 cars",
+      char_gar1_size == "3CAR"   ~ "3 cars",
+      char_gar1_size == "3.5CAR" ~ "3.5 cars",
+      char_gar1_size == "0CAR"   ~ "0 cars",
+      char_gar1_size == "4CAR"   ~ "4 cars"
+    ),
+    char_ext_wall = case_when(
+        char_ext_wall == "FRAM" ~ "Frame",
+        char_ext_wall == "MASR" ~ "Masonry",
+        char_ext_wall == "FRMA" ~ "Frame/Masonry",
+        char_ext_wall == "STUC" ~ "Stucco"
+    ),
+    char_roof_cnst = case_when(
+        char_roof_cnst == "SHAS" ~ "Shingle/Asphalt",
+        char_roof_cnst == "TRGR" ~ "Tar/Gravel",
+        char_roof_cnst == "SLTE" ~ "Slate",
+        char_roof_cnst == "SHKE" ~ "Shake",
+        char_roof_cnst == "TILE" ~ "Tile",
+        char_roof_cnst == "OTHR" ~ "Other"
+    )
+  )
+
+# Characteristics data table
+# This table contains all the physical attributes of the target PIN
+
+char_table_data %>% 
+  select(
+    meta_card_num, char_bldg_sf, loc_school_elementary_district_geoid, 
+    meta_class, loc_school_secondary_district_geoid, char_yrblt, char_beds,
+    char_bsmt, char_bsmt_fin, char_fbath, char_hbath, char_porch,
+    char_ext_wall, char_heat, char_air, char_roof_cnst
+  ) %>% 
+  mutate(
+    "Improvement Area" = glue("{char_bldg_sf} SqFt", .na = NULL),
+    
+    "Property Class" = char_table_data$meta_class,
+    "Year Built" = as.character(char_table_data$char_yrblt),
+    
+    "Elementary School District" = char_table_data$loc_school_elementary_district_geoid,
+    "Secondary School District" = char_table_data$loc_school_secondary_district_geoid,
+    
+    "Bedrooms" = as.character(char_table_data$char_beds),
+    "Bathrooms" = glue("{char_table_data$char_fbath} Full / {char_table_data$char_hbath} Half", .na = NULL),
+    
+    "Basement" = glue("{char_table_data$char_bsmt}, {char_table_data$char_bsmt_fin}", .na = NULL),
+    "Garage Size" = char_table_data$char_gar1_size,
+    
+    "Porch" = char_table_data$char_porch, 
+    "Facade" = char_table_data$char_ext_wall,
+    
+    "HVAC" = glue("{char_table_data$char_heat}, {char_table_data$char_air}", .na = NULL),
+    "Roof Material" = char_table_data$char_roof_cnst,
+  ) %>% 
+  help_clean_tables() %>% 
+  replace(is.na(.), "-") %>% 
+  gt() %>%
+      tab_options(
+      table.width = pct(100),
+      table.align = "left"
+    ) %>%
+  cols_hide(
+    columns = c(
+      char_bldg_sf, loc_school_elementary_district_geoid, meta_class,
+      loc_school_secondary_district_geoid, char_yrblt, char_beds,
+      char_bsmt, char_bsmt_fin, char_fbath, char_hbath, char_porch,
+      char_ext_wall, char_heat, char_air, char_roof_cnst, meta_card_num)) %>% 
+  tab_footnote(
+    footnote = "Square footage of the building, as measured from the exterior",
+    locations = cells_body(columns = "Improvement Area"),
+    placement = "right"
+  ) %>% 
+  tab_footnote(
+    footnote = "Designates the property type, such as vacant, residential, 
+    multi-family, agricultural, commercial, or industrial. The classification
+    determines the percentage of fair cash value at which a property is
+    assessed for taxing purposes.",
+    locations = cells_body(columns = "Property Class"),
+    placement = "right"
+  ) %>% 
+  tab_footnote(
+    footnote = "Number of bedrooms in the building",
+    locations = cells_body(columns = "Bedrooms"),
+    placement = "right"
+  ) %>% 
+  tab_footnote(
+    footnote = "Full bath defined as bathrooms with a shower or bathtub. Half bath
+    defined as bathroom without a shower or bathtub.",
+    locations = cells_body(columns = "Bathrooms"),
+    placement = "right"
+  ) %>% 
+  tab_footnote(
+    footnote = "Basement type and finish",
+    locations = cells_body(columns = "Basement"),
+    placement = "right"
+  ) %>% 
+  tab_footnote(
+    footnote = "Exterior wall construction",
+    locations = cells_body(columns = "Facade"),
+    placement = "right"
+  ) %>% 
+  tab_footnote(
+    footnote = "Interior heating type/central air",
+    locations = cells_body(columns = "HVAC"),
+    placement = "right"
+  )
+
+```
+
+
+
+## Values & Sales 
+
+```{r _pin_predicted_model_value}
 assessment_pin %>%
   mutate(township = ccao::town_convert(meta_township_code)) %>%
   filter(meta_pin == target_pin) %>%
@@ -64,7 +258,14 @@ assessment_pin %>%
     "Final FMV Bldg No Prorate" = pred_pin_final_fmv_bldg_no_prorate,
     "Bldg Effective" = pred_pin_bldg_rate_effective,
     "Land Pct. Total" = pred_pin_land_pct_total,
-    "Land Rate Effective" = pred_pin_land_rate_effective
+    "Land Rate Effective" = pred_pin_land_rate_effective,
+    sale_recent_1_date,
+    sale_recent_2_date,
+    sale_recent_1_price,
+    sale_recent_1_document_num,
+    sale_recent_2_price,
+    sale_recent_2_document_num,
+    prior_near_yoy_change_pct
   ) %>%
   mutate(
     across(
@@ -75,82 +276,344 @@ assessment_pin %>%
       `Land Pct. Total`,
       ~ scales::percent(.x, accuracy = 0.01)
     )
-  ) %>%
-  kable(align = "lrrrrrrrrrrrr") %>%
-  kable_styling(
-    "striped",
-    position = "left",
-    fixed_thead = TRUE
-  )
+  ) %>% 
+   mutate(
+     "Sale Date 1" = as.character(sale_recent_1_date),
+     sale_recent_1_price = as.numeric(sale_recent_1_price),
+     "Sale Price 1" = scales::dollar(sale_recent_1_price),
+     "Sale Doc. 1" = sale_recent_1_document_num,
+     "Sale Date 2" = as.character(sale_recent_2_date),
+     "Sale Price 2" = scales::dollar(sale_recent_2_price),
+     "Sale Doc. 2" = sale_recent_2_document_num,
+     "YoY % Value Change" = scales::percent(prior_near_yoy_change_pct)
+     ) %>% 
+  help_clean_tables() %>% 
+  replace(is.na(.), "-") %>% 
+  gt() %>%
+  tab_options(
+    table.width = pct(100)
+      ) %>%
+  cols_hide(columns = c(sale_recent_1_date, sale_recent_2_date,
+                        sale_recent_1_price, sale_recent_2_price, 
+                        sale_recent_1_document_num, sale_recent_2_document_num,
+                        prior_near_yoy_change_pct, "Final FMV Land",
+                        "Final FMV Round No Prorate", "Final FMV Bldg",
+                        "Final FMV Bldg No Prorate", "Prior Far Total"))
+
 ```
 
-## Sales
 
-```{r _pin_topline_characteristics, results= 'asis'}
-training_data %>%
+
+```{r}
+assessment_pin %>%
+  mutate(township = ccao::town_convert(meta_township_code)) %>%
   filter(meta_pin == target_pin) %>%
-  arrange(desc(meta_sale_date)) %>%
+  arrange(meta_pin) %>%
   select(
-    "Sale Date" = meta_sale_date,
-    "Sale Price" = meta_sale_price,
-    "Document Number" = meta_sale_document_num,
-    "Outlier Type" = sv_outlier_type
+    "Township" = township,
+    "Prior Far Total" = prior_far_tot,
+    "Prior Near Total" = prior_near_tot,
+    "Initial Pred. FMV" = pred_pin_initial_fmv,
+    "Final Pred. FMV" = pred_pin_final_fmv,
+    "Final Pred. FMV Round" = pred_pin_final_fmv_round,
+    "Final FMV Land" = pred_pin_final_fmv_land,
+    "Final FMV Round No Prorate" = pred_pin_final_fmv_round_no_prorate,
+    "Final FMV Bldg" = pred_pin_final_fmv_bldg,
+    "Final FMV Bldg No Prorate" = pred_pin_final_fmv_bldg_no_prorate,
+    "Bldg Effective" = pred_pin_bldg_rate_effective,
+    "Land Pct. Total" = pred_pin_land_pct_total,
+    "Land Rate Effective" = pred_pin_land_rate_effective,
+    sale_recent_1_date,
+    sale_recent_2_date,
+    sale_recent_1_price,
+    sale_recent_1_document_num,
+    sale_recent_2_price,
+    sale_recent_2_document_num,
+    prior_near_yoy_change_pct
   ) %>%
-  mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
-  mutate(`Sale Price` = scales::dollar(`Sale Price`)) %>%
-  kable(align = "lrll") %>%
-  kable_styling(
-    "striped",
-    position = "left",
-    fixed_thead = TRUE
-  )
+  mutate(
+    across(
+      c(`Prior Far Total`:`Bldg Effective`, `Land Rate Effective`),
+      ~ scales::dollar(.x)
+    ),
+    across(
+      `Land Pct. Total`,
+      ~ scales::percent(.x, accuracy = 0.01)
+    )
+  ) %>% 
+   mutate(
+     "Sale Date 1" = as.character(sale_recent_1_date),
+     sale_recent_1_price = as.numeric(sale_recent_1_price),
+     "Sale Price 1" = scales::dollar(sale_recent_1_price),
+     "Sale Doc. 1" = sale_recent_1_document_num,
+     "Sale Date 2" = as.character(sale_recent_2_date),
+     "Sale Price 2" = scales::dollar(sale_recent_2_price),
+     "Sale Doc. 2" = sale_recent_2_document_num,
+     "YoY % Value Change" = scales::percent(prior_near_yoy_change_pct)
+     ) %>% 
+  help_clean_tables() %>% 
+  replace(is.na(.), "-") %>% 
+  gt() %>%
+  tab_options(
+    table.width = pct(100)
+      ) %>%
+  cols_hide(columns = c(sale_recent_1_date, sale_recent_2_date,
+                        sale_recent_1_price, sale_recent_2_price, 
+                        sale_recent_1_document_num, sale_recent_2_document_num,
+                        prior_near_yoy_change_pct, "Final FMV Land",
+                        "Final FMV Round No Prorate", "Final FMV Bldg",
+                        "Final FMV Bldg No Prorate", "Prior Far Total"))
+
 ```
 
-## Characteristics
 
-```{r _pin_characteristics}
-chars_data %>%
-  filter(meta_pin == target_pin) %>%
+
+
+## Multi-Card & Multi-PIN Aggregation 
+
+```{r}
+multi_data <- assessment_card %>% 
+  inner_join(
+    assessment_pin %>%
+      filter(meta_pin == target_pin) %>%
+      select(meta_pin),
+    by = 'meta_pin'
+  ) %>%
+  arrange(meta_pin, meta_card_num) %>%
+  select(
+    meta_pin, char_class, meta_card_num,
+    meta_card_pct_total_fmv, char_bldg_sf,
+    pred_card_initial_fmv,
+    pred_card_final_fmv, meta_complex_id
+  ) %>% 
   left_join(
+    chars_data %>% 
+      filter(meta_pin == target_pin) %>% 
+      select(
+        meta_pin,
+        meta_1yr_pri_board_tot
+        ),
+    by = 'meta_pin'
+  ) %>% 
+  left_join(
+    assessment_pin %>%
+      select(
+        meta_pin, meta_tieback_proration_rate,
+        prior_far_tot,
+        prior_near_tot,
+        pred_pin_initial_fmv,
+        pred_pin_final_fmv_round,
+        meta_tieback_key_pin
+      ),
+    by = 'meta_pin'
+  ) %>%
+  distinct(meta_card_num, .keep_all = TRUE) %>% 
+  mutate(
+    `Card` = meta_card_num,
+    `Card %` = scales::percent(meta_card_pct_total_fmv, accuracy = 0.01),
+    `SQFT` = scales::comma(char_bldg_sf),
+    proration = meta_tieback_proration_rate,
+    card_intermediate = (ifelse(
+      is.na(meta_tieback_key_pin),
+      pred_card_initial_fmv,
+      mean(pred_card_initial_fmv)
+    )),
+    pred_pin_card_sum = sum(card_intermediate),
+    pred_pin_final_fmv = ifelse(
+      is.na(meta_complex_id),
+      pred_pin_card_sum,
+      mean(pred_pin_card_sum)
+    ),
+    card_final = pred_pin_final_fmv * meta_card_pct_total_fmv,
+    `PIN` = meta_pin,
+    `Class` = char_class,
+     SQFT = scales::comma(char_bldg_sf),
+    `Card Initial` = scales::dollar(pred_card_initial_fmv),
+    `PIN Initial` = scales::dollar(pred_pin_initial_fmv),
+    `Card Intermediate` = scales::dollar(card_intermediate),
+    `Card Sum` = scales::dollar(pred_pin_card_sum),
+    `PIN Final` = scales::dollar(pred_pin_final_fmv),
+    `PIN Far` = scales::dollar(prior_far_tot),
+    `PIN Near` = scales::dollar(prior_near_tot),
+    `Proration Rate` = scales::percent(meta_tieback_proration_rate, accuracy = 0.01),
+    `Card %` = scales::percent(meta_card_pct_total_fmv, accuracy = 0.01), 
+    #`Card Final` = scales::dollar(pred_card_final_fmv)
+    `Card Final` = scales::dollar(card_final)
+  ) 
+
+
+  multi_data %>% 
+     gt() %>% 
+      tab_options(
+      table.width = pct(100)
+      ) %>% 
+    tab_footnote(
+      footnote = "Percentage of total PIN building value an individual card is worth",
+      locations = cells_column_labels(columns = `Card %`)
+  ) %>% 
+  tab_footnote(
+    footnote = "Initial fair-market value predicted by model for each card.",
+    locations = cells_column_labels(columns = "Card Initial")
+  ) %>% 
+  tab_footnote(
+    footnote = "Sum of `Card Initial.` Equal to initial card value if PIN is 
+    not multicard",
+    locations = cells_column_labels(columns = "PIN Initial")
+  ) %>% 
+  tab_footnote(
+    footnote = "Average of initial predictions for a card that has multiple
+    predictions since it is prorated across multiple pins. Equal to initial 
+    prediction if card is not prorated",
+    locations = cells_column_labels(columns = "Card Intermediate")
+  ) %>% 
+    tab_footnote(
+      footnote = "Sum of of card intermediate values",
+      locations = cells_column_labels(columns = "Card Sum")
+    ) %>% 
+    tab_footnote(
+      footnote = "Card sum",
+      locations = cells_column_labels(columns = "PIN Final")
+    ) %>% 
+    tab_footnote(
+      footnote = "Value of PIN from year it was last reassessed",
+      locations = cells_column_labels(columns = "PIN Far")
+    ) %>% 
+    tab_footnote(
+      footnote = "Value of PIN from previous tax year",
+      locations = cells_column_labels(columns = "PIN Near")
+    ) %>% 
+    tab_footnote(
+      footnote = "Percentage of a multi-PIN card that belongs to each PIN",
+      locations = cells_column_labels(columns = "Proration Rate")
+    ) %>% 
+    tab_footnote(
+      footnote = "Total building value of PIN * card %",
+      locations = cells_column_labels(columns = "Card Final")
+    ) %>% 
+  cols_hide(columns = c(meta_pin, char_class, meta_card_num, meta_card_pct_total_fmv,
+                        char_bldg_sf, pred_card_initial_fmv, pred_card_final_fmv,
+                        meta_complex_id, meta_1yr_pri_board_tot, 
+                        meta_tieback_proration_rate, prior_far_tot, prior_near_tot,
+                        pred_pin_initial_fmv, pred_pin_final_fmv,
+                        meta_tieback_key_pin, proration, card_intermediate,
+                        pred_pin_card_sum, pred_pin_final_fmv_round
+                        )) 
+
+  
+```
+
+
+## Flags 
+```{r _pin_flags, results = 'asis'}
+
+flag_data <- assessment_pin %>% 
+  filter(meta_pin == target_pin) %>% 
+    left_join(
     hie_data_subset %>%
       select(pin, hie),
     by = c("meta_pin" = "pin")
-  ) %>%
-  mutate(hie = ifelse(is.na(hie), FALSE, hie)) %>%
-  filter(year == max(year)) %>%
-  left_join(
-    assessment_pin %>%
-      select(meta_pin, flag_char_missing_critical_value, flag_pin_is_multicard),
-    by = "meta_pin"
-  ) %>%
-  ccao::vars_recode(
-    cols = starts_with("char_"),
-    type = "short",
-    as_factor = FALSE
-  ) %>%
-  arrange(meta_year) %>%
-  select(
-    Year = meta_year,
-    Class = meta_class,
-    "Year Built" = char_yrblt,
-    "Building SF" = char_bldg_sf,
-    Beds = char_beds,
-    "Full Baths" = char_fbath,
-    "Half Baths" = char_hbath,
-    Air = char_air,
-    "Residential Type" = char_type_resd,
-    Rooms = char_rooms,
-    HIE = hie,
-    "Multicard Flag" = flag_pin_is_multicard,
-    "Missing Critical Value" = flag_char_missing_critical_value,
-  ) %>%
-  kable() %>%
-  kable_styling(
-    "striped",
-    position = "left",
-    fixed_thead = TRUE
   )
+
+
+table_flags <- function(flag_data) {
+  flag_df <- tribble(
+    ~x1, ~x2, ~x3,
+    
+    "HIE",
+    flag_data$hie, 
+    "Home Improvement Exemption",
+    
+    "Prorated:", 
+    flag_data$flag_pin_is_prorated,
+    "PIN is prorated",
+    
+    "Multicard PIN:", 
+    flag_data$flag_pin_is_multicard,
+    "More than 1 card on PIN",
+    
+    "Multiland PIN:", 
+    flag_data$flag_pin_is_multiland,
+    "Multipland PIN",
+    
+    "Land 95 Percentile:", 
+    flag_data$flag_land_gte_95_percentile,
+    "Predicted land sq. ft. is greater than 95% of town land sq. ft.",
+    
+    "Bldg 95 Percentile:", 
+    flag_data$flag_bldg_gte_95_percentile,
+    "Predicted building sq. ft. is greater than 95% of town building sq. ft.",
+    
+    "Land/Bldg Ratio >= 10", 
+    flag_data$flag_land_bldg_ratio_gte_10,
+    "Ratio of land sq. ft. / building sq. ft. is greater than 10",
+    
+    "HIE Num Expired:", 
+    flag_data$flag_hie_num_expired,
+    "Flags for HIEs / 288s (placeholder until 288 data is integrated)",
+    
+    "Missing Critical Value:", 
+    flag_data$flag_char_missing_critical_value,
+    "Missing vital characteristic data",
+    
+    "Proration Rates Do Not Sum to 1:", 
+    flag_data$flag_proration_sum_not_1, 
+    "Potential proration issues (rates don't sum to 1)",
+    
+    "Land Value Capped:", 
+    flag_data$flag_land_value_capped,
+    "Capped land value",
+    
+    "Prior Near to Pred Unchanged:", 
+    flag_data$flag_prior_near_to_pred_unchanged,
+    "Value unchanged from last year's value",
+    
+    "Pred Initial to Final Changed:", 
+    flag_data$flag_pred_initial_to_final_changed,
+    "Value changed from initial to final prediction",
+    
+    "YoY Value Increase >50%:", 
+    flag_data$flag_prior_near_yoy_inc_gt_50_pct,
+    "YoY value increase is greater than 50%",
+    
+    "YoY Value Decrease >5%:", 
+    flag_data$flag_prior_near_yoy_dec_gt_5_pct,
+    "YoY value decrease is less than 5%",
+    
+    "Prior Near FMV Top Decile:", 
+    flag_data$flag_prior_near_fmv_top_decile,
+    "PIN in Top Decile of Township Value in Prior Year (high-value property)"
+  ) %>% 
+    filter(
+      x2 == 1
+    ) %>% 
+    help_clean_tables() %>% 
+    replace(is.na(.), "--") %>% 
+    gt() %>% 
+    cols_align(
+      align = "left",
+      columns = everything()
+      ) %>% 
+      tab_options(
+      column_labels.hidden = TRUE
+      ) %>% 
+    tab_style(
+      style = list(
+        cell_text(weight = "bold")
+      ),
+      locations = cells_body(
+        columns = x1,
+        rows = x2 > 0
+      )
+    ) %>% 
+    opt_table_lines(extent = "none") %>% 
+    cols_hide(columns = x2)
+  return(flag_df)
+}
+
+table_flags(flag_data)
+
 ```
+:::
 
 ```{r, results='asis'}
 # Dynamically render shap code based on whether they are enabled for model run
