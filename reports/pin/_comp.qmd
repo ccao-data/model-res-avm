@@ -47,13 +47,22 @@ comp_df_filtered <- comp_df %>%
           select(
             meta_pin, meta_class, meta_1yr_pri_board_tot,
             char_bldg_sf, char_yrblt, char_ext_wall,
-            loc_latitude, loc_longitude
+            loc_latitude, loc_longitude, meta_township_code,
+            meta_nbhd_code
           ),
         by = c("pin" = "meta_pin"),
       ) %>%
       mutate(type = "Target")
   ) %>%
-  mutate(meta_1yr_pri_board_tot = meta_1yr_pri_board_tot * 10)
+  mutate(
+    meta_1yr_pri_board_tot = meta_1yr_pri_board_tot * 10,
+    char_ext_wall = case_when(
+      char_ext_wall == 1 ~ "Frame",
+      char_ext_wall == 2 ~ "Masonry",
+      char_ext_wall == 3 ~ "Frame/Masonry",
+      char_ext_wall == 4 ~ "Stucco"
+    )
+         )
 
 comp_palette <-
   colorFactor(
@@ -61,10 +70,43 @@ comp_palette <-
     domain = comp_df_filtered$type
   )
 
-leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
-  addCircleMarkers(
-    data = comp_df_filtered,
+comps_nbhd_gdf <- ccao::nbhd_shp %>%
+  filter(
+    town_nbhd == comp_df_filtered %>%
+      filter(!is.na(meta_nbhd_code)) %>%
+      pull(meta_nbhd_code))
+
+comps_town_gdf <- ccao::town_shp %>%
+  filter(
+      township_code == comp_df_filtered %>%
+      filter(!is.na(meta_township_code)) %>%
+      pull(meta_township_code)
+    )
+
+
+shared_comp_df <- crosstalk::SharedData$new(comp_df_filtered)
+
+
+  leaflet(shared_comp_df) %>%
+   addProviderTiles(providers$CartoDB.Positron) %>%
+    addPolygons(
+      data = comps_nbhd_gdf,
+      weight = 4,
+      smoothFactor = 0.5,
+      fillColor = "transparent",
+      fillOpacity = 0,
+      color = "#29428D"
+    ) %>%
+  addPolygons(
+    data = comps_town_gdf,
+    weight = 4,
+    smoothFactor = 0.5,
+    fillColor = "transparent",
+    fillOpacity = 0,
+    color = "#29423D"
+  ) %>%
+    addCircleMarkers(
+    data = shared_comp_df,
     ~loc_longitude,
     ~loc_latitude,
     opacity = 1,
@@ -87,10 +129,77 @@ leaflet() %>%
       "<br>Year Built: ", char_yrblt,
       "<br>Ext. Wall: ", char_ext_wall
     )
-  ) %>%
-  setView(
-    lng = mean(comp_df_filtered$loc_longitude),
-    lat = mean(comp_df_filtered$loc_latitude),
-    zoom = 10
   )
+  
+# This table should look like the table in the next code chunk
+datatable(shared_comp_df, 
+          extensions = "Scroller",
+          width = "100%", 
+          options = list(deferRender=TRUE, scrollY=300, scroller=TRUE),
+          colnames = c("Target PIN" = "pin", "PIN" = "comp_pin", 
+                       "Comp. Score" = "comp_score", "Sale Date" = "meta_sale_date", 
+                       "Sale Price" = "meta_sale_price", "Class" = "meta_class",
+                       "Bldg Sq. Ft." = "char_bldg_sf", "Year Built" = "char_yrblt",
+                       "Facade" = "char_ext_wall")) %>% 
+          formatCurrency(c("Sale Price")) %>% 
+          formatPercentage(c("Comp. Score"))
+
+
+```
+
+```{r _comp_table}
+comp_df_filtered %>% 
+  left_join(
+    chars_data %>% 
+      select(
+        meta_pin,
+        char_fbath,
+        char_land_sf,
+        loc_census_tract_geoid,
+       "Year Built" = char_yrblt,
+        loc_school_secondary_district_geoid,
+        loc_school_elementary_district_geoid,
+        "Bldg sq. ft." = char_bldg_sf,
+        "Neighborhood Code" = meta_nbhd_code
+      ), by = c("comp_pin" = "meta_pin"),
+    relationship = "many-to-many"
+  ) %>%
+    arrange(
+    desc(comp_score)
+    ) %>% 
+  mutate(
+    comp_score = scales::percent(comp_score),
+    meta_sale_price = scales::dollar(meta_sale_price),
+    "Bldg sq. ft." = scales::comma(char_bldg_sf),
+    char_land_sf = scales::comma(char_land_sf),
+    "Exterior Wall" = char_ext_wall
+  ) %>% 
+  distinct(comp_pin, .keep_all = TRUE) %>%
+  rename(
+    "Target PIN" = pin,
+    "Comp PIN" = comp_pin,
+    "Comp Score" = comp_score,
+    "Sale Date" = meta_sale_date,
+    "Sale Price" = meta_sale_price,
+    "Class" = meta_class,
+    "Full Baths" = char_fbath,
+    "Land sq. ft."= char_land_sf,
+    "Census Tract" = loc_census_tract_geoid,
+    "Secondary School District" = loc_school_secondary_district_geoid,
+    "Elementary School District" = loc_school_elementary_district_geoid
+  ) %>%
+  subset(
+  select = -c(char_bldg_sf, meta_nbhd_code,
+              meta_township_code, char_ext_wall,
+              loc_latitude, loc_longitude,
+              meta_1yr_pri_board_tot, char_yrblt, type)
+  ) %>% 
+  relocate(
+    "Target PIN", "Comp PIN", "Comp Score", "Class",
+    "Year Built", "Sale Date", "Sale Price", "Land sq. ft.",
+    "Bldg sq. ft.", "Full Baths", "Elementary School District",
+    "Secondary School District", "Exterior Wall"
+    ) %>% 
+  datatable()
+
 ```
