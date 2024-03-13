@@ -122,6 +122,22 @@ land_nbhd_rate_data <- dbGetQuery(
 )
 tictoc::toc()
 
+# Raw sales document number data used to identify some sales accidentally
+# excluded from the original training runs. See
+# https://github.com/ccao-data/data-architecture/pull/334 for more info
+tictoc::tic("Sales data pulled")
+sales_data <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
+  SELECT DISTINCT
+      substr(saledt, 1, 4) AS year,
+      instruno AS doc_no_old,
+      NULLIF(REPLACE(instruno, 'D', ''), '') AS doc_no_new
+  FROM iasworld.sales
+  WHERE substr(saledt, 1, 4) >= '{params$input$min_sale_year}'
+  ")
+)
+tictoc::toc()
+
 # Close connection to Athena
 dbDisconnect(AWS_ATHENA_CONN_NOCTUA)
 rm(AWS_ATHENA_CONN_NOCTUA)
@@ -262,11 +278,24 @@ assessment_data_w_hie <- assessment_data %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Adding time features and cleaning")
 
+training_data_klg <- training_data_w_hie %>%
+  left_join(
+    sales_data %>%
+      distinct(doc_no_new, .keep_all = TRUE),
+    by = c("meta_sale_document_num" = "doc_no_new", "year")
+  ) %>%
+  mutate(
+    sv_added_later = as.logical(endsWith(doc_no_old, "D")),
+    sv_added_later = replace_na(sv_added_later, FALSE)
+  ) %>%
+  select(-doc_no_old)
+
+
 ## 5.1. Training Data ----------------------------------------------------------
 
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, missingness, etc. is handled via Tidymodels recipes
-training_data_clean <- training_data_w_hie %>%
+training_data_clean <- training_data_klg %>%
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)

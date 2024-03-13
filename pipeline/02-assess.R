@@ -366,7 +366,7 @@ sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
     meta_sale_price, meta_sale_date, meta_sale_document_num,
-    sv_outlier_type
+    sv_outlier_type, sv_added_later
   ) %>%
   # Include outliers, since these data are used for desk review and
   # not for modeling
@@ -386,7 +386,8 @@ sales_data_two_most_recent <- sales_data %>%
       meta_sale_date,
       meta_sale_price,
       meta_sale_document_num,
-      meta_sale_outlier_type
+      meta_sale_outlier_type,
+      sv_added_later
     ),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
   ) %>%
