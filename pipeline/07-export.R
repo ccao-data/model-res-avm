@@ -13,7 +13,6 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
-  library(data.table)
   library(DBI)
   library(openxlsx)
   library(noctua)
@@ -264,106 +263,6 @@ assessment_card <- dbGetQuery(
   ")
 )
 
-# Raw sales data used to identify some sales accidentally
-# excluded from the original training runs. See
-# https://github.com/ccao-data/data-architecture/pull/334 for more inf
-tictoc::tic("Sales data pulled")
-sales_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT
-      res.meta_pin,
-      res.meta_year,
-      res.meta_triad_code,
-      sale.sale_price AS meta_sale_price,
-      sale.sale_date AS meta_sale_date,
-      sale.doc_no AS meta_sale_document_num,
-      sale.sv_is_outlier,
-      sale.sv_outlier_type,
-      sale.sv_run_id
-  FROM model.vw_card_res_input res
-  INNER JOIN default.vw_pin_sale sale
-      ON sale.pin = res.meta_pin
-      AND sale.year = res.year
-  WHERE CAST(res.year AS int)
-      BETWEEN CAST({params$input$min_sale_year} AS int) -
-        {params$input$n_years_prior}
-      AND CAST({params$input$max_sale_year} AS int)
-  AND sale.deed_type IN ('01', '02', '05')
-  AND NOT sale.is_multisale
-  AND NOT sale.sale_filter_same_sale_within_365
-  AND NOT sale.sale_filter_less_than_10k
-  AND NOT sale.sale_filter_deed_type
-  AND Year(sale.sale_date) >= {params$input$min_sale_year}
-  ")
-)
-
-sales_doc_nos <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT DISTINCT
-      substr(saledt, 1, 4) AS year,
-      instruno AS doc_no_old,
-      NULLIF(REPLACE(instruno, 'D', ''), '') AS doc_no_new
-  FROM iasworld.sales
-  WHERE substr(saledt, 1, 4) >= '{params$input$min_sale_year}'
-  ")
-)
-
-sales_data_klg <- sales_data %>%
-  left_join(
-    sales_doc_nos %>%
-      distinct(doc_no_new, .keep_all = TRUE),
-    by = c("meta_sale_document_num" = "doc_no_new")
-  ) %>%
-  mutate(
-    sv_added_later = as.logical(endsWith(doc_no_old, "D")),
-    sv_added_later = replace_na(sv_added_later, FALSE),
-    sv_outlier_type = "Not outlier (added later)"
-  ) %>%
-  distinct(
-    meta_pin, meta_year, meta_triad_code,
-    meta_sale_price, meta_sale_date, meta_sale_document_num,
-    sv_outlier_type, sv_added_later
-  ) %>%
-  filter(meta_triad_code == params$export$triad_code)
-
-
-
-
-# Include outliers, since these data are used for desk review and
-# not for modeling
-rename(meta_sale_outlier_type = sv_outlier_type) %>%
-  mutate(
-    meta_sale_outlier_type = ifelse(
-      meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
-    )
-  ) %>%
-  group_by(meta_pin) %>%
-  slice_max(meta_sale_date, n = 2) %>%
-  mutate(mr = paste0("sale_recent_", row_number())) %>%
-  tidyr::pivot_wider(
-    id_cols = c(meta_pin, meta_triad_code),
-    names_from = mr,
-    values_from = c(
-      meta_sale_date,
-      meta_sale_price,
-      meta_sale_document_num,
-      meta_sale_outlier_type,
-      sv_added_later
-    ),
-    names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
-  ) %>%
-  select(meta_pin, meta_triad_code, contains("1"), contains("2")) %>%
-  ungroup() %>%
-  filter(sale_recent_1_sv_added_later | sale_recent_2_sv_added_later) %>%
-  mutate(
-    across(ends_with("_price"), as.numeric),
-    across(
-      ends_with("_outlier_type"),
-      ~ replace_na(.x, "Not outlier (added later)")
-    )
-  )
-
-tictoc::toc()
 
 
 
@@ -508,46 +407,9 @@ if (comp_enable) {
   training_data <- tibble()
 }
 
-# Splice missing sales into the output workbook
-assessment_pin_spliced <- bind_rows(
-  assessment_pin_merged %>%
-    rename_with(
-      ~ str_replace_all(.x, "_1_", "_"),
-      starts_with("sale_recent_1")
-    ) %>%
-    select(-starts_with("sale_recent_2")),
-  assessment_pin_merged %>%
-    filter(!is.na(sale_recent_2_date)) %>%
-    rename_with(
-      ~ str_replace_all(.x, "_2_", "_"),
-      starts_with("sale_recent_2")
-    ) %>%
-    select(-starts_with("sale_recent_1"))
-)
-
-setDT(assessment_pin_spliced)[
-  sales_data_klg,
-  on = .(meta_pin, meta_year, meta_triad_code)
-][
-  is.na()
-]
-
-
-tidyr::pivot_wider(
-  id_cols = meta_pin,
-  names_from = mr,
-  values_from = c(
-    meta_sale_date,
-    meta_sale_price,
-    meta_sale_document_num,
-    meta_sale_outlier_type
-  ),
-  names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
-)
-
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
-assessment_pin_prepped <- assessment_pin_spliced %>%
+assessment_pin_prepped <- assessment_pin_merged %>%
   mutate(
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
@@ -585,8 +447,7 @@ assessment_pin_prepped <- assessment_pin_spliced %>%
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value,
-    sale_recent_1_sv_added_later, sale_recent_2_sv_added_later
+    flag_char_missing_critical_value
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
