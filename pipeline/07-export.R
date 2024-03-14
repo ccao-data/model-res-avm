@@ -411,6 +411,10 @@ if (comp_enable) {
 # order for DR sheets
 assessment_pin_prepped <- assessment_pin_merged %>%
   mutate(
+    across(
+      ends_with("added_later") & where(is.logical),
+      ~ as.numeric(.x)
+    ),
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
     prior_near_land_pct_total = round(prior_near_land / prior_near_tot, 4),
@@ -447,7 +451,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value
+    flag_char_missing_critical_value,
+    sale_recent_1_sv_added_later, sale_recent_2_sv_added_later
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
@@ -495,7 +500,7 @@ assessment_card_prepped <- assessment_card %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Write raw data to sheets for parcel details
-for (town in unique(assessment_pin_prepped$township_code)) {
+for (town in "77") {
   message("Now processing: ", town_convert(town))
 
   # Filter overall data to specific township
@@ -620,7 +625,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:67 # Don't forget the two hidden rows at the end
+  pin_col_range <- 1:69 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -686,7 +691,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 66, 67), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 68, 69), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -768,6 +773,24 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     type = "expression"
   )
 
+  # Highlight sales that were later added to the model
+  conditionalFormatting(
+    wb, pin_sheet_name,
+    cols = 28,
+    rows = pin_row_range,
+    style = createStyle(bgFill = "#CF91FF"),
+    rule = "$BN7=1",
+    type = "expression"
+  )
+  conditionalFormatting(
+    wb, pin_sheet_name,
+    cols = 32,
+    rows = pin_row_range,
+    style = createStyle(bgFill = "#CF91FF"),
+    rule = "$BO7=1",
+    type = "expression"
+  )
+
   # Write PIN-level data to workbook
   writeData(
     wb, pin_sheet_name, assessment_pin_filtered,
@@ -806,18 +829,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$total_av,
-    startCol = 66,
+    startCol = 68,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$av_difference,
-    startCol = 67,
+    startCol = 69,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(66, 67),
+    c(68, 69),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
