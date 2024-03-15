@@ -16,10 +16,7 @@ run_type: "test"
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Manual edit of 2024-02-06-relaxed-tristan to splice missing sales into the
-  assessment_pin output file. Only needed for West township. Subsequet towns
-  will use a different model entirely. Needed to fix:
-  https://github.com/ccao-data/data-architecture/pull/334
+  Final 2024 residential model with updated data and new features
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -448,4 +445,4 @@ comp:
 # upload
 export:
   triad_code: "1"
-  run_id: "2024-03-13-lucid-gabe"
+  run_id: "2024-02-06-relaxed-tristan"

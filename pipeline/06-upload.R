@@ -13,7 +13,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Load various parameters as defined in the `finalize` step
 metadata <- read_parquet(paths$output$metadata$local)
-run_id2 <- metadata$run_id
+run_id <- metadata$run_id
 
 
 
