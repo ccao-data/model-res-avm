@@ -214,7 +214,7 @@ plots <- imap(datasets_sold, ~ {
 ```
 ## Relationship Between Sale and Assessed Values
 
-Sale and assessed values are capped at $2million to increase legibility. 
+Sale and assessed values are capped at $2 million to increase legibility. 
 
 ::: {.panel-tabset}
 
