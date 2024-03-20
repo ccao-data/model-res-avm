@@ -26,10 +26,10 @@ params:
 
 {{< include ../_setup.qmd >}}
 
-For assessed properties, there are characteristics which make it difficult to predict their market value. These properties are separated out and analyzed in the following report. All outputs are calculated on county-level data. The universe of sold data is from prior year sales.
-
 
 ## Definitions
+
+For assessed properties, there are characteristics which make it difficult to predict their market value. These properties are separated out and analyzed in the following report. All outputs are calculated on county-level data. The universe of sold data is from prior year sales.
 
 **Large Lots:** Indicator for a PIN with land square footage larger than 95% of other properties for this year and township.
 
@@ -42,7 +42,7 @@ For assessed properties, there are characteristics which make it difficult to pr
 ## Topline Stats for All Properties
 
 ```{r _challenge_groups_topline_stats_all}
-# Separate data frames into individual categories based on the desired "challenge groups".
+## Separate data frames into individual categories based on the desired "challenge groups".
 large_lots <- assessment_pin %>%
   filter(flag_land_gte_95_percentile == TRUE) %>%
   select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
@@ -148,7 +148,7 @@ rs_fns_list <- list(
   max = \(x) max(x, na.rm = TRUE)
 )
 
-## Some functions require 2 or 1 arguments.
+# Some functions require 2 or 1 arguments.
 apply_functions <- function(dataset, dataset_name) {
   x <- dataset$pred_pin_initial_fmv
   y <- dataset$sale_ratio_study_price
@@ -192,12 +192,11 @@ results %>%
 ```
 
 ```{r _challenge_groups_plot_function, results = 'asis'}
-## Interactive elements are hashed out in order to produce rendered version
+# Interactive elements are hashed out in order to produce rendered version
 plots <- imap(datasets_sold, ~ {
   p <- ggplot(.x, aes(
     x = sale_ratio_study_price / 1000, y = pred_pin_initial_fmv / 1000
-    # , tooltip = "pin" = meta_pin
-  )) +
+    )) +
     geom_point() +
     geom_abline(intercept = 0, slope = 1, color = "red") +
     scale_x_continuous(
@@ -209,12 +208,12 @@ plots <- imap(datasets_sold, ~ {
       limits = c(0, 2000)
     ) +
     theme_bw(base_size = 12)
-  # ggplotly(p, tooltip = "text")
+  ggplotly(p, tooltip = "text")
 })
 ```
 ## Relationship Between Sale and Assessed Values
 
-Sale and assessed values are capped at $2 million to increase legibility. 
+Sale and assessed values are capped at $2million to increase legibility. 
 
 ::: {.panel-tabset}
 
