@@ -20,7 +20,7 @@ knitr:
     out.width: "100%"
 editor: source
 params:
-  run_id: "2024-02-06-relaxed-tristan"
+  run_id: "2024-03-17-stupefied-maya"
   year: "2024"
 ---
 
@@ -42,35 +42,44 @@ For assessed properties, there are characteristics which make it difficult to pr
 
 ```{r _challenge_groups_topline_stats_all}
 ## Separate data frames into individual categories based on the desired "challenge groups".
-full_data_function <- function(col_expr, dataset_name) {
-  dataset <- assessment_pin %>%
-    filter({{ col_expr }}) %>%
-    select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
+large_lots <- assessment_pin %>%
+  filter(flag_land_gte_95_percentile == TRUE) %>%
+  select(meta_pin, pred_pin_final_fmv_round, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
-  return(list(dataset_name = dataset))
-}
+multicard <- assessment_pin %>%
+  filter(flag_pin_is_multicard == TRUE) %>%
+  select(meta_pin, pred_pin_final_fmv_round, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
-large_lots <- full_data_function(flag_land_gte_95_percentile == TRUE, "Large Lots")
-multicard <- full_data_function(flag_pin_is_multicard == TRUE, "Multicard")
-multifamily <- full_data_function(meta_class == "211", "Multifamily")
-top_decile <- full_data_function(flag_prior_near_fmv_top_decile == TRUE, "Top Decile")
+multifamily <- assessment_pin %>%
+  filter(meta_class == "211") %>%
+  select(meta_pin, pred_pin_final_fmv_round, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
+top_decile <- assessment_pin %>%
+  filter(flag_prior_near_fmv_top_decile == TRUE) %>%
+  select(meta_pin, pred_pin_final_fmv_round, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
+
+datasets_full <- list(
+  "Large Lots" = large_lots,
+  "Multicard" = multicard,
+  "Multifamily" = multifamily,
+  "Top Decile" = top_decile
+)
 
 full_data_functions <- function(dataset, dataset_name) {
   N <- nrow(dataset)
 
-  median_pred <- median(dataset$pred_pin_initial_fmv, na.rm = TRUE)
+  median_pred <- median(dataset$pred_pin_final_fmv_round, na.rm = TRUE)
   median_prior <- median(dataset$prior_near_tot, na.rm = TRUE)
 
-  percent_change <- with(dataset, (pred_pin_initial_fmv - prior_near_tot) / prior_near_tot * 100)
+  percent_change <- with(dataset, (pred_pin_final_fmv_round - prior_near_tot) / prior_near_tot * 100)
   median_percent_change <- median(percent_change, na.rm = TRUE)
 
   results_df <- data.frame(
     Dataset = dataset_name,
     Count = N,
-    "Median Prior" = median_prior,
-    "Median Predicted" = round(median_pred),
-    "Median Percent Change" = median_percent_change
+    "Median Prior" = scales::dollar(round(median_prior, 2)),
+    "Median Predicted" = scales::dollar(round(median_pred, 2)),
+    "Median Percent Change" = scales::percent(median_percent_change / 100)
   )
 
   return(results_df)
@@ -87,7 +96,6 @@ do.call(bind_rows, results_list) %>%
 ```
 ## Ratio Stats for Sold Properties
 
-
 ```{r _challenge_groups_topline_stats_sold}
 ## Utilizes a list of functions in the evaluate stage to calculate stats for the list of Challenge Group Datasets.
 
@@ -99,6 +107,7 @@ multifamily_sold <- multifamily %>%
   filter(!is.na(sale_ratio_study_price))
 top_decile_sold <- top_decile %>%
   filter(!is.na(sale_ratio_study_price))
+
 
 datasets_sold <- list(
   "Large Lots" = large_lots_sold,
@@ -135,7 +144,7 @@ rs_fns_list <- list(
   max = \(x) max(x, na.rm = TRUE)
 )
 
-# Some functions require 2 or 1 arguments.
+## Some functions require 2 or 1 arguments.
 apply_functions <- function(dataset, dataset_name) {
   x <- dataset$pred_pin_final_fmv_round
   y <- dataset$sale_ratio_study_price
@@ -165,13 +174,13 @@ results <- bind_rows(
 results %>%
   as.data.frame() %>%
   mutate(
-    median_change = ((median - median_prior_near_tot) / median_prior_near_tot) * 100,
-    min = round(scales::dollar(min)),
-    q25 = round(q25),
-    median = round(median),
-    `median previous estimate` = round(median_prior_near_tot),
-    q75 = round(q75),
-    max = round(max)
+    median_change = scales::percent((median - median_prior_near_tot) / median_prior_near_tot),
+    min = scales::dollar(round(min, 2)),
+    q25 = scales::dollar(round(q25, 2)),
+    median = scales::dollar(round(median, 2)),
+    `median previous estimate` = scales::dollar(round(median_prior_near_tot, 2)),
+    q75 = scales::dollar(round(q75, 2)),
+    max = scales::dollar(round(max, 2))
   ) %>%
   select(dataset, count, "median yoy change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, "median predicted" = median, "median sale" = median_sale, "median previous estimate", q75, max) %>%
   kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ","), align = rep("l", 15)) %>%
@@ -182,7 +191,7 @@ results %>%
 # Interactive elements are hashed out in order to produce rendered version
 plots <- imap(datasets_sold, ~ {
   p <- ggplot(.x, aes(
-    x = sale_ratio_study_price / 1000, y = pred_pin_initial_fmv / 1000
+    x = sale_ratio_study_price / 1000, y = pred_pin_final_fmv_round / 1000
     # , tooltip = "pin" = meta_pin
   )) +
     geom_point() +
@@ -196,7 +205,7 @@ plots <- imap(datasets_sold, ~ {
       limits = c(0, 2000)
     ) +
     theme_bw(base_size = 12)
-  ggplotly(p, tooltip = "text")
+  # ggplotly(p, tooltip = "text")
 })
 ```
 ## Relationship Between Sale and Assessed Values
@@ -220,7 +229,7 @@ iwalk(plots, ~ {
 process_and_plot <- function(data) {
   town_shp <- ccao::town_shp
   spatial_data <- st_as_sf(data, coords = c("loc_longitude", "loc_latitude"), crs = 4326) %>%
-    mutate(Change = pmin(100 * (pred_pin_initial_fmv / prior_near_tot) - 100, 300))
+    mutate(Change = pmin(100 * (pred_pin_final_fmv_round / prior_near_tot) - 100, 300))
 
   town_shp <- st_transform(town_shp, crs = st_crs(spatial_data))
 
