@@ -43,29 +43,19 @@ For assessed properties, there are characteristics which make it difficult to pr
 
 ```{r _challenge_groups_topline_stats_all}
 ## Separate data frames into individual categories based on the desired "challenge groups".
-large_lots <- assessment_pin %>%
-  filter(flag_land_gte_95_percentile == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
+full_data_function <- function(col_expr, dataset_name) {
+  dataset <- assessment_pin %>%
+    filter({{ col_expr }}) %>%
+    select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
 
-multicard <- assessment_pin %>%
-  filter(flag_pin_is_multicard == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
+  return(list(dataset_name = dataset))
+}
 
-multifamily <- assessment_pin %>%
-  filter(meta_class == "211") %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
+large_lots <- full_data_function(flag_land_gte_95_percentile == TRUE, "Large Lots")
+multicard <- full_data_function(flag_pin_is_multicard == TRUE, "Multicard")
+multifamily <- full_data_function(meta_class == "211", "Multifamily")
+top_decile <- full_data_function(flag_prior_near_fmv_top_decile == TRUE, "Top Decile")
 
-top_decile <- assessment_pin %>%
-  filter(flag_prior_near_fmv_top_decile == TRUE) %>%
-  select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
-
-
-datasets_full <- list(
-  "Large Lots" = large_lots,
-  "Multicard" = multicard,
-  "Multifamily" = multifamily,
-  "Top Decile" = top_decile
-)
 
 full_data_functions <- function(dataset, dataset_name) {
   N <- nrow(dataset)
@@ -100,7 +90,7 @@ do.call(bind_rows, results_list) %>%
 
 
 ```{r _challenge_groups_topline_stats_sold}
-# Utilizes a list of functions in the evaluate stage to calculate stats for the list of Challenge Group Datasets.
+## Utilizes a list of functions in the evaluate stage to calculate stats for the list of Challenge Group Datasets.
 
 large_lots_sold <- large_lots %>%
   filter(!is.na(sale_ratio_study_price))
@@ -150,7 +140,7 @@ rs_fns_list <- list(
 
 # Some functions require 2 or 1 arguments.
 apply_functions <- function(dataset, dataset_name) {
-  x <- dataset$pred_pin_initial_fmv
+  x <- dataset$pred_pin_final_fmv_round
   y <- dataset$sale_ratio_study_price
 
   results_rs <- lapply(rs_fns_list, function(f) {
@@ -179,7 +169,7 @@ results %>%
   as.data.frame() %>%
   mutate(
     median_change = ((median - median_prior_near_tot) / median_prior_near_tot) * 100,
-    min = round(min),
+    min = round(scales::dollar(min)),
     q25 = round(q25),
     median = round(median),
     `median previous estimate` = round(median_prior_near_tot),
@@ -196,7 +186,8 @@ results %>%
 plots <- imap(datasets_sold, ~ {
   p <- ggplot(.x, aes(
     x = sale_ratio_study_price / 1000, y = pred_pin_initial_fmv / 1000
-    )) +
+    # , tooltip = "pin" = meta_pin
+  )) +
     geom_point() +
     geom_abline(intercept = 0, slope = 1, color = "red") +
     scale_x_continuous(
