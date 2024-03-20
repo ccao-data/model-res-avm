@@ -42,7 +42,7 @@ For assessed properties, there are characteristics which make it difficult to pr
 ## Topline Stats for All Properties
 
 ```{r _challenge_groups_topline_stats_all}
-## Separate data frames into individual categories based on the desired "challenge groups".
+# Separate data frames into individual categories based on the desired "challenge groups".
 large_lots <- assessment_pin %>%
   filter(flag_land_gte_95_percentile == TRUE) %>%
   select(meta_pin, pred_pin_initial_fmv, sale_ratio_study_price, loc_latitude, loc_longitude, prior_near_tot, meta_township_code)
