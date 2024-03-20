@@ -26,7 +26,6 @@ params:
 
 {{< include ../_setup.qmd >}}
 
-
 ## Definitions
 
 For assessed properties, there are characteristics which make it difficult to predict their market value. These properties are separated out and analyzed in the following report. All outputs are calculated on county-level data. The universe of sold data is from prior year sales.
@@ -101,14 +100,12 @@ multifamily_sold <- multifamily %>%
 top_decile_sold <- top_decile %>%
   filter(!is.na(sale_ratio_study_price))
 
-
 datasets_sold <- list(
   "Large Lots" = large_lots_sold,
   "Multicard" = multicard_sold,
   "Multifamily" = multifamily_sold,
   "Top Decile" = top_decile_sold
 )
-
 
 gte_n <- \(n_sales, min_n, fn, na_type) {
   ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
@@ -267,7 +264,3 @@ iwalk(plots, ~ {
 })
 ```
 :::
-
-
-
-
