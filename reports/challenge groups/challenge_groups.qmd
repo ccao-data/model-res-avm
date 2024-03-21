@@ -41,7 +41,6 @@ For assessed properties, there are characteristics which make it difficult to pr
 ## Topline Stats for All Properties
 
 ```{r _challenge_groups_topline_stats_all}
-
 full_data_function <- function(col_expr, dataset_name) {
   dataset <- assessment_pin %>%
     filter({{ col_expr }}) %>%
@@ -82,9 +81,7 @@ full_data_functions <- function(dataset, dataset_name) {
   return(results_df)
 }
 
-results_list <- lapply(names(datasets_full), function(name) {
-  full_data_functions(datasets_full[[name]], name)
-})
+results_list <- map2(datasets_full, names(datasets_full), ~ full_data_functions(.x, .y))
 
 do.call(bind_rows, results_list) %>%
   rename("Median Prior" = "Median.Prior", "Median Predicted" = "Median.Predicted", "Median Percent Change" = "Median.Percent.Change") %>%
@@ -94,14 +91,12 @@ do.call(bind_rows, results_list) %>%
 ## Ratio Stats for Sold Properties
 
 ```{r _challenge_groups_topline_stats_sold}
-filter_datasets = function(datasets) {
-  datasets_sold = lapply(datasets, function(df) {
+filter_datasets <- function(datasets) {
+  datasets_sold <- lapply(datasets, function(df) {
     df %>% filter(!is.na(sale_ratio_study_price))
   })
   return(datasets_sold)
 }
-
-
 
 datasets_sold <- filter_datasets(datasets_full)
 
@@ -178,25 +173,70 @@ results %>%
 
 ```{r _challenge_groups_plot_function, results = 'asis'}
 # Interactive elements are hashed out in order to produce rendered version
-plots <- imap(datasets_sold, ~ {
-  p <- ggplot(.x, aes(
-    x = sale_ratio_study_price / 1000, y = pred_pin_final_fmv_round / 1000
-    # , tooltip = "pin" = meta_pin
-  )) +
-    geom_point() +
-    geom_abline(intercept = 0, slope = 1, color = "red") +
-    scale_x_continuous(
-      name = "Actual FMV (Sale Price in $K)",
-      limits = c(0, 2000)
-    ) +
-    scale_y_continuous(
-      name = "Estimated FMV (in $K)",
-      limits = c(0, 2000)
-    ) +
-    theme_bw(base_size = 12)
-  # ggplotly(p, tooltip = "text")
-})
+create_plots <- function(datasets) {
+  plots <- imap(datasets, ~ {
+    p <- ggplot(.x, aes(
+      x = sale_ratio_study_price,
+      y = pred_pin_final_fmv_round,
+      text = meta_pin # Changed to 'text' for the tooltip
+    )) +
+      geom_point() +
+      geom_abline(intercept = 0, slope = 1, color = "red") +
+      scale_x_continuous(
+        name = "Actual FMV",
+        limits = c(0, 2000000),
+        labels = dollar_format() # Format x-axis labels as dollars
+      ) +
+      scale_y_continuous(
+        name = "Estimated FMV",
+        limits = c(0, 2000000),
+        labels = dollar_format() # Format y-axis labels as dollars
+      ) +
+      ggtitle(.y) + # Add the name of the list element as the title
+      theme_bw(base_size = 12)
+
+    ggplotly(p, tooltip = "text")
+  })
+
+  return(plots)
+}
+
+plots <- create_plots(datasets_sold)
 ```
+
+
+```{r}
+create_plots <- function(datasets) {
+  plots <- imap(datasets, ~ {
+    p <- ggplot(.x, aes(
+      x = sale_ratio_study_price,
+      y = pred_pin_final_fmv_round,
+      text = meta_pin # Changed to 'text' for the tooltip
+    ))
+    geom_point() +
+      geom_abline(intercept = 0, slope = 1, color = "red") +
+      scale_x_continuous(
+        name = "Actual FMV",
+        limits = c(0, 2000000)
+      ) +
+      scale_y_continuous(
+        name = "Estimated FMV",
+        limits = c(0, 2000000)
+      ) +
+      ggtitle(.y) + # Add the name of the list element as the title
+      theme_bw(base_size = 12)
+
+    ggplotly(p, tooltip = "text")
+  })
+}
+
+create_plots(datasets_sold)
+
+plots <- create_plots(datasets_sold)
+```
+
+
+
 ## Relationship Between Sale and Assessed Values
 
 Sale and assessed values are capped at $2million to increase legibility. 
