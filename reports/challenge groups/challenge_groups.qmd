@@ -162,97 +162,56 @@ results %>%
     min = scales::dollar(round(min, 2)),
     q25 = scales::dollar(round(q25, 2)),
     median = scales::dollar(round(median, 2)),
-    `median previous estimate` = scales::dollar(round(median_prior_near_tot, 2)),
+    `Median Previous Estimate` = scales::dollar(round(median_prior_near_tot, 2)),
     q75 = scales::dollar(round(q75, 2)),
     max = scales::dollar(round(max, 2))
   ) %>%
-  select(dataset, count, "median yoy change" = median_change, "median ratio" = median_ratio, cod, prb, prd, mki, min, q25, "median predicted" = median, "median sale" = median_sale, "median previous estimate", q75, max) %>%
+  select(Dataset = dataset, Count = count, "Median YoY Change" = median_change, "Median Ratio" = median_ratio, COD = cod, PRB = prb, PRD = prd, MKI = mki, Min = min, Q25 = q25, "Median Predicted" = median, "Median Sale" = median_sale, "Median Previous Estimate", Q75 = q75, Max = max) %>%
   kable(format = "html", digits = 2, row.names = FALSE, format.args = list(big.mark = ","), align = rep("l", 15)) %>%
   kable_styling()
 ```
-
-```{r _challenge_groups_plot_function, results = 'asis'}
-# Interactive elements are hashed out in order to produce rendered version
-create_plots <- function(datasets) {
-  plots <- imap(datasets, ~ {
-    p <- ggplot(.x, aes(
-      x = sale_ratio_study_price,
-      y = pred_pin_final_fmv_round,
-      text = meta_pin # Changed to 'text' for the tooltip
-    )) +
-      geom_point() +
-      geom_abline(intercept = 0, slope = 1, color = "red") +
-      scale_x_continuous(
-        name = "Actual FMV",
-        limits = c(0, 2000000),
-        labels = dollar_format() # Format x-axis labels as dollars
-      ) +
-      scale_y_continuous(
-        name = "Estimated FMV",
-        limits = c(0, 2000000),
-        labels = dollar_format() # Format y-axis labels as dollars
-      ) +
-      ggtitle(.y) + # Add the name of the list element as the title
-      theme_bw(base_size = 12)
-
-    ggplotly(p, tooltip = "text")
-  })
-
-  return(plots)
-}
-
-plots <- create_plots(datasets_sold)
-```
-
-
-```{r}
-create_plots <- function(datasets) {
-  plots <- imap(datasets, ~ {
-    p <- ggplot(.x, aes(
-      x = sale_ratio_study_price,
-      y = pred_pin_final_fmv_round,
-      text = meta_pin # Changed to 'text' for the tooltip
-    ))
-    geom_point() +
-      geom_abline(intercept = 0, slope = 1, color = "red") +
-      scale_x_continuous(
-        name = "Actual FMV",
-        limits = c(0, 2000000)
-      ) +
-      scale_y_continuous(
-        name = "Estimated FMV",
-        limits = c(0, 2000000)
-      ) +
-      ggtitle(.y) + # Add the name of the list element as the title
-      theme_bw(base_size = 12)
-
-    ggplotly(p, tooltip = "text")
-  })
-}
-
-create_plots(datasets_sold)
-
-plots <- create_plots(datasets_sold)
-```
-
 
 
 ## Relationship Between Sale and Assessed Values
 
 Sale and assessed values are capped at $2million to increase legibility. 
 
-::: {.panel-tabset}
+```{r}
+create_plots <- function(datasets) {
+  imap(datasets, ~ {
+    p <- ggplot(.x, aes(
+      x = sale_ratio_study_price / 1000,
+      y = pred_pin_final_fmv_round / 1000,
+      text = meta_pin # Changed to 'text' for the tooltip
+    )) +
+      geom_point() +
+      geom_abline(intercept = 0, slope = 1, color = "red") +
+      scale_x_continuous(
+        name = "Actual FMV (Sale Price in $K)",
+        limits = c(0, 2000)
+      ) +
+      scale_y_continuous(
+        name = "Estimated FMV (in $K)",
+        limits = c(0, 2000)
+      ) +
+      ggtitle(.y) + # Add the name of the list element as the title
+      theme_bw(base_size = 12)
 
-```{r _challenge_groups_plot_output, results = 'asis'}
-iwalk(plots, ~ {
-  cat("## ", .y, "\n\n")
-
-  print(.x)
-
-  cat("\n\n")
-})
+    ggplotly(p, tooltip = "text") # Convert to a plotly object
+  })
+}
 ```
-:::
+
+```{r, results = 'asis'}
+test <- create_plots(datasets_sold[1])
+test$'Large Lots'
+test <- create_plots(datasets_sold[2])
+test$Multicard
+test <- create_plots(datasets_sold[3])
+test$Multifamily
+test <- create_plots(datasets_sold[4])
+test$'Top Decile'
+```
 
 ```{r _challenge_groups_map_function}
 process_and_plot <- function(data) {
