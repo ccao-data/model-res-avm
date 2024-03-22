@@ -176,42 +176,69 @@ results %>%
 
 Sale and assessed values are capped at $2million to increase legibility. 
 
-```{r}
-create_plots <- function(datasets) {
-  imap(datasets, ~ {
-    p <- ggplot(.x, aes(
-      x = sale_ratio_study_price / 1000,
-      y = pred_pin_final_fmv_round / 1000,
-      text = meta_pin # Changed to 'text' for the tooltip
-    )) +
-      geom_point() +
-      geom_abline(intercept = 0, slope = 1, color = "red") +
-      scale_x_continuous(
-        name = "Actual FMV (Sale Price in $K)",
-        limits = c(0, 2000)
-      ) +
-      scale_y_continuous(
-        name = "Estimated FMV (in $K)",
-        limits = c(0, 2000)
-      ) +
-      ggtitle(.y) + # Add the name of the list element as the title
-      theme_bw(base_size = 12)
 
-    ggplotly(p, tooltip = "text") # Convert to a plotly object
-  })
+```{r}
+create_plot <- function(dataset) {
+  # Adding a new column for URLs
+  dataset$url <- paste0("https://www.cookcountyassessor.com/pin/", dataset$meta_pin)
+
+  # Create the ggplot
+  p <- ggplot(dataset, aes(
+    x = sale_ratio_study_price,
+    y = pred_pin_final_fmv_round,
+    text = paste0("Pin: ", meta_pin, "\nTownship: ", ccao::town_convert(meta_township_code)),
+    tooltip = text, url = url
+  )) +
+    geom_point() +
+    geom_abline(intercept = 0, slope = 1, color = "red") +
+    scale_x_continuous(labels = dollar_format(), name = "Actual FMV", limits = c(0, 2000000)) +
+    scale_y_continuous(labels = dollar_format(), name = "Estimated FMV", limits = c(0, 2000000)) +
+    theme_minimal()
+
+  # Convert to a plotly object
+  ggplotly(p, tooltip = "text", tooltip2 = "url")
 }
 ```
 
+::: {.panel-tabset}
+
+## Large Lots
+
 ```{r, results = 'asis'}
-test <- create_plots(datasets_sold[1])
-test$'Large Lots'
-test <- create_plots(datasets_sold[2])
-test$Multicard
-test <- create_plots(datasets_sold[3])
-test$Multifamily
-test <- create_plots(datasets_sold[4])
-test$'Top Decile'
+large_lots_sold <- datasets_sold$"Large Lots" %>%
+  as.data.frame()
+
+create_plot(large_lots_sold)
 ```
+
+## Multicard
+
+```{r, results = 'asis'}
+multicard_sold <- datasets_sold$Multicard %>%
+  as.data.frame()
+
+create_plot(multicard_sold)
+```
+
+## Multifamily
+
+```{r}
+multifamily_sold <- datasets_sold$Multifamily %>%
+  as.data.frame()
+
+create_plot(multifamily_sold)
+```
+
+## Top Decile
+
+```{r}
+top_decile_sold <- datasets_sold$"Top Decile" %>%
+  as.data.frame()
+
+create_plot(top_decile_sold)
+```
+
+:::
 
 ```{r _challenge_groups_map_function}
 process_and_plot <- function(data) {
