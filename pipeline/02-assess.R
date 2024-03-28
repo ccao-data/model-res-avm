@@ -350,6 +350,11 @@ sales_data_ratio_study <- sales_data %>%
   # For ratio studies, we don't want to include outliers
   filter(!sv_is_outlier) %>%
   filter(meta_year == params$assessment$data_year) %>%
+  # Kludge to remove some sales that somehow appear to be for a single card
+  # on a multi-card PIN. Will need to go back and hand validate these
+  filter(
+    !meta_sale_document_num %in% c("2335646020", "2312245016")
+  ) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
   distinct(
