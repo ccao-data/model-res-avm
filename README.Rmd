@@ -334,7 +334,7 @@ ccao::vars_dict %>%
     Category,
     char = "Characteristic", acs5 = "ACS5", loc = "Location",
     prox = "Proximity", ind = "Indicator", time = "Time",
-    meta = "Meta", other = "Other"
+    meta = "Meta", other = "Other", ccao = "Other"
   )) %>%
   pivot_wider(
     id_cols = `Feature Name`:`Notes`,
