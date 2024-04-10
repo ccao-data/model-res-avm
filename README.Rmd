@@ -64,6 +64,7 @@ graph LR
     export("Export")
 
     ingest --> train
+    train --> assess
     train --> interpret
     assess --> evaluate
     evaluate --> finalize
@@ -110,7 +111,7 @@ To counter this, we've listed the major choices we've made about our modeling pr
 
 We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It has [an excellent R API](https://cran.r-project.org/web/packages/lightgbm/index.html) and has been around since 2016.
 
-We [tried a number of other model types and frameworks](#31), including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
+We [tried a number of other model types and frameworks](https://github.com/ccao-data/model-res-avm/issues/31), including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 
 * [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The docs contain good explanations of LightGBM's features and useful troubleshooting sections.
 * Highly accurate. It consistently beat other methods in accuracy, as [measured by RMSE (root mean squared error) using a test set](#faqs).
@@ -520,7 +521,7 @@ This repository represents a significant departure from the old [residential mod
 * Added linear baseline model for comparison against LightGBM to [pipeline/01-train](pipeline/01-train.R).
 * Added experimental comparable sales generation using LightGBM leaf nodes to [pipeline/04-interpret](pipeline/04-interpret.R).
 * Refactored shared pipeline logic into [separate scripts](./R/setup.R) to simplify development and maintainability.
-* Separated development/reporting dependencies from primary dependencies using [renv profiles](https://github.com/ccao-data/model-res-avm?tab=readme-ov-file#profiles-and-lockfiles) to increase replicability.
+* Separated development/reporting dependencies from primary dependencies using [renv profiles](#profiles-and-lockfiles) to increase replicability.
 
 # Ongoing Issues
 
@@ -603,7 +604,7 @@ Setting the assessed value of a home equal to the value of a recent sale is call
 
 We don't use sale or uniformity comparables for the purpose of modeling. Our model works by automatically finding patterns in sales data and extrapolating those patterns to predict prices; the model never explicitly says, "Here is property X and here are Y similar properties and their sale prices."
 
-We *do* use [comparables for other things](https://www.cookcountyassessor.com/what-are-comparable-properties), namely when processing appeals and when evaluating the model's performance. Note however that the comparables generated via #106 are _experimental_ and are not currently used.
+We *do* use [comparables for other things](https://www.cookcountyassessor.com/what-are-comparable-properties), namely when processing appeals and when evaluating the model's performance. Note however that the comparables generated via [#106](https://github.com/ccao-data/model-res-avm/pull/106) are _experimental_ and are not currently used.
 
 **Q: What are the most important features in the model?**
 

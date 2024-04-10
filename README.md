@@ -116,6 +116,7 @@ graph LR
     export("Export")
 
     ingest --> train
+    train --> assess
     train --> interpret
     assess --> evaluate
     evaluate --> finalize
@@ -217,8 +218,9 @@ framework created and maintained by Microsoft. It has [an excellent R
 API](https://cran.r-project.org/web/packages/lightgbm/index.html) and
 has been around since 2016.
 
-We [tried a number of other model types and frameworks](#31), including
-regularized linear models,
+We [tried a number of other model types and
+frameworks](https://github.com/ccao-data/model-res-avm/issues/31),
+including regularized linear models,
 [XGBoost](https://xgboost.readthedocs.io/en/latest/),
 [CatBoost](https://catboost.ai/), random forest, shallow neural
 networks, and support vector machines. We even tried ensemble methods
@@ -827,9 +829,8 @@ the following major changes to the residential modeling codebase:
 - Refactored shared pipeline logic into [separate scripts](./R/setup.R)
   to simplify development and maintainability.
 - Separated development/reporting dependencies from primary dependencies
-  using [renv
-  profiles](https://github.com/ccao-data/model-res-avm?tab=readme-ov-file#profiles-and-lockfiles)
-  to increase replicability.
+  using [renv profiles](#profiles-and-lockfiles) to increase
+  replicability.
 
 # Ongoing Issues
 
@@ -1015,7 +1016,8 @@ and their sale prices.”
 We *do* use [comparables for other
 things](https://www.cookcountyassessor.com/what-are-comparable-properties),
 namely when processing appeals and when evaluating the model’s
-performance. Note however that the comparables generated via \#106 are
+performance. Note however that the comparables generated via
+[\#106](https://github.com/ccao-data/model-res-avm/pull/106) are
 *experimental* and are not currently used.
 
 **Q: What are the most important features in the model?**
