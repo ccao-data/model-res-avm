@@ -158,21 +158,29 @@ stand-alone script) or as part of the overall pipeline (with
     held-out test set and an assessor-specific ratio study method.
     Performance statistics include standard machine learning metrics
     (RMSE, MAE, MAPE) as well as assessor-specific metrics (COD, PRD,
-    PRB). This stage calculates metrics for different levels of
+    PRB, MKI). This stage calculates metrics for different levels of
     geography with (and without) property class breakouts. The primary
     output of this stage is a data frame of aggregate performance
     statistics.
 
-4.  **Interpret**: Calculate SHAP values for all the estimated values
-    from the assess stage. These are the *per feature* contribution to
-    the predicted value for an *individual observation* (usually a
-    single PIN). Also calculate the aggregate feature importance for the
-    entire model. The primary output of this stage is a data frame of
-    the contributions of each feature for each property.
+4.  **Interpret**: Calculate three major explanatory outputs:
 
-5.  **Finalize**: Save run timings and metadata and render a Quarto
-    document containing a model performance report to
-    `reports/performance.html`.
+    - SHAP values for all the estimated values from the assess stage.
+      These are the *per feature* contribution to the predicted value
+      for an *individual observation* (usually a single PIN)
+    - Aggregate feature importance for the entire model, using the
+      built-in LightGBM method
+    - An experimental set of comparable property sales, based loosely on
+      the method described [in this
+      vignette](https://ccao-data.github.io/lightsnip/articles/finding-comps.html)
+
+5.  **Finalize**: Save run timings and metadata. Render the following
+    Quarto documents:
+
+    - An overall model report detailing model performance, effects, and
+      quality control tests
+    - For PINs of interest, individual PIN-level reports detailing the
+      characteristics, SHAP values, and results for a given PIN
 
 6.  **Upload**: Upload all output objects to AWS (S3). All model outputs
     for every model run are stored in perpetuity in S3. Each run’s
@@ -188,9 +196,9 @@ stand-alone script) or as part of the overall pipeline (with
 
 ## Choices Made
 
-Despite its growing reputation as an easy-to-use panacea, machine
-learning actually involves a number of choices and trade-offs which are
-not always transparent or well-justified. Seemingly inane decisions by
+Despite its reputation as an easy-to-use panacea, machine learning
+actually involves a number of choices and trade-offs which are not
+always transparent or well-justified. Seemingly inane decisions by
 algorithm creators and data scientists [can introduce systemic
 bias](https://www.scientificamerican.com/article/how-nist-tested-facial-recognition-algorithms-for-racial-bias/)
 into results.
@@ -210,8 +218,9 @@ framework created and maintained by Microsoft. It has [an excellent R
 API](https://cran.r-project.org/web/packages/lightgbm/index.html) and
 has been around since 2016.
 
-We tried a number of other model types and frameworks, including
-regularized linear models,
+We [tried a number of other model types and
+frameworks](https://github.com/ccao-data/model-res-avm/issues/31),
+including regularized linear models,
 [XGBoost](https://xgboost.readthedocs.io/en/latest/),
 [CatBoost](https://catboost.ai/), random forest, shallow neural
 networks, and support vector machines. We even tried ensemble methods
@@ -251,7 +260,7 @@ The downsides of LightGBM are that it is:
 - Prone to over-fitting if not trained carefully, unlike other methods
   such as random forest.
 
-For a more in depth report on the performance and accuracy trade-offs
+For a more in-depth report on the performance and accuracy trade-offs
 between LightGBM and XGBoost specific to our use case, please see our
 [Model
 Benchmark](https://github.com/ccao-data/report-model-benchmark?tab=readme-ov-file#model-benchmark)
@@ -314,22 +323,22 @@ well-specified in order for a model to be accurate and useful. LightGBM
 has a large number of tunable parameters, but we tune only a small
 proportion, including:
 
-| LightGBM Parameter                                                                                 | CV Search Range | Parameter Description                                                              |
-|:---------------------------------------------------------------------------------------------------|:----------------|:-----------------------------------------------------------------------------------|
-| [num_iterations](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations)         | 100 - 2500      | NA                                                                                 |
-| [learning_rate](https://lightgbm.readthedocs.io/en/latest/Parameters.html#learning_rate)           | -3 - -0.4       | NA                                                                                 |
-| [max_bin](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_bin)                       | 50 - 512        | Maximum number of bins used to bucket continuous features                          |
-| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | 32 - 2048       | Maximum number of leaves in each tree. Main parameter to control model complexity. |
-| [add_to_linked_depth](https://ccao-data.github.io/lightsnip/reference/train_lightgbm.html)         | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.           |
-| [feature_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)     | 0.3 - 0.7       | The random subset of features selected for a tree, as a percentage.                |
-| [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)   | 0.001 - 10000   | The minimum gain needed to create a split.                                         |
-| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)     | 2 - 400         | The minimum data in a single tree leaf. Important to prevent over-fitting.         |
-| [max_cat_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)   | 10 - 250        | Maximum number of split points for categorical features                            |
-| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group) | 2 - 400         | Minimum number of observations per categorical group                               |
-| [cat_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                 | 10 - 200        | Categorical smoothing. Used to reduce noise.                                       |
-| [cat_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                         | 0.001 - 100     | Categorical-specific L2 regularization                                             |
-| [lambda_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                   | 0.001 - 100     | L1 regularization                                                                  |
-| [lambda_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l2)                   | 0.001 - 100     | L2 regularization                                                                  |
+| LightGBM Parameter                                                                                 | CV Search Range | Parameter Description                                                                                        |
+|:---------------------------------------------------------------------------------------------------|:----------------|:-------------------------------------------------------------------------------------------------------------|
+| [num_iterations](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations)         | 100 - 2500      | Total number of trees/iterations. Final value is dependent on CV and early stopping.                         |
+| [learning_rate](https://lightgbm.readthedocs.io/en/latest/Parameters.html#learning_rate)           | 0.001 - 0.398   | Speed of training per iteration. Higher usually means faster convergence, but possibly higher overall error. |
+| [max_bin](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_bin)                       | 50 - 512        | Maximum number of bins used to bucket continuous features                                                    |
+| [num_leaves](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_leaves)                 | 32 - 2048       | Maximum number of leaves in each tree. Main parameter to control model complexity.                           |
+| [add_to_linked_depth](https://ccao-data.github.io/lightsnip/reference/train_lightgbm.html)         | 1 - 7           | Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.                                     |
+| [feature_fraction](https://lightgbm.readthedocs.io/en/latest/Parameters.html#feature_fraction)     | 0.3 - 0.7       | The random subset of features selected for a tree, as a percentage.                                          |
+| [min_gain_to_split](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_gain_to_split)   | 0.001 - 10000   | The minimum gain needed to create a split.                                                                   |
+| [min_data_in_leaf](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_in_leaf)     | 2 - 400         | The minimum data in a single tree leaf. Important to prevent over-fitting.                                   |
+| [max_cat_threshold](https://lightgbm.readthedocs.io/en/latest/Parameters.html#max_cat_threshold)   | 10 - 250        | Maximum number of split points for categorical features                                                      |
+| [min_data_per_group](https://lightgbm.readthedocs.io/en/latest/Parameters.html#min_data_per_group) | 2 - 400         | Minimum number of observations per categorical group                                                         |
+| [cat_smooth](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_smooth)                 | 10 - 200        | Categorical smoothing. Used to reduce noise.                                                                 |
+| [cat_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#cat_l2)                         | 0.001 - 100     | Categorical-specific L2 regularization                                                                       |
+| [lambda_l1](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l1)                   | 0.001 - 100     | L1 regularization                                                                                            |
+| [lambda_l2](https://lightgbm.readthedocs.io/en/latest/Parameters.html#lambda_l2)                   | 0.001 - 100     | L2 regularization                                                                                            |
 
 These parameters are tuned using [Bayesian hyperparameter
 optimization](https://www.tidymodels.org/learn/work/bayes-opt/), which
@@ -359,7 +368,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2024-03-05.
+model as of 2024-04-10.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                 |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -490,15 +499,15 @@ when valuing my property?” Here’s a list of commonly-asked-about
 features which are *not* in the model, as well as rationale for why
 they’re excluded:
 
-| Feature                                                | Reason It’s Excluded                                                                                                                                                                                                                                              |
-|--------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Property condition                                     | We track property condition, but over 98% of the properties in our data have the same condition, meaning it’s not tracked effectively and there’s not enough variation for it to be predictive of sale price.                                                     |
-| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn’t add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County.                         |
-| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can’t reliably observe interior property characteristics beyond what is available through building permits.                                                                                               |
-| Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                                                    |
-| Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                                                      |
-| Comparable properties                                  | The model will automatically find and use comparable properties when producing an estimate. However, the model *does not* explicitly use or produce a set of comparable properties.                                                                               |
-| Flood indicator                                        | Between the First Street flood risk and direction data, distance to water, and precise latitude and longitude for each parcel, the contribution of {FEMA flood hazard data\](<https://hazards.fema.gov/femaportal/prelimdownload/>) to the model approached zero. |
+| Feature                                                | Reason It’s Excluded                                                                                                                                                                                                                                           |
+|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Property condition                                     | We track property condition, but over 98% of the properties in our data have the same condition, meaning it’s not tracked effectively and there’s not enough variation for it to be predictive of sale price.                                                  |
+| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn’t add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County.                      |
+| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can’t reliably observe interior property characteristics beyond what is available through building permits.                                                                                            |
+| Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                                                 |
+| Pictures of property                                   | We don’t have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                                                   |
+| Comparable properties                                  | The model will automatically find and use comparable properties when producing an estimate. However, the model *does not* explicitly use or produce a set of comparable properties.                                                                            |
+| Flood indicator                                        | Between the First Street flood risk and direction data, distance to water, and precise latitude and longitude for each parcel, the contribution of [FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/) to the model approached zero. |
 
 ### Data Used
 
@@ -607,6 +616,7 @@ actually used by the model itself. They include:
   exemptions.
 - [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values
   for class 210 and 295 units. Provided by the Valuations department.
+  Not always used, so may be 0 rows for certain years.
 - [`land_nbhd_rate_data`](#getting-data) - Fixed \$/sqft land rates by
   assessor neighborhood for residential property classes except 210
   and 295. Provided by the Valuations department.
@@ -663,7 +673,7 @@ In addition to the first-pass modeling done by LightGBM, the CCAO also
 performs a set of simple adjustments on the initial predicted values
 from the `assess` stage. These adjustments are internally called
 “post-modeling,” and are responsible for correcting minor deficiencies
-in the first model’s predictions. Specifically, post-modeling will:
+in the initial predictions. Specifically, post-modeling will:
 
 1.  Aggregate values for multi-card properties to the PIN level, then
     disaggregate them back to the card level. A check is used to ensure
@@ -816,6 +826,11 @@ the following major changes to the residential modeling codebase:
   [pipeline/01-train](pipeline/01-train.R).
 - Added experimental comparable sales generation using LightGBM leaf
   nodes to [pipeline/04-interpret](pipeline/04-interpret.R).
+- Refactored shared pipeline logic into [separate scripts](./R/setup.R)
+  to simplify development and maintainability.
+- Separated development/reporting dependencies from primary dependencies
+  using [renv profiles](#profiles-and-lockfiles) to increase
+  replicability.
 
 # Ongoing Issues
 
@@ -905,8 +920,8 @@ boundaries” such as property class and assessor neighborhood. These
 boundaries create the (mis)perceived incentive to slightly alter the
 characteristics of marginal properties. For example, subtracting 10
 square feet from a property’s total footprint in order to end up in a
-different property class. In actuality, property class has no impact on
-predictions from our models.
+different property class. In actuality, property class has almost no
+impact on predictions from our models.
 
 Falsely altering or not reporting property characteristics may change an
 assessed value, but it also has negative consequences for neighbors and
@@ -1001,7 +1016,9 @@ and their sale prices.”
 We *do* use [comparables for other
 things](https://www.cookcountyassessor.com/what-are-comparable-properties),
 namely when processing appeals and when evaluating the model’s
-performance.
+performance. Note however that the comparables generated via
+[\#106](https://github.com/ccao-data/model-res-avm/pull/106) are
+*experimental* and are not currently used.
 
 **Q: What are the most important features in the model?**
 
@@ -1055,6 +1072,8 @@ to gauge the performance of their mass appraisal systems, including:
   Differential)](https://ccao-data.github.io/assessr/reference/prd.html)
 - [PRB (Price-Related
   Bias)](https://ccao-data.github.io/assessr/reference/prb.html)
+- [MKI (Modified Kakwani
+  Index)](https://ccao-data.github.io/assessr/reference/mki_ki.html)
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error
 (RMSE), mean absolute error (MAE), and mean absolute percentage error
@@ -1087,9 +1106,9 @@ proceeding with the steps below.
 If you’re on Windows, you’ll also need to install
 [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to
 build the necessary packages. You may also want to (optionally) install
-[DVC](https://dvc.org/doc/install) to pull data and run pipelines.
+[DVC](https://dvc.org/doc/install) to pull data and run the pipeline.
 
-We also publish a Docker image containing model code and all of the
+We also publish a Docker image containing the model code and all of the
 dependencies necessary to run it. If you’re comfortable using Docker,
 you can skip the installation steps below and instead pull the image
 from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version
@@ -1229,6 +1248,7 @@ input box, with each run ID separated by a space
 > upcoming assessment cycle (the current year from January-April, or the
 > next year from May-December). The workflow will raise an error if you
 > attempt to delete a model run outside the upcoming assessment cycle.
+>
 > In the off chance that you do in fact need to delete a test run from a
 > previous assessment cycle, you can work around this limitation by
 > moving model run artifacts to bucket prefixes representing the
@@ -1289,8 +1309,8 @@ dvc pull
 ```
 
 Public users can download data for each assessment year using the links
-below. Each file should be placed in the `input/` directory prior to
-running the model pipeline.
+below. Each file should be placed in the [`input/`](input/) directory
+prior to running the model pipeline.
 
 #### 2021
 
@@ -1315,13 +1335,37 @@ running the model pipeline.
 
 #### 2024
 
-- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/assessment_data.parquet)
-- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/char_data.parquet)
-- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/complex_id_data.parquet)
-- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/hie_data.parquet)
-- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_nbhd_rate_data.parquet)
-- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_site_rate_data.parquet)
-- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/training_data.parquet)
+Due to a [data
+issue](https://github.com/ccao-data/data-architecture/pull/334) with the
+initial 2024 model run, there are actually *two* final 2024 models. The
+run `2024-02-06-relaxed-tristan` was used for Rogers Park township only,
+while the run `2024-03-17-stupefied-maya` was used for all subsequent
+City of Chicago townships.
+
+The data issue caused some sales to be omitted from the
+`2024-02-06-relaxed-tristan` training set, however the actual impact on
+predicted values was *extremely* minimal. We chose to update the data
+and create a second final model out of an abudance of caution.
+
+##### 2024-02-06-relaxed-tristan
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/training_data.parquet)
+
+##### 2024-03-17-stupefied-maya (final)
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/).
@@ -1353,9 +1397,7 @@ sped up using the parallel processing built-in to LightGBM. Note that:
   [LightGBM R
   package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If
   you’d like to use the GPU version you’ll need to [build it
-  yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build)
-  or wait for the [upcoming CUDA
-  release](https://github.com/microsoft/LightGBM/issues/5153).
+  yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
 
 ## Managing R Dependencies
 

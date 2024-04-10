@@ -27,10 +27,10 @@ This repository contains code, data, and documentation for the Cook County Asses
 | 2018        | City     | Linear regression per township              | N/A                        | Not available. Values provided by vendor                                                                |
 | 2019        | North    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
 | 2020        | South    | Linear regression or GBM model per township | R (Base)                   | [Link](https://gitlab.com/ccao-data-science---modeling/ccao_sf_cama_dev)                                |
-| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year) |
-| 2022        | North     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year) |
-| 2023        | South     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year) |
-| 2024        | City      | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year) |
+| 2021        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2021-assessment-year)                            |
+| 2022        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)                            |
+| 2023        | South    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year)                            |
+| 2024        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year)                            |
 
 # Model Overview
 
@@ -86,11 +86,16 @@ All inputs and outputs are stored on AWS S3 using a unique run identifier. Each 
 
 2. **Assess**: Use the trained model to estimate values for all residential properties. Values are [adjusted if necessary](#post-modeling) and then aggregated to the PIN level. The primary output of this stage is a data frame of PIN-level assessed values.
 
-3. **Evaluate**: Measure the performance of the model using the held-out test set and an assessor-specific ratio study method. Performance statistics include standard machine learning metrics (RMSE, MAE, MAPE) as well as assessor-specific metrics (COD, PRD, PRB). This stage calculates metrics for different levels of geography with (and without) property class breakouts. The primary output of this stage is a data frame of aggregate performance statistics.
+3. **Evaluate**: Measure the performance of the model using the held-out test set and an assessor-specific ratio study method. Performance statistics include standard machine learning metrics (RMSE, MAE, MAPE) as well as assessor-specific metrics (COD, PRD, PRB, MKI). This stage calculates metrics for different levels of geography with (and without) property class breakouts. The primary output of this stage is a data frame of aggregate performance statistics.
 
-4. **Interpret**: Calculate SHAP values for all the estimated values from the assess stage. These are the _per feature_ contribution to the predicted value for an _individual observation_ (usually a single PIN). Also calculate the aggregate feature importance for the entire model. The primary output of this stage is a data frame of the contributions of each feature for each property.
+4. **Interpret**: Calculate three major explanatory outputs:
+    - SHAP values for all the estimated values from the assess stage. These are the _per feature_ contribution to the predicted value for an _individual observation_ (usually a single PIN)
+    - Aggregate feature importance for the entire model, using the built-in LightGBM method
+    - An experimental set of comparable property sales, based loosely on the method described [in this vignette](https://ccao-data.github.io/lightsnip/articles/finding-comps.html)
 
-5. **Finalize**: Save run timings and metadata and render a Quarto document containing a model performance report to `reports/performance.html`.
+5. **Finalize**: Save run timings and metadata. Render the following Quarto documents:
+    - An overall model report detailing model performance, effects, and quality control tests
+    - For PINs of interest, individual PIN-level reports detailing the characteristics, SHAP values, and results for a given PIN
 
 6. **Upload**: Upload all output objects to AWS (S3). All model outputs for every model run are stored in perpetuity in S3. Each run's performance can be visualized using the CCAO's internal Tableau dashboards. NOTE: This stage is only run internally, since it requires access to the CCAO Data AWS account.
 
@@ -98,7 +103,7 @@ All inputs and outputs are stored on AWS S3 using a unique run identifier. Each 
 
 ## Choices Made
 
-Despite its growing reputation as an easy-to-use panacea, machine learning actually involves a number of choices and trade-offs which are not always transparent or well-justified. Seemingly inane decisions by algorithm creators and data scientists [can introduce systemic bias](https://www.scientificamerican.com/article/how-nist-tested-facial-recognition-algorithms-for-racial-bias/) into results.
+Despite its reputation as an easy-to-use panacea, machine learning actually involves a number of choices and trade-offs which are not always transparent or well-justified. Seemingly inane decisions by algorithm creators and data scientists [can introduce systemic bias](https://www.scientificamerican.com/article/how-nist-tested-facial-recognition-algorithms-for-racial-bias/) into results.
 
 To counter this, we've listed the major choices we've made about our modeling process below, as well as the rationale behind each decision. We feel strongly that these choices lead to optimal results given the trade-offs involved, but we're [absolutely open to suggestions and criticism](#contributing).
 
@@ -106,7 +111,7 @@ To counter this, we've listed the major choices we've made about our modeling pr
 
 We use [LightGBM](https://lightgbm.readthedocs.io/en/latest/) for our primary valuation model. LightGBM is a [GBDT (gradient-boosting decision tree)](https://arogozhnikov.github.io/2016/06/24/gradient_boosting_explained.html) framework created and maintained by Microsoft. It has [an excellent R API](https://cran.r-project.org/web/packages/lightgbm/index.html) and has been around since 2016.
 
-We tried a number of other model types and frameworks, including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
+We [tried a number of other model types and frameworks](https://github.com/ccao-data/model-res-avm/issues/31), including regularized linear models, [XGBoost](https://xgboost.readthedocs.io/en/latest/), [CatBoost](https://catboost.ai/), random forest, shallow neural networks, and support vector machines. We even tried ensemble methods such as [model stacking](https://github.com/ccao-data/model-res-avm/commit/77de50dce86986f8d442f05c161438933c097958). We chose LightGBM because it has the right mix of trade-offs for our needs. Specifically, LightGBM is:
 
 * [Well-documented](https://lightgbm.readthedocs.io/en/latest/). The docs contain good explanations of LightGBM's features and useful troubleshooting sections.
 * Highly accurate. It consistently beat other methods in accuracy, as [measured by RMSE (root mean squared error) using a test set](#faqs).
@@ -123,7 +128,7 @@ The downsides of LightGBM are that it is:
 * Painful to train, since it has a large number of hyperparameters.
 * Prone to over-fitting if not trained carefully, unlike other methods such as random forest.
 
-For a more in depth report on the performance and accuracy trade-offs between LightGBM and XGBoost specific to our use case, please see our [Model Benchmark](https://github.com/ccao-data/report-model-benchmark?tab=readme-ov-file#model-benchmark) repository.
+For a more in-depth report on the performance and accuracy trade-offs between LightGBM and XGBoost specific to our use case, please see our [Model Benchmark](https://github.com/ccao-data/report-model-benchmark?tab=readme-ov-file#model-benchmark) repository.
 
 ### Framework Selection
 
@@ -165,6 +170,8 @@ params <- read_yaml("params.yaml")
 # nolint start
 params_desc <- tribble(
   ~"name", ~"desc",
+  "learning_rate", "Speed of training per iteration. Higher usually means faster convergence, but possibly higher overall error.",
+  "num_iterations", "Total number of trees/iterations. Final value is dependent on CV and early stopping.",
   "stop_iter", "Stop training after number of iterations without improvement on a validation set.",
   "num_leaves", "Maximum number of leaves in each tree. Main parameter to control model complexity.",
   "add_to_linked_depth", "Amount to add to `max_depth` if linked to `num_leaves`. See `max_depth`.",
@@ -187,8 +194,10 @@ as_tibble(params$model$hyperparameter$range) %>%
   as.data.frame() %>%
   mutate(
     name = rownames(.),
-    log10 = name %in%
-      c("min_gain_to_split", "cat_l2", "lambda_l1", "lambda_l2"),
+    log10 = name %in% c(
+      "min_gain_to_split", "cat_l2", "lambda_l1",
+      "lambda_l2", "learning_rate"
+    ),
     V1 = ifelse(log10, round(10^unlist(V1), 3), V1),
     V2 = ifelse(log10, round(10^unlist(V2), 3), V2),
     range = paste0(V1, " - ", V2)
@@ -362,15 +371,15 @@ We rely on numerous third-party sources to add new features to our data. These f
 
 Many people have intuitive assumptions about what drives the value of their home, so we often receive the question, "Is X taken into account when valuing my property?" Here's a list of commonly-asked-about features which are *not* in the model, as well as rationale for why they're excluded:
 
-| Feature                                                | Reason It's Excluded                                                                                                                                                                                                                      |
-|--------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Property condition                                     | We track property condition, but over 98% of the properties in our data have the same condition, meaning it's not tracked effectively and there's not enough variation for it to be predictive of sale price.                             |
-| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn't add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County. |
-| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can't reliably observe interior property characteristics beyond what is available through building permits.                                                                       |
-| Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                            |
-| Pictures of property                                   | We don't have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                              |
-| Comparable properties                                  | The model will automatically find and use comparable properties when producing an estimate. However, the model _does not_ explicitly use or produce a set of comparable properties.                                                       |
-| Flood indicator                                   | Between the First Street flood risk and direction data, distance to water, and precise latitude and longitude for each parcel, the contribution of {FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/) to the model approached zero.                                                                                                                                                                                                                             |
+| Feature                                                | Reason It's Excluded                                                                                                                                                                                                                                           |
+|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Property condition                                     | We track property condition, but over 98% of the properties in our data have the same condition, meaning it's not tracked effectively and there's not enough variation for it to be predictive of sale price.                                                  |
+| Crime                                                  | Crime is highly correlated with features that are already in the model, such as income and neighborhood, so it doesn't add much predictive power. Additionally, it is difficult to reliably aggregate crime data from all of Cook County.                      |
+| Interior features such as kitchen quality or amenities | Our office can only access the outside of buildings; we can't reliably observe interior property characteristics beyond what is available through building permits.                                                                                            |
+| Blighted building or eyesore in my neighborhood        | If a specific building or thing affects sale prices in your neighborhood, this will already be reflected in the model through [neighborhood fixed effects](https://en.wikipedia.org/wiki/Fixed_effects_model).                                                 |
+| Pictures of property                                   | We don't have a way to reliably use image data in our model, but we may include such features in the future.                                                                                                                                                   |
+| Comparable properties                                  | The model will automatically find and use comparable properties when producing an estimate. However, the model _does not_ explicitly use or produce a set of comparable properties.                                                                            |
+| Flood indicator                                        | Between the First Street flood risk and direction data, distance to water, and precise latitude and longitude for each parcel, the contribution of [FEMA flood hazard data](https://hazards.fema.gov/femaportal/prelimdownload/) to the model approached zero. |
 
 ### Data Used
 
@@ -424,7 +433,7 @@ The pipeline also uses a few secondary data sets in the valuation process. These
 * [`char_data`](#getting-data) - The complete `assessment_data` set as well as the same data for the previous year. This data is used for automated model performance reporting rather than valuation.
 * [`complex_id_data`](#getting-data) - Complex identifiers for class 210 and 295 town/rowhomes. Intended to group like units together to ensure that nearly identical units in close proximity receive the same assessed value. This is accomplished with a "fuzzy grouping" strategy that allows slightly dissimilar characteristics.
 * [`hie_data`](#getting-data) - Home improvement exemption data used to evaluate whether the pipeline correctly updates card-level characteristics triggered by the expiration of home improvement exemptions.
-* [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department.
+* [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department. Not always used, so may be 0 rows for certain years.
 * [`land_nbhd_rate_data`](#getting-data) - Fixed $/sqft land rates by assessor neighborhood for residential property classes except 210 and 295. Provided by the Valuations department.
 
 #### Representativeness
@@ -452,7 +461,7 @@ There a few caveats with this approach and with balance testing in general:
 
 ### Post-Modeling
 
-In addition to the first-pass modeling done by LightGBM, the CCAO also performs a set of simple adjustments on the initial predicted values from the `assess` stage. These adjustments are internally called "post-modeling," and are responsible for correcting minor deficiencies in the first model's predictions. Specifically, post-modeling will:
+In addition to the first-pass modeling done by LightGBM, the CCAO also performs a set of simple adjustments on the initial predicted values from the `assess` stage. These adjustments are internally called "post-modeling," and are responsible for correcting minor deficiencies in the initial predictions. Specifically, post-modeling will:
 
 1. Aggregate values for multi-card properties to the PIN level, then disaggregate them back to the card level. A check is used to ensure that the PIN-level assessed value is not significantly greater than the prior year's value. This is needed because often back buildings (ADUs, secondary buildings) will receive a much higher initial value than they are actually worth (since they are not differentiated as ADUs by the model).
 
@@ -511,6 +520,8 @@ This repository represents a significant departure from the old [residential mod
 * Added new model features: corner lots, distance to vacant land/university/secondary roads, homeowner exemption indicator and length of exemption, number of recent sales, class.
 * Added linear baseline model for comparison against LightGBM to [pipeline/01-train](pipeline/01-train.R).
 * Added experimental comparable sales generation using LightGBM leaf nodes to [pipeline/04-interpret](pipeline/04-interpret.R).
+* Refactored shared pipeline logic into [separate scripts](./R/setup.R) to simplify development and maintainability.
+* Separated development/reporting dependencies from primary dependencies using [renv profiles](#profiles-and-lockfiles) to increase replicability.
 
 # Ongoing Issues
 
@@ -555,7 +566,7 @@ The Cook County property tax system is complex and can sometimes create perverse
 
 For example, most property owners want their property taxes to be as low as possible, and are thus disincentivized from reporting characteristic errors which could raise their assessed value. Conversely, if a property owner plans to sell their home on a listing website, then they have a strong incentive (the highest possible sale price) to ensure the website accurately reflects their property's characteristics. Listing websites know this and offer easy ways to self-update property attributes.
 
-Additionally, the assessment system has a built-in number of "hard boundaries" such as property class and assessor neighborhood. These boundaries create the (mis)perceived incentive to slightly alter the characteristics of marginal properties. For example, subtracting 10 square feet from a property's total footprint in order to end up in a different property class. In actuality, property class has no impact on predictions from our models.
+Additionally, the assessment system has a built-in number of "hard boundaries" such as property class and assessor neighborhood. These boundaries create the (mis)perceived incentive to slightly alter the characteristics of marginal properties. For example, subtracting 10 square feet from a property's total footprint in order to end up in a different property class. In actuality, property class has almost no impact on predictions from our models.
 
 Falsely altering or not reporting property characteristics may change an assessed value, but it also has negative consequences for neighbors and similar properties. High sales on homes with incorrectly reported characteristics can upwardly bias the model, resulting in over-assessment for others.
 
@@ -565,8 +576,7 @@ In addition to the data challenges that are specific to our office, we also face
 
 ##### Housing Heterogeneity
 
-Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. In some regions of the county, sales are common; in other
-regions, sales are sparse. Accurately estimating the price of such different properties and regions is a complicated, challenging task.
+Cook County is an extremely large and diverse housing market. It spans millions of properties that vary widely in type, age, location, and quality. In some regions of the county, sales are common; in other regions, sales are sparse. Accurately estimating the price of such different properties and regions is a complicated, challenging task.
 
 This challenge is especially acute in areas with high housing characteristic and price heterogeneity. For example, the Hyde Park neighborhood in Chicago is home to the University of Chicago and has large, multi-million-dollar houses near campus. However, sale prices drop precipitously just a few blocks away, as one passes south of 63rd street or west of I-90. This sort of sharp price discontinuity makes it difficult to accurately assess properties, as models tend to "smooth" such hard breaks unless geographic boundaries are explicitly defined.
 
@@ -594,7 +604,7 @@ Setting the assessed value of a home equal to the value of a recent sale is call
 
 We don't use sale or uniformity comparables for the purpose of modeling. Our model works by automatically finding patterns in sales data and extrapolating those patterns to predict prices; the model never explicitly says, "Here is property X and here are Y similar properties and their sale prices."
 
-We *do* use [comparables for other things](https://www.cookcountyassessor.com/what-are-comparable-properties), namely when processing appeals and when evaluating the model's performance.
+We *do* use [comparables for other things](https://www.cookcountyassessor.com/what-are-comparable-properties), namely when processing appeals and when evaluating the model's performance. Note however that the comparables generated via [#106](https://github.com/ccao-data/model-res-avm/pull/106) are _experimental_ and are not currently used.
 
 **Q: What are the most important features in the model?**
 
@@ -621,6 +631,7 @@ Assessors tend to use [housing and assessment-specific measurements](https://www
 * [COD (Coefficient of Dispersion)](https://ccao-data.github.io/assessr/reference/cod.html)
 * [PRD (Price-Related Differential)](https://ccao-data.github.io/assessr/reference/prd.html)
 * [PRB (Price-Related Bias)](https://ccao-data.github.io/assessr/reference/prb.html)
+* [MKI (Modified Kakwani Index)](https://ccao-data.github.io/assessr/reference/mki_ki.html)
 
 More traditionally, we use R<sup>2</sup>, root-mean-squared-error (RMSE), mean absolute error (MAE), and mean absolute percentage error (MAPE) to gauge overall model performance and fit.
 
@@ -639,9 +650,9 @@ There are two ways of running the model:
 
 The code in this repository is written primarily in [R](https://www.r-project.org/about.html). Please install the [latest version of R](https://cloud.r-project.org/) (requires R version >= 4.2.1) and [RStudio](https://posit.co/download/rstudio-desktop/) before proceeding with the steps below.
 
-If you're on Windows, you'll also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to build the necessary packages. You may also want to (optionally) install [DVC](https://dvc.org/doc/install) to pull data and run pipelines.
+If you're on Windows, you'll also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) in order to build the necessary packages. You may also want to (optionally) install [DVC](https://dvc.org/doc/install) to pull data and run the pipeline.
 
-We also publish a Docker image containing model code and all of the dependencies necessary to run it. If you're comfortable using Docker, you can skip the installation steps below and instead pull the image from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version of the model.
+We also publish a Docker image containing the model code and all of the dependencies necessary to run it. If you're comfortable using Docker, you can skip the installation steps below and instead pull the image from `ghcr.io/ccao-data/model-res-avm:master` to run the latest version of the model.
 
 ### Installation
 
@@ -716,7 +727,9 @@ Runs can be monitored on AWS via CloudWatch as they execute in a Batch job. Navi
 
 Test runs of the model can be deleted using the [`delete-model-runs`](./.github/workflows/build-and-run-model.yaml) workflow. This workflow will delete all of the associated run artifacts from S3. To delete one or more runs, copy their unique IDs (e.g. `2024-01-01-foo-bar`) and paste them in the workflow dispatch input box, with each run ID separated by a space (e.g. `2024-01-01-foo-bar 2024-02-02-bar-baz`).
 
-> :warning: NOTE: In order to protect production model run artifacts, the `delete-model-runs` workflow can only delete model runs for the upcoming assessment cycle (the current year from January-April, or the next year from May-December). The workflow will raise an error if you attempt to delete a model run outside the upcoming assessment cycle. In the off chance that you do in fact need to delete a test run from a previous assessment cycle, you can work around this limitation by moving model run artifacts to bucket prefixes representing the partition for the upcoming assessment year (e.g. `year=2024/`) and then proceed to delete the model run.
+> :warning: NOTE: In order to protect production model run artifacts, the `delete-model-runs` workflow can only delete model runs for the upcoming assessment cycle (the current year from January-April, or the next year from May-December). The workflow will raise an error if you attempt to delete a model run outside the upcoming assessment cycle.
+>
+> In the off chance that you do in fact need to delete a test run from a previous assessment cycle, you can work around this limitation by moving model run artifacts to bucket prefixes representing the partition for the upcoming assessment year (e.g. `year=2024/`) and then proceed to delete the model run.
 
 ## Parameters
 
@@ -753,7 +766,7 @@ The [data required](#data-used) to run these scripts is produced by the [ingest 
 dvc pull
 ```
 
-Public users can download data for each assessment year using the links below. Each file should be placed in the `input/` directory prior to running the model pipeline.
+Public users can download data for each assessment year using the links below. Each file should be placed in the [`input/`](input/) directory prior to running the model pipeline.
 
 #### 2021
 
@@ -778,13 +791,29 @@ Public users can download data for each assessment year using the links below. E
 
 #### 2024
 
-- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/assessment_data.parquet)
-- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/char_data.parquet)
-- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/complex_id_data.parquet)
-- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/hie_data.parquet)
-- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_nbhd_rate_data.parquet)
-- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/land_site_rate_data.parquet)
-- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/training_data.parquet)
+Due to a [data issue](https://github.com/ccao-data/data-architecture/pull/334) with the initial 2024 model run, there are actually _two_ final 2024 models. The run `2024-02-06-relaxed-tristan` was used for Rogers Park township only, while the run `2024-03-17-stupefied-maya` was used for all subsequent City of Chicago townships.
+
+The data issue caused some sales to be omitted from the `2024-02-06-relaxed-tristan` training set, however the actual impact on predicted values was _extremely_ minimal. We chose to update the data and create a second final model out of an abudance of caution.
+
+##### 2024-02-06-relaxed-tristan
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-02-06-relaxed-tristan/training_data.parquet)
+
+##### 2024-03-17-stupefied-maya (final)
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/land_nbhd_rate_data.parquet)
+- [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/land_site_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 
@@ -794,7 +823,7 @@ Both [Tidymodels](https://tune.tidymodels.org/articles/extras/optimizations.html
 
 * The total amount of RAM needed for overall model fitting is around 6GB, though this is ultimately dependent on a number of LightGBM parameters.
 * The number of threads is set via the [num_threads](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads) parameter, which is passed to the model using the `set_args()` function from `parsnip`. By default, `num_threads` is equal to the full number of physical cores available. More (or faster) cores will decrease total training time.
-* This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build) or wait for the [upcoming CUDA release](https://github.com/microsoft/LightGBM/issues/5153).
+* This repository uses the CPU version of LightGBM included with the [LightGBM R package](https://lightgbm.readthedocs.io/en/latest/R/index.html). If you'd like to use the GPU version you'll need to [build it yourself](https://lightgbm.readthedocs.io/en/latest/R/index.html#installing-a-gpu-enabled-build).
 
 ## Managing R Dependencies
 
