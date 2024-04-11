@@ -368,7 +368,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2024-04-10.
+model as of 2024-04-11.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                 |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -1338,14 +1338,14 @@ prior to running the model pipeline.
 Due to a [data
 issue](https://github.com/ccao-data/data-architecture/pull/334) with the
 initial 2024 model run, there are actually *two* final 2024 models. The
-run `2024-02-06-relaxed-tristan` was used for Rogers Park township only,
-while the run `2024-03-17-stupefied-maya` was used for all subsequent
-City of Chicago townships.
+run `2024-02-06-relaxed-tristan` was used for Rogers Park and West
+townships only, while the run `2024-03-17-stupefied-maya` was used for
+all subsequent City of Chicago townships.
 
 The data issue caused some sales to be omitted from the
 `2024-02-06-relaxed-tristan` training set, however the actual impact on
 predicted values was *extremely* minimal. We chose to update the data
-and create a second final model out of an abudance of caution.
+and create a second final model out of an abundance of caution.
 
 ##### 2024-02-06-relaxed-tristan
 
