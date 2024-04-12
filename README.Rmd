@@ -793,7 +793,7 @@ Public users can download data for each assessment year using the links below. E
 
 Due to a [data issue](https://github.com/ccao-data/data-architecture/pull/334) with the initial 2024 model run, there are actually _two_ final 2024 models. The run `2024-02-06-relaxed-tristan` was used for Rogers Park and West townships only, while the run `2024-03-17-stupefied-maya` was used for all subsequent City of Chicago townships.
 
-The data issue caused some sales to be omitted from the `2024-02-06-relaxed-tristan` training set, however the actual impact on predicted values was _extremely_ minimal. We chose to update the data and create a second final model out of an abundance of caution.
+The data issue caused some sales to be omitted from the `2024-02-06-relaxed-tristan` training set, however the actual impact on predicted values was _extremely_ minimal. We chose to update the data and create a second final model out of an abundance of caution, and, given low transaction volume in 2023, to include as many arms-length transactions in the training set as possible.
 
 ##### 2024-02-06-relaxed-tristan
 

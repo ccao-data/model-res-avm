@@ -368,7 +368,7 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2024-04-11.
+model as of 2024-04-12.
 
 | Feature Name                                                            | Category       | Type        | Possible Values                                                      | Notes                                                                                                                                                 |
 |:------------------------------------------------------------------------|:---------------|:------------|:---------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -1345,7 +1345,9 @@ all subsequent City of Chicago townships.
 The data issue caused some sales to be omitted from the
 `2024-02-06-relaxed-tristan` training set, however the actual impact on
 predicted values was *extremely* minimal. We chose to update the data
-and create a second final model out of an abundance of caution.
+and create a second final model out of an abundance of caution, and,
+given low transaction volume in 2023, to include as many arms-length
+transactions in the training set as possible.
 
 ##### 2024-02-06-relaxed-tristan
 
