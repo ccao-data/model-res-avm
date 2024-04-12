@@ -915,14 +915,6 @@ strong incentive (the highest possible sale price) to ensure the website
 accurately reflects their property’s characteristics. Listing websites
 know this and offer easy ways to self-update property attributes.
 
-Additionally, the assessment system has a built-in number of “hard
-boundaries” such as property class and assessor neighborhood. These
-boundaries create the (mis)perceived incentive to slightly alter the
-characteristics of marginal properties. For example, subtracting 10
-square feet from a property’s total footprint in order to end up in a
-different property class. In actuality, property class has almost no
-impact on predictions from our models.
-
 Falsely altering or not reporting property characteristics may change an
 assessed value, but it also has negative consequences for neighbors and
 similar properties. High sales on homes with incorrectly reported
