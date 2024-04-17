@@ -160,7 +160,9 @@ results %>%
     min = scales::dollar(round(min, 2)),
     q25 = scales::dollar(round(q25, 2)),
     median = scales::dollar(round(median, 2)),
-    `Median Previous Estimate` = scales::dollar(round(median_prior_near_tot, 2)),
+    `Median Previous Estimate` = scales::dollar(
+      round(median_prior_near_tot, 2)
+    ),
     q75 = scales::dollar(round(q75, 2)),
     max = scales::dollar(round(max, 2))
   ) %>%
@@ -191,110 +193,95 @@ results %>%
 Sale and assessed values are capped at \$2million to increase legibility.
 
 ```{r}
-create_plot <- function(dataset) {
-  dataset$tooltip_text <- paste0(
-    "Pin: ", dataset$meta_pin,
-    "\nTownship: ", ccao::town_convert(dataset$meta_township_code)
-  )
+plots <- datasets_sold %>%
+  map(\(dataset) {
+    dataset$tooltip_text <- paste0(
+      "Pin: ", dataset$meta_pin,
+      "\nTownship: ", ccao::town_convert(dataset$meta_township_code)
+    )
 
-  # Create the ggplot
-  p <- ggplot(dataset, aes(
-    x = sale_ratio_study_price,
-    y = pred_pin_final_fmv_round
-  )) +
-    geom_point(aes(text = tooltip_text)) +
-    geom_abline(intercept = 0, slope = 1, color = "red") +
-    scale_x_continuous(
-      labels = dollar_format(), name = "Actual FMV", limits = c(0, 2000000)
-    ) +
-    scale_y_continuous(
-      labels = dollar_format(), name = "Estimated FMV", limits = c(0, 2000000)
-    ) +
-    theme_minimal()
+    # Create the ggplot
+    p <- ggplot(dataset, aes(
+      x = sale_ratio_study_price,
+      y = pred_pin_final_fmv_round
+    )) +
+      geom_point(aes(text = tooltip_text)) +
+      geom_abline(intercept = 0, slope = 1, color = "red") +
+      scale_x_continuous(
+        labels = dollar_format(), name = "Actual FMV", limits = c(0, 2000000)
+      ) +
+      scale_y_continuous(
+        labels = dollar_format(), name = "Estimated FMV", limits = c(0, 2000000)
+      ) +
+      theme_minimal()
 
-  # Convert to a plotly object
-  ggplotly(p, tooltip = "tooltip_text")
-}
+    # Convert to a plotly object
+    ggplotly(p, tooltip = "tooltip_text")
+  })
 ```
 
 ::: panel-tabset
 ## Large Lots
 
 ```{r, results = 'asis'}
-large_lots_sold <- datasets_sold$"Large Lots" %>%
-  as.data.frame()
-
-create_plot(large_lots_sold)
+plots$"Large Lots"
 ```
 
 ## Multicard
 
 ```{r, results = 'asis'}
-multicard_sold <- datasets_sold$Multicard %>%
-  as.data.frame()
-
-create_plot(multicard_sold)
+plots$Multicard
 ```
 
 ## Multifamily
 
 ```{r}
-multifamily_sold <- datasets_sold$Multifamily %>%
-  as.data.frame()
-
-create_plot(multifamily_sold)
+plots$Multifamily
 ```
 
 ## Top Decile
 
 ```{r}
-top_decile_sold <- datasets_sold$"Top Decile" %>%
-  as.data.frame()
-
-create_plot(top_decile_sold)
+plots$"Top Decile"
 ```
 :::
 
 ```{r _challenge_groups_map_function}
-process_and_plot <- function(data) {
-  town_shp <- ccao::town_shp
-  spatial_data <- st_as_sf(
-    data,
-    coords = c("loc_longitude", "loc_latitude"), crs = 4326
-  ) %>%
-    mutate(
-      Change = pmin(
-        100 * (pred_pin_final_fmv_round / prior_near_tot) - 100,
-        300
+plots <- datasets_full %>%
+  map(\(x) {
+    spatial_data <- st_as_sf(
+      x %>%
+        filter(!is.na(loc_latitude) & !is.na(loc_longitude)),
+      coords = c("loc_longitude", "loc_latitude"), crs = 4326
+    ) %>%
+      mutate(
+        Change = pmin(
+          100 * (pred_pin_final_fmv_round / prior_near_tot) - 100,
+          300
+        )
       )
-    )
 
-  town_shp <- st_transform(town_shp, crs = st_crs(spatial_data))
+    town_shp <- st_transform(ccao::town_shp, crs = st_crs(spatial_data))
 
-  ggplot() +
-    geom_sf(data = spatial_data, aes(color = Change)) +
-    geom_sf(data = town_shp, fill = NA, color = "black") +
-    theme_minimal() +
-    labs(color = "Change (%)") +
-    scale_color_gradient2(
-      midpoint = 0,
-      low = "blue",
-      mid = "lightgrey",
-      high = "red",
-      limits = c(-100, 300)
-    ) +
-    theme(
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank()
-    )
-}
-
-datasets_minus_missing_location <- datasets_full %>%
-  map(~ filter(.x, !is.na(loc_latitude) & !is.na(loc_longitude)))
-
-plots <- lapply(datasets_minus_missing_location, process_and_plot)
+    ggplot() +
+      geom_sf(data = spatial_data, aes(color = Change)) +
+      geom_sf(data = town_shp, fill = NA, color = "black") +
+      theme_minimal() +
+      labs(color = "Change (%)") +
+      scale_color_gradient2(
+        midpoint = 0,
+        low = "blue",
+        mid = "lightgrey",
+        high = "red",
+        limits = c(-100, 300)
+      ) +
+      theme(
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank()
+      )
+  })
 ```
 
 ## Map of YoY Changes in Assessed Value
