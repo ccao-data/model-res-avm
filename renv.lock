@@ -299,7 +299,7 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "6bdb2f2cab811c3450d91726a784804bd8bca971",
+      "RemoteSha": "fe992f9bb6e75c97a0c8fa742106096adbabb642",
       "Remotes": "ccao-data/assessr",
       "Requirements": [
         "R",
@@ -309,7 +309,7 @@
         "rlang",
         "tidyr"
       ],
-      "Hash": "9e1f71bb457d8d8514ca553610fa0bfc"
+      "Hash": "4f649d828fea30e11c2b65acb3ec778a"
     },
     "class": {
       "Package": "class",

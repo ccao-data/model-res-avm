@@ -13,7 +13,7 @@ def get_comps(
     """Fast algorithm to get the top `num_comps` comps from a dataframe of lightgbm
     leaf node assignments (`observation_df`) compared to a second dataframe of
     assignments (`comparison_df`). Leaf nodes are weighted according to a tree
-    importance vector `weights` and used to generate a similarity score and
+    importance matrix `weights` and used to generate a similarity score and
     return two dataframes, one a set of indices and the other a set of scores
     for the `n` most similar comparables. More details on the underlying
     algorithm here: https://ccao-data.github.io/lightsnip/articles/finding-comps.html
@@ -27,7 +27,7 @@ def get_comps(
     """
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
-    weights_arr = np.asarray(weights, dtype=np.float32)
+    weights_matrix = np.asarray(weights, dtype=np.float32)
 
     # Add ID columns so that we can keep track of the initial position of
     # each row as we sort them. This is necessary to allow the caller to
@@ -151,7 +151,7 @@ def get_comps(
         )
 
         comp_ids, comp_scores = _get_top_n_comps(
-            observation_matrix, possible_comp_matrix, weights_arr, num_comps
+            observation_matrix, possible_comp_matrix, weights_matrix, num_comps
         )
 
         # Match comp and observation IDs back to the original dataframes since
@@ -226,16 +226,15 @@ def _bin_by_price(observation_matrix, price_bin_matrix):
 
 @nb.njit(fastmath=True, parallel=True)
 def _get_top_n_comps(
-    leaf_node_matrix, comparison_leaf_node_matrix, weights, num_comps
+    leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps
 ):
     """Helper function that takes matrices of leaf node assignments for
-    observations in a tree model, an array of weights for each tree, and an
+    observations in a tree model, a matrix of weights for each obs/tree, and an
     integer `num_comps`, and returns a matrix where each observation is scored
     by similarity to observations in the comparison matrix and the top N scores
     are returned along with the indexes of the comparison observations."""
     num_observations = len(leaf_node_matrix)
     num_possible_comparisons = len(comparison_leaf_node_matrix)
-    weights = weights.T
     idx_dtype = np.int32
     score_dtype = np.float32
 
@@ -257,7 +256,7 @@ def _get_top_n_comps(
             similarity_score = 0.0
             for tree_idx in range(len(leaf_node_matrix[x_i])):
                 similarity_score += (
-                    weights[tree_idx] * (
+                    weights_matrix[x_i][tree_idx] * (
                         leaf_node_matrix[x_i][tree_idx] ==
                         comparison_leaf_node_matrix[y_i][tree_idx]
                     )
@@ -317,7 +316,10 @@ if __name__ == "__main__":
     training_leaf_nodes["predicted_value"] = np.random.normal(
         mean_sale_price, std_deviation, size=num_comparisons
     ).astype(int)
-    tree_weights = np.random.dirichlet(np.ones(num_trees))
+    tree_weights = np.asarray([
+      np.random.dirichlet(np.ones(num_trees))
+      for _ in range(num_comparisons)
+    ])
 
     start = time.time()
     get_comps(leaf_nodes, training_leaf_nodes, tree_weights)

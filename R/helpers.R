@@ -186,35 +186,45 @@ extract_num_iterations <- function(x) {
 # the model was trained with the `valids` parameter set such that error metrics
 # are saved for each tree on the model$record_evals attribute. The output
 # weights are useful for computing comps using leaf node assignments
-extract_tree_weights <- function(model, init_score, metric = "rmse") {
-  # Index into the errors list, and un-list so it is a flat/1dim list
-  record_evals <- model$record_evals
-  errors <- unlist(record_evals$tree_errors[[metric]]$eval)
-  errors <- c(init_score, errors)
-  diff_in_errors <- diff(errors, 1, 1)
+extract_tree_weights <- function(model,
+                                 init_score,
+                                 training_data,
+                                 outcome,
+                                 num_iterations) {
+  tree_predictions <- matrix(
+    nrow = nrow(training_data),
+    ncol = num_iterations + 1
+  )
+  tree_predictions[, 1] <- init_score
+  for (num_iteration in seq_len(num_iterations)) {
+    if (num_iteration %% 100 == 0) {
+      message(
+        glue::glue("Extracting weights for tree {num_iteration}")
+      )
+    }
+    tree_predictions[, num_iteration + 1] <- predict(
+      object = model,
+      newdata = as.matrix(training_data),
+      num_iteration = num_iteration
+    )
+  }
+  tree_errors <- abs(outcome - tree_predictions)
+  # Get a lagged diff of the error matrix by row. Since diff() operates on
+  # matrix columns, we need to transpose the input
+  diff_in_errors <- tree_errors %>%
+    t() %>%
+    diff(1, 1) %>%
+    t() * -1
+
+  diff_in_errors <- diff_in_errors %>%
+    apply(2, function(x) ifelse(x < 0, 0, x))
 
   # Take proportion of diff in errors over total diff in
   # errors from all trees
-  weights <- diff_in_errors / sum(diff_in_errors)
+  weights <- diff_in_errors / rowSums(diff_in_errors)
+  weights[is.nan(weights)] <- 0
 
   return(weights)
-}
-
-# Find an initial validation metric score for use with extract_tree_weights
-# function. For regression models this seems to be the validation metric as
-# calculated using the mean outcome variable
-get_init_score <- function(truth, estimate, metric = "rmse", ...) {
-  stopifnot(metric %in% c("rmse", "mae", "mape"))
-  if (length(estimate) == 1) estimate <- rep(estimate, length(truth))
-  metric_fun <- switch(metric,
-    rmse = yardstick::rmse_vec,
-    mae = yardstick::mae_vec,
-    mape = yardstick::mape_vec
-  )
-
-  out <- metric_fun(truth, estimate, ...)
-
-  return(out)
 }
 
 # Given the result of a CV search, get the number of iterations from the

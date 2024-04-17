@@ -271,8 +271,63 @@ assessment_card <- dbGetQuery(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Preparing data for Desk Review export")
 
+format_char_apts <- function(char_apts) {
+  # Convert the long format for char_apts to a shorter format that's easier
+  # to scan in a spreadsheet
+  return(
+    case_when(
+      is.na(char_apts) | tolower(char_apts) == "none" ~ NA_character_,
+      tolower(char_apts) == "two" ~ "2",
+      tolower(char_apts) == "three" ~ "3",
+      tolower(char_apts) == "four" ~ "4",
+      tolower(char_apts) == "five" ~ "5",
+      tolower(char_apts) == "six" ~ "6",
+      TRUE ~ "Missing"
+    )
+  )
+}
+
+summarize_char <- function(col) {
+  # Summary function that can take a column name `col` and return a
+  # comma-separated string of all the distinct, not-null values in that column.
+  # Note that nulls are preserved if and only if _all_ values in the column
+  # are null
+  return(
+    ifelse(
+      all(is.na(col)),
+      NA,
+      paste(unique(na.omit(col)), collapse = ", ")
+    )
+  )
+}
+
+# Aggregate a set of chars that are only recorded on the card level so that
+# we can display them in the PIN Detail sheet
+summarized_card_chars <- assessment_card %>%
+  mutate(
+    char_apts = format_char_apts(char_apts),
+    # At the ingest stage, char_ncu is set to 0 for non-212 properties, so
+    # cast this case to null
+    char_ncu = ifelse(char_class == "212", char_ncu, NA)
+  ) %>%
+  # Aggregate card-level chars by PIN and output them as comma-separated
+  # lists of unique values
+  summarize(
+    across(
+      all_of(c(
+        "char_air", "char_apts", "char_beds", "char_bsmt", "char_bsmt_fin",
+        "char_heat", "char_ncu"
+      )),
+      ~ summarize_char(.x)
+    ),
+    .by = "meta_pin"
+  )
+
+assessment_pin_w_card_chars <- assessment_pin %>%
+  left_join(summarized_card_chars, by = "meta_pin")
+
 # Merge vacant land data with data from the residential AVM
-assessment_pin_merged_w_land <- assessment_pin %>%
+assessment_pin_w_land <- assessment_pin_w_card_chars %>%
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
     across(ends_with("_date"), ymd),
@@ -306,7 +361,7 @@ if (comp_enable) {
 
   # Merge comp data into assessment data. Start with single-card PINs, where
   # the comps for the card are the same as the comps for the parcel
-  assessment_pin_single_card <- assessment_pin_merged_w_land %>%
+  assessment_pin_single_card <- assessment_pin_w_land %>%
     filter(meta_pin_num_cards == 1 | is.na(meta_pin_num_cards)) %>%
     left_join(comps, by = join_by(meta_pin == pin))
 
@@ -321,7 +376,7 @@ if (comp_enable) {
   ] %>%
     distinct()
   # Next, join the PIN-level data to the top-scoring comps
-  assessment_pin_multicard <- assessment_pin_merged_w_land %>%
+  assessment_pin_multicard <- assessment_pin_w_land %>%
     filter(meta_pin_num_cards > 1) %>%
     left_join(comps_by_top_score, by = join_by(meta_pin == pin))
   # Finally, combine both single and multicard PINs
@@ -334,7 +389,8 @@ if (comp_enable) {
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     group_by(meta_pin) %>%
-    filter(meta_sale_date == max(meta_sale_date))
+    filter(meta_sale_date == max(meta_sale_date)) %>%
+    ungroup()
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -362,7 +418,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       loc_property_address,
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
-    )
+    ),
+    valuations_note = NA, # Empty notes field for Valuations to fill out
+    sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
@@ -374,12 +432,15 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     pred_pin_final_fmv_round, land_rate_per_sqft, pred_pin_land_rate_effective,
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
+    sale_ratio, valuations_note,
     sale_recent_1_date, sale_recent_1_price,
     sale_recent_1_outlier_type, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price,
     sale_recent_2_outlier_type, sale_recent_2_document_num,
-    char_yrblt, char_total_bldg_sf, char_type_resd, char_land_sf,
-    overall_comp_score, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
+    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
+    char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
+    char_ncu,
+    comp_pin_1, comp_score_1, comp_pin_2, comp_score_2, overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
@@ -397,7 +458,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     property_full_address = str_remove_all(
       property_full_address,
       "[^[:alnum:]|' ',.-]"
-    )
+    ),
   )
 
 # Get all PINs with multiple cards, break out into supplemental data set to
@@ -410,16 +471,19 @@ assessment_card_prepped <- assessment_card %>%
     by = "meta_pin"
   ) %>%
   select(
-    township_code, meta_pin, meta_card_num, meta_class, meta_nbhd_code,
+    township_code, meta_pin, meta_card_num, char_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
-    char_yrblt, char_beds, char_ext_wall, char_heat, char_bldg_sf,
-    char_type_resd, char_land_sf
+    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
+    char_heat, char_bldg_sf, char_type_resd, char_land_sf, char_apts, char_ncu
   ) %>%
   mutate(
     meta_pin = glue(
       '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
       "{meta_pin}")'
-    )
+    ),
+    char_apts = format_char_apts(char_apts),
+    # Convert char_ncu from 0 to null for non-212s
+    char_ncu = ifelse(char_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
 
@@ -434,19 +498,12 @@ assessment_card_prepped <- assessment_card %>%
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
 
-  workbook_name <- glue(
-    params$assessment$year,
-    str_replace(town_convert(town), " ", "_"),
-    "Initial_Model_Values.xlsx",
-    .sep = "_"
-  )
-
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
     select(-township_code)
 
-  # 5.3 Comp details -----------------------------------------------------------
+  ## 5.1 Comp details ----------------------------------------------------------
 
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
@@ -462,11 +519,16 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
-      meta_pin, meta_sale_price, meta_sale_date, meta_class, meta_nbhd_code,
-      char_yrblt, loc_property_address, char_beds, char_ext_wall,
-      char_heat, char_bldg_sf, char_type_resd, char_land_sf
+      meta_pin, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
+      loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
+      char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
+      char_land_sf, char_apts, char_ncu
     ) %>%
-    ccao::vars_recode(type = "long")
+    ccao::vars_recode(type = "long") %>%
+    mutate(
+      char_apts = format_char_apts(char_apts),
+      char_ncu = ifelse(char_class == "212", char_ncu, NA)
+    )
 
   # It seems like Excel can only handle between-sheet links if the linked
   # sheet name has no spaces... Perhaps there's an undocumented workaround,
@@ -481,10 +543,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Create formatting styles
   style_price <- createStyle(numFmt = "$#,##0")
-  style_2digit <- createStyle(numFmt = "$#,##0.00")
+  style_2digit_price <- createStyle(numFmt = "$#,##0.00")
+  style_2digit_num <- createStyle(numFmt = "0.00")
   style_pct <- createStyle(numFmt = "PERCENTAGE")
   style_comma <- createStyle(numFmt = "COMMA")
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
+  style_right_align <- createStyle(halign = "right")
 
   # Add styles to comp sheet
   addStyle(
@@ -495,9 +559,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, comp_sheet_name,
     style = style_comma,
-    rows = comp_row_range, cols = c(11, 13), gridExpand = TRUE
+    rows = comp_row_range, cols = c(14, 16), gridExpand = TRUE
   )
-  addFilter(wb, comp_sheet_name, 4, 1:13)
+  addStyle(
+    wb, comp_sheet_name,
+    style = style_right_align,
+    rows = comp_row_range, cols = 17:18, gridExpand = TRUE
+  )
+  addFilter(wb, comp_sheet_name, 4, 1:18)
 
   # Write comp data to workbook
   writeData(
@@ -505,7 +574,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     startCol = 1, startRow = 5, colNames = FALSE
   )
 
-  ## 5.2. PIN-Level ------------------------------------------------------------
+  # 5.2. PIN-Level -------------------------------------------------------------
 
   # Update PIN-level data to link to comps detail sheet
   training_data_ids <- training_data_filtered %>%
@@ -532,20 +601,60 @@ for (town in unique(assessment_pin_prepped$township_code)) {
         is.na(comp_pin_1_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("[{workbook_name}]{comp_sheet_name}!',
-          '{comp_pin_1_coord}","{comp_pin_1}")'
+          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_1_coord}),',
+          '"{comp_pin_1}")'
         )
       ),
       comp_pin_2 = ifelse(
         is.na(comp_pin_2_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("[{workbook_name}]{comp_sheet_name}!',
-          '{comp_pin_2_coord}","{comp_pin_2}")'
+          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_2_coord}),',
+          '"{comp_pin_2}")'
         )
       )
     ) %>%
     select(-ends_with("_coord"))
+
+  # Get range of rows in the PIN data + number of header rows
+  num_head <- 6 # Number of header rows
+  pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
+  pin_row_range_w_header <- c(num_head, pin_row_range)
+  pin_col_range <- 1:67 # Don't forget the two hidden rows at the end
+
+  assessment_pin_w_row_ids <- assessment_pin_filtered %>%
+    tibble::rowid_to_column("row_id") %>%
+    mutate(row_id = row_id + num_head)
+
+  # Calculate AVs so we can store them as separate, hidden columns for use
+  # in the neighborhood breakouts pivot table
+  assessment_pin_avs <- assessment_pin_w_row_ids %>%
+    mutate(
+      total_av = glue::glue("=S{row_id} * 0.1"),
+      av_difference = glue::glue("=(S{row_id} * 0.1) - (L{row_id} * 0.1)")
+    ) %>%
+    select(total_av, av_difference)
+
+  # Calculate sales ratios, and use a formula so that they update dynamically
+  # if the spreadsheet user updates the FMV
+  assessment_pin_sale_ratios <- assessment_pin_w_row_ids %>%
+    mutate(
+      sale_ratio = glue::glue(
+        '=IF(ISBLANK(AC{row_id}), "", S{row_id} / AC{row_id})'
+      )
+    )
+
+  # Mark AV fields and sales ratio fields as formulas, since these fields
+  # compute values based on other fields
+  class(assessment_pin_avs$total_av) <- c(
+    class(assessment_pin_avs$total_av), "formula"
+  )
+  class(assessment_pin_avs$av_difference) <- c(
+    class(assessment_pin_avs$av_difference), "formula"
+  )
+  class(assessment_pin_sale_ratios$sale_ratio) <- c(
+    class(assessment_pin_sale_ratios$sale_ratio), "formula"
+  )
 
   # Make comp PIN fields formulas so Excel understands the links
   class(assessment_pin_filtered$comp_pin_1) <- c(
@@ -572,34 +681,42 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     class(assessment_pin_filtered$meta_pin), "formula"
   )
 
-  # Get range of rows in the PIN data + number of header rows
-  pin_row_range <- 7:(nrow(assessment_pin_filtered) + 9)
-
   # Add styles to PIN sheet
   addStyle(
     wb, pin_sheet_name,
     style = style_price,
-    rows = pin_row_range, cols = c(10:12, 16:18, 24, 27, 31), gridExpand = TRUE
+    rows = pin_row_range,
+    cols = c(10:12, 16:18, 24, 29, 33, 66, 67), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
-    style = style_2digit,
+    style = style_2digit_price,
     rows = pin_row_range, cols = c(13:14, 20:22), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
+    style = style_2digit_num,
+    rows = pin_row_range, cols = c(26), gridExpand = TRUE
+  )
+  addStyle(
+    wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 38, 40, 42), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25, 49, 51, 52), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
     style = style_comma,
-    rows = pin_row_range, cols = c(35, 37), gridExpand = TRUE
+    rows = pin_row_range, cols = c(43, 45), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
     style = createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0"),
     rows = pin_row_range, cols = c(19), gridExpand = TRUE
+  )
+  addStyle(
+    wb, pin_sheet_name,
+    style = style_right_align,
+    rows = pin_row_range, cols = c(37, 46, 47), gridExpand = TRUE
   )
   # For some reason comp links do not get autoformatted as links, possibly
   # due to Excel not parsing within-sheet links as hyperlinks for the purposes
@@ -607,15 +724,15 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_link,
-    rows = pin_row_range, cols = c(39, 41), gridExpand = TRUE
+    rows = pin_row_range, cols = c(48, 50), gridExpand = TRUE
   )
-  addFilter(wb, pin_sheet_name, 6, 1:55)
+  addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
   # Format comp score columns with a range of colors from low (red) to high
   # (blue)
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(38, 40, 42),
+    cols = c(49, 51, 52),
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(0, 0.5, 1),
@@ -633,10 +750,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Format sale columns such that they are red if the sale has an outlier flag
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = 26:29,
+    cols = 28:31,
     rows = pin_row_range,
     style = createStyle(bgFill = "#FF9999"),
-    rule = '$AB7!=""',
+    rule = '$AD7!=""',
     type = "expression"
   )
   # For some reason vector cols don't work with expressions, so we have
@@ -644,10 +761,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # to apply it to the second range of columns
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = 30:33,
+    cols = 32:35,
     rows = pin_row_range,
     style = createStyle(bgFill = "#FF9999"),
-    rule = '$AF7!=""',
+    rule = '$AH7!=""',
     type = "expression"
   )
 
@@ -662,6 +779,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     assessment_pin_filtered$meta_pin,
     startRow = 7
+  )
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_sale_ratios$sale_ratio,
+    startCol = 26, startRow = 7
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
@@ -678,6 +800,34 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeData(
     wb, pin_sheet_name, tibble(model_header),
     startCol = 16, startRow = 5, colNames = FALSE
+  )
+
+  # Write hidden formulas
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_avs$total_av,
+    startCol = 66,
+    startRow = 7
+  )
+  writeFormula(
+    wb, pin_sheet_name,
+    assessment_pin_avs$av_difference,
+    startCol = 67,
+    startRow = 7
+  )
+  setColWidths(
+    wb, pin_sheet_name,
+    c(66, 67),
+    widths = 1,
+    hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
+  )
+
+  # Add a named range for the PIN-level data, which the template will use
+  # to populate the Neighborhood Breakouts pivot table
+  createNamedRegion(
+    wb, pin_sheet_name,
+    cols = pin_col_range, rows = pin_row_range_w_header,
+    name = "pin_detail_range", overwrite = TRUE
   )
 
 
@@ -710,9 +860,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, card_sheet_name,
     style = style_comma,
-    rows = card_row_range, cols = c(12, 14), gridExpand = TRUE
+    rows = card_row_range, cols = c(15, 17), gridExpand = TRUE
   )
-  addFilter(wb, card_sheet_name, 4, 1:14)
+  addStyle(
+    wb, card_sheet_name,
+    style = style_right_align,
+    rows = card_row_range, cols = c(18, 19), gridExpand = TRUE
+  )
+  addFilter(wb, card_sheet_name, 4, 1:19)
 
   # Write card-level data to workbook
   writeData(
@@ -734,6 +889,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # 5.4 Save output ------------------------------------------------------------
 
   # Save workbook to file based on town name
+  workbook_name <- glue(
+    params$assessment$year,
+    str_replace(town_convert(town), " ", "_"),
+    "Initial_Model_Values.xlsx",
+    .sep = "_"
+  )
   saveWorkbook(
     wb,
     here(
@@ -743,6 +904,17 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   rm(wb)
 }
+
+### NOTE ###
+# OpenXLSX is not perfect and messes up the macros and formatting on saved
+# workbooks. To finish each workbook, you must manually:
+
+# 1. Open the Neighborhood Breakouts sheet and ensure that the values are
+#    all formatted correctly in the pivot table; if not (e.g. if
+#    `Average of YoY ∆ %` is formatted as a date when it should be a percentage)
+#    then manually update the formatting by selecting
+#    PivotTable Fields > Values > {fieldname} > Value Field Settings... >
+#    Number Format.
 
 
 
@@ -786,10 +958,9 @@ upload_data <- assessment_pin %>%
   ungroup() %>%
   select(
     township_code,
-    PARID = meta_pin, CARD = meta_card_num,
-    USER37 = pred_card_final_fmv_no_prorate,
-    USER24 = meta_tieback_proration_rate.x,
-    OVRRCNLD = pred_card_final_fmv
+    PARID = meta_pin,
+    CARD = meta_card_num,
+    MV = pred_card_final_fmv_no_prorate
   )
 
 

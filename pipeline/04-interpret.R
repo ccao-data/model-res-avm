@@ -152,28 +152,32 @@ if (comp_enable) {
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     as_tibble()
-
-  tree_weights <- extract_tree_weights(
-    model = lgbm_final_full_fit$fit,
-    init_score = get_init_score(
-      training_data$meta_sale_price,
-      mean(training_data$meta_sale_price, na.rm = TRUE),
-      metric = params$model$parameter$validation_metric,
-      na.rm = TRUE
-    ),
-    metric = params$model$parameter$validation_metric
-  )
-
-  if (length(tree_weights) == 0 || sum(tree_weights) != 1) {
-    stop("Unable to extract tree weights: length 0 or weight sum != 1")
-  }
-
-  # Get predicted values and leaf node assignments for the training data
   training_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
     new_data = training_data,
     all_predictors()
   )
+
+  tree_weights <- extract_tree_weights(
+    model = lgbm_final_full_fit$fit,
+    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
+    training_data = training_data_prepped,
+    outcome = training_data$meta_sale_price,
+    num_iterations = lgbm_final_full_fit$fit$params$num_iterations
+  )
+
+  if (length(tree_weights) == 0) {
+    message("Warning: tree_weights are empty")
+  }
+  if (all(rowSums(tree_weights) %in% c(0, 1))) {
+    message("Warning: tree_weights do not sum to 1 or 0 for each row")
+    message("First 5 weights:")
+    print(head(tree_weights, 5))
+  }
+
+  message("Getting leaf node assignments for the training data")
+
+  # Get predicted values and leaf node assignments for the training data
   training_leaf_nodes <- predict(
     object = lgbm_final_full_fit$fit,
     newdata = as.matrix(training_data_prepped),
