@@ -26,12 +26,12 @@ params:
 
 {{< include ../_setup.qmd >}}
 
-------------------------------------------------------------------------
+---
 
-This report inspects properties that are difficult to assess due to outlier or poorly tracked characteristics. All outputs below are for the entirety of Cook County. The universe of sold data is from prior year sales. Challenge groups are:
+This report inspects properties that are difficult to assess. All outputs below are for the entirety of Cook County. The universe of sold data is from the prior year of sales. Challenge groups include:
 
-|                 |                                                                                                 |
-|:---------------:|-------------------------------------------------------|
+|      Group      | Description                                                                                     |
+|:---------------:|-------------------------------------------------------------------------------------------------|
 | **Large Lots**  | Parcels with land square footage larger than 95% of other properties for this year and township |
 |  **Multicard**  | Parcels with more than one building (ADU, coach house, etc.)                                    |
 | **Multifamily** | Class 211 parcels                                                                               |
@@ -190,7 +190,7 @@ results %>%
 
 ## Relationship Between Sale and Assessed Values
 
-Sale and assessed values are capped at \$2million to increase legibility.
+Sale and assessed values are capped at \$2M to increase legibility.
 
 ```{r}
 plots <- datasets_sold %>%
@@ -221,6 +221,7 @@ plots <- datasets_sold %>%
 ```
 
 ::: panel-tabset
+
 ## Large Lots
 
 ```{r, results = 'asis'}
@@ -244,6 +245,7 @@ plots$Multifamily
 ```{r}
 plots$"Top Decile"
 ```
+
 :::
 
 ```{r _challenge_groups_map_function}
@@ -289,6 +291,7 @@ plots <- datasets_full %>%
 Values are capped at an increase of 300% to increase legibility. This includes sold and unsold properties.
 
 ::: panel-tabset
+
 ```{r _challenge_groups_map_output, results = 'asis'}
 iwalk(plots, ~ {
   cat("## ", .y, "\n\n")
@@ -298,4 +301,5 @@ iwalk(plots, ~ {
   cat("\n\n")
 })
 ```
+
 :::
