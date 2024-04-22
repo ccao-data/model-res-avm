@@ -13,4 +13,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run pre-commit checks
-        uses: ccao-data/actions/pre-commit@main
+        uses: ccao-data/actions/pre-commit@troubleshoot-model-res-avm-hooks
