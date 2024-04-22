@@ -45,7 +45,6 @@ training_data <- dbGetQuery(
       sale.buyer_name AS meta_sale_buyer_name,
       sale.sv_is_outlier,
       sale.sv_outlier_type,
-      sale.sv_run_id,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
