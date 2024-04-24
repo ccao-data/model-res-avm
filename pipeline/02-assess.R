@@ -19,8 +19,7 @@ rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
 # Load the training data to use as a source of sales. These will be attached to
 # PIN-level output (for comparison) and used as the basis for a sales ratio
 # analysis on the assessment data
-sales_data <- read_parquet(paths$input$training$local) %>%
-  filter(!sv_is_outlier)
+sales_data <- read_parquet(paths$input$training$local)
 
 # Load land rates from file
 land_site_rate <- read_parquet(
@@ -82,7 +81,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # For prorated PINs with multiple cards, take the average of the card
   # (building) across PINs. This is because the same prorated building spread
   # across multiple PINs sometimes receives different values from the model
-  group_by(meta_tieback_key_pin, meta_card_num) %>%
+  group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
     pred_card_intermediate_fmv = ifelse(
       is.na(meta_tieback_key_pin),
@@ -209,18 +208,16 @@ message("Prorating buildings")
 assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
   group_by(meta_tieback_key_pin) %>%
   mutate(
-    tieback_total_land_fmv = ifelse(
+    # 1. Determine the mean, unprorated building value for buildings that span
+    # multiple PINs. This is the mean value of the predicted value minus land
+    pred_pin_final_fmv_bldg_no_prorate = ifelse(
       is.na(meta_tieback_key_pin),
-      pred_pin_final_fmv_land,
-      sum(pred_pin_final_fmv_land)
+      pred_pin_final_fmv_round_no_prorate - pred_pin_final_fmv_land,
+      mean(pred_pin_final_fmv_round_no_prorate - pred_pin_final_fmv_land)
     )
   ) %>%
   ungroup() %>%
   mutate(
-    # 1. Subtract the TOTAL value of the land of all linked PINs. This leaves
-    # only the value of the building that spans the PINs
-    pred_pin_final_fmv_bldg_no_prorate =
-      pred_pin_final_fmv_round_no_prorate - tieback_total_land_fmv,
     # 2. Multiply the building by the proration rate of each PIN/card. This is
     # the proportion of the building's value held by each PIN
     pred_pin_final_fmv_bldg =
@@ -231,7 +228,7 @@ assessment_pin_data_prorated <- assessment_pin_data_w_land %>%
   # 3. Assign the fractional portion of a building (cents) to whichever portion
   # is largest i.e. [1.59, 1.41] becomes [2, 1]
   group_by(meta_tieback_key_pin) %>%
-  arrange(desc(temp_bldg_frac_prop)) %>%
+  arrange(meta_tieback_key_pin, desc(temp_bldg_frac_prop)) %>%
   mutate(
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_bldg_frac_prop > 0.1e-7
@@ -286,7 +283,7 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
   ) %>%
   # More fractional rounding to deal with card values being split into cents
   group_by(meta_year, meta_pin) %>%
-  arrange(desc(temp_card_frac_prop)) %>%
+  arrange(meta_year, meta_pin, desc(temp_card_frac_prop)) %>%
   mutate(
     temp_add_to_final = as.numeric(
       n() > 1 & row_number() == 1 & temp_card_frac_prop > 0.1e-7
@@ -315,18 +312,22 @@ message("Saving card-level data")
 
 # Keep only card-level variables of interest, including: ID variables (run_id,
 # pin, card), characteristics, and predictions
+char_vars <- params$model$predictor$all[
+  grepl("^char_", params$model$predictor$all)
+]
+char_vars <- char_vars[!char_vars %in% c("char_apts", "char_recent_renovation")]
 assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
-    meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv,
+    meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv, char_class,
     all_of(params$model$predictor$all), township_code
   ) %>%
-  mutate(meta_complex_id = as.numeric(meta_complex_id)) %>%
-  ccao::vars_recode(
-    starts_with("char_"),
-    type = "long",
-    as_factor = FALSE
+  mutate(
+    meta_complex_id = as.numeric(meta_complex_id),
+    ccao_n_years_exe_homeowner = as.integer(ccao_n_years_exe_homeowner),
+    char_apts = as.character(char_apts)
   ) %>%
+  ccao::vars_recode(any_of(char_vars), type = "long", as_factor = FALSE) %>%
   write_parquet(paths$output$assessment_card$local)
 
 
@@ -346,7 +347,14 @@ message("Attaching recent sales to PIN-level data")
 # These are the sales that will be used for ratio studies in the evaluate stage.
 # We want our assessed value to be as close as possible to this sale
 sales_data_ratio_study <- sales_data %>%
+  # For ratio studies, we don't want to include outliers
+  filter(!sv_is_outlier) %>%
   filter(meta_year == params$assessment$data_year) %>%
+  # Kludge to remove some sales that somehow appear to be for a single card
+  # on a multi-card PIN. Will need to go back and hand validate these
+  filter(
+    !meta_sale_document_num %in% c("2335646020", "2312245016")
+  ) %>%
   group_by(meta_pin) %>%
   filter(meta_sale_date == max(meta_sale_date)) %>%
   distinct(
@@ -362,7 +370,16 @@ sales_data_ratio_study <- sales_data %>%
 sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
-    meta_sale_price, meta_sale_date, meta_sale_document_num
+    meta_sale_price, meta_sale_date, meta_sale_document_num,
+    sv_outlier_type
+  ) %>%
+  # Include outliers, since these data are used for desk review and
+  # not for modeling
+  rename(meta_sale_outlier_type = sv_outlier_type) %>%
+  mutate(
+    meta_sale_outlier_type = ifelse(
+      meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
+    )
   ) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
@@ -370,7 +387,12 @@ sales_data_two_most_recent <- sales_data %>%
   tidyr::pivot_wider(
     id_cols = meta_pin,
     names_from = mr,
-    values_from = c(meta_sale_date, meta_sale_price, meta_sale_document_num),
+    values_from = c(
+      meta_sale_date,
+      meta_sale_price,
+      meta_sale_document_num,
+      meta_sale_outlier_type
+    ),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
   ) %>%
   select(meta_pin, contains("1"), contains("2")) %>%
@@ -384,7 +406,7 @@ message("Collapsing card-level data to PIN level")
 # each PIN but summing the total square footage of all buildings
 assessment_pin_data_base <- assessment_card_data_merged %>%
   group_by(meta_year, meta_pin) %>%
-  arrange(desc(char_bldg_sf)) %>%
+  arrange(meta_year, meta_pin, desc(char_bldg_sf)) %>%
   mutate(
     # Keep the sum of the initial card level values
     pred_pin_initial_fmv = sum(pred_card_initial_fmv),
