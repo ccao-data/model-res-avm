@@ -1,6 +1,17 @@
+import typing
+
 import numpy as np
 import numba as nb
 import pandas as pd
+import taichi as ti
+
+# Initialize taichi
+ti.init(arch=ti.cpu, default_ip=ti.i32, default_fp=ti.f32)
+
+# Custom taichi types
+TopNComps = ti.types.struct()
+IntegerVector = ti.types.vector(1, int)
+Ndarray = ti.types.ndarray()
 
 
 def get_comps(
@@ -91,10 +102,27 @@ def get_comps(
 
     # Place observations in bins. Do this in a numba-accelerated function so
     # that we can make use of fast loops
-    observation_df["price_bin"] = _bin_by_price(
-        observation_df[["id", "predicted_value"]].values,
-        price_bin_indices.values
+    observation_matrix = observation_df[["id", "predicted_value"]].values
+    taichi_obs_ndarray = ti.ndarray(dtype=int, shape=observation_matrix.shape)
+
+    price_bin_matrix = price_bin_indices.values
+    taichi_bin_ndarray = ti.ndarray(dtype=int, shape=price_bin_matrix.shape)
+
+    num_observations = observation_matrix.shape[0]
+    num_price_bins = price_bin_matrix.shape[0]
+
+    # Output vector
+    binned_vector = IntegerVector.field(shape=num_observations)
+
+    _bin_by_price(
+        taichi_obs_ndarray.from_numpy(observation_matrix),
+        taichi_bin_ndarray.from_numpy(price_bin_matrix),
+        binned_vector,
+        num_observations,
+        num_price_bins
     )
+
+    observation_df["price_bin"] = binned_vector.to_numpy()
 
     total_num_observations = len(observation_df)
     total_num_possible_comps = len(sorted_comparison_df)
@@ -193,41 +221,51 @@ def get_comps(
     return indexes_df, scores_df
 
 
-@nb.njit(fastmath=True, parallel=True)
-def _bin_by_price(observation_matrix, price_bin_matrix):
+@ti.kernel
+def _bin_by_price(
+    observation_matrix: Ndarray,
+    price_bin_matrix: Ndarray,
+    output_vector: IntegerVector,
+    num_observations: int,
+    num_price_bins: int
+):
     """Given a matrix of observations and a matrix of price bins, place the
     observations in the closest price bin and return an array of bin IDs
     with the same length as the observation matrix."""
-    num_observations = len(observation_matrix)
     price_bin_idx, price_bin_min_idx, price_bin_max_idx = 0, 3, 4
     observation_price_idx = 1
-    output_matrix = np.zeros(num_observations, dtype=np.int32)
 
-    for obs_idx in nb.prange(num_observations):
-        observation = observation_matrix[obs_idx]
-        observation_price = observation[observation_price_idx]
-        for bin in price_bin_matrix:
+    for obs_idx in range(num_observations):
+        observation_price = observation_matrix[obs_idx, observation_price_idx]
+        bin_found = False
+        for bin_idx in range(num_price_bins):
+            bin_min = price_bin_matrix[bin_idx, price_bin_min_idx]
+            bin_max = price_bin_matrix[bin_idx, price_bin_max_idx]
+            bin_id = price_bin_matrix[bin_idx, price_bin_idx]
+
             if (
                 # Since we expect the price bins to be non-overlapping with
                 # no gaps and an integer difference of 1 between ranges, the
                 # ranges can be treated as inclusive on both ends
-                observation_price >= bin[price_bin_min_idx] and
-                observation_price <= bin[price_bin_max_idx]
+                observation_price >= bin_min and observation_price <= bin_max
             ):
-                output_matrix[obs_idx] = bin[price_bin_idx]
+                output_vector[obs_idx] = bin_id
+                bin_found = True
                 break
-        else:
-            raise ValueError(
-                f"Observation {obs_idx} did not match any price bins"
-            )
 
-    return output_matrix
+        if not bin_found:
+            # Set a special value to indicate an error, since taichi doesn't
+            # support runtime errors
+            output_vector[obs_idx] = -1
 
 
-@nb.njit(fastmath=True, parallel=True)
+@ti.kernel
 def _get_top_n_comps(
-    leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps
-):
+    leaf_node_matrix: ti.types.ndarray(),
+    comparison_leaf_node_matrix: ti.types.ndarray(),
+    weights_matrix: ti.types.ndarray(),
+    num_comps: int
+) -> TopNComps:
     """Helper function that takes matrices of leaf node assignments for
     observations in a tree model, a matrix of weights for each obs/tree, and an
     integer `num_comps`, and returns a matrix where each observation is scored
@@ -245,7 +283,7 @@ def _get_top_n_comps(
     all_top_n_idxs = np.full((num_observations, num_comps), -1, dtype=idx_dtype)
     all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
 
-    for x_i in nb.prange(num_observations):
+    for x_i in range(num_observations):
         top_n_idxs = np.full(num_comps, -1, dtype=idx_dtype)
         top_n_scores = np.zeros(num_comps, dtype=score_dtype)
 
@@ -283,7 +321,7 @@ def _get_top_n_comps(
     return all_top_n_idxs, all_top_n_scores
 
 
-@nb.njit(fastmath=True)
+@ti.func
 def _insert_at_idx_and_shift(arr, elem, idx):
   """Helper function to insert an element `elem` into a sorted numpy array `arr`
   at a given index `idx` and shift the subsequent elements down one index."""
