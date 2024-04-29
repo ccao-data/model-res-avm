@@ -47,4 +47,6 @@ COPY ./ .
 RUN rm -Rf /model-res-avm/renv && \
     mv /setup/renv /model-res-avm/renv
 
+RUN pip install -U -r requirements.txt
+
 CMD python3 python/comps.py
