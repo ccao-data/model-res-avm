@@ -73,8 +73,8 @@ jobs:
     with:
       ref: jeancochrane/spike-c5-instances-for-build-and-run-batch-job
       backend: "ec2"
-      vcpu: "95"
-      memory: "190000"
+      vcpu: "90"
+      memory: "180000"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
       role-duration-seconds: 21000
