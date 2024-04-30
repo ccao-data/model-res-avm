@@ -69,12 +69,12 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/spike-c5-instances-for-build-and-run-batch-job
     with:
+      ref: jeancochrane/spike-c5-instances-for-build-and-run-batch-job
       backend: "ec2"
-      gpu: "4"
-      vcpu: "40"
-      memory: "158000"
+      vcpu: "72"
+      memory: "144000"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
       role-duration-seconds: 21000
