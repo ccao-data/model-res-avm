@@ -6,7 +6,7 @@ import pandas as pd
 import taichi as ti
 
 # Initialize taichi
-ti.init(arch=ti.gpu, default_ip=ti.i32, default_fp=ti.f32)
+ti.init(arch=ti.cpu, default_ip=ti.i32, default_fp=ti.f32)
 
 
 def get_comps(
