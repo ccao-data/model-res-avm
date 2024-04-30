@@ -1,4 +1,4 @@
-FROM pytorch/2.3.0-cuda12.1-cudnn8-runtime
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
 
 # Copy Python requirements file into the image
 COPY requirements.txt ./
