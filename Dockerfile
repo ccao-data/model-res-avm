@@ -1,5 +1,10 @@
 FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
 
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        libx11-dev
+
 # Copy Python requirements file into the image
 COPY requirements.txt ./
 
