@@ -298,8 +298,8 @@ if __name__ == "__main__":
     import time
 
     num_trees = 500
-    num_obs = 20001
-    num_comparisons = 10000
+    num_obs = 100000
+    num_comparisons = 50000
     mean_sale_price = 350000
     std_deviation = 110000
 
