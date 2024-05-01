@@ -99,11 +99,11 @@ def get_comps(
     # that we can make use of fast loops
     observation_matrix = observation_df[["id", "predicted_value"]].values
     taichi_obs_ndarray = ti.ndarray(dtype=int, shape=observation_matrix.shape)
-    taichi_obs_ndarray.from_numpy(observation_matrix),
+    taichi_obs_ndarray.from_numpy(observation_matrix)
 
     price_bin_matrix = price_bin_indices.values
     taichi_bin_ndarray = ti.ndarray(dtype=int, shape=price_bin_matrix.shape)
-    taichi_bin_ndarray.from_numpy(price_bin_matrix),
+    taichi_bin_ndarray.from_numpy(price_bin_matrix)
 
     num_observations = observation_matrix.shape[0]
     num_price_bins = price_bin_matrix.shape[0]
