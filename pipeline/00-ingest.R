@@ -148,8 +148,8 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
   col_type <- dict %>%
     filter(var_name == col_name) %>%
     pull(var_type)
-
-  switch(col_type,
+  switch(
+    col_type,
          numeric = as.numeric(col),
          character = as.character(col),
          logical = as.logical(as.numeric(col)),
@@ -159,6 +159,29 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 }
 
 
+# Mini function to deal with arrays
+# Some Athena columns are stored as arrays but are converted to string on
+# ingest. In such cases, we either keep the contents of the cell (if 1 unit),
+# collapse the array into a comma-separated string (if more than 1 unit),
+# or replace with NA if the array is empty
+
+process_array_columns <- function(data) {
+  data %>%
+    mutate(
+      across(
+        starts_with("loc_tax_"),
+        ~ sapply(.x, function(cell) {
+          if (length(cell) > 1) {
+            paste(cell, collapse = ", ")
+          } else if (length(cell) == 1) {
+            as.character(cell)  # Convert the single element to character
+          } else {
+            NA  # Handle cases where the array is empty
+          }
+        })
+      )
+    )
+}
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -293,24 +316,8 @@ training_data_clean <- training_data_w_hie %>%
     ),
     char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
   ) %>%
-  # Some Athena columns are stored as arrays but are converted to string on
-  # ingest. In such cases, we either keep the contents of the cell (if 1 unit),
-  # collapse the array into a comma-separated string (if more than 1 unit),
-  # or replace with NA if the array is empty
-  mutate(
-    across(
-      starts_with("loc_tax_"),
-      ~sapply(.x, function(cell) {
-        if (length(cell) > 1) {
-          paste(cell, collapse = ", ")
-        } else if (length(cell) == 1) {
-          as.character(cell)  # Convert the single element to character
-        } else {
-          NA  # Handle cases where the array is empty
-        }
-      })
-    )
-  )  %>%
+  # Apply the helper function to process array columns
+  process_array_columns() %>%
   mutate(loc_tax_municipality_name = replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
@@ -410,21 +417,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     type = "short",
     as_factor = FALSE
   ) %>%
-  # Same array cleanup as training data
-  mutate(
-    across(
-      starts_with("loc_tax_"),
-      ~sapply(.x, function(cell) {
-        if (length(cell) > 1) {
-          paste(cell, collapse = ", ")
-        } else if (length(cell) == 1) {
-          as.character(cell)  # Convert the single element to character
-        } else {
-          NA  # Handle cases where the array is empty
-        }
-      })
-    )
-  ) %>%
+  # Apply the helper function to process array columns
+  process_array_columns() %>%
   mutate(loc_tax_municipality_name = replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
   mutate(
     char_apts = case_when(
