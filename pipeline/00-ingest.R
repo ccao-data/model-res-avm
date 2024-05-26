@@ -319,7 +319,8 @@ training_data_clean <- training_data_w_hie %>%
   # Apply the helper function to process array columns
   process_array_columns() %>%
   mutate(
-    loc_tax_municipality_name = replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
@@ -421,7 +422,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
   # Apply the helper function to process array columns
   process_array_columns() %>%
   mutate(
-    loc_tax_municipality_name = replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
   mutate(
     char_apts = case_when(
       char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
