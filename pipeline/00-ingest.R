@@ -148,13 +148,12 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
   col_type <- dict %>%
     filter(var_name == col_name) %>%
     pull(var_type)
-  switch(
-    col_type,
-         numeric = as.numeric(col),
-         character = as.character(col),
-         logical = as.logical(as.numeric(col)),
-         categorical = as.factor(col),
-         date = lubridate::as_date(col)
+  switch(col_type,
+    numeric = as.numeric(col),
+    character = as.character(col),
+    logical = as.logical(as.numeric(col)),
+    categorical = as.factor(col),
+    date = lubridate::as_date(col)
   )
 }
 
@@ -174,7 +173,7 @@ process_array_columns <- function(data) {
           if (length(cell) > 1) {
             paste(cell, collapse = ", ")
           } else if (length(cell) == 1) {
-            as.character(cell)  # Convert the single element to character
+            as.character(cell) # Convert the single element to character
           } else {
             NA  # Handle cases where the array is empty
           }
@@ -318,9 +317,9 @@ training_data_clean <- training_data_w_hie %>%
   ) %>%
   # Apply the helper function to process array columns
   process_array_columns() %>%
-  mutate(
-    loc_tax_municipality_name =
-      replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
+  mutate(loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED")
+  ) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
@@ -421,9 +420,9 @@ assessment_data_clean <- assessment_data_w_hie %>%
   ) %>%
   # Apply the helper function to process array columns
   process_array_columns() %>%
-  mutate(
-    loc_tax_municipality_name =
-      replace_na(loc_tax_municipality_name, "UNINCORPORATED")) %>%
+  mutate(loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED")
+  ) %>%
   mutate(
     char_apts = case_when(
       char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
