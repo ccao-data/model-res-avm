@@ -175,7 +175,7 @@ process_array_columns <- function(data) {
           } else if (length(cell) == 1) {
             as.character(cell) # Convert the single element to character
           } else {
-            NA  # Handle cases where the array is empty
+            NA # Handle cases where the array is empty
           }
         })
       )
@@ -317,7 +317,8 @@ training_data_clean <- training_data_w_hie %>%
   ) %>%
   # Apply the helper function to process array columns
   process_array_columns() %>%
-  mutate(loc_tax_municipality_name =
+  mutate(
+    loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
   ) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
@@ -420,7 +421,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
   ) %>%
   # Apply the helper function to process array columns
   process_array_columns() %>%
-  mutate(loc_tax_municipality_name =
+  mutate(
+    loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
   ) %>%
   mutate(
@@ -545,14 +547,14 @@ complex_id_temp <- assessment_data_clean %>%
     char_bldg_sf.x <= char_bldg_sf.y + params$input$complex$match_fuzzy$bldg_sf,
     # nolint start
     (char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
-       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
+      char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
       is.na(char_yrblt.x),
     # Units must be within 250 feet of other units
     (loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
-       loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+      loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_x_3435.x),
     (loc_y_3435.x >= loc_y_3435.y - params$input$complex$match_fuzzy$dist_ft &
-       loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+      loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_y_3435.x)
     # nolint end
   ) %>%
