@@ -23,8 +23,6 @@ suppressPackageStartupMessages({
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Pull Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -47,7 +45,7 @@ training_data <- dbGetQuery(
       sale.sv_outlier_type,
       sale.sv_run_id,
       res.*
-  FROM model.vw_card_res_input res
+  FROM z_ci_449_ingest_affordability_risk_index_ari_for_modeling_model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.year
@@ -87,7 +85,7 @@ tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
-  FROM model.vw_card_res_input
+  FROM z_ci_449_ingest_affordability_risk_index_ari_for_modeling_model.vw_card_res_input
   WHERE year BETWEEN '{as.numeric(params$assessment$data_year) - 1}'
     AND '{params$assessment$data_year}'
   ")
@@ -109,7 +107,7 @@ land_site_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM ccao.land_site_rate
-  WHERE year = '{params$assessment$year}'
+  WHERE CAST(year AS INTEGER) = 2022
   ")
 )
 

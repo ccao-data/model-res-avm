@@ -1,0 +1,210 @@
+---
+title: "Testing the Impact of Affordability Risk Index on the Model"
+format: html
+---
+```{r, include = FALSE}
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(noctua)
+library(arrow)
+library(kableExtra)
+library(spdep)
+library(leaflet)
+
+
+con <- dbConnect(noctua::athena())
+noctua::noctua_options(cache = 10)
+
+input_data <- read_parquet("input/assessment_data.parquet") %>%
+  select(meta_pin, meta_township_name, meta_nbhd_code, other_affordability_risk_index, loc_census_acs5_tract_geoid, meta_pin10, loc_longitude, loc_latitude) %>%
+  rename(ARI = other_affordability_risk_index)
+
+working_data <- read_parquet("output/shap/model_shap.parquet") %>%
+  select(meta_pin, other_affordability_risk_index) %>%
+  rename(ARI_SHAP = other_affordability_risk_index) %>%
+  mutate(pin10 = substr(meta_pin, 1, 10)) %>%
+  inner_join(input_data, by = "meta_pin") %>%
+  group_by(meta_township_name) %>%
+  mutate(
+    shap_township_mean = mean(abs(ARI_SHAP))
+  ) %>%
+  ungroup() %>%
+  group_by(loc_census_acs5_tract_geoid) %>%
+  mutate(
+    shap_tract_mean = mean(abs(ARI_SHAP))
+  )
+
+working_data_non_zero <- working_data %>%
+  filter(ARI != 0)
+
+nbhd <- ccao::nbhd_shp
+
+tract_geographies <- dbGetQuery(
+  conn = con,
+  "SELECT *
+   FROM spatial.census
+  where year = '2010' and geography = 'tract'"
+)
+
+tract_data <- working_data %>%
+  distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
+  inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
+  st_as_sf()
+
+tract_data_non_zero <- working_data_non_zero %>%
+  distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
+  inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
+  st_as_sf()
+```
+
+
+# Context
+
+The ARI is a tool intended to demonstrate the need to preserve affordability in areas that are becoming less affordable at a faster rate. Census tracts where affordability loss risk is greatest receive the highest scores in this index. The ARI uses American Community Survey data to measure change over time across various factors that indicate affordability loss:
+
+- Median Household Income
+- Median Home Value
+- Families Below the Federal Poverty Level
+- Housing Unit Vacancy
+- Renter Tenancy
+- Individuals Employed in Management, Business, Science and Arts Occupations
+- Individuals with a Four-Year Degree (Bachelor’s) or Higher.
+
+About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I took it out of the future maps, meaning there are a significant amount of empty tracts.
+
+![alt text here](ARI Image.png)
+
+
+## Map of ARI by Census Tract
+
+As can be seen, the number of census tracts left in the database diminishes quite a bit. The number of pin10 observations goes from 1,117,715 to 596,243.
+
+```{r, echo = FALSE}
+working_data %>%
+  group_by(loc_census_acs5_tract_geoid) %>%
+  mutate(ARI = mean(ARI)) %>%
+  distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
+  inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
+  st_as_sf() %>% 
+  filter(ARI != 0) %>%
+  ggplot() +
+  geom_sf(aes(fill = ARI)) +
+  scale_fill_viridis_c(option = "viridis") +
+  theme_void() +
+  labs(
+    fill = "ARI")
+```
+
+## Does Median SHAP Value Differ by Neighborhood?
+
+In general, it seems as though higher SHAP values simply relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan.
+
+
+### Median Absolute SHAP Values by Tract
+```{r, echo = FALSE}
+ggplot(data = tract_data_non_zero) +
+  geom_sf(aes(fill = shap_tract_mean)) +
+  scale_fill_viridis_c(option = "viridis") +
+  theme_void() +
+  labs(
+    fill = "Added $ Value"
+  )
+```
+
+# Median Values of the 90th percentile in Each Neighborhood
+
+The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in value. 
+
+```{r, echo = FALSE}
+filtered_plot <- working_data_non_zero %>%
+  group_by(loc_census_acs5_tract_geoid) %>%
+  mutate(threshold = quantile(abs(ARI_SHAP), 0.9)) %>%
+  filter(abs(ARI_SHAP) >= threshold) %>%
+  mutate(median_90th_percentile = median(ARI_SHAP)) %>%
+  distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
+  inner_join(nbhd, by = c("loc_census_acs5_tract_geoid" = "town_nbhd")) %>%
+  st_as_sf()
+
+ggplot(data = filtered_plot) +
+  geom_sf(aes(fill = median_90th_percentile)) +
+  scale_fill_viridis_c(option = "viridis") +
+  theme_void() +
+  labs(
+    fill = "Added $ Value"
+  )
+```
+
+
+# Correlation between SHAP Value of ARI and ARI
+
+One of the assumptions that can be attached to SHAPs is that if there is a large correlation between the feature value, and the SHAP value, then it is providing something meaningful in the model. In this case, the correlation is around than |.1|. This reinforces the existing perception that it does not add significant value.
+
+```{r, echo = FALSE}
+x <- cor(working_data$ARI_SHAP, working_data$ARI, use = "complete.obs")
+print(paste("Correlation =", x))
+
+x <- cor(working_data_non_zero$ARI_SHAP, working_data_non_zero$ARI, use = "complete.obs")
+print(paste("Correlation =", x, "when removing 0s"))
+
+```
+# Try to find out if there are properties / areas where this feature has an impact.
+
+```{r, echo = FALSE}
+pal_ari_shap <- colorNumeric(palette = "viridis", domain = range(working_data$ARI_SHAP, na.rm = TRUE))
+
+working_data %>%
+  filter(ARI == 5) %>%
+  leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addCircleMarkers(
+    lng = ~loc_longitude,
+    lat = ~loc_latitude,
+    radius = 5,
+    color = "black", # Border color set to black or any preferred color
+    fillColor = ~pal_ari_shap(ARI_SHAP), # Fill color based on ARI_SHAP
+    stroke = TRUE,
+    fillOpacity = 0.7
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    pal = pal_ari_shap,
+    values = ~ARI_SHAP,
+    title = "ARI_SHAP",
+    opacity = 1
+  )
+
+```
+
+# Does the inclusion of ARI impact metrics on a Township level?
+
+In general, the ARI seemed to have very minimal impact. There were some small shifts in metrics, but a deeper dive also showed nothing significant. It is likely since this is capturing spatial effects, it is mapping onto the plethora of other spatial effects already in the model. 
+
+```{r, echo = FALSE, warning = FALSE}
+
+old_model <- dbGetQuery(
+  conn = con,
+  "SELECT * FROM model.performance WHERE run_id = '2024-03-17-stupefied-maya'"
+) %>%
+  filter(geography_type == "township_code") %>%
+  filter(is.na(class)) %>%
+  filter(stage == "assessment")
+
+new_model <- read_parquet("output/performance/model_performance_assessment.parquet") %>%
+  filter(geography_type == "township_code") %>%
+  filter(is.na(class)) %>%
+  rename_with(~ paste0(., "_new"), -geography_id)
+
+inner_join(old_model, new_model, by = "geography_id") %>%
+  select(geography_id, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
+  mutate(across(c(mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new), round, 2)) %>%
+  kable(
+    format = "html",  # You can change this to "latex" or "markdown" if needed
+    col.names = c("Geography ID", "MKI", "MKI New", "COD", "COD New", "PRB", "PRB New", "PRD", "PRD New", "R Squared", "R Squared New"),
+    caption = "Intra Model Test Results"
+  ) %>%
+  kable_styling(position = "center")
+
+
+```
+
