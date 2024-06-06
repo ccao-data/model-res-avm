@@ -86,14 +86,15 @@ working_data %>%
   mutate(ARI = mean(ARI)) %>%
   distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
   inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
-  st_as_sf() %>% 
+  st_as_sf() %>%
   filter(ARI != 0) %>%
   ggplot() +
   geom_sf(aes(fill = ARI)) +
   scale_fill_viridis_c(option = "viridis") +
   theme_void() +
   labs(
-    fill = "ARI")
+    fill = "ARI"
+  )
 ```
 
 ## Does Median SHAP Value Differ by Neighborhood?
@@ -146,25 +147,27 @@ print(paste("Correlation =", x))
 
 x <- cor(working_data_non_zero$ARI_SHAP, working_data_non_zero$ARI, use = "complete.obs")
 print(paste("Correlation =", x, "when removing 0s"))
-
 ```
 # Try to find out if there are properties / areas where this feature has an impact.
 
 ```{r, echo = FALSE}
-pal_ari_shap <- colorNumeric(palette = "viridis", domain = range(working_data$ARI_SHAP, na.rm = TRUE))
+filtered_data <- working_data %>%
+  filter(loc_census_acs5_tract_geoid == 17031824122)
 
-working_data %>%
-  filter(ARI == 5) %>%
+pal_ari_shap <- colorNumeric(palette = rev(viridis::viridis_pal()(256)), domain = range(filtered_data$ARI_SHAP, na.rm = TRUE))
+
+filtered_data %>%
   leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addCircleMarkers(
     lng = ~loc_longitude,
     lat = ~loc_latitude,
     radius = 5,
-    color = "black", # Border color set to black or any preferred color
-    fillColor = ~pal_ari_shap(ARI_SHAP), # Fill color based on ARI_SHAP
+    color = "NA", # Border color set to black or any preferred color
+    fillColor = ~ pal_ari_shap(ARI_SHAP), # Fill color based on ARI_SHAP
     stroke = TRUE,
-    fillOpacity = 0.7
+    fillOpacity = 0.7,
+    popup = ~ paste("ARI_SHAP: $", formatC(ARI_SHAP, format = "f", digits = 0), "<br>pin10:", pin10)
   ) %>%
   addLegend(
     position = "bottomright",
@@ -173,7 +176,6 @@ working_data %>%
     title = "ARI_SHAP",
     opacity = 1
   )
-
 ```
 
 # Does the inclusion of ARI impact metrics on a Township level?
@@ -181,7 +183,6 @@ working_data %>%
 In general, the ARI seemed to have very minimal impact. There were some small shifts in metrics, but a deeper dive also showed nothing significant. It is likely since this is capturing spatial effects, it is mapping onto the plethora of other spatial effects already in the model. 
 
 ```{r, echo = FALSE, warning = FALSE}
-
 old_model <- dbGetQuery(
   conn = con,
   "SELECT * FROM model.performance WHERE run_id = '2024-03-17-stupefied-maya'"
@@ -199,12 +200,10 @@ inner_join(old_model, new_model, by = "geography_id") %>%
   select(geography_id, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
   mutate(across(c(mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new), round, 2)) %>%
   kable(
-    format = "html",  # You can change this to "latex" or "markdown" if needed
+    format = "html", # You can change this to "latex" or "markdown" if needed
     col.names = c("Geography ID", "MKI", "MKI New", "COD", "COD New", "PRB", "PRB New", "PRD", "PRD New", "R Squared", "R Squared New"),
     caption = "Intra Model Test Results"
   ) %>%
   kable_styling(position = "center")
-
-
 ```
 
