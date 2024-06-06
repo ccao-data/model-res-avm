@@ -190,7 +190,7 @@ filtered_data %>%
     lat = ~loc_latitude,
     radius = 5,
     color = "NA",
-    fillColor = ~ pal_ari_shap(ARI_SHAP), 
+    fillColor = ~ pal_ari_shap(ARI_SHAP),
     stroke = TRUE,
     fillOpacity = 0.7,
     popup = ~ paste("ARI_SHAP: $", formatC(ARI_SHAP, format = "f", digits = 0), "<br>pin10:", pin10)
