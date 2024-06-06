@@ -176,7 +176,7 @@ filtered_data %>%
     lng = ~loc_longitude,
     lat = ~loc_latitude,
     radius = 5,
-    color = "NA", 
+    color = "NA",
     fillColor = ~ pal_ari_shap(ARI_SHAP), # Fill color based on ARI_SHAP
     stroke = TRUE,
     fillOpacity = 0.7,
@@ -214,7 +214,7 @@ inner_join(old_model, new_model, by = "geography_id") %>%
   select(geography_id, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
   mutate(across(c(mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new), round, 2)) %>%
   kable(
-    format = "html", 
+    format = "html",
     col.names = c("Geography ID", "MKI", "MKI New", "COD", "COD New", "PRB", "PRB New", "PRD", "PRD New", "R Squared", "R Squared New"),
     caption = "Intra Model Test Results"
   ) %>%
