@@ -71,7 +71,7 @@ The ARI is a tool intended to demonstrate the need to preserve affordability in 
 - Individuals Employed in Management, Business, Science and Arts Occupations
 - Individuals with a Four-Year Degree (Bachelor’s) or Higher.
 
-About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I took it out of the future maps, meaning there are a significant amount of empty tracts.
+About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I took it out of the future maps, meaning that in some maps, there are a significant number of empty tracts.
 
 ![alt text here](ARI Image.png)
 
@@ -113,7 +113,7 @@ ggplot(data = tract_data) +
 ```
 
 
-### Median Absolute SHAP Values by Tract, Removing Tracts with 0 ARI
+### Median Absolute SHAP Values by Tract, Keeping Tracts with 0 ARI
 ```{r, echo = FALSE}
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
@@ -124,12 +124,28 @@ ggplot(data = tract_data_non_zero) +
   )
 ```
 
-# Median Values of the 90th percentile in Each Neighborhood
+
+### Median Absolute SHAP Values by Township, Keeping Tracts with 0 ARI
+
+Looking at the data on a less granular level, we can see that the SHAP values are higher in the North side of the County. This likely relates to the fact that the North side of the County is more expensive, and the model looks for reasons to identify higher prices. 
+
+```{r, echo = FALSE}
+ggplot(data = tract_data_non_zero) +
+  geom_sf(aes(fill = shap_township_mean)) +
+  scale_fill_viridis_c(option = "viridis") +
+  theme_void() +
+  labs(
+    fill = "Added $ Value"
+  )
+```
+
+
+## Median Values of the 90th percentile in Each Neighborhood
 
 The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in $ value. 
 
 ```{r, echo = FALSE}
-filtered_plot <- working_data_non_zero %>%
+filtered_plot <- working_data %>%
   group_by(loc_census_acs5_tract_geoid) %>%
   mutate(threshold = quantile(abs(ARI_SHAP), 0.9)) %>%
   filter(abs(ARI_SHAP) >= threshold) %>%
