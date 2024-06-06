@@ -72,10 +72,10 @@ The ARI is a tool intended to demonstrate the need to preserve affordability in 
 - Individuals Employed in Management, Business, Science and Arts Occupations
 - Individuals with a Four-Year Degree (Bachelor’s) or Higher.
 
-About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I filtered them out of the following map. 
 
 ![](ARI Image.png)
 
+About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I filtered them out of the following map. 
 
 ## Map of ARI by Census Tract, removing ARI of 0
 
@@ -174,7 +174,7 @@ print(paste("Correlation =", x, "when removing 0s"))
 ```
 ## Creating a map to see if there are spatial disparities in the inter-tract SHAP values
 
-A tract with a value of 5 was selected to see if there were any strong spatial disparities with the SHAP values. Within this tract, values ranged from 336 to 3643. As can be seen, values skew significantly higher in the South of the tract, and are lower in the North. 
+A tract with a value of 5 was selected to see if there were any strong spatial disparities with the SHAP values. Within this tract, values ranged from 336 to 3643. As can be seen, values skew significantly higher in the South of the tract, and are lower in the North. A couple explanations for this could be a neighborhood boundary passing through that line, or higher market values in the South.
 
 ```{r, echo = FALSE}
 filtered_data <- working_data %>%
