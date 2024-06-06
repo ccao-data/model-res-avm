@@ -101,8 +101,19 @@ working_data %>%
 
 In general, it seems as though higher SHAP values simply relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan.
 
-
 ### Median Absolute SHAP Values by Tract
+```{r, echo = FALSE}
+ggplot(data = tract_data) +
+  geom_sf(aes(fill = shap_tract_mean)) +
+  scale_fill_viridis_c(option = "viridis") +
+  theme_void() +
+  labs(
+    fill = "Added $ Value"
+  )
+```
+
+
+### Median Absolute SHAP Values by Tract, Removing Tracts with 0 ARI
 ```{r, echo = FALSE}
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
@@ -115,7 +126,7 @@ ggplot(data = tract_data_non_zero) +
 
 # Median Values of the 90th percentile in Each Neighborhood
 
-The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in value. 
+The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in $ value. 
 
 ```{r, echo = FALSE}
 filtered_plot <- working_data_non_zero %>%
@@ -124,7 +135,7 @@ filtered_plot <- working_data_non_zero %>%
   filter(abs(ARI_SHAP) >= threshold) %>%
   mutate(median_90th_percentile = median(ARI_SHAP)) %>%
   distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
-  inner_join(nbhd, by = c("loc_census_acs5_tract_geoid" = "town_nbhd")) %>%
+  inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
   st_as_sf()
 
 ggplot(data = filtered_plot) +
@@ -148,7 +159,9 @@ print(paste("Correlation =", x))
 x <- cor(working_data_non_zero$ARI_SHAP, working_data_non_zero$ARI, use = "complete.obs")
 print(paste("Correlation =", x, "when removing 0s"))
 ```
-# Try to find out if there are properties / areas where this feature has an impact.
+# Creating a map to see if there are spatial disparities in the inter-tract SHAP values
+
+A tract with a value of 5 was selected to see if there were any strong spatial disparities with the SHAP values. Within this tract, values ranged from 336 to 3643. As can be seen, values skew significantly higher in the South of the tract, and are lower in the North. 
 
 ```{r, echo = FALSE}
 filtered_data <- working_data %>%
@@ -163,12 +176,13 @@ filtered_data %>%
     lng = ~loc_longitude,
     lat = ~loc_latitude,
     radius = 5,
-    color = "NA", # Border color set to black or any preferred color
+    color = "NA", 
     fillColor = ~ pal_ari_shap(ARI_SHAP), # Fill color based on ARI_SHAP
     stroke = TRUE,
     fillOpacity = 0.7,
     popup = ~ paste("ARI_SHAP: $", formatC(ARI_SHAP, format = "f", digits = 0), "<br>pin10:", pin10)
   ) %>%
+  # Would like to flip legend
   addLegend(
     position = "bottomright",
     pal = pal_ari_shap,
@@ -200,7 +214,7 @@ inner_join(old_model, new_model, by = "geography_id") %>%
   select(geography_id, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
   mutate(across(c(mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new), round, 2)) %>%
   kable(
-    format = "html", # You can change this to "latex" or "markdown" if needed
+    format = "html", 
     col.names = c("Geography ID", "MKI", "MKI New", "COD", "COD New", "PRB", "PRB New", "PRD", "PRD New", "R Squared", "R Squared New"),
     caption = "Intra Model Test Results"
   ) %>%
