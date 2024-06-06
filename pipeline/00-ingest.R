@@ -45,8 +45,9 @@ training_data <- dbGetQuery(
       sale.sv_outlier_type,
       sale.sv_run_id,
       res.*
-  FROM z_ci_449_ingest_affordability_risk_index_ari_for_modeling_model.vw_card_res_input res
-  INNER JOIN default.vw_pin_sale sale
+      FROM z_ci_449_ingest_affordability_risk_index_ari_for_modeling_model.
+      vw_card_res_input res
+      INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.year
   WHERE CAST(res.year AS int)
@@ -85,7 +86,8 @@ tictoc::tic("Assessment data pulled")
 assessment_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
-  FROM z_ci_449_ingest_affordability_risk_index_ari_for_modeling_model.vw_card_res_input
+  FROM z_ci_449_ingest_affordability_risk_index_ari_for_modeling_model.
+  vw_card_res_input
   WHERE year BETWEEN '{as.numeric(params$assessment$data_year) - 1}'
     AND '{params$assessment$data_year}'
   ")

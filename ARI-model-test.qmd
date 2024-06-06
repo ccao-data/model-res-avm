@@ -38,13 +38,14 @@ working_data <- read_parquet("output/shap/model_shap.parquet") %>%
 working_data_non_zero <- working_data %>%
   filter(ARI != 0)
 
+# A little hacky, but same as township (used after switching from neighborhood to tract)
 nbhd <- ccao::nbhd_shp
 
 tract_geographies <- dbGetQuery(
   conn = con,
   "SELECT *
    FROM spatial.census
-  where year = '2010' and geography = 'tract'"
+  where year = '2022' and geography = 'tract'"
 )
 
 tract_data <- working_data %>%
@@ -71,9 +72,9 @@ The ARI is a tool intended to demonstrate the need to preserve affordability in 
 - Individuals Employed in Management, Business, Science and Arts Occupations
 - Individuals with a Four-Year Degree (Bachelor’s) or Higher.
 
-About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I took it out of the future maps, meaning that in some maps, there are a significant number of empty tracts.
+About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I filtered them out of the following map. 
 
-![alt text here](ARI Image.png)
+![](ARI Image.png)
 
 
 ## Map of ARI by Census Tract
@@ -81,13 +82,7 @@ About half the tracts have an ARI of 0. This was pretty poorly demonstrated on t
 As can be seen, the number of census tracts left in the database diminishes quite a bit. The number of pin10 observations goes from 1,117,715 to 596,243.
 
 ```{r, echo = FALSE}
-working_data %>%
-  group_by(loc_census_acs5_tract_geoid) %>%
-  mutate(ARI = mean(ARI)) %>%
-  distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
-  inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
-  st_as_sf() %>%
-  filter(ARI != 0) %>%
+tract_data_non_zero %>%
   ggplot() +
   geom_sf(aes(fill = ARI)) +
   scale_fill_viridis_c(option = "viridis") +
@@ -99,7 +94,7 @@ working_data %>%
 
 ## Does Median SHAP Value Differ by Neighborhood?
 
-In general, it seems as though higher SHAP values simply relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan.
+In general, it seems as though higher SHAP values relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan.
 
 ### Median Absolute SHAP Values by Tract
 ```{r, echo = FALSE}
@@ -113,7 +108,9 @@ ggplot(data = tract_data) +
 ```
 
 
-### Median Absolute SHAP Values by Tract, Keeping Tracts with 0 ARI
+### Median Absolute SHAP Values by Tract,  Tracts with 0 ARI
+
+Some of the same patterns are visible when we look at the data without the tracts with 0 ARI. But, the map is generally more complicated to interpret. 
 ```{r, echo = FALSE}
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
@@ -127,11 +124,11 @@ ggplot(data = tract_data_non_zero) +
 
 ### Median Absolute SHAP Values by Township, Keeping Tracts with 0 ARI
 
-Looking at the data on a less granular level, we can see that the SHAP values are higher in the North side of the County. This likely relates to the fact that the North side of the County is more expensive, and the model looks for reasons to identify higher prices. 
+Looking at the data on a less granular level, we can see that the SHAP values are higher in the North side of the County. This reflects the findings on the tract leve. 
 
 ```{r, echo = FALSE}
-ggplot(data = tract_data_non_zero) +
-  geom_sf(aes(fill = shap_township_mean)) +
+ggplot(data = tract_data) +
+  geom_sf(aes(fill = shap_township_mean), color = NA) +
   scale_fill_viridis_c(option = "viridis") +
   theme_void() +
   labs(
@@ -164,7 +161,7 @@ ggplot(data = filtered_plot) +
 ```
 
 
-# Correlation between SHAP Value of ARI and ARI
+## Correlation between SHAP Value of ARI and ARI
 
 One of the assumptions that can be attached to SHAPs is that if there is a large correlation between the feature value, and the SHAP value, then it is providing something meaningful in the model. In this case, the correlation is around than |.1|. This reinforces the existing perception that it does not add significant value.
 
@@ -175,7 +172,7 @@ print(paste("Correlation =", x))
 x <- cor(working_data_non_zero$ARI_SHAP, working_data_non_zero$ARI, use = "complete.obs")
 print(paste("Correlation =", x, "when removing 0s"))
 ```
-# Creating a map to see if there are spatial disparities in the inter-tract SHAP values
+## Creating a map to see if there are spatial disparities in the inter-tract SHAP values
 
 A tract with a value of 5 was selected to see if there were any strong spatial disparities with the SHAP values. Within this tract, values ranged from 336 to 3643. As can be seen, values skew significantly higher in the South of the tract, and are lower in the North. 
 
@@ -183,7 +180,7 @@ A tract with a value of 5 was selected to see if there were any strong spatial d
 filtered_data <- working_data %>%
   filter(loc_census_acs5_tract_geoid == 17031824122)
 
-pal_ari_shap <- colorNumeric(palette = rev(viridis::viridis_pal()(256)), domain = range(filtered_data$ARI_SHAP, na.rm = TRUE))
+pal_ari_shap <- colorNumeric(palette = (viridis::viridis_pal()(256)), domain = range(filtered_data$ARI_SHAP, na.rm = TRUE))
 
 filtered_data %>%
   leaflet() %>%
@@ -208,9 +205,9 @@ filtered_data %>%
   )
 ```
 
-# Does the inclusion of ARI impact metrics on a Township level?
+## Does the inclusion of ARI impact metrics on a Township level?
 
-In general, the ARI seemed to have very minimal impact. There were some small shifts in metrics, but a deeper dive also showed nothing significant. It is likely since this is capturing spatial effects, it is mapping onto the plethora of other spatial effects already in the model. 
+In general, the ARI seemed to have very minimal impact. There were some small shifts in metrics, but a deeper dive also showed nothing significant. It is likely since this is capturing a spatial effect, it is mapping onto the plethora of other spatial effects already in the model. 
 
 ```{r, echo = FALSE, warning = FALSE}
 old_model <- dbGetQuery(
