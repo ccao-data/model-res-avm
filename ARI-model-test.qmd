@@ -77,7 +77,7 @@ About half the tracts have an ARI of 0. This was pretty poorly demonstrated on t
 ![](ARI Image.png)
 
 
-## Map of ARI by Census Tract
+## Map of ARI by Census Tract, removing ARI of 0
 
 As can be seen, the number of census tracts left in the database diminishes quite a bit. The number of pin10 observations goes from 1,117,715 to 596,243.
 
@@ -124,7 +124,7 @@ ggplot(data = tract_data_non_zero) +
 
 ### Median Absolute SHAP Values by Township, Keeping Tracts with 0 ARI
 
-Looking at the data on a less granular level, we can see that the SHAP values are higher in the North side of the County. This reflects the findings on the tract leve. 
+Looking at the data on a less granular level, we can see that the SHAP values are higher in the North side of the County. This reflects the findings on the tract level. 
 
 ```{r, echo = FALSE}
 ggplot(data = tract_data) +
