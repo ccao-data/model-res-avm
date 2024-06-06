@@ -17,14 +17,14 @@ con <- dbConnect(noctua::athena())
 noctua::noctua_options(cache = 10)
 
 input_data <- read_parquet("input/assessment_data.parquet") %>%
-  select(meta_pin, meta_township_name, meta_nbhd_code, other_affordability_risk_index, loc_census_acs5_tract_geoid, meta_pin10, loc_longitude, loc_latitude) %>%
+  select(meta_pin, meta_township_name, meta_nbhd_code, meta_card_num, other_affordability_risk_index, loc_census_acs5_tract_geoid, meta_pin10, loc_longitude, loc_latitude) %>%
   rename(ARI = other_affordability_risk_index)
 
 working_data <- read_parquet("output/shap/model_shap.parquet") %>%
-  select(meta_pin, other_affordability_risk_index) %>%
+  select(meta_pin, other_affordability_risk_index, meta_card_num) %>%
   rename(ARI_SHAP = other_affordability_risk_index) %>%
   mutate(pin10 = substr(meta_pin, 1, 10)) %>%
-  inner_join(input_data, by = "meta_pin") %>%
+  inner_join(input_data, by = c("meta_pin", "meta_card_num")) %>%
   group_by(meta_township_name) %>%
   mutate(
     shap_township_mean = mean(abs(ARI_SHAP))
@@ -190,7 +190,7 @@ filtered_data %>%
     lat = ~loc_latitude,
     radius = 5,
     color = "NA",
-    fillColor = ~ pal_ari_shap(ARI_SHAP), # Fill color based on ARI_SHAP
+    fillColor = ~ pal_ari_shap(ARI_SHAP), 
     stroke = TRUE,
     fillOpacity = 0.7,
     popup = ~ paste("ARI_SHAP: $", formatC(ARI_SHAP, format = "f", digits = 0), "<br>pin10:", pin10)
