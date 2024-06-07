@@ -94,11 +94,14 @@ As can be seen, the number of census tracts left in the database diminishes quit
 tract_data_non_zero %>%
   ggplot() +
   geom_sf(aes(fill = ARI)) +
+  geom_sf(data = cook, color = "black", fill = NA) +
   scale_fill_viridis_c(option = "viridis") +
   theme_void() +
   labs(
     fill = "ARI"
-  )
+  ) +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+
 ```
 
 ## Does Median SHAP Value Differ by Neighborhood?
@@ -121,7 +124,6 @@ ggplot(data = tract_data) +
 
 Some of the same patterns are visible when we look at the data without 0 ARI tracts. But, the map is generally more complicated to interpret. 
 ```{r, echo = FALSE}
-# Added the census map to this, but it seems wonky
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
   geom_sf(data = cook, color = "black", fill = NA) +
@@ -129,7 +131,9 @@ ggplot(data = tract_data_non_zero) +
   theme_void() +
   labs(
     fill = "Added $ Value"
-  )
+  ) +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+
 ```
 
 
