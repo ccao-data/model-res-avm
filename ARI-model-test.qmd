@@ -101,7 +101,6 @@ tract_data_non_zero %>%
     fill = "ARI"
   ) +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
-
 ```
 
 ## Does Median SHAP Value Differ by Neighborhood?
@@ -133,7 +132,6 @@ ggplot(data = tract_data_non_zero) +
     fill = "Added $ Value"
   ) +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
-
 ```
 
 
