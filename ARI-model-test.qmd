@@ -84,14 +84,32 @@ The ARI is a tool intended to demonstrate the need to preserve affordability in 
 
 ![](ARI Image.png)
 
-About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less, but in reality it refers to a lack of data. Because of this, I filtered them out of the following map. 
+About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less. The documentation is as follows
+Scores in the ARI range from one (1) to five (5). See 2023 ARI scores by Census tract. Please note that all Census tracts in Illinois have been reviewed, but some Census tracts that do not meet minimum eligibility standards have received a score of zero (0). Areas identified by the Index as having significant changes across the above factors (either positive or negative change depending on the factor) will receive higher scores.
+
+I took a look around for what the eligibility standards refer to, and it wasn't particularly clear. I have assumptions that it refers to a lack of affordable housing, since this was made for the Qualified Allocation Plan. 
 
 ## Map of ARI by Census Tract, removing ARI of 0
 
-As can be seen, the number of census tracts left in the database diminishes quite a bit. The number of pin10 observations goes from 1,117,715 to 596,243.
+As can be seen, the number of census tracts left in the database diminishes significantly. The number of pin10 observations goes from 1,117,715 to 596,243.
 
 ```{r, echo = FALSE}
 tract_data_non_zero %>%
+  ggplot() +
+  geom_sf(aes(fill = ARI)) +
+  geom_sf(data = cook, color = "black", fill = NA) +
+  scale_fill_viridis_c(option = "viridis") +
+  theme_void() +
+  labs(
+    fill = "ARI"
+  ) +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+## Map of ARI by Census Tract, Keeping ARI of 0
+
+```{r, echo = FALSE}
+tract_data %>%
   ggplot() +
   geom_sf(aes(fill = ARI)) +
   geom_sf(data = cook, color = "black", fill = NA) +
