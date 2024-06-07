@@ -184,7 +184,6 @@ print(paste("Correlation =", x))
 x <- cor(working_data_non_zero$ARI_SHAP, working_data_non_zero$ARI, use = "complete.obs")
 x <- round(x, 2)
 print(paste("Correlation =", x, "when removing 0s"))
-
 ```
 ## Creating a map to see if there are spatial disparities in the inter-tract SHAP values
 
