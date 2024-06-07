@@ -48,6 +48,15 @@ tract_geographies <- dbGetQuery(
   where year = '2022' and geography = 'tract'"
 )
 
+cook <- dbGetQuery(
+  conn = con,
+  "SELECT *
+   FROM spatial.census
+  where year = '2022' and geography = 'county'"
+) %>%
+  st_as_sf() %>%
+  filter(name == "Cook")
+
 tract_data <- working_data %>%
   distinct(loc_census_acs5_tract_geoid, .keep_all = TRUE) %>%
   inner_join(tract_geographies, by = c("loc_census_acs5_tract_geoid" = "geoid")) %>%
@@ -108,12 +117,14 @@ ggplot(data = tract_data) +
 ```
 
 
-### Median Absolute SHAP Values by Tract,  Tracts with 0 ARI
+### Median Absolute SHAP Values by Tract, Removing Tracts with 0 ARI
 
-Some of the same patterns are visible when we look at the data without the tracts with 0 ARI. But, the map is generally more complicated to interpret. 
+Some of the same patterns are visible when we look at the data without 0 ARI tracts. But, the map is generally more complicated to interpret. 
 ```{r, echo = FALSE}
+# Added the census map to this, but it seems wonky
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
+  geom_sf(data = cook, color = "black", fill = NA) +
   scale_fill_viridis_c(option = "viridis") +
   theme_void() +
   labs(
@@ -183,6 +194,7 @@ A tract with a value of 5 was selected to see if there were any strong spatial d
 filtered_data <- working_data %>%
   filter(loc_census_acs5_tract_geoid == 17031824122)
 
+# Couldn't figure out why the pallette was flipped
 pal_ari_shap <- colorNumeric(palette = (viridis::viridis_pal()(256)), domain = range(filtered_data$ARI_SHAP, na.rm = TRUE))
 
 filtered_data %>%
@@ -239,4 +251,4 @@ inner_join(old_model, new_model, by = "geography_id") %>%
 
 # Conclusion
 
-In general, there was little evidence that the ARI was adding significant value to the model. This was seen in the low correlation between the SHAP values and the ARI, as well as the lack of significant changes in the model metrics. The main takeaway could be made on the fact that there aren't strong procedures for how new features are treated. Building out a comparison report between a "standard" model and a "new feature" model would be my key recommendation. This could include a comparison of relevant SHAP values (for example does ARI have a positive SHAP value, while the combined spatial_ shap values have a similar decrease in SHAP values), as well as a comparison of the model metrics. 
+In general, there was little evidence that the ARI was adding significant value to the model. This was seen in the low correlation between the SHAP values and the ARI, as well as the lack of significant changes in the model metrics. The main takeaway could be made on the fact that there aren't strong procedures for how new features are treated. Building out a comparison report between a "standard" model and a "new feature" model would be my key recommendation. This could include a comparison of relevant SHAP values (for example does ARI have a positive SHAP value, while the combined "spatial_" SHAP values have a similar collective decrease), as well as a comparison of the model metrics. 
