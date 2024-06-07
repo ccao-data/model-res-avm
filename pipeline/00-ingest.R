@@ -164,11 +164,11 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 # collapse the array into a comma-separated string (if more than 1 unit),
 # or replace with NA if the array is empty
 
-process_array_columns <- function(data) {
+process_array_columns <- function(data, selector) {
   data %>%
     mutate(
       across(
-        starts_with("loc_tax_"),
+        selector,
         ~ sapply(.x, function(cell) {
           if (length(cell) > 1) {
             paste(cell, collapse = ", ")
@@ -181,7 +181,6 @@ process_array_columns <- function(data) {
       )
     )
 }
-
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Home Improvement Exemptions -----------------------------------------------
@@ -316,7 +315,7 @@ training_data_clean <- training_data_w_hie %>%
     char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
   ) %>%
   # Apply the helper function to process array columns
-  process_array_columns() %>%
+  process_array_columns(starts_with("loc_tax_")) %>%
   mutate(
     loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
@@ -420,7 +419,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
     as_factor = FALSE
   ) %>%
   # Apply the helper function to process array columns
-  process_array_columns() %>%
+  process_array_columns(starts_with("loc_tax_")) %>%
   mutate(
     loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
