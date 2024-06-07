@@ -167,10 +167,13 @@ One of the assumptions that can be attached to SHAPs is that if there is a large
 
 ```{r, echo = FALSE}
 x <- cor(working_data$ARI_SHAP, working_data$ARI, use = "complete.obs")
+x <- round(x, 2)
 print(paste("Correlation =", x))
 
 x <- cor(working_data_non_zero$ARI_SHAP, working_data_non_zero$ARI, use = "complete.obs")
+x <- round(x, 2)
 print(paste("Correlation =", x, "when removing 0s"))
+
 ```
 ## Creating a map to see if there are spatial disparities in the inter-tract SHAP values
 
@@ -234,3 +237,6 @@ inner_join(old_model, new_model, by = "geography_id") %>%
   kable_styling(position = "center")
 ```
 
+# Conclusion
+
+In general, there was little evidence that the ARI was adding significant value to the model. This was seen in the low correlation between the SHAP values and the ARI, as well as the lack of significant changes in the model metrics. The main takeaway could be made on the fact that there aren't strong procedures for how new features are treated. Building out a comparison report between a "standard" model and a "new feature" model would be my key recommendation. This could include a comparison of relevant SHAP values (for example does ARI have a positive SHAP value, while the combined spatial_ shap values have a similar decrease in SHAP values), as well as a comparison of the model metrics. 
