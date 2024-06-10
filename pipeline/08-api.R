@@ -105,7 +105,7 @@ for (town in towns) {
 
   # Load workbook and styles
   wb <- loadWorkbook(here("misc", "model_api_template.xlsm"))
-  pin_sheet_header <- paste0("Run ID: ", run_id)
+  pin_sheet_header <- run_id
   pin_row_range <- 6:(nrow(card_data_town) + 7)
   style_price <- createStyle(numFmt = "$#,##0")
   csht <- "Cards"
@@ -165,7 +165,9 @@ for (town in towns) {
       "output", "api_workbook",
       glue(
         year,
-        str_replace(town_convert(town), " ", "_"),
+        town_get_triad(town, name = TRUE),
+        str_replace(town_convert(town), " ", "-"),
+        pin_sheet_header,
         "API_Workbook.xlsm",
         .sep = "_"
       )
