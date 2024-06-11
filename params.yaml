@@ -16,7 +16,7 @@ run_type: "test"
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Damon's Run to test ARI
+  Final 2024 residential model with updated data and new features
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -28,7 +28,7 @@ toggle:
   shap_enable: TRUE
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: FALSE
+  comp_enable: TRUE
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
@@ -234,7 +234,6 @@ model:
       - "other_tax_bill_rate"
       - "other_school_district_elementary_avg_rating"
       - "other_school_district_secondary_avg_rating"
-      - "other_affordability_risk_index"
       - "ccao_is_active_exe_homeowner"
       - "ccao_is_corner_lot"
       - "ccao_n_years_exe_homeowner"
@@ -446,4 +445,4 @@ comp:
 # upload
 export:
   triad_code: "1"
-  run_id: "2024-06-02-test-damon"
+  run_id: "2024-03-17-stupefied-maya"
