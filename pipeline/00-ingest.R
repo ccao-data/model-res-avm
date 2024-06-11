@@ -147,11 +147,11 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
     pull(var_type)
 
   switch(col_type,
-         numeric = as.numeric(col),
-         character = as.character(col),
-         logical = as.logical(as.numeric(col)),
-         categorical = as.factor(col),
-         date = lubridate::as_date(col)
+    numeric = as.numeric(col),
+    character = as.character(col),
+    logical = as.logical(as.numeric(col)),
+    categorical = as.factor(col),
+    date = lubridate::as_date(col)
   )
 }
 
@@ -522,14 +522,14 @@ complex_id_temp <- assessment_data_clean %>%
     char_bldg_sf.x <= char_bldg_sf.y + params$input$complex$match_fuzzy$bldg_sf,
     # nolint start
     (char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
-       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
+      char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
       is.na(char_yrblt.x),
     # Units must be within 250 feet of other units
     (loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
-       loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+      loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_x_3435.x),
     (loc_y_3435.x >= loc_y_3435.y - params$input$complex$match_fuzzy$dist_ft &
-       loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+      loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_y_3435.x)
     # nolint end
   ) %>%
