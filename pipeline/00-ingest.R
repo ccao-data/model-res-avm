@@ -163,7 +163,6 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
 # ingest. In such cases, we either keep the contents of the cell (if 1 unit),
 # collapse the array into a comma-separated string (if more than 1 unit),
 # or replace with NA if the array is empty
-
 process_array_columns <- function(data, selector) {
   data %>%
     mutate(
@@ -181,6 +180,9 @@ process_array_columns <- function(data, selector) {
       )
     )
 }
+
+
+
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Home Improvement Exemptions -----------------------------------------------
