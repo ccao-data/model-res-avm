@@ -1126,23 +1126,23 @@
     },
     "paws.analytics": {
       "Package": "paws.analytics",
-      "Version": "0.5.0",
+      "Version": "0.6.0",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "ce1b08551d30927f07cf980fbcd624b9"
+      "Hash": "d8ea9a4dfefe8a49eceff027e053aa2f"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
-      "Version": "0.5.0",
+      "Version": "0.6.0",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "f50fab812dd899553df4313532636028"
+      "Hash": "4a768547ec143a4a0742b33929010da4"
     },
     "paws.common": {
       "Package": "paws.common",

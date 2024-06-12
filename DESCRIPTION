@@ -36,7 +36,8 @@ Depends:
 Remotes:
     ccao-data/assessr,
     ccao-data/ccao,
-    ccao-data/lightsnip
+    ccao-data/lightsnip,
+    DyfanJones/noctua
 Config/renv/profiles/dev/dependencies:
     commonmark,
     DBI,

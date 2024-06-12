@@ -19,6 +19,9 @@ suppressPackageStartupMessages({
   library(noctua)
 })
 
+# Adds arrow support to speed up ingest process.
+noctua_options(unload = TRUE)
+
 # Establish Athena connection
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
@@ -145,7 +148,6 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
   col_type <- dict %>%
     filter(var_name == col_name) %>%
     pull(var_type)
-
   switch(col_type,
     numeric = as.numeric(col),
     character = as.character(col),
@@ -153,6 +155,30 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
     categorical = as.factor(col),
     date = lubridate::as_date(col)
   )
+}
+
+
+# Mini function to deal with arrays
+# Some Athena columns are stored as arrays but are converted to string on
+# ingest. In such cases, we either keep the contents of the cell (if 1 unit),
+# collapse the array into a comma-separated string (if more than 1 unit),
+# or replace with NA if the array is empty
+process_array_columns <- function(data, selector) {
+  data %>%
+    mutate(
+      across(
+        selector,
+        ~ sapply(.x, function(cell) {
+          if (length(cell) > 1) {
+            paste(cell, collapse = ", ")
+          } else if (length(cell) == 1) {
+            as.character(cell) # Convert the single element to character
+          } else {
+            NA # Handle cases where the array is empty
+          }
+        })
+      )
+    )
 }
 
 
@@ -290,6 +316,12 @@ training_data_clean <- training_data_w_hie %>%
     ),
     char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
   ) %>%
+  # Apply the helper function to process array columns
+  process_array_columns(starts_with("loc_tax_")) %>%
+  mutate(
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED")
+  ) %>%
   # Coerce columns to the data types recorded in the dictionary. Necessary
   # because the SQL drivers will often coerce types on pull (boolean becomes
   # character)
@@ -303,14 +335,7 @@ training_data_clean <- training_data_w_hie %>%
     sv_is_outlier = replace_na(sv_is_outlier, FALSE),
     sv_outlier_type = replace_na(sv_outlier_type, "Not outlier")
   ) %>%
-  # Some Athena columns are stored as arrays but are converted to string on
-  # ingest. In such cases, take the first element and clean the string
   mutate(
-    across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
-    across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
-    across(starts_with("loc_tax_"), \(x) na_if(x, "")),
-    loc_tax_municipality_name =
-      replace_na(loc_tax_municipality_name, "UNINCORPORATED"),
     # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
@@ -395,6 +420,12 @@ assessment_data_clean <- assessment_data_w_hie %>%
     type = "short",
     as_factor = FALSE
   ) %>%
+  # Apply the helper function to process array columns
+  process_array_columns(starts_with("loc_tax_")) %>%
+  mutate(
+    loc_tax_municipality_name =
+      replace_na(loc_tax_municipality_name, "UNINCORPORATED")
+  ) %>%
   mutate(
     char_apts = case_when(
       char_class %in% c("211", "212") & !is.na(char_apts) ~ char_apts,
@@ -411,13 +442,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
   )) %>%
-  # Same Athena string cleaning and feature cleanup as the training data
+  # Same feature cleanup as the training data
   mutate(
-    across(starts_with("loc_tax_"), \(x) str_replace_all(x, "\\[|\\]", "")),
-    across(starts_with("loc_tax_"), \(x) str_trim(str_split_i(x, ",", 1))),
-    across(starts_with("loc_tax_"), \(x) na_if(x, "")),
-    loc_tax_municipality_name =
-      replace_na(loc_tax_municipality_name, "UNINCORPORATED"),
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
     ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
     ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
