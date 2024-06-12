@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.3.2",
+    "Version": "4.4.0",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -435,8 +435,13 @@
     "noctua": {
       "Package": "noctua",
       "Version": "2.6.2",
-      "Source": "Repository",
-      "Repository": "CRAN",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "DyfanJones",
+      "RemoteRepo": "noctua",
+      "RemoteRef": "master",
+      "RemoteSha": "23a4cfbf537407c7a1547fc13ba771ba2eb098e0",
       "Requirements": [
         "DBI",
         "R",
@@ -447,7 +452,7 @@
         "utils",
         "uuid"
       ],
-      "Hash": "c03d73125d695e80b35b4bb3eacf0358"
+      "Hash": "a48e1decdd027c44ea6b97b0fe0950cb"
     },
     "openxlsx": {
       "Package": "openxlsx",
@@ -552,13 +557,13 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.0.3",
+      "Version": "1.0.7",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "utils"
       ],
-      "Hash": "41b847654f567341725473431dd0d5ab"
+      "Hash": "397b7b2a265bc5a7a06852524dabae20"
     },
     "rlang": {
       "Package": "rlang",
