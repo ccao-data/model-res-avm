@@ -227,25 +227,30 @@ if (comp_enable) {
   # comp indexes by 1
   comps[[1]] <- comps[[1]] + 1
 
-  # Translate comp indexes to PINs and doc nos
+  # Translate comp indexes to PINs and document numbers
   comps[[1]] <- comps[[1]] %>%
     mutate(
       across(
         starts_with("comp_idx_"),
-        ~ training_data[., ]$meta_pin,
+        \(idx_row) {
+          training_data[idx_row, ]$meta_pin
+        },
         .names = "comp_pin_{str_remove(col, 'comp_idx_')}"
       ),
       across(
         starts_with("comp_idx_"),
-        ~ training_data[., ]$meta_sale_document_num,
-        .names = "comp_doc_no_{str_remove(col, 'comp_idx_')}")
+        \(idx_row) {
+          training_data[idx_row, ]$meta_sale_document_num
+        },
+        .names = "comp_doc_no_{str_remove(col, 'comp_idx_')}"
+      )
     ) %>%
-    select(-starts_with("comp_idx_"))
+    select(-starts_with("comp_idx_")) %>%
     cbind(
       pin = assessment_data$meta_pin,
       card = assessment_data$meta_card_num
     ) %>%
-    relocate(pin, card) %>%
+    relocate(pin, card)
 
   # Combine the comp indexes and scores into one dataframe and write to a file
   cbind(comps[[1]], comps[[2]]) %>%
