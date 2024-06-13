@@ -242,7 +242,7 @@ if (comp_enable) {
         \(idx_row) {
           training_data[idx_row, ]$meta_sale_document_num
         },
-        .names = "comp_doc_no_{str_remove(col, 'comp_idx_')}"
+        .names = "comp_document_num_{str_remove(col, 'comp_idx_')}"
       )
     ) %>%
     select(-starts_with("comp_idx_")) %>%
