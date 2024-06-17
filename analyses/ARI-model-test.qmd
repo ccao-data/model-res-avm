@@ -1,5 +1,5 @@
 ---
-title: "Testing the Impact of Affordability Risk Index on the Model"
+title: "Testing the Impact of the Affordability Risk Index on the Model"
 format: html
 ---
 ```{r, include = FALSE}
@@ -84,14 +84,19 @@ The ARI is a tool intended to demonstrate the need to preserve affordability in 
 
 ![](ARI Image.png)
 
-About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less. The documentation is as follows
+About half the tracts have an ARI of 0. This was pretty poorly demonstrated on their maps, where they had a category of 1 or less. The documentation is as follows:
+
 Scores in the ARI range from one (1) to five (5). See 2023 ARI scores by Census tract. Please note that all Census tracts in Illinois have been reviewed, but some Census tracts that do not meet minimum eligibility standards have received a score of zero (0). Areas identified by the Index as having significant changes across the above factors (either positive or negative change depending on the factor) will receive higher scores.
 
-I took a look around for what the eligibility standards refer to, and it wasn't particularly clear. I have assumptions that it refers to a lack of affordable housing, since this was made for the Qualified Allocation Plan. 
+- 1 point - Family poverty rate meets first threshold (relative rate of change is below the State average relative rate of change)
+- 2 points - Family poverty rate meets first point threshold above and housing unit vacancy relative rate of change is below the State average relative rate of change or is below 3.5%
+- 3 points - Family poverty rate meets first threshold (relative rate of change is below the State average relative rate of change); housing unit vacancy relative rate of change is below the State average relative rate of change or is below 3.5%; and 2 of the other factor thresholds are met
+- 4 points - Family poverty rate is less than the State average and the relative rate of change is below the State average relative rate of change); housing unit vacancy relative rate of change is below the State average relative rate of change or is below 3.5%; and 3 of the other factor thresholds are met
+- 5 points - Family poverty rate is less than the State average and the relative rate of change is below the State average relative rate of change); housing unit vacancy relative rate of change is below the State average relative rate of change or is below 3.5%; and 4 of the other factor thresholds are met
 
 ## Map of ARI by Census Tract, removing ARI of 0
 
-As can be seen, the number of census tracts left in the database diminishes significantly. The number of pin10 observations goes from 1,117,715 to 596,243.
+When removing ARIs of 0, the number of census tracts left in the database diminishes significantly. The number of pin10 observations goes from 1,117,715 to 596,243. My best assumption is that the missing tracts are not experiencing any risk of Affordability (not receiving 1 on any indicator).
 
 ```{r, echo = FALSE}
 tract_data_non_zero %>%
@@ -107,6 +112,7 @@ tract_data_non_zero %>%
 ```
 
 ## Map of ARI by Census Tract, Keeping ARI of 0
+When keeping the 0s in the map, you can see some clusters of affordability risk, most notably on the North-Western pipeline. With that being said, the map does not seem particularly conclusive regarding regional trends, where there are pockets of high ARIs in the far suburbs. Within the city limits, fives seem to be exclusively in the North, although there are a significant number of fours on the South Side. To be honest, that makes it out to be a pretty interesting metric, which may not align with others in our database.
 
 ```{r, echo = FALSE}
 tract_data %>%
@@ -123,7 +129,7 @@ tract_data %>%
 
 ## Does Median SHAP Value Differ by Neighborhood?
 
-In general, it seems as though higher SHAP values relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan.
+In general, it seems as though higher SHAP values relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan. This is likely due to the model trying to find reasons to increase the value of homes in these areas. 
 
 ### Median Absolute SHAP Values by Tract
 ```{r, echo = FALSE}
@@ -155,7 +161,7 @@ ggplot(data = tract_data_non_zero) +
 
 ### Median Absolute SHAP Values by Township, Keeping Tracts with 0 ARI
 
-Looking at the data on a less granular level, we can see that the SHAP values are higher in the North side of the County. This reflects the findings on the tract level. 
+Looking at the data on a less granular level, we can see that the SHAP values are once again higher on the North side of the County. This reflects the findings on the tract level. 
 
 ```{r, echo = FALSE}
 ggplot(data = tract_data) +
@@ -168,7 +174,7 @@ ggplot(data = tract_data) +
 ```
 
 
-## Median Values of the 90th percentile in Each Neighborhood
+## Median Absolute Values of the 90th percentile in Each Neighborhood
 
 The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in $ value. 
 
@@ -194,7 +200,7 @@ ggplot(data = filtered_plot) +
 
 ## Correlation between SHAP Value of ARI and ARI
 
-One of the assumptions that can be attached to SHAPs is that if there is a large correlation between the feature value, and the SHAP value, then it is providing something meaningful in the model. In this case, the correlation is around than |.1|. This reinforces the existing perception that it does not add significant value.
+One of the assumptions that can be attached to SHAPs is that if there is a large correlation between the feature value, and the SHAP value, then it is providing something meaningful in the model. In this case, the correlation is around than |.1|. This reinforces the existing perception that it does not add significant value. 
 
 ```{r, echo = FALSE}
 x <- cor(working_data$ARI_SHAP, working_data$ARI, use = "complete.obs")
