@@ -13,6 +13,7 @@ format:
     embed-resources: true
     toc: true
     toc_float: true
+    fig-align: center
     fontsize: 12pt
 knitr:
   opts_chunk:
