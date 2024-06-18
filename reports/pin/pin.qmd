@@ -13,7 +13,6 @@ format:
     embed-resources: true
     toc: true
     toc_float: true
-    fig-align: center
     fontsize: 12pt
 knitr:
   opts_chunk:
@@ -94,7 +93,9 @@ training_data %>%
     "Sale Date" = meta_sale_date,
     "Sale Price" = meta_sale_price,
     "Document Number" = meta_sale_document_num,
-    "Outlier Type" = sv_outlier_type
+    "Outlier Reason 1" = sv_outlier_reason1,
+    "Outlier Reason 2" = sv_outlier_reason2,
+    "Outlier Reason 3" = sv_outlier_reason3
   ) %>%
   mutate(`Sale Price` = as.numeric(`Sale Price`)) %>%
   mutate(`Sale Price` = scales::dollar(`Sale Price`)) %>%
