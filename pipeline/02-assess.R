@@ -375,9 +375,11 @@ sales_data_two_most_recent <- sales_data %>%
   ) %>%
   # Include outliers, since these data are used for desk review and
   # not for modeling
-  rename(meta_sale_outlier_reason1 = sv_outlier_reason1,
-         meta_sale_outlier_reason2 = sv_outlier_reason2,
-         meta_sale_outlier_reason3 = sv_outlier_reason3) %>%
+  rename(
+    meta_sale_outlier_reason1 = sv_outlier_reason1,
+    meta_sale_outlier_reason2 = sv_outlier_reason2,
+    meta_sale_outlier_reason3 = sv_outlier_reason3
+  ) %>%
   mutate(
     meta_sale_outlier_type = ifelse(
       meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
