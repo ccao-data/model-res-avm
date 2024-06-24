@@ -2,6 +2,7 @@
 title: "Testing the Impact of the Affordability Risk Index on the Model"
 format: html
 ---
+
 ```{r, include = FALSE}
 library(sf)
 library(dplyr)
