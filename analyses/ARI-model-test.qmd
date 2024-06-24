@@ -147,7 +147,8 @@ ggplot(data = tract_data) +
 
 ### Median Absolute SHAP Values by Tract, Removing Tracts with 0 ARI
 
-Some of the same patterns are visible when we look at the data without 0 ARI tracts. But, the map is generally more complicated to interpret. 
+Some of the same patterns are visible when we look at the data without 0 ARI tracts. But, the map is generally more complicated to interpret.
+
 ```{r, echo = FALSE}
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
