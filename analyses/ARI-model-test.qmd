@@ -72,7 +72,7 @@ tract_data_non_zero <- working_data_non_zero %>%
 
 # Context
 
-The ARI is a tool intended to demonstrate the need to preserve affordability in areas that are becoming less affordable at a faster rate. Census tracts where affordability loss risk is greatest receive the highest scores in this index. The ARI uses American Community Survey data to measure change over time across various factors that indicate affordability loss:
+The Affordability Risk Index (ARI) is a tool intended to demonstrate the need to preserve affordability in areas that are becoming less affordable at a faster rate. Census tracts where affordability loss risk is greatest receive the highest scores in this index. The ARI uses American Community Survey data to measure change over time across various factors that indicate affordability loss:
 
 - Median Household Income
 - Median Home Value
