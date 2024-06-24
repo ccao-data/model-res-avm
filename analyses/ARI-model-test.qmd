@@ -133,6 +133,7 @@ tract_data %>%
 In general, it seems as though higher SHAP values relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan. This is likely due to the model trying to find reasons to increase the value of homes in these areas. 
 
 ### Median Absolute SHAP Values by Tract
+
 ```{r, echo = FALSE}
 ggplot(data = tract_data) +
   geom_sf(aes(fill = shap_tract_mean)) +
