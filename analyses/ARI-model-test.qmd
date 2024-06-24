@@ -197,7 +197,6 @@ ggplot(data = filtered_plot) +
   )
 ```
 
-
 ## Correlation between SHAP Value of ARI and ARI
 
 One of the assumptions that can be attached to SHAPs is that if there is a large correlation between the feature value, and the SHAP value, then it is providing something meaningful in the model. In this case, the correlation is around than |.1|. This reinforces the existing perception that it does not add significant value. 
