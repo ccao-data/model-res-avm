@@ -174,7 +174,6 @@ ggplot(data = tract_data) +
   )
 ```
 
-
 ## Median Absolute Values of the 90th percentile in Each Neighborhood
 
 The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in $ value. 
