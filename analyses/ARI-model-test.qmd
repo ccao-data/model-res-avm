@@ -2,6 +2,7 @@
 title: "Testing the Impact of the Affordability Risk Index on the Model"
 format: html
 ---
+
 ```{r, include = FALSE}
 library(sf)
 library(dplyr)
@@ -71,7 +72,7 @@ tract_data_non_zero <- working_data_non_zero %>%
 
 # Context
 
-The ARI is a tool intended to demonstrate the need to preserve affordability in areas that are becoming less affordable at a faster rate. Census tracts where affordability loss risk is greatest receive the highest scores in this index. The ARI uses American Community Survey data to measure change over time across various factors that indicate affordability loss:
+The Affordability Risk Index (ARI) is a tool intended to demonstrate the need to preserve affordability in areas that are becoming less affordable at a faster rate. Census tracts where affordability loss risk is greatest receive the highest scores in this index. The ARI uses American Community Survey data to measure change over time across various factors that indicate affordability loss:
 
 - Median Household Income
 - Median Home Value
@@ -132,6 +133,7 @@ tract_data %>%
 In general, it seems as though higher SHAP values relate to higher value neighborhoods. These are concentrated on the North side of the County, often in proximity to Lake Michigan. This is likely due to the model trying to find reasons to increase the value of homes in these areas. 
 
 ### Median Absolute SHAP Values by Tract
+
 ```{r, echo = FALSE}
 ggplot(data = tract_data) +
   geom_sf(aes(fill = shap_tract_mean)) +
@@ -145,7 +147,8 @@ ggplot(data = tract_data) +
 
 ### Median Absolute SHAP Values by Tract, Removing Tracts with 0 ARI
 
-Some of the same patterns are visible when we look at the data without 0 ARI tracts. But, the map is generally more complicated to interpret. 
+Some of the same patterns are visible when we look at the data without 0 ARI tracts. But, the map is generally more complicated to interpret.
+
 ```{r, echo = FALSE}
 ggplot(data = tract_data_non_zero) +
   geom_sf(aes(fill = shap_tract_mean)) +
@@ -173,7 +176,6 @@ ggplot(data = tract_data) +
   )
 ```
 
-
 ## Median Absolute Values of the 90th percentile in Each Neighborhood
 
 The impact of a feature can be hidden by looking at the median, rather than at the extremes. Because of this, we group by neighborhood, and select the 90th percentile of each. This map looks almost exactly like the previous map. With that being said, the scale for SHAP values doubled in $ value. 
@@ -196,7 +198,6 @@ ggplot(data = filtered_plot) +
     fill = "Added $ Value"
   )
 ```
-
 
 ## Correlation between SHAP Value of ARI and ARI
 
