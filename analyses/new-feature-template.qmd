@@ -1,19 +1,30 @@
 ---
 params:
-  run_id: "2022-03-28-optimistic-tayun"
-  run_id_year: "2022"
-  comparison_run_id: "2024-03-17-stupefied-maya"
+  run_id: "2024-03-17-stupefied-maya"
+  run_id_year: "2024"
+  comparison_run_id: "2024-05-13-crazy-ida"
   comparison_run_id_year: "2024"
-  added_variable: "prox_airport_dnl_total"
-  added_variable_shap: "prox_airport_dnl_total_shap"
+  added_variable: "prox_num_bus_stop_in_half_mile"
+  added_variable_shap: "prox_num_bus_stop_in_half_mile_shap"
+  range: "20 - 25"
+  type: "continuous"
 ---
 
 ```{r}
 library(purrr)
 library(here)
+library(leaflet)
+library(sf)
+library(ggplot2)
+```
 
+
+```{r}
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+
+# Initialize a dictionary of file paths. See misc/file_dict.csv for details
+paths <- model_file_dict(params$run_id, params$year)
 
 # Load reporting-only R libraries
 suppressPackageStartupMessages({
@@ -24,22 +35,6 @@ suppressPackageStartupMessages({
     character.only = TRUE
   )
 })
-
-# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
-# https://github.com/apache/arrow/issues/32026
-cpp11::cpp_source(code = "
-#include <csignal>
-#include <cpp11.hpp>
-
-[[cpp11::register]] void ignore_sigpipes() {
-  signal(SIGPIPE, SIG_IGN);
-}
-")
-
-ignore_sigpipes()
-
-# Initialize a dictionary of file paths. See misc/file_dict.csv for details
-paths <- model_file_dict(model_params$run_id, model_params$year)
 ```
 
 ```{r}
@@ -55,7 +50,8 @@ if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
   shap_exists <- nrow(shap_df) > 0
 } else {
   shap_exists <- FALSE
-}
+} %>%
+  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable))
 
 if (!exists("model_performance_assessment")) {
   model_performance_assessment <-
@@ -68,31 +64,29 @@ if (!exists("assessment_card")) {
   } %>%
     select(meta_pin, meta_card_num, pred_card_initial_fmv)
 }
-
 assessment_card <- assessment_card %>%
-  select(meta_pin, meta_card_num, pred_card_initial_fmv)
+   select(meta_pin, meta_card_num, pred_card_initial_fmv)
+
+if (!exists("metadata")) {
+  metadata <- read_parquet(paths$output$metadata$local)
+}
+
 ```
 
 ```{r}
 model_fetch_run(params$comparison_run_id, params$comparison_run_id_year)
 
-if (!exists("assessment_data")) {
+if (!exists("assessment_data_comparison")) {
   assessment_data_comparison <- read_parquet(paths$input$assessment$local)
 }
 
-# Load SHAP data if it exists (only exists for important runs)
-if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
-  shap_df_comparison <- read_parquet(paths$output$shap$local)
-  shap_exists <- nrow(shap_df) > 0
-} else {
-  shap_exists <- FALSE
-}
 
-if (!exists("model_performance_assessment")) {
+if (!exists("model_performance_assessment_comparison")) {
   model_performance_assessment_comparison <-
     arrow::read_parquet(paths$output$performance_assessment$local)
 }
 ```
+
 
 # Overview of Statistics
 
@@ -104,96 +98,168 @@ percentage_diff <- function(x, y) {
   abs(x - y) / ((x + y) / 2) * 100
 }
 
-combined_data <- inner_join(model_performance_assessment_comparison, model_performance_assessment, by = c("geography_id", "geography_type", "class")) %>%
+inner_join(model_performance_assessment_comparison, model_performance_assessment, by = c("geography_id", "geography_type", "class")) %>%
   select(geography_id, geography_type, class, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
   mutate(across(c(mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new), round, 2)) %>%
   filter(
-    percentage_diff(combined_data[[4]], combined_data[[5]]) > 1 |
-      percentage_diff(combined_data[[6]], combined_data[[7]]) > 1 |
-      percentage_diff(combined_data[[8]], combined_data[[9]]) > 1 |
-      percentage_diff(combined_data[[10]], combined_data[[11]]) > 1 |
-      percentage_diff(combined_data[[12]], combined_data[[13]]) > 1
+    percentage_diff(mki, mki_new) > 1 |
+    percentage_diff(cod, cod_new) > 1 |
+    percentage_diff(prb, prb_new) > 1 |
+    percentage_diff(prd, prd_new) > 1 |
+    percentage_diff(r_squared, r_squared_new) > 1
   )
-
-print(combined_data)
 ```
 
-## SHAP Values for New Feature
 
 ```{r}
-assessment_data <- assessment_data %>%
+assessment_data_small <- assessment_data %>%
   select(meta_pin, meta_card_num, meta_nbhd_code, meta_township_name, loc_longitude, loc_latitude, !!sym(params$added_variable))
 
+
+# Process the working data
 working_data <- shap_df %>%
-  select(meta_pin, !!sym(params$added_variable), meta_card_num) %>%
-  rename(!!paste0(params$added_variable_shap) := !!sym(params$added_variable)) %>%
-  inner_join(assessment_data, by = c("meta_pin", "meta_card_num")) %>%
+  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable)) %>%
+  rename(!!params$added_variable_shap := !!sym(params$added_variable)) %>%
+  inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
   inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
-  group_by(meta_township_name) %>%
-  mutate(
-    !!paste0(params$added_variable, "_shap_township_mean") := mean(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE),
-    !!paste0(params$added_variable, "_shap_township_sd") := sd(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE),
-    !!paste0(params$added_variable, "_shap_township_90th") := quantile(abs(!!sym(paste0(params$added_variable_shap))), 0.9, na.rm = TRUE),
-    !!paste0(params$added_variable, "_township_mean") := mean(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_township_sd") := sd(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_township_90th") := quantile(!!sym(params$added_variable), 0.9, na.rm = TRUE)
-  ) %>%
-  ungroup() %>%
   group_by(meta_nbhd_code) %>%
   mutate(
-    !!paste0(params$added_variable, "_shap_neighborhood_mean") := mean(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE),
-    !!paste0(params$added_variable, "_shap_neighborhood_sd") := sd(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE),
-    !!paste0(params$added_variable, "_shap_neighborhood_90th") := quantile(abs(!!sym(paste0(params$added_variable_shap))), 0.9, na.rm = TRUE),
+    !!paste0(params$added_variable, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_variable_shap)), na.rm = TRUE),
+    !!paste0(params$added_variable, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_variable_shap)), 0.9, na.rm = TRUE),
     !!paste0(params$added_variable, "_neighborhood_mean") := mean(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_sd") := sd(!!sym(params$added_variable), na.rm = TRUE),
+    !!paste0(params$added_variable, "_neighborhood_median") := median(!!sym(params$added_variable), na.rm = TRUE),
     !!paste0(params$added_variable, "_neighborhood_90th") := quantile(!!sym(params$added_variable), 0.9, na.rm = TRUE),
-    median_card_value := median(pred_card_initial_fmv, na.rm = TRUE)
+    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
   ) %>%
   ungroup()
-```
 
 
-```{r}
 nbhd <- ccao::nbhd_shp
 
 spatial_data <- working_data %>%
   distinct(meta_nbhd_code, .keep_all = TRUE) %>%
   inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
+
 ```
 
-## Neighborhood Level SHAP Statistics
+## Descriptive Statistics
 
-::: {.panel-tabset}
+```{r}
+descriptives <- working_data %>%
+  mutate(
+    mean = mean(!!sym(params$added_variable), na.rm = TRUE),
+    median = median(!!sym(params$added_variable), na.rm = TRUE)
+  )
+```
 
-### Neighborhood Level Mean Absolute Value
+The mean of the data is `r round(descriptives$mean, 2)` and the median is `r round(descriptives$median, 2)`.
+
+```{r}
+ggplot(working_data, aes(x = !!sym(params$added_variable))) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
+             color = "red", linetype = "dashed", size = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
+             color = "green", linetype = "dashed", size = 1, show.legend = TRUE) +
+  labs(title = paste("Histogram of", params$added_variable),
+       x = params$added_variable,
+       y = "Frequency") +
+  theme_minimal() +
+  annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
+  annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
+```
+
+
+## Neighborhood Level Descriptive Statistics
+```{r}
+if (params$type == "continuous") {
+  plot <- spatial_data %>%
+    ggplot() +
+    geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_neighborhood_mean")))) +
+    scale_fill_viridis_c(option = "viridis", name = "Value") +
+    theme_void() +
+    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+  
+  print(plot)
+} else {
+  message("The added_variable is not continuous. Skipping the plot.")
+}
+```
+
+
+### Neighborhood Level Mean Absolute Value of SHAP
+
 ```{r}
 spatial_data %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_neighborhood_mean")))) +
+  geom_sf(aes(fill = !!sym(paste0(params$added_variable_shap, "_neighborhood_mean")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
-### Neighborhood Level Absolute Value 90th Percentile
+### Neighborhood Level Absolute Value 90th Percentile of SHAP
 
 ```{r}
 spatial_data %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_neighborhood_90th")))) +
+  geom_sf(aes(fill = !!sym(paste0(params$added_variable_shap, "_neighborhood_90th")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 :::
+
 ```{r}
-correlation_value <- cor(pull(shap_df, added_variable), pull(shap_df, added_variable), use = "complete.obs")
+correlation_value <- cor(pull(working_data, params$added_variable_shap), pull(working_data, params$added_variable), use = "complete.obs")
 ```
+
+The correlation between the SHAP values and the added variable is `r round(correlation_value, 2)`.
+
+```{r}
+columns_to_remove <- c(
+  "time_sale_year", 
+  "time_sale_month_of_year", 
+  "time_sale_day_of_year", 
+  "time_sale_day_of_week", 
+  "time_sale_day_of_month", 
+  "time_sale_day"
+)
+
+# Check if the type is continuous
+if (params$type == "continuous") {
+  # Select only numeric columns from assessment_data and remove the specified columns
+  numeric_cols <- assessment_data %>%
+    select_if(is.numeric) %>%
+    select(-all_of(columns_to_remove))
+  
+  # Initialize a data frame to store correlation results
+  correlation_results <- data.frame(Column = character(), Correlation = numeric(), stringsAsFactors = FALSE)
+  
+  # Loop through each numeric column and calculate correlation
+  for (col_name in names(numeric_cols)) {
+    correlation_value <- cor(numeric_cols[[col_name]], assessment_data[[params$added_variable]], use = "complete.obs")
+    correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value))
+  }
+  
+  # Sort the correlation results in descending order
+  correlation_results <- correlation_results %>%
+    arrange(desc(Correlation))
+  
+  # Display the correlation results as a scrollable table
+  datatable(correlation_results, options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))))
+} else {
+  print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
+}
+```
+
+
+
 ```{r}
 working_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
   mutate(
-    mean_value = mean(abs(!!sym(paste0(params$added_variable, "_shap"))), na.rm = TRUE)
+    mean_value = mean(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE)
   ) %>%
   ungroup()
 
@@ -218,26 +284,17 @@ low_mean_data <- selected_data %>%
 # Define color palettes for each subset
 pal_high_mean <- colorNumeric(
   palette = "viridis",
-  domain = high_mean_data[[paste0(params$added_variable, "_shap")]]
+  domain = high_mean_data[[paste0(params$added_variable_shap)]]
 )
 
 
 pal_low_mean <- colorNumeric(
   palette = "viridis",
-  domain = low_mean_data[[paste0(params$added_variable, "_shap")]]
+  domain = low_mean_data[[paste0(params$added_variable_shap)]]
 )
 ```
 
-```{r}
-pal_low_mean <- colorNumeric(
-  palette = "viridis",
-  domain = low_mean_data[[paste0(params$added_variable, "_shap")]]
-)
 
-# Filter low_mean_data
-low_mean_data <- selected_data %>%
-  filter(meta_nbhd_code %in% selected_neighborhoods[1:2])
-```
 
 ## Neighborhoods with 2 lowest Absolute Mean Values
 ```{r}
@@ -248,38 +305,76 @@ leaflet(low_mean_data) %>%
     lng = ~loc_longitude,
     lat = ~loc_latitude,
     radius = 5,
-    color = ~ pal_low_mean(low_mean_data[[paste0(params$added_variable, "_shap")]]), # Use the palette function
-    label = ~ paste0(params$added_variable, "_shap", ": ", low_mean_data[[paste0(params$added_variable, "_shap")]])
-  ) %>%
+    color = ~ pal_low_mean(low_mean_data[[paste0(params$added_variable_shap)]]),
+    popup = ~paste(
+      "<br>", "SHAP:", sprintf("%.2f", low_mean_data[[params$added_variable_shap]]),
+      "<br>", "Variable:", sprintf("%.2f", low_mean_data[[params$added_variable]]),
+      "<br>", "Pin: ", low_mean_data$meta_pin)) %>%
   addLegend(
     "bottomright",
     pal = pal_low_mean,
-    values = ~ low_mean_data[[paste0(params$added_variable, "_shap")]],
+    values = ~ low_mean_data[[paste0(params$added_variable_shap)]],
     title = "Legend (Low mean Neighborhoods)"
   )
 
-map_low_mean
 ```
 ## Neighborhoods with 2 highest Absolute Mean Values
 
 ```{r}
-# Create the leaflet map
 leaflet(high_mean_data) %>%
   addTiles() %>%
   addCircleMarkers(
     lng = ~loc_longitude,
     lat = ~loc_latitude,
     radius = 5,
-    color = ~ pal_high_mean(high_mean_data[[paste0(params$added_variable, "_shap")]]),
-    label = ~ paste0(params$added_variable, "_shap", ": ", high_mean_data[[paste0(params$added_variable, "_shap")]])
-  ) %>%
+    color = ~ pal_high_mean(high_mean_data[[paste0(params$added_variable_shap)]]),
+    popup = ~paste(
+      "<br>", "SHAP:", sprintf("%.2f", high_mean_data[[params$added_variable_shap]]),
+      "<br>", "Variable:", sprintf("%.2f", high_mean_data[[params$added_variable]]),
+      "<br>", "Pin: ", high_mean_data$meta_pin)) %>%
   addLegend(
     "bottomright",
     pal = pal_high_mean,
-    values = ~ high_mean_data[[paste0(params$added_variable, "_shap")]],
+    values = ~ high_mean_data[[paste0(params$added_variable_shap)]],
     title = "Legend (High mean Neighborhoods)"
   )
 ```
+```{r}
+top_10_data_relative <- working_data %>%
+  # mutate(shap_relative_value = abs((!!sym(paste0(params$added_variable_shap)) - pred_card_shap_baseline_fmv) / median_card_value)) %>%
+  mutate(shap_relative_value = !!sym(params$added_variable_shap) / median_card_value) %>%
+  group_by(meta_nbhd_code) %>%
+  top_n(10, wt = shap_relative_value) %>%
+  ungroup()
+
+pal_top_10_data_relative <- colorNumeric(
+  palette = "viridis",
+  domain = top_10_data_relative$shap_relative_value
+)
+
+# Create the leaflet map with top 10 relative SHAP values
+leaflet(top_10_data_relative) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng = ~loc_longitude,
+    lat = ~loc_latitude,
+    radius = 5,
+    color = ~pal_top_10_data_relative(shap_relative_value),
+    popup = ~paste(
+      "SHAP Relative Value:", sprintf("%.2f", shap_relative_value),
+      "<br>", "SHAP:", sprintf("%.2f", top_10_data_relative[[params$added_variable_shap]]),
+      "<br>", "Variable:", sprintf("%.2f", top_10_data_relative[[params$added_variable]]),
+      "<br>", "Pin: ", top_10_data_relative$meta_pin)) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_top_10_data_relative,
+    values = ~shap_relative_value,
+    title = "SHAP Relative Value"
+  )
+```
+
+
+
 ```{r}
 top_10_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
@@ -311,6 +406,16 @@ leaflet(top_10_data) %>%
     title = "Legend (Top 10 SHAP Values per Neighborhood)"
   )
 ```
+```{r}
+range_limits <- as.numeric(unlist(strsplit(params$range, " - ")))
+
+# Filter the data based on the specified range
+test <- working_data %>%
+filter(get(params$added_variable) < range_limits[2] & get(params$added_variable) > range_limits[1])
+
+```
+
+
 ```{r}
 bottom_10_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
@@ -344,6 +449,156 @@ leaflet(bottom_10_data) %>%
     title = "Bottom 10 SHAP Values per Neighborhood"
   )
 ```
+
+
 ```{r}
+shap_predictors <- unlist(metadata$model_predictor_all_name)
+
+shap_df_filtered_long <- shap_df %>%
+  mutate(other_affordability_risk_index = 1) %>%
+  select(township_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
+  )
+
+```
+
+```{r}
+shap_townships_list <- shap_df %>%
+  distinct(township_code) %>%
+  pull() %>%
+  as.character()
+
+shap_idx_full_model <- which(
+  as.character(assessment_card$township_code) %in% shap_townships_list
+)
+
+create_shapviz <- function(shap_df, assessment_df, idx) {
+  shapviz::shapviz(
+    object = shap_df_filtered %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx) %>%
+      as.matrix(),
+    X = assessment_df %>%
+      select(all_of(shap_predictors)) %>%
+      slice(idx),
+    baseline = shap_df_filtered$pred_card_shap_baseline_fmv[1]
+  )
+}
+
+shapviz::shapviz(
+  object = shap_df %>%
+    select(all_of(shap_predictors)) %>%
+    slice(shap_idx_full_model) %>%
+    as.matrix(),
+  X = assessment_card_filtered %>%
+    select(all_of(shap_predictors)) %>%
+    slice(shap_idx_full_model),
+  baseline = shap_df$pred_card_shap_baseline_fmv[1]
+) %>%
+  shapviz::sv_importance(
+    kind = "bar",
+    max_display = 25L
+  ) +
+  labs(x = "Mean Abs. SHAP Value") +
+  scale_x_continuous(
+    labels = scales::dollar,
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_text(margin = margin(t = 10))
+  )
+```
+```{r}
+shap_predictors <- unlist(metadata$model_predictor_all_name)
+
+shap_df_filtered_long <- shap_df %>%
+  mutate(other_affordability_risk_index = 1) %>%
+  select(township_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
+  ) %>%
+  group_by(township_code, feature) %>%
+  mutate(median_abs_shap = median(abs(shap)),
+         median_shap = median(shap)) %>%
+  distinct(township_code, feature, .keep_all = TRUE)
+
+ranked_shap_df <- shap_df_filtered_long %>%
+  group_by(township_code) %>%
+  arrange(desc(median_abs_shap), .by_group = TRUE) %>%
+  mutate(rank_abs = row_number()) %>%
+  arrange(desc(median_shap), .by_group = TRUE) %>%
+  mutate(rank = row_number()) %>%
+  ungroup()
+
+create_kable_chart <- function(township_data, added_variable) {
+  centered_data <- township_data %>%
+    filter(feature == added_variable)
+  
+  if(nrow(centered_data) == 0) {
+    return(NULL)  
+  }
+  
+  centered_rank <- centered_data$rank
+  
+  kable_chart <- township_data %>%
+    filter(abs(rank - centered_rank) <= 5) %>%
+    select(feature, median_abs_shap, median_shap, rank, rank_abs)
+  
+  datatable_chart <- datatable(kable_chart, 
+                               caption = paste("Township Code:", unique(township_data$township_code)), 
+                               options = list(scrollY = '300px', 
+                                              paging = FALSE, 
+                                              searching = FALSE))
+  
+  return(datatable_chart)
+}
+
+township_codes <- unique(ranked_shap_df$township_code)
+added_variable <- params$added_variable
+
+kable_charts <- lapply(township_codes, function(code) {
+  township_data <- ranked_shap_df %>%
+    filter(township_code == code)
+  create_kable_chart(township_data, added_variable)
+})
+
+# Display the kable charts
+for (chart in kable_charts) {
+  if (!is.null(chart)) {
+    print(chart)
+  }
+}
+```
+
+```{r}
+added_variable <- assessment_data$params$added_variable
+
+# Check if added_value is numeric
+if (is.numeric(added_variable)) {
+  # Select only numeric columns from assessment_data
+  numeric_cols <- assessment_data %>%
+    select_if(is.numeric)
+  
+  # Initialize a data frame to store correlation results
+  correlation_results <- data.frame(Column = character(), Correlation = numeric(), stringsAsFactors = FALSE)
+  
+  # Loop through each numeric column and calculate correlation
+  for (col_name in names(numeric_cols)) {
+    correlation_value <- cor(numeric_cols[[col_name]], added_value, use = "complete.obs")
+    correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value))
+  }
+  
+  # Print the correlation results as a table
+  print(correlation_results)
+} else {
+  print("assessment_data$params$added_value is not numeric.")
+}
 ```
 
