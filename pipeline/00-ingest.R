@@ -47,7 +47,9 @@ training_data <- dbGetQuery(
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
       sale.sv_is_outlier,
-      sale.sv_outlier_type,
+      sale.sv_outlier_reason1,
+      sale.sv_outlier_reason2,
+      sale.sv_outlier_reason3,
       sale.sv_run_id,
       res.*
   FROM model.vw_card_res_input res
@@ -332,8 +334,7 @@ training_data_clean <- training_data_w_hie %>%
   # Only exclude explicit outliers from training. Sales with missing validation
   # outcomes will be considered non-outliers
   mutate(
-    sv_is_outlier = replace_na(sv_is_outlier, FALSE),
-    sv_outlier_type = replace_na(sv_outlier_type, "Not outlier")
+    sv_is_outlier = replace_na(sv_is_outlier, FALSE)
   ) %>%
   mutate(
     # Miscellaneous column-level cleanup
