@@ -270,7 +270,9 @@ if (upload_enable) {
   message("Sending run email and running model crawler")
 
   # If values were uploaded, trigger a Glue crawler to find any new partitions
-  glue_srv <- paws.analytics::glue()
+  glue_srv <- paws.analytics::glue(
+    config = list(region = Sys.getenv("AWS_REGION"))
+  )
   tryCatch(
     glue_srv$start_crawler("ccao-model-results-crawler"),
     error = function(e) message(e),
