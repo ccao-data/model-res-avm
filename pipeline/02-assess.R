@@ -371,15 +371,14 @@ sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
     meta_sale_price, meta_sale_date, meta_sale_document_num,
-    sv_outlier_type
+    sv_outlier_reason1, sv_outlier_reason2, sv_outlier_reason3
   ) %>%
   # Include outliers, since these data are used for desk review and
   # not for modeling
-  rename(meta_sale_outlier_type = sv_outlier_type) %>%
-  mutate(
-    meta_sale_outlier_type = ifelse(
-      meta_sale_outlier_type == "Not outlier", NA, meta_sale_outlier_type
-    )
+  rename(
+    meta_sale_outlier_reason1 = sv_outlier_reason1,
+    meta_sale_outlier_reason2 = sv_outlier_reason2,
+    meta_sale_outlier_reason3 = sv_outlier_reason3
   ) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
@@ -391,7 +390,9 @@ sales_data_two_most_recent <- sales_data %>%
       meta_sale_date,
       meta_sale_price,
       meta_sale_document_num,
-      meta_sale_outlier_type
+      meta_sale_outlier_reason1,
+      meta_sale_outlier_reason2,
+      meta_sale_outlier_reason3
     ),
     names_glue = "{mr}_{gsub('meta_sale_', '', .value)}"
   ) %>%
