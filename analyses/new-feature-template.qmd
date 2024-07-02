@@ -513,6 +513,7 @@ shapviz::shapviz(
     axis.title.x = element_text(margin = margin(t = 10))
   )
 ```
+
 ```{r}
 shap_predictors <- unlist(metadata$model_predictor_all_name)
 

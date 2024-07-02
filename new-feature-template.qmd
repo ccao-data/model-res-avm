@@ -141,7 +141,6 @@ generate_new_path <- function(file_type, run_id) {
 
 shap_df <- read_parquet(generate_new_path("shap", params$run_id))
 
-
 model_performance_assessment <- arrow::read_parquet(generate_new_path("performance", params$run_id))
 
 assessment_card <- read_parquet(generate_new_path("assessment_card", params$run_id)) %>%
@@ -156,15 +155,9 @@ lockfile <- metadata$dvc_md5_assessment_data
 s3_path <- paste0("s3://ccao-data-dvc-us-east-1/files/md5/",
                   substr(lockfile, 1, 2), "/",
                   substr(lockfile, 3, nchar(lockfile)))
-```
 
-
-```{r test, echo = FALSE}
 save_object(object = s3_path, file = "analyses/new_run/assessment_data.parquet")
-```
 
-
-```{r test1, echo = FALSE}
 assessment_data <- read_parquet("analyses/new_run/assessment_data.parquet")
 
 ```
@@ -199,210 +192,109 @@ model_performance_assessment_comparison <- arrow::read_parquet(generate_new_path
 assessment_pin_comparison <- arrow::read_parquet(generate_new_path("assessment_pin", params$comparison_run_id))
 ```
 
-```{r, include = FALSE}
-gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
-                          rsn_col, rsf_col, triad, geography,
-                          class, col_dict, min_n) {
-  # Helper function to return NA when sale sample size is too small
-  gte_n <- \(n_sales, min_n, fn, na_type) {
-    ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
-  }
-
-  # List of summary stat/performance functions applied within summarize() below
-  # Each function is listed on the right while the name of the function is on
-  # the left
-  rs_fns_list <- list(
-    cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE), NA_real_),
-    prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE), NA_real_),
-    prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE), NA_real_),
-    mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE), NA_real_),
-    cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE), NA_real_),
-    cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE)), NA),
-    prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE), NA_real_),
-    prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE)), NA),
-    prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE), NA_real_),
-    prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE)), NA),
-    mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE), NA_real_),
-    mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)), NA)
-  )
-  ys_fns_list <- list(
-    rmse        = rmse_vec,
-    r_squared   = rsq_vec,
-    mae         = mae_vec,
-    mpe         = mpe_vec,
-    mape        = mape_vec,
-    mdape       = mdape_vec # From R/helpers.R
-  )
-  sum_fns_list <- list(
-    min         = \(x) min(x, na.rm = TRUE),
-    q25         = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
-    median      = \(x) median(x, na.rm = TRUE),
-    q75         = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
-    max         = \(x) max(x, na.rm = TRUE)
-  )
-  sum_sqft_fns_list <- list(
-    min         = \(x, y) min(x / y, na.rm = TRUE),
-    q25         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.25),
-    median      = \(x, y) median(x / y, na.rm = TRUE),
-    q75         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.75),
-    max         = \(x, y) max(x / y, na.rm = TRUE)
-  )
-  yoy_fns_list <- list(
-    min         = \(x, y) min((x - y) / y, na.rm = TRUE),
-    q25         = \(x, y) quantile((x - y) / y, na.rm = TRUE, probs = 0.25),
-    median      = \(x, y) median((x - y) / y, na.rm = TRUE),
-    q75         = \(x, y) quantile((x - y) / y, na.rm = TRUE, probs = 0.75),
-    max         = \(x, y) max((x - y) / y, na.rm = TRUE)
-  )
-
-  # Generate aggregate performance stats by geography
-  df_stat <- data %>%
-    # Aggregate to get counts by geography without class
-    group_by({{ triad }}, {{ geography }}) %>%
-    mutate(
-      num_pin_no_class = n(),
-      num_sale_no_class = sum(!is.na({{ truth }}))
-    ) %>%
-    # Aggregate including class
-    group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
-    summarize(
-
-      # Basic summary stats, counts, proportions, etc
-      num_pin = n(),
-      num_sale = sum(!is.na({{ truth }})),
-      pct_of_total_pin_by_class = num_pin / first(num_pin_no_class),
-      pct_of_total_sale_by_class = num_sale / first(num_sale_no_class),
-      pct_of_pin_sold = num_sale / num_pin,
-      prior_far_total_av = sum({{ rsf_col }} / 10, na.rm = TRUE),
-      prior_near_total_av = sum({{ rsn_col }} / 10, na.rm = TRUE),
-      estimate_total_av = sum({{ estimate }} / 10, na.rm = TRUE),
-
-      # Assessment-specific ratio stats
-      rs_lst = rs_fns_list %>%
-        map(., \(f) exec(f, pmax({{ estimate }}, 1), {{ truth }})) %>%
-        list(),
-      median_ratio = median({{ estimate }} / {{ truth }}, na.rm = TRUE),
-
-      # Yardstick (ML-specific) performance stats
-      ys_lst = ys_fns_list %>%
-        map(., \(f) exec(f, {{ truth }}, {{ estimate }})) %>%
-        list(),
-
-      # Summary stats of sale price and sale price per sqft
-      sum_sale_lst = sum_fns_list %>%
-        set_names(paste0("sale_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ truth }})) %>%
-        list(),
-      sum_sale_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("sale_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ truth }}, {{ bldg_sqft }})) %>%
-        list(),
-
-      # Summary stats of prior values and value per sqft
-      prior_far_num_missing = sum(is.na({{ rsf_col }})),
-      sum_rsf_lst = sum_fns_list %>%
-        set_names(paste0("prior_far_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsf_col }})) %>%
-        list(),
-      sum_rsf_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("prior_far_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsf_col }}, {{ bldg_sqft }})) %>%
-        list(),
-      yoy_rsf_lst = yoy_fns_list %>%
-        set_names(paste0("prior_far_yoy_pct_chg_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ rsf_col }})) %>%
-        list(),
-      prior_near_num_missing = sum(is.na({{ rsn_col }})),
-      sum_rsn_lst = sum_fns_list %>%
-        set_names(paste0("prior_near_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsn_col }})) %>%
-        list(),
-      sum_rsn_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("prior_near_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ rsn_col }}, {{ bldg_sqft }})) %>%
-        list(),
-      yoy_rsn_lst = yoy_fns_list %>%
-        set_names(paste0("prior_near_yoy_pct_chg_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ rsn_col }})) %>%
-        list(),
-
-      # Summary stats of estimate value and estimate per sqft
-      estimate_num_missing = sum(is.na({{ estimate }})),
-      sum_est_lst = sum_fns_list %>%
-        set_names(paste0("estimate_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }})) %>%
-        list(),
-      sum_est_sf_lst = sum_sqft_fns_list %>%
-        set_names(paste0("estimate_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ estimate }}, {{ bldg_sqft }})) %>%
-        list(),
-      .groups = "drop"
-    ) %>%
-    ungroup() %>%
-    unnest_wider(ends_with("_lst"))
-
-  # Clean up the stats output (rename cols, relocate cols, etc.)
-  df_stat %>%
-    mutate(
-      by_class = !is.null({{ class }}),
-      geography_type = ifelse(
-        !is.null({{ geography }}),
-        ccao::vars_rename(
-          rlang::as_string(rlang::ensym(geography)),
-          names_from = "model",
-          names_to = "athena"
-        ),
-        "triad_code"
-      )
-    ) %>%
-    rename(any_of(col_dict)) %>%
-    relocate(
-      any_of(c("geography_type", "geography_id", "by_class", "class")),
-      .after = "triad_code"
-    ) %>%
-    mutate(across(
-      -(contains("_max") & contains("yoy")) & where(is.numeric),
-      ~ replace(.x, !is.finite(.x), NA)
-    ))
-}
 
 
-geographies_list <- c("meta_triad_code", "meta_township_code", "meta_nbhd_code")
+```{r data_processing, echo = FALSE}
+assessment_data_small <- assessment_data %>%
+  select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, !!sym(params$added_variable))
+
+# Process the working data
+working_data <- shap_df %>%
+  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable)) %>%
+  rename(!!params$added_variable_shap := !!sym(params$added_variable)) %>%
+  inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
+  inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
+  group_by(meta_nbhd_code) %>%
+  mutate(
+    !!paste0(params$added_variable, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_variable_shap)), na.rm = TRUE),
+    !!paste0(params$added_variable, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_variable_shap)), 0.9, na.rm = TRUE),
+    !!paste0(params$added_variable, "_neighborhood_mean") := mean(!!sym(params$added_variable), na.rm = TRUE),
+    !!paste0(params$added_variable, "_neighborhood_median") := median(!!sym(params$added_variable), na.rm = TRUE),
+    !!paste0(params$added_variable, "_neighborhood_90th") := quantile(!!sym(params$added_variable), 0.9, na.rm = TRUE),
+    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
+  ) %>%
+  ungroup()
 
 
-options(future.globals.maxSize = 1000 * 1024^2)
+nbhd <- ccao::nbhd_shp
 
-params$ratio_study$geographies <=  c("meta_triad_code", "meta_township_code", "meta_nbhd_code")
+spatial_data <- working_data %>%
+  distinct(meta_nbhd_code, .keep_all = TRUE) %>%
+  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf()
 
-geographies_list <- c("meta_triad_code", "meta_township_code", "meta_nbhd_code")
-
-test <- future_pmap(
-  geographies_list,
-  function(geo, cls) {
-    gen_agg_stats(
-      data = assessment_pin,
-      truth = sale_ratio_study_price,
-      estimate = pred_pin_initial_fmv,
-      bldg_sqft = char_total_bldg_sf,
-      rsn_col = prior_near_tot,
-      rsf_col = prior_far_tot,
-      triad = meta_triad_code,
-      geography = !!geo,
-      class = !!cls,
-      col_dict = col_rename_dict,
-      min_n = 20
-    )
-  },
-  .options = furrr_options(seed = TRUE, stdout = FALSE),
-  .progress = FALSE
-) %>%
-  purrr::list_rbind() %>%
-  arrange(across(all_of(geographies_list)))
-
-test
 ```
 
-# Test 1: Overview of Statistics
+# Descriptive Statistics
+
+```{r Mean, echo = FALSE}
+descriptives <- working_data %>%
+  mutate(
+    mean = mean(!!sym(params$added_variable), na.rm = TRUE),
+    median = median(!!sym(params$added_variable), na.rm = TRUE)
+  )
+```
+
+The mean of the data is `r round(descriptives$mean, 2)` and the median is `r round(descriptives$median, 2)`. The histogram below, shows the distribution of data in relation to both the mean and the median values.
+
+```{r Histogram, echo = FALSE}
+ggplot(working_data, aes(x = !!sym(params$added_variable))) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
+             color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
+             color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  labs(title = paste("Histogram of", params$added_variable),
+       x = params$added_variable,
+       y = "Frequency") +
+  theme_minimal() +
+  annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
+  annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
+```
+
+
+## Correlation between Added Variable and Other Variables
+
+While tree-based models are not particularly sensitive to multicollinearity, but it is still important to understand the relationship between the new variable and the existing variables. In this table, we should be looking to see if we can identify another variable which *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
+
+```{r, echo = FALSE}
+columns_to_remove <- c(
+  "time_sale_year", 
+  "time_sale_month_of_year", 
+  "time_sale_day_of_year", 
+  "time_sale_day_of_week", 
+  "time_sale_day_of_month", 
+  "time_sale_day"
+)
+
+if (params$type == "continuous") {
+  # Select only numeric columns from assessment_data and remove the specified columns
+  numeric_cols <- assessment_data %>%
+    select_if(is.numeric) %>%
+    select(-all_of(columns_to_remove))
+  
+  # Initialize a data frame to store correlation results
+  correlation_results <- data.frame(Column = character(), Correlation = numeric(), Abs_Correlation = numeric(), stringsAsFactors = FALSE)
+  
+  # Loop through each numeric column and calculate correlation and absolute correlation
+  for (col_name in names(numeric_cols)) {
+    correlation_value <- cor(numeric_cols[[col_name]], assessment_data[[params$added_variable]], use = "complete.obs")
+    abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]]), abs(assessment_data[[params$added_variable]]), use = "complete.obs"))
+    correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
+  }
+  
+  # Sort the correlation results in descending order by Correlation
+  correlation_results <- correlation_results %>%
+    arrange(dplyr::desc(Correlation))
+  
+  # Display the correlation results as a scrollable table
+  datatable(correlation_results, options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))))
+} else {
+  print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
+}
+```
+
+# Overview of Model Metrics
 
 ```{r Stats, echo = FALSE}
 # Function to calculate the percentage difference
@@ -463,9 +355,7 @@ datatable_list <- lapply(names(result_list), function(geo_type) {
 })
 ```
 
-
 ## Assessor Metrics at Different Geographies
-
 
 ### Triad
 
@@ -489,66 +379,115 @@ datatable_list[1]
 ```
 
 
-```{r, echo = FALSE}
-assessment_data_small <- assessment_data %>%
-  select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, !!sym(params$added_variable))
+# SHAP
+The main metric that the CCAO Data team uses to assess the importance of a variable is the SHAP value. SHAP values are a way to explain the output of machine learning models. They assign the $value increase associated with each variable. The SHAP value is calculated for each observation in the dataset, and the median SHAP value is used to determine the importance of a variable. The higher the median SHAP value, the more important the variable is in the model.
 
-# Process the working data
-working_data <- shap_df %>%
-  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable)) %>%
-  rename(!!params$added_variable_shap := !!sym(params$added_variable)) %>%
-  inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
-  inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
-  group_by(meta_nbhd_code) %>%
-  mutate(
-    !!paste0(params$added_variable, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_variable_shap)), na.rm = TRUE),
-    !!paste0(params$added_variable, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_variable_shap)), 0.9, na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_mean") := mean(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_median") := median(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_90th") := quantile(!!sym(params$added_variable), 0.9, na.rm = TRUE),
-    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
+## Absolute Value Rank of SHAP Scores
+
+The following table produces the median absolute SHAP value by township, and creates a . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
+
+```{r, echo = FALSE}
+shap_predictors <- unlist(metadata$model_predictor_all_name)
+
+shap_df_filtered_long <- shap_df %>%
+  inner_join(
+    assessment_data %>%
+      select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
+      rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code), 
+    by = c("meta_pin", "meta_card_num")
   ) %>%
+  mutate(other_affordability_risk_index = 1) %>%
+  select(township_code, neighborhood_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
+  )
+
+shap_predictors <- unlist(metadata$model_predictor_all_name)
+
+shap_df_filtered_long <- shap_df %>%
+  mutate(other_affordability_risk_index = 1) %>%
+  inner_join(
+    assessment_data %>%
+      select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
+      rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code), 
+    by = c("meta_pin", "meta_card_num")
+  ) %>%
+  select(township_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
+  ) %>%
+  group_by(township_code, feature) %>%
+  mutate(median_abs_shap = median(abs(shap)),
+         median_shap = median(shap)) %>%
+  distinct(township_code, feature, .keep_all = TRUE)
+
+ranked_shap_df <- shap_df_filtered_long %>%
+  group_by(township_code) %>%
+  arrange(desc(median_abs_shap), .by_group = TRUE) %>%
+  mutate(rank_abs = row_number()) %>%
+  arrange(desc(median_shap), .by_group = TRUE) %>%
+  mutate(rank = row_number()) %>%
   ungroup()
 
+create_kable_chart <- function(township_data, added_variable) {
+  added_variable_data <- township_data %>%
+    filter(feature == added_variable)
+  
+  if(nrow(added_variable_data) == 0) {
+    return(NULL)  
+  }
+  
+  non_added_variable_data <- township_data %>%
+    filter(feature != added_variable)
+  
+  combined_data <- bind_rows(added_variable_data, non_added_variable_data)
+  
+  kable_chart <- combined_data %>%
+    select(feature, median_abs_shap, median_shap, rank_abs) %>%
+    mutate(across(where(is.numeric), round, 2))
+  
+  datatable_chart <- datatable(kable_chart, 
+                               caption = paste("Township Code:", unique(township_data$township_code)), 
+                               options = list(scrollY = '300px', 
+                                              paging = FALSE, 
+                                              searching = FALSE))
+  
+  return(datatable_chart)
+}
 
-nbhd <- ccao::nbhd_shp
+township_codes <- unique(ranked_shap_df$township_code)
+added_variable <- params$added_variable
 
-spatial_data <- working_data %>%
-  distinct(meta_nbhd_code, .keep_all = TRUE) %>%
-  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  st_as_sf()
+kable_charts <- lapply(township_codes, function(code) {
+  township_data <- ranked_shap_df %>%
+    filter(township_code == code)
+  create_kable_chart(township_data, added_variable)
+})
+
+for (chart in kable_charts) {
+  if (!is.null(chart)) {
+    print(chart)
+  }
+}
 
 ```
 
-## Descriptive Statistics
 
-```{r Mean, echo = FALSE}
-descriptives <- working_data %>%
-  mutate(
-    mean = mean(!!sym(params$added_variable), na.rm = TRUE),
-    median = median(!!sym(params$added_variable), na.rm = TRUE)
-  )
+## Correlation between SHAP and the Added Variable
+
+```{r, echo = FALSE}
+correlation_value <- cor(pull(working_data, params$added_variable_shap), pull(working_data, params$added_variable), use = "complete.obs")
 ```
 
-The mean of the data is `r round(descriptives$mean, 2)` and the median is `r round(descriptives$median, 2)`. The histogram below, shows the distribution of data in relation to both the mean and the median values.
+One way to test if the added feature is improving the model, is to see if there is a relationship between the SHAP values and the added values. The assumption would be, that if the added value caused an increase / decrease in assessed values, then the correlation would be high in a positive or negative value. In this case, the correlation between the SHAP values and the added variable is `r round(correlation_value, 2)`.
 
-```{r Histogram, echo = FALSE}
-ggplot(working_data, aes(x = !!sym(params$added_variable))) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
-             color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
-             color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  labs(title = paste("Histogram of", params$added_variable),
-       x = params$added_variable,
-       y = "Frequency") +
-  theme_minimal() +
-  annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
-  annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
-```
+# Spatial Analysis
 
-
-## Spatial Analysis
+The spatial analysis is broken up into a few sections. The first panel looks at 
 
 
 ## Neighborhood Level Mean of `r params$added_variable`
@@ -568,7 +507,7 @@ if (params$type == "continuous") {
 }
 ```
 
-### Neighborhood Level Mean Absolute Value of SHAP
+## Neighborhood Level Mean Absolute Value of SHAP
 
 ```{r, echo = FALSE}
 spatial_data %>%
@@ -579,7 +518,7 @@ spatial_data %>%
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
-### Neighborhood Level Absolute Value 90th Percentile of SHAP
+## Neighborhood Level Absolute Value 90th Percentile of SHAP
 
 Sometimes the value of SHAPS lie in the extremes, rather than the
 
@@ -593,58 +532,9 @@ spatial_data %>%
 ```
 
 
-### Correlation between SHAP and the Added Variable
 
-```{r, echo = FALSE}
-correlation_value <- cor(pull(working_data, params$added_variable_shap), pull(working_data, params$added_variable), use = "complete.obs")
-```
 
-One way to test if the added feature is improving the model, is to see if there is a relationship between the SHAP values and the added values. The assumption would be, that if the added value caused an increase / decrease in assessed values, then the correlation would be high in a positive or negative value. In this case, the correlation between the SHAP values and the added variable is `r round(correlation_value, 2)`.
-
-### Correlation between Added Variable and Other Variables
-
-While tree-based models are not particularly sensitive to multicollinearity, but it is still important to understand the relationship between the new variable and the existing variables. In this table, we should be looking to see if we can identify another variable which *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
-
-```{r, echo = FALSE}
-columns_to_remove <- c(
-  "time_sale_year", 
-  "time_sale_month_of_year", 
-  "time_sale_day_of_year", 
-  "time_sale_day_of_week", 
-  "time_sale_day_of_month", 
-  "time_sale_day"
-)
-
-if (params$type == "continuous") {
-  # Select only numeric columns from assessment_data and remove the specified columns
-  numeric_cols <- assessment_data %>%
-    select_if(is.numeric) %>%
-    select(-all_of(columns_to_remove))
-  
-  # Initialize a data frame to store correlation results
-  correlation_results <- data.frame(Column = character(), Correlation = numeric(), Abs_Correlation = numeric(), stringsAsFactors = FALSE)
-  
-  # Loop through each numeric column and calculate correlation and absolute correlation
-  for (col_name in names(numeric_cols)) {
-    correlation_value <- cor(numeric_cols[[col_name]], assessment_data[[params$added_variable]], use = "complete.obs")
-    abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]]), abs(assessment_data[[params$added_variable]]), use = "complete.obs"))
-    correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
-  }
-  
-  # Sort the correlation results in descending order by Correlation
-  correlation_results <- correlation_results %>%
-    arrange(desc(Correlation))
-  
-  # Display the correlation results as a scrollable table
-  datatable(correlation_results, options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))))
-} else {
-  print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
-}
-```
-
-# Mapping the Outliers
-
-The next section looks at the
+## Mapping the Highest and Lowest Values
 
 ```{r, echo = FALSE}
 # Assuming 'highest_100' is already defined
@@ -711,6 +601,8 @@ leaflet(lowest_100) %>%
 
 ```
 
+## Neighborhoods with the Highest and Lowest SHAP Values
+
 ```{r, echo = FALSE}
 working_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
@@ -747,8 +639,6 @@ pal_low_mean <- colorNumeric(
   domain = low_mean_data[[paste0(params$added_variable_shap)]]
 )
 ```
-
-## Neighborhoods with 2 lowest Absolute Mean Shap Values
 
 ```{r, echo = FALSE}
 # Create the leaflet map
@@ -793,6 +683,10 @@ leaflet(high_mean_data) %>%
     title = "Legend (High mean Neighborhoods)"
   )
 ```
+
+## Relative Absolute Values
+
+Because some neighborhoods 
 
 ```{r, echo = FALSE}
 top_10_data_relative <- working_data %>%
@@ -894,107 +788,17 @@ leaflet(bottom_10_data) %>%
   )
 ```
 
-```{r, echo = FALSE}
-shap_predictors <- unlist(metadata$model_predictor_all_name)
-
-shap_df_filtered_long <- shap_df %>%
-  inner_join(
-    assessment_data %>%
-      select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
-      rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code), 
-    by = c("meta_pin", "meta_card_num")
-  ) %>%
-  mutate(other_affordability_risk_index = 1) %>%
-  select(township_code, neighborhood_code, all_of(shap_predictors)) %>%
-  pivot_longer(
-    cols = all_of(shap_predictors),
-    names_to = "feature",
-    values_to = "shap"
-  )
-
-
-```
-
-### Absolute Value Rank of SHAP Scores
-
-The following table produces the median absolute SHAP value by township, and creates a . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
-
-```{r, echo = FALSE}
-shap_predictors <- unlist(metadata$model_predictor_all_name)
-
-shap_df_filtered_long <- shap_df %>%
-  mutate(other_affordability_risk_index = 1) %>%
-  inner_join(
-    assessment_data %>%
-      select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
-      rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code), 
-    by = c("meta_pin", "meta_card_num")
-  ) %>%
-  select(township_code, all_of(shap_predictors)) %>%
-  pivot_longer(
-    cols = all_of(shap_predictors),
-    names_to = "feature",
-    values_to = "shap"
-  ) %>%
-  group_by(township_code, feature) %>%
-  mutate(median_abs_shap = median(abs(shap)),
-         median_shap = median(shap)) %>%
-  distinct(township_code, feature, .keep_all = TRUE)
-
-ranked_shap_df <- shap_df_filtered_long %>%
-  group_by(township_code) %>%
-  arrange(desc(median_abs_shap), .by_group = TRUE) %>%
-  mutate(rank_abs = row_number()) %>%
-  arrange(desc(median_shap), .by_group = TRUE) %>%
-  mutate(rank = row_number()) %>%
-  ungroup()
-
-create_kable_chart <- function(township_data, added_variable) {
-  added_variable_data <- township_data %>%
-    filter(feature == added_variable)
-  
-  if(nrow(added_variable_data) == 0) {
-    return(NULL)  
-  }
-  
-  non_added_variable_data <- township_data %>%
-    filter(feature != added_variable)
-  
-  combined_data <- bind_rows(added_variable_data, non_added_variable_data)
-  
-  kable_chart <- combined_data %>%
-    select(feature, median_abs_shap, median_shap, rank_abs)
-  
-  datatable_chart <- datatable(kable_chart, 
-                               caption = paste("Township Code:", unique(township_data$township_code)), 
-                               options = list(scrollY = '300px', 
-                                              paging = FALSE, 
-                                              searching = FALSE))
-  
-  return(datatable_chart)
-}
-
-township_codes <- unique(ranked_shap_df$township_code)
-added_variable <- params$added_variable
-
-kable_charts <- lapply(township_codes, function(code) {
-  township_data <- ranked_shap_df %>%
-    filter(township_code == code)
-  create_kable_chart(township_data, added_variable)
-})
-
-for (chart in kable_charts) {
-  if (!is.null(chart)) {
-    print(chart)
-  }
-}
-
-```
 
 # Deciding on the Use of a New Variable
 
 Feature selection for the lightgbm model is not as straightforward as selecting the statistical significant values or the using dimension reduction techniques to combine similar variables. Because of this, this guide can be used as an alternative where
 
-To remove a variable from the model, it must satisfy the following criteria: - The variable must have a low SHAP value across all townships - The model metrics must not be significantly impacted by the removal of the variable - The variable must not demonstrate localized effects
+To remove a variable from the model, it must satisfy the following criteria: 
+- The variable must have a low SHAP value across all townships 
+- The model metrics must not be significantly impacted by the removal of the variable 
+- The variable must not demonstrate localized effects
 
-Other metrics can be used to guide this, but are not a pre-requisite - There must be little correlation between SHAP values and the variable - The varible is highly correlated with another existing variable.
+Other metrics can be used to guide this, but are not a pre-requisite 
+
+- There must be little correlation between SHAP values and the variable 
+- The variable is highly correlated with another existing variable.
