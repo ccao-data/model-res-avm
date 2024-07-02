@@ -1,0 +1,9 @@
+The new-feature-template is a feature selection tool which provides insight into if new
+
+Workflow:
+1. Identifiy if there is a model run which utilizes all features except for the new feature that you plan on adding.
+2. If there is not a model run which utilizes all features except for the new feature, run the model through `dvc repro` and upload the data to S3.
+3. Run the model with the new feature and upload the data to S3.
+4. Create a new folder with the new feature and an ascending numeric value.
+5. Update the params of new_feature-template with the correct run_id's for the comparison run and the new run.
+6.

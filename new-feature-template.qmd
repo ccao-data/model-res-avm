@@ -51,7 +51,7 @@ suppressPackageStartupMessages({
 })
 ```
 
-```{r download new data, echo = FALSE}
+```{r download_new_data, echo = FALSE}
 analyses_paths <- list(
   output = list(
     list(
@@ -139,43 +139,37 @@ generate_new_path <- function(file_type, run_id) {
   file.path(base_dir, paste0(run_id, "-", file_type, ".parquet"))
 }
 
-if (!exists("shap_df")) {
-  shap_df <- read_parquet(generate_new_path("shap", params$run_id))
-}
+shap_df <- read_parquet(generate_new_path("shap", params$run_id))
 
-if (!exists("model_performance_assessment")) {
-  model_performance_assessment <- arrow::read_parquet(generate_new_path("performance", params$run_id))
-}
 
-if (!exists("assessment_card")) {
-  assessment_card <- read_parquet(generate_new_path("assessment_card", params$run_id)) %>%
+model_performance_assessment <- arrow::read_parquet(generate_new_path("performance", params$run_id))
+
+assessment_card <- read_parquet(generate_new_path("assessment_card", params$run_id)) %>%
     select(meta_pin, meta_card_num, pred_card_initial_fmv)
-} else {
-  assessment_card <- assessment_card %>%
-    select(meta_pin, meta_card_num, pred_card_initial_fmv)
-}
 
-if (!exists("metadata")) {
-  metadata <- read_parquet(generate_new_path("metadata", params$run_id))
-}
+metadata <- read_parquet(generate_new_path("metadata", params$run_id))
 
-if (!exists("assessment_pin")) {
-  assessment_pin <- read_parquet(generate_new_path("assessment_pin", params$run_id))
-}
+assessment_pin <- read_parquet(generate_new_path("assessment_pin", params$run_id))
 
 lockfile <- metadata$dvc_md5_assessment_data
 
 s3_path <- paste0("s3://ccao-data-dvc-us-east-1/files/md5/",
                   substr(lockfile, 1, 2), "/",
                   substr(lockfile, 3, nchar(lockfile)))
+```
 
+
+```{r test, echo = FALSE}
 save_object(object = s3_path, file = "analyses/new_run/assessment_data.parquet")
+```
 
+
+```{r test1, echo = FALSE}
 assessment_data <- read_parquet("analyses/new_run/assessment_data.parquet")
 
 ```
 
-```{r download comparison data, echo = FALSE}
+```{r download_comparison_data, echo = FALSE}
 
 analyses_paths <- list(
   output = list(
@@ -198,21 +192,14 @@ fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses
 
 base_dir <- "analyses/comparison_run"
 
-if (!exists("metadata_comparison")) {
-  metadata_comparison <- read_parquet(generate_new_path("metadata", params$comparison_run_id))
-}
+metadata_comparison <- read_parquet(generate_new_path("metadata", params$comparison_run_id))
 
-if (!exists("model_performance_assessment_comparison")) {
-  model_performance_assessment_comparison <- arrow::read_parquet(generate_new_path("performance", params$comparison_run_id))
-}
+model_performance_assessment_comparison <- arrow::read_parquet(generate_new_path("performance", params$comparison_run_id))
 
-if (!exists("assessment_pin_comparison")) {
-  assessment_pin_comparison <- arrow::read_parquet(generate_new_path("assessment_pin", params$comparison_run_id))
-}
-
+assessment_pin_comparison <- arrow::read_parquet(generate_new_path("assessment_pin", params$comparison_run_id))
 ```
 
-```{r, echo = FALSE}
+```{r, include = FALSE}
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography,
                           class, col_dict, min_n) {
@@ -382,11 +369,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 
 geographies_list <- c("meta_triad_code", "meta_township_code", "meta_nbhd_code")
 
-col_rename_dict <- c(
-  "triad_code" = "meta_triad_code",
-  "class" = "meta_class",
-  purrr::set_names(params$ratio_study$geographies, "geography_id")
-)
 
 options(future.globals.maxSize = 1000 * 1024^2)
 
@@ -419,7 +401,6 @@ test <- future_pmap(
 
 test
 ```
-
 
 # Test 1: Overview of Statistics
 
@@ -463,19 +444,33 @@ output <- result %>%
   filter(is.na(geography_id)) %>%
   select(rmse, rmse_new)
 
+```
+
+Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a reduction of `r output$rmse` to `r output$rmse_new`, a change of `r output$rmse_new - output$rmse`.
+
+RSME only describes some of the metrics that we are interested in, and it doesn't take into account changes that occur on more local levels. The tables below are split into three different geographies, triad, township, and neighborhood. Here, you can see the
+
+```{r, echo = FALSE}
+# Display the result as a sortable and scrollable table
+result_list <- split(result, result$geography_type)
+```
+
+```{r, echo = FALSE}
 # Create a list of datatables, one for each geography_type
 datatable_list <- lapply(names(result_list), function(geo_type) {
   datatable(result_list[[geo_type]], options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))),
             caption = paste("Geography Type:", geo_type))
 })
-
 ```
 
-::: panel-tabset
+
+## Assessor Metrics at Different Geographies
+
 
 ### Triad
+
 ```{r, echo = FALSE}
-datatable_list[1]
+datatable_list[3]
 
 ```
 
@@ -485,13 +480,14 @@ datatable_list[1]
 datatable_list[2]
 
 ```
+
 ### Neighborhood
+
 ```{r, echo = FALSE}
-datatable_list[3]
+datatable_list[1]
 
 ```
 
-:::
 
 ```{r, echo = FALSE}
 assessment_data_small <- assessment_data %>%
@@ -534,7 +530,7 @@ descriptives <- working_data %>%
   )
 ```
 
-The mean of the data is `r round(descriptives$mean, 2)` and the median is `r round(descriptives$median, 2)`. The histogram below, shows the distribution of data in relation to both the mean and the median values. 
+The mean of the data is `r round(descriptives$mean, 2)` and the median is `r round(descriptives$median, 2)`. The histogram below, shows the distribution of data in relation to both the mean and the median values.
 
 ```{r Histogram, echo = FALSE}
 ggplot(working_data, aes(x = !!sym(params$added_variable))) +
@@ -552,7 +548,11 @@ ggplot(working_data, aes(x = !!sym(params$added_variable))) +
 ```
 
 
+## Spatial Analysis
+
+
 ## Neighborhood Level Mean of `r params$added_variable`
+
 ```{r, echo = FALSE}
 if (params$type == "continuous") {
   plot <- spatial_data %>%
@@ -568,7 +568,6 @@ if (params$type == "continuous") {
 }
 ```
 
-
 ### Neighborhood Level Mean Absolute Value of SHAP
 
 ```{r, echo = FALSE}
@@ -579,9 +578,10 @@ spatial_data %>%
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
+
 ### Neighborhood Level Absolute Value 90th Percentile of SHAP
 
-Sometimes the value of SHAPS lie in the extremes, rather than the 
+Sometimes the value of SHAPS lie in the extremes, rather than the
 
 ```{r, echo = FALSE}
 spatial_data %>%
@@ -591,7 +591,6 @@ spatial_data %>%
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
-:::
 
 
 ### Correlation between SHAP and the Added Variable
@@ -605,7 +604,6 @@ One way to test if the added feature is improving the model, is to see if there 
 ### Correlation between Added Variable and Other Variables
 
 While tree-based models are not particularly sensitive to multicollinearity, but it is still important to understand the relationship between the new variable and the existing variables. In this table, we should be looking to see if we can identify another variable which *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
- 
 
 ```{r, echo = FALSE}
 columns_to_remove <- c(
@@ -644,12 +642,9 @@ if (params$type == "continuous") {
 }
 ```
 
-
 # Mapping the Outliers
 
-The next section looks at the 
-
-
+The next section looks at the
 
 ```{r, echo = FALSE}
 # Assuming 'highest_100' is already defined
@@ -684,8 +679,6 @@ leaflet(highest_100) %>%
 
 ```
 
-
-
 ```{r, echo = FALSE}
 # Assuming 'lowest_100' is already defined
 lowest_100 <- working_data %>%
@@ -717,9 +710,6 @@ leaflet(lowest_100) %>%
   )
 
 ```
-
-
-
 
 ```{r, echo = FALSE}
 working_data <- working_data %>%
@@ -759,6 +749,7 @@ pal_low_mean <- colorNumeric(
 ```
 
 ## Neighborhoods with 2 lowest Absolute Mean Shap Values
+
 ```{r, echo = FALSE}
 # Create the leaflet map
 leaflet(low_mean_data) %>%
@@ -780,6 +771,7 @@ leaflet(low_mean_data) %>%
   )
 
 ```
+
 ## Neighborhoods with the 2 Highest Absolute Mean Values
 
 ```{r, echo = FALSE}
@@ -801,6 +793,7 @@ leaflet(high_mean_data) %>%
     title = "Legend (High mean Neighborhoods)"
   )
 ```
+
 ```{r, echo = FALSE}
 top_10_data_relative <- working_data %>%
   # mutate(shap_relative_value = abs((!!sym(paste0(params$added_variable_shap)) - pred_card_shap_baseline_fmv) / median_card_value)) %>%
@@ -834,8 +827,6 @@ leaflet(top_10_data_relative) %>%
     title = "SHAP Relative Value"
   )
 ```
-
-
 
 ```{r, echo = FALSE}
 top_10_data <- working_data %>%
@@ -903,7 +894,6 @@ leaflet(bottom_10_data) %>%
   )
 ```
 
-
 ```{r, echo = FALSE}
 shap_predictors <- unlist(metadata$model_predictor_all_name)
 
@@ -925,11 +915,9 @@ shap_df_filtered_long <- shap_df %>%
 
 ```
 
-
 ### Absolute Value Rank of SHAP Scores
 
-The following table produces the median absolute SHAP value by township, and creates a . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact. 
-
+The following table produces the median absolute SHAP value by township, and creates a . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
 ```{r, echo = FALSE}
 shap_predictors <- unlist(metadata$model_predictor_all_name)
@@ -1003,17 +991,10 @@ for (chart in kable_charts) {
 
 ```
 
-
 # Deciding on the Use of a New Variable
 
-Feature selection for the lightgbm model is not as straightforward as selecting the statistical significant values or the using dimension reduction techniques to combine similar variables. Because of this, this guide can be used as an alternative where 
+Feature selection for the lightgbm model is not as straightforward as selecting the statistical significant values or the using dimension reduction techniques to combine similar variables. Because of this, this guide can be used as an alternative where
 
+To remove a variable from the model, it must satisfy the following criteria: - The variable must have a low SHAP value across all townships - The model metrics must not be significantly impacted by the removal of the variable - The variable must not demonstrate localized effects
 
-To remove a variable from the model, it must satisfy the following criteria:
-- The variable must have a low SHAP value across all townships
-- The model metrics must not be significantly impacted by the removal of the variable
-- The variable must not demonstrate localized effects
-
-Other metrics can be used to guide this, but are not a pre-requisite
-- There must be little correlation between SHAP values and the variable
-- The varible is highly correlated with another existing variable.
+Other metrics can be used to guide this, but are not a pre-requisite - There must be little correlation between SHAP values and the variable - The varible is highly correlated with another existing variable.
