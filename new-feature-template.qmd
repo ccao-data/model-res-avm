@@ -129,7 +129,7 @@ fetch_analyses <- function(run_id, year, analyses_paths) {
   tictoc::toc()
 }
 
-fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
+# fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
 
 # Define the base directory
 base_dir <- "analyses/new_run"
@@ -156,7 +156,7 @@ s3_path <- paste0("s3://ccao-data-dvc-us-east-1/files/md5/",
                   substr(lockfile, 1, 2), "/",
                   substr(lockfile, 3, nchar(lockfile)))
 
-save_object(object = s3_path, file = "analyses/new_run/assessment_data.parquet")
+# save_object(object = s3_path, file = "analyses/new_run/assessment_data.parquet")
 
 assessment_data <- read_parquet("analyses/new_run/assessment_data.parquet")
 
@@ -181,7 +181,7 @@ analyses_paths <- list(
   )
 )
 
-fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses_paths)
+# fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses_paths)
 
 base_dir <- "analyses/comparison_run"
 
@@ -229,7 +229,7 @@ spatial_data <- working_data %>%
 
 ```{r Mean, echo = FALSE}
 descriptives <- working_data %>%
-  mutate(
+  summarize(
     mean = mean(!!sym(params$added_variable), na.rm = TRUE),
     median = median(!!sym(params$added_variable), na.rm = TRUE)
   )
@@ -359,24 +359,15 @@ datatable_list <- lapply(names(result_list), function(geo_type) {
 
 ### Triad
 
-```{r, echo = FALSE}
-datatable_list[3]
-
+```{r, asis = TRUE}
+iwalk(datatable_list, ~ {
+  cat("## ", names(result_list)[.y], "\n\n")
+  print(.x)
+  cat("\n\n")
+})
 ```
 
-### Township
 
-```{r, echo = FALSE}
-datatable_list[2]
-
-```
-
-### Neighborhood
-
-```{r, echo = FALSE}
-datatable_list[1]
-
-```
 
 
 # SHAP
@@ -384,10 +375,14 @@ The main metric that the CCAO Data team uses to assess the importance of a varia
 
 ## Absolute Value Rank of SHAP Scores
 
+```{r}
+shap_predictors <- unlist(metadata$model_predictor_all_name)
+```
+
+
 The following table produces the median absolute SHAP value by township, and creates a . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
 ```{r, echo = FALSE}
-shap_predictors <- unlist(metadata$model_predictor_all_name)
 
 shap_df_filtered_long <- shap_df %>%
   inner_join(
@@ -404,7 +399,6 @@ shap_df_filtered_long <- shap_df %>%
     values_to = "shap"
   )
 
-shap_predictors <- unlist(metadata$model_predictor_all_name)
 
 shap_df_filtered_long <- shap_df %>%
   mutate(other_affordability_risk_index = 1) %>%
