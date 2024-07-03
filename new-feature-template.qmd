@@ -6,6 +6,7 @@ author: "Cook County Assessor's Office Data Department"
 execute:
   echo: false
   warning: false
+  asis: true
 format:
   html:
     embed-resources: true
@@ -14,26 +15,17 @@ format:
     fig-align: center
     fontsize: 12pt
 params:
-  run_id: "2024-03-17-stupefied-maya"
+  run_id: "2024-07-03-charming-boni"
   run_id_year: "2024"
-  comparison_run_id: "2024-06-18-calm-nathan"
+  comparison_run_id: "2024-03-17-stupefied-maya"
   comparison_run_id_year: "2024"
-  added_variable: "prox_num_bus_stop_in_half_mile"
-  added_variable_shap: "prox_num_bus_stop_in_half_mile_shap"
+  added_variable: "prox_nearest_new_construction_dist_ft"
+  added_variable_shap: "prox_nearest_new_construction_dist_ft_shap"
   range: "20 - 25"
   type: "continuous"
 ---
 
-```{r, echo = FALSE}
-library(purrr)
-library(here)
-library(leaflet)
-library(sf)
-library(DT)
-library(ggplot2)
-```
-
-```{r setup, echo = FALSE}
+```{r setup}
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
@@ -51,7 +43,16 @@ suppressPackageStartupMessages({
 })
 ```
 
-```{r download_new_data, echo = FALSE}
+```{r}
+library(purrr)
+library(here)
+library(leaflet)
+library(sf)
+library(DT)
+library(ggplot2)
+```
+
+```{r download_new_data}
 analyses_paths <- list(
   output = list(
     list(
@@ -129,7 +130,7 @@ fetch_analyses <- function(run_id, year, analyses_paths) {
   tictoc::toc()
 }
 
-# fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
+fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
 
 # Define the base directory
 base_dir <- "analyses/new_run"
@@ -156,13 +157,13 @@ s3_path <- paste0("s3://ccao-data-dvc-us-east-1/files/md5/",
                   substr(lockfile, 1, 2), "/",
                   substr(lockfile, 3, nchar(lockfile)))
 
-# save_object(object = s3_path, file = "analyses/new_run/assessment_data.parquet")
+save_object(object = s3_path, file = "analyses/new_run/assessment_data.parquet")
 
 assessment_data <- read_parquet("analyses/new_run/assessment_data.parquet")
 
 ```
 
-```{r download_comparison_data, echo = FALSE}
+```{r download_comparison_data}
 
 analyses_paths <- list(
   output = list(
@@ -181,7 +182,7 @@ analyses_paths <- list(
   )
 )
 
-# fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses_paths)
+fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses_paths)
 
 base_dir <- "analyses/comparison_run"
 
@@ -192,9 +193,7 @@ model_performance_assessment_comparison <- arrow::read_parquet(generate_new_path
 assessment_pin_comparison <- arrow::read_parquet(generate_new_path("assessment_pin", params$comparison_run_id))
 ```
 
-
-
-```{r data_processing, echo = FALSE}
+```{r data_processing}
 assessment_data_small <- assessment_data %>%
   select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, !!sym(params$added_variable))
 
@@ -227,7 +226,7 @@ spatial_data <- working_data %>%
 
 # Descriptive Statistics
 
-```{r Mean, echo = FALSE}
+```{r mean_median}
 descriptives <- working_data %>%
   summarize(
     mean = mean(!!sym(params$added_variable), na.rm = TRUE),
@@ -237,7 +236,7 @@ descriptives <- working_data %>%
 
 The mean of the data is `r round(descriptives$mean, 2)` and the median is `r round(descriptives$median, 2)`. The histogram below, shows the distribution of data in relation to both the mean and the median values.
 
-```{r Histogram, echo = FALSE}
+```{r histogram}
 ggplot(working_data, aes(x = !!sym(params$added_variable))) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
@@ -252,12 +251,11 @@ ggplot(working_data, aes(x = !!sym(params$added_variable))) +
   annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
 ```
 
-
 ## Correlation between Added Variable and Other Variables
 
 While tree-based models are not particularly sensitive to multicollinearity, but it is still important to understand the relationship between the new variable and the existing variables. In this table, we should be looking to see if we can identify another variable which *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
 
-```{r, echo = FALSE}
+```{r correlation between variables}
 columns_to_remove <- c(
   "time_sale_year", 
   "time_sale_month_of_year", 
@@ -278,25 +276,32 @@ if (params$type == "continuous") {
   
   # Loop through each numeric column and calculate correlation and absolute correlation
   for (col_name in names(numeric_cols)) {
-    correlation_value <- cor(numeric_cols[[col_name]], assessment_data[[params$added_variable]], use = "complete.obs")
-    abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]]), abs(assessment_data[[params$added_variable]]), use = "complete.obs"))
-    correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
+    # Filter out rows with missing values in the two columns being compared
+    complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data[[params$added_variable]])
+    
+    # Only compute correlation if there are complete cases
+    if (sum(complete_cases) > 0) {
+      correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data[[params$added_variable]][complete_cases], use = "complete.obs")
+      abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data[[params$added_variable]][complete_cases]), use = "complete.obs"))
+      correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
+    }
   }
   
   # Sort the correlation results in descending order by Correlation
   correlation_results <- correlation_results %>%
-    arrange(dplyr::desc(Correlation))
+    arrange(dplyr::desc(Abs_Correlation))
   
   # Display the correlation results as a scrollable table
   datatable(correlation_results, options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))))
 } else {
   print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
 }
+
 ```
 
 # Overview of Model Metrics
 
-```{r Stats, echo = FALSE}
+```{r model_stats}
 # Function to calculate the percentage difference
 percentage_diff <- function(x, y) {
   ((y - x) / x) * 100
@@ -338,40 +343,62 @@ output <- result %>%
 
 ```
 
-Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a reduction of `r output$rmse` to `r output$rmse_new`, a change of `r output$rmse_new - output$rmse`.
+Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a change of `r output$rmse` to `r output$rmse_new`, a change of `r output$rmse_new - output$rmse`.
 
-RSME only describes some of the metrics that we are interested in, and it doesn't take into account changes that occur on more local levels. The tables below are split into three different geographies, triad, township, and neighborhood. Here, you can see the
+RSME only describes some of the metrics that we are interested in, and it doesn't take into account changes that occur on more local levels. The tables below are split into three different geographies, triad, township, and neighborhood. Here, you can see the sortable values for each metric, and the percentage difference between the old and new models.
 
-```{r, echo = FALSE}
+```{r}
+
 # Display the result as a sortable and scrollable table
 result_list <- split(result, result$geography_type)
-```
 
-```{r, echo = FALSE}
 # Create a list of datatables, one for each geography_type
 datatable_list <- lapply(names(result_list), function(geo_type) {
   datatable(result_list[[geo_type]], options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))),
             caption = paste("Geography Type:", geo_type))
 })
+
+neighborhood <- datatable_list[[1]]
+township <- datatable_list[[2]]
+triad <- datatable_list[[3]]
+
 ```
+
+# Stats
+
+::: panel-tabset
+## Neighborhood
+
+```{r}
+neighborhood
+```
+
+## Township
+
+```{r}
+township
+```
+
+## Triad
+
+```{r}
+triad
+```
+:::
 
 ## Assessor Metrics at Different Geographies
 
-### Triad
-
-```{r, asis = TRUE}
-iwalk(datatable_list, ~ {
-  cat("## ", names(result_list)[.y], "\n\n")
-  print(.x)
+```{r, results = 'asis'}
+iwalk(datatable_list, function(dt, geo_type) {
+  cat("##", geo_type, "\n\n")
+  print(dt)
   cat("\n\n")
 })
 ```
 
-
-
-
 # SHAP
-The main metric that the CCAO Data team uses to assess the importance of a variable is the SHAP value. SHAP values are a way to explain the output of machine learning models. They assign the $value increase associated with each variable. The SHAP value is calculated for each observation in the dataset, and the median SHAP value is used to determine the importance of a variable. The higher the median SHAP value, the more important the variable is in the model.
+
+The main metric that the CCAO Data team uses to assess the importance of a variable is the SHAP value. SHAP values are a way to explain the output of machine learning models. They assign the \$value increase associated with each variable. The SHAP value is calculated for each observation in the dataset, and the median SHAP value is used to determine the importance of a variable. The higher the median SHAP value, the more important the variable is in the model.
 
 ## Absolute Value Rank of SHAP Scores
 
@@ -379,10 +406,9 @@ The main metric that the CCAO Data team uses to assess the importance of a varia
 shap_predictors <- unlist(metadata$model_predictor_all_name)
 ```
 
-
 The following table produces the median absolute SHAP value by township, and creates a . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
-```{r, echo = FALSE}
+```{r shap_table, results = 'asis'}
 
 shap_df_filtered_long <- shap_df %>%
   inner_join(
@@ -456,24 +482,17 @@ create_kable_chart <- function(township_data, added_variable) {
 township_codes <- unique(ranked_shap_df$township_code)
 added_variable <- params$added_variable
 
-kable_charts <- lapply(township_codes, function(code) {
+lapply(township_codes, function(code) {
   township_data <- ranked_shap_df %>%
     filter(township_code == code)
   create_kable_chart(township_data, added_variable)
 })
 
-for (chart in kable_charts) {
-  if (!is.null(chart)) {
-    print(chart)
-  }
-}
-
 ```
-
 
 ## Correlation between SHAP and the Added Variable
 
-```{r, echo = FALSE}
+```{r shap_variable_correlation}
 correlation_value <- cor(pull(working_data, params$added_variable_shap), pull(working_data, params$added_variable), use = "complete.obs")
 ```
 
@@ -481,12 +500,14 @@ One way to test if the added feature is improving the model, is to see if there 
 
 # Spatial Analysis
 
-The spatial analysis is broken up into a few sections. The first panel looks at 
+The spatial analysis is broken up into a few sections. The first panel looks at
 
+## Neighborhood Values
 
-## Neighborhood Level Mean of `r params$added_variable`
+::: panel-tabset
+### Mean Variable
 
-```{r, echo = FALSE}
+```{r}
 if (params$type == "continuous") {
   plot <- spatial_data %>%
     ggplot() +
@@ -501,9 +522,9 @@ if (params$type == "continuous") {
 }
 ```
 
-## Neighborhood Level Mean Absolute Value of SHAP
+### Mean Absolute SHAP
 
-```{r, echo = FALSE}
+```{r}
 spatial_data %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0(params$added_variable_shap, "_neighborhood_mean")))) +
@@ -512,11 +533,9 @@ spatial_data %>%
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
-## Neighborhood Level Absolute Value 90th Percentile of SHAP
+### 90th Percentile of absolute SHAP
 
-Sometimes the value of SHAPS lie in the extremes, rather than the
-
-```{r, echo = FALSE}
+```{r}
 spatial_data %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0(params$added_variable_shap, "_neighborhood_90th")))) +
@@ -524,14 +543,14 @@ spatial_data %>%
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
+:::
 
+## Mapping the Highest and Lowest 100 Values
 
+::: panel-tabset
+### Largest 100 Values
 
-
-## Mapping the Highest and Lowest Values
-
-```{r, echo = FALSE}
-# Assuming 'highest_100' is already defined
+```{r}
 highest_100 <- working_data %>%
   arrange(desc(!!sym(params$added_variable))) %>%
   slice(1:100)
@@ -563,13 +582,13 @@ leaflet(highest_100) %>%
 
 ```
 
-```{r, echo = FALSE}
-# Assuming 'lowest_100' is already defined
+### Lowest 100 Values
+
+```{r}
 lowest_100 <- working_data %>%
   arrange(!!sym(params$added_variable)) %>%
   slice(1:100)
 
-# Define a color palette
 pal_lowest_100 <- colorNumeric(palette = "viridis", domain = lowest_100[[params$added_variable]])
 
 # Create the leaflet map
@@ -595,9 +614,76 @@ leaflet(lowest_100) %>%
 
 ```
 
+### Highest 100 SHAP Values
+
+```{r}
+highest_100 <- working_data %>%
+  arrange(desc(!!sym(params$added_variable_shap))) %>%
+  slice(1:100)
+
+# Define a color palette
+pal_highest_100 <- colorNumeric(palette = "viridis", domain = highest_100[[params$added_variable_shap]])
+
+# Create the leaflet map
+leaflet(highest_100) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng = ~loc_longitude,
+    lat = ~loc_latitude,
+    radius = 5,
+    color = ~ pal_highest_100(highest_100[[params$added_variable_shap]]),
+    popup = ~paste(
+      "<br>", "SHAP:", sprintf("%.2f", highest_100[[params$added_variable_shap]]),
+      "<br>", "Variable:", sprintf("%.2f", highest_100[[params$added_variable]]),
+      "<br>", "Pin: ", highest_100$meta_pin
+    )
+  ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_highest_100,
+    values = ~ highest_100[[params$added_variable_shap]],
+    title = "Legend (Highest 100)"
+  )
+
+
+```
+
+### Lowest 100 SHAP Values
+
+```{r}
+lowest_100 <- working_data %>%
+  arrange(!!sym((params$added_variable_shap))) %>%
+  slice(1:100)
+
+pal_lowest_100 <- colorNumeric(palette = "viridis", domain = lowest_100[[params$added_variable_shap]])
+
+# Create the leaflet map
+leaflet(lowest_100) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng = ~loc_longitude,
+    lat = ~loc_latitude,
+    radius = 5,
+    color = ~ pal_lowest_100(lowest_100[[params$added_variable_shap]]),
+    popup = ~paste(
+      "<br>", "SHAP:", sprintf("%.2f", lowest_100[[params$added_variable_shap]]),
+      "<br>", "Variable:", sprintf("%.2f", lowest_100[[params$added_variable]]),
+      "<br>", "Pin: ", lowest_100$meta_pin
+    )
+  ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_lowest_100,
+    values = ~ lowest_100[[params$added_variable_shap]],
+    title = "Legend (Lowest 100)"
+  )
+```
+:::
+
 ## Neighborhoods with the Highest and Lowest SHAP Values
 
-```{r, echo = FALSE}
+::: panel-tabset
+```{r}
 working_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
   mutate(
@@ -634,7 +720,9 @@ pal_low_mean <- colorNumeric(
 )
 ```
 
-```{r, echo = FALSE}
+### Neighborhoods with lowest Mean Value
+
+```{r}
 # Create the leaflet map
 leaflet(low_mean_data) %>%
   addTiles() %>%
@@ -656,9 +744,9 @@ leaflet(low_mean_data) %>%
 
 ```
 
-## Neighborhoods with the 2 Highest Absolute Mean Values
+### Neighborhoods with the 2 Highest Absolute Mean Values
 
-```{r, echo = FALSE}
+```{r}
 leaflet(high_mean_data) %>%
   addTiles() %>%
   addCircleMarkers(
@@ -678,11 +766,9 @@ leaflet(high_mean_data) %>%
   )
 ```
 
-## Relative Absolute Values
+### Neighborhoods with the highest relative SHAP values
 
-Because some neighborhoods 
-
-```{r, echo = FALSE}
+```{r}
 top_10_data_relative <- working_data %>%
   # mutate(shap_relative_value = abs((!!sym(paste0(params$added_variable_shap)) - pred_card_shap_baseline_fmv) / median_card_value)) %>%
   mutate(shap_relative_value = !!sym(params$added_variable_shap) / median_card_value) %>%
@@ -716,7 +802,9 @@ leaflet(top_10_data_relative) %>%
   )
 ```
 
-```{r, echo = FALSE}
+### Neighborhoods with the lowest relative SHAP values
+
+```{r}
 top_10_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
   top_n(10, wt = !!sym(paste0(params$added_variable_shap))) %>%
@@ -748,7 +836,9 @@ leaflet(top_10_data) %>%
   )
 ```
 
-```{r, echo = FALSE}
+### 10 Lowest values per neighborhood
+
+```{r}
 bottom_10_data <- working_data %>%
   group_by(meta_nbhd_code) %>%
   top_n(-10, wt = !!sym(paste0(params$added_variable_shap))) %>%
@@ -781,18 +871,15 @@ leaflet(bottom_10_data) %>%
     title = "Bottom 10 SHAP Values per Neighborhood"
   )
 ```
-
+:::
 
 # Deciding on the Use of a New Variable
 
 Feature selection for the lightgbm model is not as straightforward as selecting the statistical significant values or the using dimension reduction techniques to combine similar variables. Because of this, this guide can be used as an alternative where
 
-To remove a variable from the model, it must satisfy the following criteria: 
-- The variable must have a low SHAP value across all townships 
-- The model metrics must not be significantly impacted by the removal of the variable 
-- The variable must not demonstrate localized effects
+To remove a variable from the model, it must satisfy the following criteria: - The variable must have a low SHAP value across all townships - The model metrics must not be significantly impacted by the removal of the variable - The variable must not demonstrate localized effects
 
-Other metrics can be used to guide this, but are not a pre-requisite 
+Other metrics can be used to guide this, but are not a pre-requisite
 
-- There must be little correlation between SHAP values and the variable 
-- The variable is highly correlated with another existing variable.
+-   There must be little correlation between SHAP values and the variable
+-   The variable is highly correlated with another existing variable.
