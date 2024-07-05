@@ -49,9 +49,11 @@ if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
   shap_df <- read_parquet(paths$output$shap$local)
   shap_exists <- nrow(shap_df) > 0
 } else {
-  shap_exists <- FALSE
-} %>%
-  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable))
+  {
+    shap_exists <- FALSE
+  } %>%
+    select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable))
+}
 
 if (!exists("model_performance_assessment")) {
   model_performance_assessment <-
@@ -65,12 +67,11 @@ if (!exists("assessment_card")) {
     select(meta_pin, meta_card_num, pred_card_initial_fmv)
 }
 assessment_card <- assessment_card %>%
-   select(meta_pin, meta_card_num, pred_card_initial_fmv)
+  select(meta_pin, meta_card_num, pred_card_initial_fmv)
 
 if (!exists("metadata")) {
   metadata <- read_parquet(paths$output$metadata$local)
 }
-
 ```
 
 ```{r}
@@ -103,10 +104,10 @@ inner_join(model_performance_assessment_comparison, model_performance_assessment
   mutate(across(c(mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new), round, 2)) %>%
   filter(
     percentage_diff(mki, mki_new) > 1 |
-    percentage_diff(cod, cod_new) > 1 |
-    percentage_diff(prb, prb_new) > 1 |
-    percentage_diff(prd, prd_new) > 1 |
-    percentage_diff(r_squared, r_squared_new) > 1
+      percentage_diff(cod, cod_new) > 1 |
+      percentage_diff(prb, prb_new) > 1 |
+      percentage_diff(prd, prd_new) > 1 |
+      percentage_diff(r_squared, r_squared_new) > 1
   )
 ```
 
@@ -140,7 +141,6 @@ spatial_data <- working_data %>%
   distinct(meta_nbhd_code, .keep_all = TRUE) %>%
   inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
-
 ```
 
 ## Descriptive Statistics
@@ -159,12 +159,16 @@ The mean of the data is `r round(descriptives$mean, 2)` and the median is `r rou
 ggplot(working_data, aes(x = !!sym(params$added_variable))) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
-             color = "red", linetype = "dashed", size = 1, show.legend = TRUE) +
+    color = "red", linetype = "dashed", size = 1, show.legend = TRUE
+  ) +
   geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
-             color = "green", linetype = "dashed", size = 1, show.legend = TRUE) +
-  labs(title = paste("Histogram of", params$added_variable),
-       x = params$added_variable,
-       y = "Frequency") +
+    color = "green", linetype = "dashed", size = 1, show.legend = TRUE
+  ) +
+  labs(
+    title = paste("Histogram of", params$added_variable),
+    x = params$added_variable,
+    y = "Frequency"
+  ) +
   theme_minimal() +
   annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
   annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
@@ -180,7 +184,7 @@ if (params$type == "continuous") {
     scale_fill_viridis_c(option = "viridis", name = "Value") +
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
-  
+
   print(plot)
 } else {
   message("The added_variable is not continuous. Skipping the plot.")
@@ -218,11 +222,11 @@ The correlation between the SHAP values and the added variable is `r round(corre
 
 ```{r}
 columns_to_remove <- c(
-  "time_sale_year", 
-  "time_sale_month_of_year", 
-  "time_sale_day_of_year", 
-  "time_sale_day_of_week", 
-  "time_sale_day_of_month", 
+  "time_sale_year",
+  "time_sale_month_of_year",
+  "time_sale_day_of_year",
+  "time_sale_day_of_week",
+  "time_sale_day_of_month",
   "time_sale_day"
 )
 
@@ -232,22 +236,22 @@ if (params$type == "continuous") {
   numeric_cols <- assessment_data %>%
     select_if(is.numeric) %>%
     select(-all_of(columns_to_remove))
-  
+
   # Initialize a data frame to store correlation results
   correlation_results <- data.frame(Column = character(), Correlation = numeric(), stringsAsFactors = FALSE)
-  
+
   # Loop through each numeric column and calculate correlation
   for (col_name in names(numeric_cols)) {
     correlation_value <- cor(numeric_cols[[col_name]], assessment_data[[params$added_variable]], use = "complete.obs")
     correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value))
   }
-  
+
   # Sort the correlation results in descending order
   correlation_results <- correlation_results %>%
     arrange(desc(Correlation))
-  
+
   # Display the correlation results as a scrollable table
-  datatable(correlation_results, options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, 'desc'))))
+  datatable(correlation_results, options = list(scrollX = TRUE, pageLength = 10, order = list(list(1, "desc"))))
 } else {
   print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
 }
@@ -306,17 +310,18 @@ leaflet(low_mean_data) %>%
     lat = ~loc_latitude,
     radius = 5,
     color = ~ pal_low_mean(low_mean_data[[paste0(params$added_variable_shap)]]),
-    popup = ~paste(
+    popup = ~ paste(
       "<br>", "SHAP:", sprintf("%.2f", low_mean_data[[params$added_variable_shap]]),
       "<br>", "Variable:", sprintf("%.2f", low_mean_data[[params$added_variable]]),
-      "<br>", "Pin: ", low_mean_data$meta_pin)) %>%
+      "<br>", "Pin: ", low_mean_data$meta_pin
+    )
+  ) %>%
   addLegend(
     "bottomright",
     pal = pal_low_mean,
     values = ~ low_mean_data[[paste0(params$added_variable_shap)]],
     title = "Legend (Low mean Neighborhoods)"
   )
-
 ```
 ## Neighborhoods with 2 highest Absolute Mean Values
 
@@ -328,10 +333,12 @@ leaflet(high_mean_data) %>%
     lat = ~loc_latitude,
     radius = 5,
     color = ~ pal_high_mean(high_mean_data[[paste0(params$added_variable_shap)]]),
-    popup = ~paste(
+    popup = ~ paste(
       "<br>", "SHAP:", sprintf("%.2f", high_mean_data[[params$added_variable_shap]]),
       "<br>", "Variable:", sprintf("%.2f", high_mean_data[[params$added_variable]]),
-      "<br>", "Pin: ", high_mean_data$meta_pin)) %>%
+      "<br>", "Pin: ", high_mean_data$meta_pin
+    )
+  ) %>%
   addLegend(
     "bottomright",
     pal = pal_high_mean,
@@ -359,12 +366,14 @@ leaflet(top_10_data_relative) %>%
     lng = ~loc_longitude,
     lat = ~loc_latitude,
     radius = 5,
-    color = ~pal_top_10_data_relative(shap_relative_value),
-    popup = ~paste(
+    color = ~ pal_top_10_data_relative(shap_relative_value),
+    popup = ~ paste(
       "SHAP Relative Value:", sprintf("%.2f", shap_relative_value),
       "<br>", "SHAP:", sprintf("%.2f", top_10_data_relative[[params$added_variable_shap]]),
       "<br>", "Variable:", sprintf("%.2f", top_10_data_relative[[params$added_variable]]),
-      "<br>", "Pin: ", top_10_data_relative$meta_pin)) %>%
+      "<br>", "Pin: ", top_10_data_relative$meta_pin
+    )
+  ) %>%
   addLegend(
     "bottomright",
     pal = pal_top_10_data_relative,
@@ -411,8 +420,7 @@ range_limits <- as.numeric(unlist(strsplit(params$range, " - ")))
 
 # Filter the data based on the specified range
 test <- working_data %>%
-filter(get(params$added_variable) < range_limits[2] & get(params$added_variable) > range_limits[1])
-
+  filter(get(params$added_variable) < range_limits[2] & get(params$added_variable) > range_limits[1])
 ```
 
 
@@ -462,7 +470,6 @@ shap_df_filtered_long <- shap_df %>%
     names_to = "feature",
     values_to = "shap"
   )
-
 ```
 
 ```{r}
@@ -526,8 +533,10 @@ shap_df_filtered_long <- shap_df %>%
     values_to = "shap"
   ) %>%
   group_by(township_code, feature) %>%
-  mutate(median_abs_shap = median(abs(shap)),
-         median_shap = median(shap)) %>%
+  mutate(
+    median_abs_shap = median(abs(shap)),
+    median_shap = median(shap)
+  ) %>%
   distinct(township_code, feature, .keep_all = TRUE)
 
 ranked_shap_df <- shap_df_filtered_long %>%
@@ -541,23 +550,26 @@ ranked_shap_df <- shap_df_filtered_long %>%
 create_kable_chart <- function(township_data, added_variable) {
   centered_data <- township_data %>%
     filter(feature == added_variable)
-  
-  if(nrow(centered_data) == 0) {
-    return(NULL)  
+
+  if (nrow(centered_data) == 0) {
+    return(NULL)
   }
-  
+
   centered_rank <- centered_data$rank
-  
+
   kable_chart <- township_data %>%
     filter(abs(rank - centered_rank) <= 5) %>%
     select(feature, median_abs_shap, median_shap, rank, rank_abs)
-  
-  datatable_chart <- datatable(kable_chart, 
-                               caption = paste("Township Code:", unique(township_data$township_code)), 
-                               options = list(scrollY = '300px', 
-                                              paging = FALSE, 
-                                              searching = FALSE))
-  
+
+  datatable_chart <- datatable(kable_chart,
+    caption = paste("Township Code:", unique(township_data$township_code)),
+    options = list(
+      scrollY = "300px",
+      paging = FALSE,
+      searching = FALSE
+    )
+  )
+
   return(datatable_chart)
 }
 
@@ -586,16 +598,16 @@ if (is.numeric(added_variable)) {
   # Select only numeric columns from assessment_data
   numeric_cols <- assessment_data %>%
     select_if(is.numeric)
-  
+
   # Initialize a data frame to store correlation results
   correlation_results <- data.frame(Column = character(), Correlation = numeric(), stringsAsFactors = FALSE)
-  
+
   # Loop through each numeric column and calculate correlation
   for (col_name in names(numeric_cols)) {
     correlation_value <- cor(numeric_cols[[col_name]], added_value, use = "complete.obs")
     correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value))
   }
-  
+
   # Print the correlation results as a table
   print(correlation_results)
 } else {
