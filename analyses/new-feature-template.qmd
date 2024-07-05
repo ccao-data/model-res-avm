@@ -1209,9 +1209,7 @@ leaflet(high_mean_data) %>%
 
 ## Within Neighborhood Largest Values
 
-Disparities may also be seen at 
-
-Because neighborhoods with *very* high FMVs have comparatively higher SHAP values, we also create a relative score, which can be understood as what percentage of the houses value is determined by this variable. This allows a comparison of within-neighborhood impact, while accounting for intra-neighborhood differences.
+Disparities may also be seen at the individual house level, and may be present within neighborhoods of all types, we select the top and bottom 10 SHAP values for each neighborhood. Because neighborhoods with *very* high FMVs have comparatively higher SHAP values, we also create a relative score, which can be understood as what percentage of the houses value is determined by this variable. This allows a comparison of within-neighborhood impact, while accounting for intra-neighborhood differences.
 
 ::: panel-tabset
 
