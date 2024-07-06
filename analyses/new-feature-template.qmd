@@ -21,7 +21,8 @@ params:
   comparison_run_id_year: "2024"
   added_variable: "prox_nearest_new_construction_dist_ft"
   added_variable_shap: "prox_nearest_new_construction_dist_ft_shap"
-  range: "20 - 25"
+  min_range: 5
+  max_range: 95
   type: "continuous"
 ---
 
@@ -138,7 +139,7 @@ fetch_analyses <- function(run_id, year, analyses_paths) {
   tictoc::toc()
 }
 
-# fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
+fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
 
 # Define the base directory
 base_dir <- "new_run"
@@ -167,7 +168,7 @@ s3_path <- paste0(
   substr(lockfile, 3, nchar(lockfile))
 )
 
-# save_object(object = s3_path, file = "new_run/assessment_data.parquet")
+save_object(object = s3_path, file = "new_run/assessment_data.parquet")
 
 assessment_data <- read_parquet("new_run/assessment_data.parquet")
 ```
@@ -190,7 +191,7 @@ analyses_paths <- list(
   )
 )
 
-# fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses_paths)
+fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, analyses_paths)
 
 base_dir <- "comparison_run"
 
@@ -401,34 +402,33 @@ generate_comparison_table <- function(df_new, df_comparison, title, group_var = 
     df_comparison_renamed <- df_comparison %>%
       rename_with(~ paste0(., "_new"))
 
-    result <- bind_cols(df_new, df_comparison_renamed) %>%
-      select(rmse, rmse_new, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
-      mutate(across(where(is.numeric), \(x) round(x, 2)))
+    result <- bind_cols(df_new, df_comparison_renamed)
   } else {
     df_new <- df_new %>%
       rename_with(~ paste0(., "_new"), -all_of(group_var))
 
-    result <- inner_join(df_comparison, df_new, by = group_var) %>%
-      select(all_of(group_var), rmse, rmse_new, mki, mki_new, cod, cod_new, prb, prb_new, prd, prd_new, r_squared, r_squared_new) %>%
-      mutate(
-        rmse_pct_diff = percentage_diff(rmse, rmse_new),
-        mki_pct_diff = percentage_diff(mki, mki_new),
-        cod_pct_diff = percentage_diff(cod, cod_new),
-        prb_pct_diff = percentage_diff(prb, prb_new),
-        prd_pct_diff = percentage_diff(prd, prd_new),
-        r_squared_pct_diff = percentage_diff(r_squared, r_squared_new)
-      ) %>%
-      select(
-        all_of(group_var),
-        rmse, rmse_new, rmse_pct_diff,
-        mki, mki_new, mki_pct_diff,
-        cod, cod_new, cod_pct_diff,
-        prb, prb_new, prb_pct_diff,
-        prd, prd_new, prd_pct_diff,
-        r_squared, r_squared_new, r_squared_pct_diff
-      ) %>%
-      mutate(across(where(is.numeric), \(x) round(x, 2)))
+    result <- inner_join(df_comparison, df_new, by = group_var)
   }
+
+  result <- result %>%
+    mutate(
+      rmse_pct_diff = percentage_diff(rmse, rmse_new),
+      mki_pct_diff = percentage_diff(mki, mki_new),
+      cod_pct_diff = percentage_diff(cod, cod_new),
+      prb_pct_diff = percentage_diff(prb, prb_new),
+      prd_pct_diff = percentage_diff(prd, prd_new),
+      r_squared_pct_diff = percentage_diff(r_squared, r_squared_new)
+    ) %>%
+    select(
+      if (!is.null(group_var)) all_of(group_var) else NULL,
+      rmse, rmse_new, rmse_pct_diff,
+      mki, mki_new, mki_pct_diff,
+      cod, cod_new, cod_pct_diff,
+      prb, prb_new, prb_pct_diff,
+      prd, prd_new, prd_pct_diff,
+      r_squared, r_squared_new, r_squared_pct_diff
+    ) %>%
+    mutate(across(where(is.numeric), \(x) round(x, 2)))
 
   datatable(result,
     caption = title,
@@ -477,7 +477,32 @@ generate_comparison_table(df_stat_township, df_stat_township_comparison, "Townsh
 generate_comparison_table(df_stat_nbhd, df_stat_nbhd_comparison, "Neighborhood Statistics Comparison", "meta_nbhd_code")
 ```
 
+
+## Range Test
+
+When adding a nwe variable, some metrics may be improved only within certain ranges. For example, proximity to an ammenity may only matter within 100 feet. Thus, we filter the data to include a minimum of `r params$min_range` and a maximum of `r params$max_range`.
+
+```{r}
+new_range <- assessment_pin %>%
+  inner_join(assessment_data_small, by = "meta_pin") %>%
+  mutate(!!params$added_variable := as.numeric(!!sym(params$added_variable))) %>%
+  filter(!!sym(params$added_variable) > params$min_range &
+    !!sym(params$added_variable) < params$max_range) %>%
+  compute_stats(.)
+
+comparison_range <- assessment_pin_comparison %>%
+  inner_join(assessment_data_small, by = "meta_pin") %>%
+  mutate(!!params$added_variable := as.numeric(!!sym(params$added_variable))) %>%
+  filter(!!sym(params$added_variable) > params$min_range &
+    !!sym(params$added_variable) < params$max_range) %>%
+  compute_stats(.)
+
+generate_comparison_table(new_range, comparison_range, "Range Test")
+```
+
+
 :::
+
 
 # SHAP
 
@@ -492,7 +517,7 @@ shap_predictors <- unlist(metadata$model_predictor_all_name)
 The following table produces the median absolute SHAP value by township, and creates grouped . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
 
-```{r}
+```{r shap_processing}
 # Combine data
 shap_df_filtered_long <- shap_df %>%
   inner_join(
@@ -583,7 +608,7 @@ shap_tables <- lapply(township_names, function(name) {
 
 
 ### Overall SHAP Summary
-```{r}
+```{r shap_summary}
 overall_summary_table
 ```
 
@@ -750,7 +775,6 @@ shap_tables[[26]]
 
 ###  `r township_names[27]`
 
-
 ```{r, results = 'asis'}
 shap_tables[[27]]
 ```
@@ -897,8 +921,41 @@ assessment_pin %>%
 ```
 
 :::
+
+
+```{r leaflet_function}
+create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = "loc_longitude", latitude = "loc_latitude") {
+  # Create the color palette
+  pal <- colorNumeric(palette = "viridis", domain = dataset[[legend_value]])
+
+  # Create the leaflet map
+  leaflet(dataset) %>%
+    addTiles() %>%
+    addCircleMarkers(
+      lng = ~ get(longitude),
+      lat = ~ get(latitude),
+      radius = 5,
+      color = ~ pal(dataset[[legend_value]]),
+      popup = ~ paste(
+        "<br>", "Pin: ", dataset$meta_pin,
+        "<br>", "SHAP:", sprintf("%.2f", dataset[[params$added_variable_shap]]),
+        "<br>", "Variable:", sprintf("%.2f", dataset[[params$added_variable]]),
+        "<br>", "New FMV:", dataset$pred_pin_final_fmv_new,
+        "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comparison,
+        "<br>", "FMV Difference: ", dataset$diff_pred_pin_final_fmv
+      )
+    ) %>%
+    addLegend(
+      "bottomright",
+      pal = pal,
+      values = ~ dataset[[legend_value]],
+      title = legend_title
+    )
+}
+```
+
 ## Mapping the Highest and Lowest 100 Values
-From here, we look at three different types of high and low values; the values of the variable we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. 
+From here, we look at three different types of high and low values; the values of the variable we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
 
 ::: panel-tabset
 
@@ -909,32 +966,7 @@ highest_100 <- working_data %>%
   arrange(desc(!!sym(params$added_variable))) %>%
   slice(1:100)
 
-# Define a color palette
-pal_highest_100 <- colorNumeric(palette = "viridis", domain = highest_100[[params$added_variable]])
-
-# Create the leaflet map
-leaflet(highest_100) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_highest_100(highest_100[[params$added_variable]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", highest_100$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", highest_100[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", highest_100[[params$added_variable]]),
-      "<br>", "New FMV:", highest_100$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", highest_100$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", highest_100$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_highest_100,
-    values = ~ highest_100[[params$added_variable]],
-    title = "Legend (Highest 100)"
-  )
+create_leaflet_map(highest_100, params$added_variable, "Largest 100 Values")
 ```
 
 ### Lowest 100 Values
@@ -944,31 +976,7 @@ lowest_100 <- working_data %>%
   arrange(!!sym(params$added_variable)) %>%
   slice(1:100)
 
-pal_lowest_100 <- colorNumeric(palette = "viridis", domain = lowest_100[[params$added_variable]])
-
-# Create the leaflet map
-leaflet(lowest_100) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_lowest_100(lowest_100[[params$added_variable]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", lowest_100$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", lowest_100[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", lowest_100[[params$added_variable]]),
-      "<br>", "New FMV:", lowest_100$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", lowest_100$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", lowest_100$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_lowest_100,
-    values = ~ lowest_100[[params$added_variable]],
-    title = "Legend (Lowest 100)"
-  )
+create_leaflet_map(lowest_100, params$added_variable, "Lowest 100 Values")
 ```
 
 ### Highest 100 SHAP Values
@@ -978,66 +986,18 @@ highest_100 <- working_data %>%
   arrange(desc(!!sym(params$added_variable_shap))) %>%
   slice(1:100)
 
-# Define a color palette
-pal_highest_100 <- colorNumeric(palette = "viridis", domain = highest_100[[params$added_variable_shap]])
-
-# Create the leaflet map
-leaflet(highest_100) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_highest_100(highest_100[[params$added_variable_shap]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", highest_100$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", highest_100[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", highest_100[[params$added_variable]]),
-      "<br>", "New FMV:", highest_100$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", highest_100$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", highest_100$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_highest_100,
-    values = ~ highest_100[[params$added_variable_shap]],
-    title = "Legend (Highest 100)"
-  )
+create_leaflet_map(highest_100, params$added_variable_shap, "Highest 100 SHAPs")
 ```
 
 ### Lowest 100 SHAP Values
 
 ```{r}
+# Example usage with the dataset sliced outside the function
 lowest_100 <- working_data %>%
   arrange(!!sym((params$added_variable_shap))) %>%
   slice(1:100)
 
-pal_lowest_100 <- colorNumeric(palette = "viridis", domain = lowest_100[[params$added_variable_shap]])
-
-# Create the leaflet map
-leaflet(lowest_100) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_lowest_100(lowest_100[[params$added_variable_shap]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", lowest_100$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", lowest_100[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", lowest_100[[params$added_variable]]),
-      "<br>", "New FMV:", lowest_100$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", lowest_100$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", lowest_100$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_lowest_100,
-    values = ~ lowest_100[[params$added_variable_shap]],
-    title = "Legend (Lowest 100)"
-  )
+create_leaflet_map(lowest_100, params$added_variable_shap, "Lowest 100 SHAPs")
 ```
 
 ### 100 Largest FMV Increases
@@ -1046,30 +1006,8 @@ largest_fmv_increases <- working_data %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
 
-pal_largest_fmv_increases <- colorNumeric(palette = "viridis", domain = largest_fmv_increases$diff_pred_pin_final_fmv)
-
-leaflet(largest_fmv_increases) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_largest_fmv_increases(diff_pred_pin_final_fmv),
-    popup = ~ paste(
-      "<br>", "Pin: ", largest_fmv_increases$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", largest_fmv_increases[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", largest_fmv_increases[[params$added_variable]]),
-      "<br>", "New FMV:", largest_fmv_increases$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", largest_fmv_increases$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", largest_fmv_increases$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_largest_fmv_increases,
-    values = ~diff_pred_pin_final_fmv,
-    title = "Largest Increases"
-  )
+# Call the function with the pre-sliced dataset
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
 ```
 
 ### 100 Largest FMV Decreases
@@ -1079,30 +1017,7 @@ largest_fmv_decreases <- working_data %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
-pal_largest_fmv_decreases <- colorNumeric(palette = "viridis", domain = largest_fmv_decreases$diff_pred_pin_final_fmv)
-
-leaflet(largest_fmv_decreases) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_largest_fmv_decreases(diff_pred_pin_final_fmv),
-    popup = ~ paste(
-      "<br>", "Pin: ", largest_fmv_decreases$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", largest_fmv_decreases[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", largest_fmv_decreases[[params$added_variable]]),
-      "<br>", "New FMV:", largest_fmv_decreases$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", largest_fmv_decreases$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", largest_fmv_decreases$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_largest_fmv_decreases,
-    values = ~diff_pred_pin_final_fmv,
-    title = "Largest Decreases"
-  )
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases")
 ```
 
 :::
@@ -1136,72 +1051,18 @@ high_mean_data <- selected_data %>%
 
 low_mean_data <- selected_data %>%
   filter(meta_nbhd_code %in% selected_neighborhoods[1:2])
-
-# Define color palettes for each subset
-pal_high_mean <- colorNumeric(
-  palette = "viridis",
-  domain = high_mean_data[[paste0(params$added_variable_shap)]]
-)
-
-pal_low_mean <- colorNumeric(
-  palette = "viridis",
-  domain = low_mean_data[[paste0(params$added_variable_shap)]]
-)
 ```
 
 ### 2 Lowest SHAP Neighborhoods
 
 ```{r}
-# Create the leaflet map
-leaflet(low_mean_data) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_low_mean(low_mean_data[[paste0(params$added_variable_shap)]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", low_mean_data$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", low_mean_data[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", low_mean_data[[params$added_variable]]),
-      "<br>", "New FMV:", low_mean_data$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", low_mean_data$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", low_mean_data$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_low_mean,
-    values = ~ low_mean_data[[paste0(params$added_variable_shap)]],
-    title = "Legend (Low mean Neighborhoods)"
-  )
+create_leaflet_map(low_mean_data, params$added_variable_shap, "SHAP Values")
 ```
 
 ### 2 Highest SHAP Neighborhoods
 
 ```{r}
-leaflet(high_mean_data) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_high_mean(high_mean_data[[paste0(params$added_variable_shap)]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", high_mean_data$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", high_mean_data[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", high_mean_data[[params$added_variable]]),
-      "<br>", "New FMV:", high_mean_data$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", high_mean_data$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", high_mean_data$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_high_mean,
-    values = ~ high_mean_data[[paste0(params$added_variable_shap)]],
-    title = "Legend (High mean Neighborhoods)"
-  )
+create_leaflet_map(high_mean_data, params$added_variable_shap, "SHAP Values")
 ```
 
 :::
@@ -1221,33 +1082,8 @@ top_10_data <- working_data %>%
   top_n(10, wt = !!sym(paste0(params$added_variable_shap))) %>%
   ungroup()
 
-pal_top_10 <- colorNumeric(
-  palette = "viridis",
-  domain = top_10_data[[params$added_variable_shap]]
-)
 
-leaflet(top_10_data) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_top_10(top_10_data[[params$added_variable_shap]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", top_10_data$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", top_10_data[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", top_10_data[[params$added_variable]]),
-      "<br>", "New FMV:", top_10_data$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", top_10_data$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", top_10_data$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_top_10,
-    values = ~ top_10_data[[params$added_variable_shap]],
-    title = "Legend (Top 10 SHAP Values per Neighborhood)"
-  )
+create_leaflet_map(top_10_data, params$added_variable_shap, "SHAP Values")
 ```
 
 ### 10 Lowest SHAP values per neighborhood
@@ -1258,35 +1094,7 @@ bottom_10_data <- working_data %>%
   top_n(-10, wt = !!sym(paste0(params$added_variable_shap))) %>%
   ungroup()
 
-# Define the color palette
-pal_bottom_10 <- colorNumeric(
-  palette = "viridis",
-  domain = bottom_10_data[[params$added_variable_shap]]
-)
-
-# Create the leaflet map with bottom 10 values
-leaflet(bottom_10_data) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_bottom_10(bottom_10_data[[params$added_variable_shap]]),
-    popup = ~ paste(
-      "<br>", "Pin: ", bottom_10_data$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", bottom_10_data[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", bottom_10_data[[params$added_variable]]),
-      "<br>", "New FMV:", bottom_10_data$pred_pin_final_fmv_new,
-      "<br>", "Comparison_FMV: ", bottom_10_data$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", bottom_10_data$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_bottom_10,
-    values = ~ bottom_10_data[[params$added_variable_shap]],
-    title = "Bottom 10 SHAP Values per Neighborhood"
-  )
+create_leaflet_map(bottom_10_data, params$added_variable_shap, "SHAP Values")
 ```
 
 ### 10 Highest Relative SHAP values per neighborhood
@@ -1298,34 +1106,8 @@ top_10_data_relative <- working_data %>%
   top_n(10, wt = shap_relative_value) %>%
   ungroup()
 
-pal_top_10_data_relative <- colorNumeric(
-  palette = "viridis",
-  domain = top_10_data_relative$shap_relative_value
-)
 
-# Create the leaflet map with top 10 relative SHAP values
-leaflet(top_10_data_relative) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_top_10_data_relative(shap_relative_value),
-    popup = ~ paste(
-      "<br>", "Pin: ", top_10_data_relative$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", top_10_data_relative[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", top_10_data_relative[[params$added_variable]]),
-      "<br>", "New FMV:", top_10_data_relative$pred_pin_final_fmv_new,
-      "<br>", "Comparison_FMV: ", top_10_data_relative$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", top_10_data_relative$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_top_10_data_relative,
-    values = ~shap_relative_value,
-    title = "SHAP Relative Value"
-  )
+create_leaflet_map(top_10_data_relative, params$added_variable_shap, "Relative SHAP Values")
 ```
 ### Bottom 10 Relative SHAP Values per Neighborhood
 ```{r}
@@ -1335,34 +1117,7 @@ bottom_10_data_relative <- working_data %>%
   top_n(-10, wt = shap_relative_value) %>%
   ungroup()
 
-pal_bottom_10_data_relative <- colorNumeric(
-  palette = "viridis",
-  domain = bottom_10_data_relative$shap_relative_value
-)
-
-# Create the leaflet map with bottom 10 relative SHAP values
-leaflet(bottom_10_data_relative) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    lng = ~loc_longitude,
-    lat = ~loc_latitude,
-    radius = 5,
-    color = ~ pal_bottom_10_data_relative(shap_relative_value),
-    popup = ~ paste(
-      "<br>", "Pin: ", bottom_10_data_relative$meta_pin,
-      "<br>", "SHAP:", sprintf("%.2f", bottom_10_data_relative[[params$added_variable_shap]]),
-      "<br>", "Variable:", sprintf("%.2f", bottom_10_data_relative[[params$added_variable]]),
-      "<br>", "New FMV:", bottom_10_data_relative$pred_pin_final_fmv_new,
-      "<br>", "Comparison FMV: ", bottom_10_data_relative$pred_pin_final_fmv_comparison,
-      "<br>", "FMV Difference: ", bottom_10_data_relative$diff_pred_pin_final_fmv
-    )
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_bottom_10_data_relative,
-    values = ~shap_relative_value,
-    title = "SHAP Relative Value"
-  )
+create_leaflet_map(bottom_10_data_relative, params$added_variable_shap, "Relative SHAP Values")
 ```
 
 :::
@@ -1372,6 +1127,7 @@ leaflet(bottom_10_data_relative) %>%
 Feature selection for the lightgbm model is not as straightforward as selecting the statistical significant variables, and because for interpretability, the inclusion of all variables in their raw form is necessary, we cannot use dimension reduction techniques. In general, the lighgbm model does a good job of basing the results on the most important features, meaning that the inclusion process can be inclusive rather than exclusive.
 
 Because of this, to deem that the added feature is not relevant, it should
+
 - Not improve model metrics
 - Be one of the lowest SHAP value indicators
 - Not have effects in particular neighborhoods 
