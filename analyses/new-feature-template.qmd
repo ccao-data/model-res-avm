@@ -178,6 +178,10 @@ analyses_paths <- list(
       key = "assessment_pin"
     ),
     list(
+      s3 = paste0("s3://ccao-model-results-us-east-1/shap/year=", params$comparison_run_id_year, "/run_id=", params$comparison_run_id_year, "/"),
+      key = "shap"
+    ),
+    list(
       s3 = paste0("s3://ccao-model-results-us-east-1/metadata/year=", params$comparison_run_id_year, "/", params$comparison_run_id, ".parquet"),
       key = "metadata"
     )
@@ -188,6 +192,7 @@ data_comparison <- fetch_analyses(params$comparison_run_id, params$comparison_ru
 
 metadata_comparison <- data_comparison$metadata
 model_performance_assessment_comparison <- data_comparison$performance
+shap_comparison <- data_comparison$shap
 
 assessment_pin_comparison <- data_comparison$assessment_pin %>%
   select(meta_pin, pred_pin_final_fmv, sale_ratio_study_price, meta_nbhd_code, meta_triad_code, pred_pin_initial_fmv, meta_township_code)
@@ -240,16 +245,15 @@ descriptives <- working_data %>%
     mean = mean(!!sym(params$added_variable), na.rm = TRUE),
     median = median(!!sym(params$added_variable), na.rm = TRUE)
   )
-```
 
-Mean: `r round(descriptives$mean, 2)` 
-Median: `r round(descriptives$median, 2)`
+kable(descriptives)
+```
 
 ## Histogram
 
 ```{r histogram}
 ggplot(working_data, aes(x = !!sym(params$added_variable))) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  geom_histogram(binwidth = 1, fill = "black", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
     color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
   ) +
@@ -387,7 +391,7 @@ df_stat_nbhd_comparison <- compute_stats(assessment_pin_comparison, "meta_nbhd_c
 
 
 
-generate_comparison_table <- function(df_new, df_comparison, title, group_var = NULL) {
+generate_comparison_table <- function(df_new, df_comparison, group_var = NULL) {
   if (is.null(group_var)) {
     df_comparison_renamed <- df_comparison %>%
       rename_with(~ paste0(., "_new"))
@@ -421,7 +425,6 @@ generate_comparison_table <- function(df_new, df_comparison, title, group_var = 
     mutate(across(where(is.numeric), \(x) round(x, 2)))
 
   datatable(result,
-    caption = title,
     options = list(
       scrollY = "300px",
       scrollX = TRUE,
@@ -433,7 +436,7 @@ generate_comparison_table <- function(df_new, df_comparison, title, group_var = 
 }
 ```
 
-Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a change of `r df_stat_no_group$rmse` to `r df_stat_no_group_comparison$rmse_new`, a change of `r df_stat_no_group$rmse_new - df_stat_no_group_comparison$rmse`.
+Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a change of `r round(df_stat_no_group$rmse, 2)` to `r round(df_stat_no_group_comparison$rmse, 2)`, a change of `r round(df_stat_no_group$rmse - df_stat_no_group_comparison$rmse, 2)`.
 
 RSME only describes some of the metrics that we are interested in, and it doesn't take into account changes that occur on more local levels. The tables below are split into three different geographies, triad, township, and neighborhood. Here, you can see the sortable values for each metric, and the percentage difference between the old and new models.
 
@@ -445,32 +448,32 @@ RSME only describes some of the metrics that we are interested in, and it doesn'
 ## Overall
 
 ```{r}
-generate_comparison_table(df_stat_no_group, df_stat_no_group_comparison, "Triad Statistics Comparison")
+generate_comparison_table(df_stat_no_group, df_stat_no_group_comparison)
 ```
 
 
 ## Triad
 
 ```{r}
-generate_comparison_table(df_stat_triad, df_stat_triad_comparison, "Triad Statistics Comparison", "meta_triad_code")
+generate_comparison_table(df_stat_triad, df_stat_triad_comparison, "meta_triad_code")
 ```
 
 ## Township
 
 ```{r}
-generate_comparison_table(df_stat_township, df_stat_township_comparison, "Township Statistics Comparison", "meta_township_code")
+generate_comparison_table(df_stat_township, df_stat_township_comparison, "meta_township_code")
 ```
 
 ## Neighborhood
 
 ```{r}
-generate_comparison_table(df_stat_nbhd, df_stat_nbhd_comparison, "Neighborhood Statistics Comparison", "meta_nbhd_code")
+generate_comparison_table(df_stat_nbhd, df_stat_nbhd_comparison, "meta_nbhd_code")
 ```
 
 
 ## Range Test
 
-When adding a nwe variable, some metrics may be improved only within certain ranges. For example, proximity to an ammenity may only matter within 100 feet. Thus, we filter the data to include a minimum of `r params$min_range` and a maximum of `r params$max_range`.
+Some metrics may only improve within certain ranges. For example, proximity to an amenity may only matter within 100 feet. The following table uses the param to filter the range to a minimum of `r params$min_range` and a maximum of `r params$max_range`.
 
 ```{r}
 new_range <- assessment_pin %>%
@@ -487,7 +490,7 @@ comparison_range <- assessment_pin_comparison %>%
     !!sym(params$added_variable) < params$max_range) %>%
   compute_stats(.)
 
-generate_comparison_table(new_range, comparison_range, "Range Test")
+generate_comparison_table(new_range, comparison_range)
 ```
 
 
@@ -916,7 +919,7 @@ assessment_pin %>%
 ```{r leaflet_function}
 create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = "loc_longitude", latitude = "loc_latitude") {
   # Create the color palette
-  pal <- colorNumeric(palette = "viridis", domain = dataset[[legend_value]])
+  pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
 
   # Create the leaflet map
   leaflet(dataset) %>%
