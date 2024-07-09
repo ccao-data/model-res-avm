@@ -16,7 +16,7 @@ run_type: "test"
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
 run_note: |
-  Test the inclusion of distance to new construction
+  Test the inclusion of distance to new construction w/o new construction
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -28,7 +28,7 @@ toggle:
   shap_enable: TRUE
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: TRUE
+  comp_enable: FALSE
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to FALSE if you are not a CCAO employee
@@ -204,7 +204,6 @@ model:
       - "prox_nearest_major_road_dist_ft"
       - "prox_nearest_metra_route_dist_ft"
       - "prox_nearest_metra_stop_dist_ft"
-      - "prox_nearest_new_construction_dist_ft"
       - "prox_nearest_park_dist_ft"
       - "prox_nearest_railroad_dist_ft"
       - "prox_nearest_secondary_road_dist_ft"
