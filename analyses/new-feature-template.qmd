@@ -851,7 +851,7 @@ shap_comparison %>%
     median_abs_change = ~ median(abs(.))
   ))) %>%
   pivot_longer(cols = everything(), names_to = c("variable", ".value"), names_sep = "_diff_") %>%
-  arrange(variable) 
+  arrange(variable)
 ```
 
 
