@@ -843,6 +843,7 @@ shap_tables[[38]]
 ```{r}
 shap_comparison %>%
   inner_join(shap, by = c("meta_card_num", "meta_pin")) %>%
+  select(-c(meta_pin, meta_card_num, meta_year.x, meta_year.y)) %>%
   mutate(across(ends_with(".y"), ~ . - get(sub("\\.y$", ".x", cur_column())), .names = "{sub('.y$', '_diff', .col)}")) %>%
   select(-ends_with(".x"), -ends_with(".y")) %>%
   summarise(across(ends_with("_diff"), list(
@@ -850,8 +851,7 @@ shap_comparison %>%
     median_abs_change = ~ median(abs(.))
   ))) %>%
   pivot_longer(cols = everything(), names_to = c("variable", ".value"), names_sep = "_diff_") %>%
-  arrange(variable) %>%
-  datatable(options = list(scrollX = TRUE))
+  arrange(variable) 
 ```
 
 
