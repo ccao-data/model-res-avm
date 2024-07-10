@@ -272,7 +272,7 @@ ggplot(working_data, aes(x = !!sym(params$added_variable))) +
 
 ## Correlation between Added Variable and Other Variables
 
-While tree-based models are not particularly sensitive to multicollinearity, but it is still important to understand the relationship between the new variable and the existing variables. In this table, we should be looking to see if we can identify another variable which *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
+Here, the goal is to see if the added variable *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
 
 ```{r correlation between variables}
 columns_to_remove <- c(
@@ -438,7 +438,7 @@ generate_comparison_table <- function(df_new, df_comparison, group_var = NULL) {
 
 Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a change of `r round(df_stat_no_group$rmse, 2)` to `r round(df_stat_no_group_comparison$rmse, 2)`, a change of `r round(df_stat_no_group$rmse - df_stat_no_group_comparison$rmse, 2)`.
 
-RSME only describes some of the metrics that we are interested in, and it doesn't take into account changes that occur on more local levels. The tables below are split into three different geographies, triad, township, and neighborhood. Here, you can see the sortable values for each metric, and the percentage difference between the old and new models.
+Below are other variables, organized by different geographies to see if the the added variable improves other metrics that the office is interested in. 
 
 
 # Stats
@@ -507,7 +507,7 @@ The main metric that the CCAO Data team uses to assess the importance of a varia
 shap_predictors <- unlist(metadata$model_predictor_all_name)
 ```
 
-The following table produces the median absolute SHAP value by township, and creates grouped . In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
+The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
 
 ```{r shap_processing}
@@ -846,12 +846,12 @@ shap_tables[[38]]
 correlation_value <- cor(pull(working_data, params$added_variable_shap), pull(working_data, params$added_variable), use = "complete.obs")
 ```
 
-One way to test if the added feature is improving the model, is to see if there is a relationship between the SHAP values and the added values. The assumption would be, that if the added value caused an increase / decrease in assessed values, then the correlation would be high in a positive or negative value. In this case, the correlation between the SHAP values and the added variable is `r round(correlation_value, 2)`.
+The assumption is, that if the added variable caused an important increase / decrease in assessed values, then the correlation would have a high absolute value. In this case, the correlation between the SHAP values and the added variable is `r round(correlation_value, 2)`.
 
 
 # Spatial Analysis
 
-The spatial analysis is broken up into a few sections. The first panel looks at four aggregated stats on the neighborhood level, the mean of the variable we are analyzing, the mean of the asbolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added variable. 
+The spatial analysis is broken up into a few sections. The first panel looks at four aggregated stats on the neighborhood level, the mean of the variable we are analyzing, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added variable. 
 
 ## Neighborhood Values
 
@@ -948,7 +948,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
 ```
 
 ## Mapping the Highest and Lowest 100 Values
-From here, we look at three different types of high and low values; the values of the variable we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
+Three different types of high and low values are produced; the values of the variable we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
 
 ::: panel-tabset
 
