@@ -178,7 +178,7 @@ analyses_paths <- list(
       key = "assessment_pin"
     ),
     list(
-      s3 = paste0("s3://ccao-model-results-us-east-1/shap/year=", params$comparison_run_id_year, "/run_id=", params$comparison_run_id_year, "/"),
+      s3 = paste0("s3://ccao-model-results-us-east-1/shap/year=", params$comparison_run_id_year, "/run_id=", params$comparison_run_id, "/"),
       key = "shap"
     ),
     list(
@@ -838,6 +838,21 @@ shap_tables[[38]]
 ```
 
 :::
+
+## SHAP Comparison
+```{r}
+shap_comparison %>%
+  inner_join(shap, by = c("meta_card_num", "meta_pin")) %>%
+  mutate(across(ends_with(".y"), ~ . - get(sub("\\.y$", ".x", cur_column())), .names = "{sub('.y$', '_diff', .col)}")) %>%
+  select(-ends_with(".x"), -ends_with(".y")) %>%
+  summarise(across(ends_with("_diff"), list(
+    median_change = ~ median(.),
+    median_abs_change = ~ median(abs(.))
+  ))) %>%
+  pivot_longer(cols = everything(), names_to = c("variable", ".value"), names_sep = "_diff_") %>%
+  arrange(variable) %>%
+  datatable(options = list(scrollX = TRUE))
+```
 
 
 ## Correlation between SHAP and the Added Variable
