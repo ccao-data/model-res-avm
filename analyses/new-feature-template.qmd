@@ -248,11 +248,15 @@ working_data <- shap %>%
   ) %>%
   ungroup() %>%
   inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
-  rename(pred_pin_final_fmv_new = pred_pin_final_fmv,
-         pred_pin_initial_fmv_new = pred_pin_initial_fmv) %>%
+  rename(
+    pred_pin_final_fmv_new = pred_pin_final_fmv,
+    pred_pin_initial_fmv_new = pred_pin_initial_fmv
+  ) %>%
   inner_join(assessment_pin_comparison %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
-  rename(pred_pin_final_fmv_comp = pred_pin_final_fmv,
-         pred_pin_initial_fmv_comp = pred_pin_initial_fmv) %>%
+  rename(
+    pred_pin_final_fmv_comp = pred_pin_final_fmv,
+    pred_pin_initial_fmv_comp = pred_pin_initial_fmv
+  ) %>%
   mutate(
     diff_pred_pin_final_fmv = round(pred_pin_final_fmv_new - pred_pin_final_fmv_comp, 2),
     pred_pin_final_fmv_new = scales::dollar(pred_pin_final_fmv_new),
@@ -281,40 +285,39 @@ spatial_data <- working_data %>%
 ```{r mean_median}
 descriptives <- working_data %>%
   summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+    median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
   )
 
 datatable(descriptives,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = FALSE
-    ),
-    rownames = FALSE
+  options = list(
+    scrollY = "300px",
+    scrollX = TRUE,
+    paging = FALSE,
+    searching = FALSE
+  ),
+  rownames = FALSE
 )
 ```
 
 ## Township
 ```{r mean_median_township}
-
 descriptives_township <- working_data %>%
   group_by(meta_township_name) %>%
   summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+    median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
   )
 
 
 datatable(descriptives_township,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = FALSE
-    ),
-    rownames = FALSE
+  options = list(
+    scrollY = "300px",
+    scrollX = TRUE,
+    paging = FALSE,
+    searching = FALSE
+  ),
+  rownames = FALSE
 )
 ```
 
@@ -324,20 +327,19 @@ datatable(descriptives_township,
 descriptives_nbhd <- working_data %>%
   group_by(meta_nbhd_code) %>%
   summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+    median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
   )
 
 datatable(descriptives_nbhd,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = FALSE
-    ),
-    rownames = FALSE
+  options = list(
+    scrollY = "300px",
+    scrollX = TRUE,
+    paging = FALSE,
+    searching = FALSE
+  ),
+  rownames = FALSE
 )
-
 ```
 
 
@@ -361,14 +363,21 @@ ggplot(working_data, aes(x = !!sym(params$added_variable))) +
   ) +
   theme_minimal() +
   annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
-  annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
+  annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 3)
 ```
 
 
-## FMV Histogram
+## FMV Change Histogram
 ```{r}
-ggplot(working_data, aes(x = diff_pred_pin_initial_fmv)) +
-  geom_histogram(binwidth = 1000, fill = "black", color = "black", alpha = 0.7) +
+ggplot(
+  working_data %>%
+    filter(
+      diff_pred_pin_initial_fmv >= quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
+        diff_pred_pin_initial_fmv <= quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
+    ),
+  aes(x = diff_pred_pin_initial_fmv)
+) +
+  geom_histogram(fill = "black", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean(diff_pred_pin_initial_fmv, na.rm = TRUE)),
     color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
   ) +
@@ -376,18 +385,42 @@ ggplot(working_data, aes(x = diff_pred_pin_initial_fmv)) +
     color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
   ) +
   labs(
-    title = "Histogram of Initial FMV",
-    x = "Initial FMV",
+    x = "Change in FMV",
     y = "Frequency"
   ) +
-  scale_x_continuous(limits = c(-50000, 50000)) +
   theme_minimal() +
-  annotate("text", x = mean(working_data$diff_pred_pin_initial_fmv), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
-  annotate("text", x = median(working_data$diff_pred_pin_initial_fmv), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
-
+  annotate("text", x = mean(working_data$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
+  annotate("text", x = median(working_data$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 3)
 ```
 
+## SHAP Histogram
 
+```{r}
+ggplot(
+  shap %>%
+    filter(
+      !!sym(params$added_variable) >= quantile(!!sym(params$added_variable), 0.025, na.rm = TRUE) &
+        !!sym(params$added_variable) <= quantile(!!sym(params$added_variable), 0.975, na.rm = TRUE)
+    ),
+  aes(x = !!sym(params$added_variable))
+) +
+  geom_histogram(fill = "black", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
+    color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
+  ) +
+  geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
+    color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
+  ) +
+  labs(
+    x = "SHAP Value",
+    y = "Frequency"
+  ) +
+  theme_minimal() +
+  annotate("text", x = mean(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
+  annotate("text", x = median(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 3)
+```
+
+:::
 
 ## Correlation between Added Variable and Other Variables
 
@@ -988,8 +1021,6 @@ shap_comparison %>%
     ),
     rownames = FALSE
   )
-
-
 ```
 
 
@@ -1203,7 +1234,6 @@ largest_fmv_increases <- working_data %>%
   slice(1:100)
 
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
-
 ```
 ```{r}
 largest_fmv_decreases <- working_data %>%
@@ -1214,7 +1244,6 @@ largest_fmv_decreases <- working_data %>%
   slice(1:100)
 
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
-
 ```
 
 
