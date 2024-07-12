@@ -115,7 +115,7 @@ land_site_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM ccao.land_site_rate
-  WHERE year = '{params$assessment$year}'
+  WHERE year = '2022'
   ")
 )
 
