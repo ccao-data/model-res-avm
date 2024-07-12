@@ -70,6 +70,8 @@ training_data <- dbGetQuery(
 )
 tictoc::toc()
 
+training_data$random <- runif(nrow(training_data))
+
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
 tictoc::tic("HIE data pulled")
