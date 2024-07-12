@@ -51,6 +51,7 @@ training_data <- dbGetQuery(
       sale.sv_outlier_reason2,
       sale.sv_outlier_reason3,
       sale.sv_run_id,
+      RANDOM() AS random,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
@@ -69,8 +70,6 @@ training_data <- dbGetQuery(
   ")
 )
 tictoc::toc()
-
-training_data$random <- runif(nrow(training_data))
 
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
@@ -112,12 +111,11 @@ assessment_data <- assessment_data %>%
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
 tictoc::tic("Land rate data pulled")
-
 land_site_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
   FROM ccao.land_site_rate
-  WHERE year = '2022'
+  WHERE year = '{params$assessment$year}'
   ")
 )
 
@@ -154,11 +152,11 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
     filter(var_name == col_name) %>%
     pull(var_type)
   switch(col_type,
-    numeric = as.numeric(col),
-    character = as.character(col),
-    logical = as.logical(as.numeric(col)),
-    categorical = as.factor(col),
-    date = lubridate::as_date(col)
+         numeric = as.numeric(col),
+         character = as.character(col),
+         logical = as.logical(as.numeric(col)),
+         categorical = as.factor(col),
+         date = lubridate::as_date(col)
   )
 }
 
@@ -552,14 +550,14 @@ complex_id_temp <- assessment_data_clean %>%
     char_bldg_sf.x <= char_bldg_sf.y + params$input$complex$match_fuzzy$bldg_sf,
     # nolint start
     (char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
-      char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
+       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
       is.na(char_yrblt.x),
     # Units must be within 250 feet of other units
     (loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
-      loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+       loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_x_3435.x),
     (loc_y_3435.x >= loc_y_3435.y - params$input$complex$match_fuzzy$dist_ft &
-      loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+       loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_y_3435.x)
     # nolint end
   ) %>%
