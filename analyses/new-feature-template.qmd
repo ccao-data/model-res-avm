@@ -17,7 +17,7 @@ format:
 params:
   run_id: "2024-07-03-charming-boni"
   run_id_year: "2024"
-  comparison_run_id: "2024-03-17-stupefied-maya"
+  comparison_run_id: "2024-07-09-cool-takuya"
   comparison_run_id_year: "2024"
   added_variable: "prox_nearest_new_construction_dist_ft"
   added_variable_shap: "prox_nearest_new_construction_dist_ft_shap"
@@ -219,14 +219,19 @@ working_data <- shap %>%
     median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
   ) %>%
   ungroup() %>%
-  inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv), by = "meta_pin") %>%
-  rename(pred_pin_final_fmv_new = pred_pin_final_fmv) %>%
-  inner_join(assessment_pin_comparison %>% select(meta_pin, pred_pin_final_fmv), by = "meta_pin") %>%
-  rename(pred_pin_final_fmv_comparison = pred_pin_final_fmv) %>%
+  inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
+  rename(pred_pin_final_fmv_new = pred_pin_final_fmv,
+         pred_pin_initial_fmv_new = pred_pin_initial_fmv) %>%
+  inner_join(assessment_pin_comparison %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
+  rename(pred_pin_final_fmv_comp = pred_pin_final_fmv,
+         pred_pin_initial_fmv_comp = pred_pin_initial_fmv) %>%
   mutate(
-    diff_pred_pin_final_fmv = pred_pin_final_fmv_new - pred_pin_final_fmv_comparison,
+    diff_pred_pin_final_fmv = round(pred_pin_final_fmv_new - pred_pin_final_fmv_comp, 2),
     pred_pin_final_fmv_new = scales::dollar(pred_pin_final_fmv_new),
-    pred_pin_final_fmv_comparison = scales::dollar(pred_pin_final_fmv_comparison)
+    pred_pin_final_fmv_comparison = scales::dollar(pred_pin_final_fmv_comp),
+    diff_pred_pin_initial_fmv = round(pred_pin_initial_fmv_new - pred_pin_initial_fmv_comp, 2),
+    pred_pin_initial_fmv_new = scales::dollar(pred_pin_initial_fmv_new),
+    pred_pin_initial_fmv_comp = scales::dollar(pred_pin_initial_fmv_comp)
   )
 
 nbhd <- ccao::nbhd_shp
@@ -245,6 +250,7 @@ descriptives <- working_data %>%
     mean = mean(!!sym(params$added_variable), na.rm = TRUE),
     median = median(!!sym(params$added_variable), na.rm = TRUE)
   )
+
 
 kable(descriptives)
 ```
@@ -840,18 +846,37 @@ shap_tables[[38]]
 :::
 
 ## SHAP Comparison
-```{r}
+
+Here, we compare the SHAP values from the comparison data and the new data. The goal here is to see which other variables, the added variable is influencing.
+```{r shap_comparisons}
 shap_comparison %>%
   inner_join(shap, by = c("meta_card_num", "meta_pin")) %>%
   select(-c(meta_pin, meta_card_num, meta_year.x, meta_year.y)) %>%
-  mutate(across(ends_with(".y"), ~ . - get(sub("\\.y$", ".x", cur_column())), .names = "{sub('.y$', '_diff', .col)}")) %>%
-  select(-ends_with(".x"), -ends_with(".y")) %>%
-  summarise(across(ends_with("_diff"), list(
-    median_change = ~ median(.),
-    median_abs_change = ~ median(abs(.))
-  ))) %>%
-  pivot_longer(cols = everything(), names_to = c("variable", ".value"), names_sep = "_diff_") %>%
-  arrange(variable)
+  rename_with(~ sub("\\.x$", "_comp", .), ends_with(".x")) %>%
+  rename_with(~ sub("\\.y$", "_new", .), ends_with(".y")) %>%
+  mutate(across(ends_with("_new"), ~ . - get(sub("_new$", "_comp", cur_column())), .names = "{sub('_new$', '_diff', .col)}")) %>%
+  summarize(
+    across(ends_with("_diff"), list(
+      median_change = ~ median(.),
+      median_abs_change = ~ median(abs(.))
+    )),
+    across(ends_with("_comp"), list(median_comp = ~ median(.))),
+    across(ends_with("_new"), list(median_new = ~ median(.)))
+  ) %>%
+  pivot_longer(cols = everything(), names_to = c("variable", ".value"), names_sep = "_diff_|_comp_|_new_") %>%
+  arrange(variable) %>%
+  mutate(across(where(is.numeric), dollar, scale = 1, accuracy = 0.01)) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = FALSE
+    ),
+    rownames = FALSE
+  )
+
+
 ```
 
 
@@ -946,11 +971,11 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
       color = ~ pal(dataset[[legend_value]]),
       popup = ~ paste(
         "<br>", "Pin: ", dataset$meta_pin,
-        "<br>", "SHAP:", sprintf("%.2f", dataset[[params$added_variable_shap]]),
+        "<br>", "SHAP:", scales::dollar(dataset[[params$added_variable_shap]]),
         "<br>", "Variable:", sprintf("%.2f", dataset[[params$added_variable]]),
         "<br>", "New FMV:", dataset$pred_pin_final_fmv_new,
         "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comparison,
-        "<br>", "FMV Difference: ", dataset$diff_pred_pin_final_fmv
+        "<br>", "FMV Difference: ", scales::dollar(dataset$diff_pred_pin_final_fmv)
       )
     ) %>%
     addLegend(
@@ -971,6 +996,7 @@ Three different types of high and low values are produced; the values of the var
 
 ```{r}
 highest_100 <- working_data %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
   arrange(desc(!!sym(params$added_variable))) %>%
   slice(1:100)
 
@@ -981,6 +1007,7 @@ create_leaflet_map(highest_100, params$added_variable, "Largest 100 Values")
 
 ```{r}
 lowest_100 <- working_data %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
   arrange(!!sym(params$added_variable)) %>%
   slice(1:100)
 
@@ -1011,6 +1038,7 @@ create_leaflet_map(lowest_100, params$added_variable_shap, "Lowest 100 SHAPs")
 ### 100 Largest FMV Increases
 ```{r}
 largest_fmv_increases <- working_data %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
 
@@ -1022,11 +1050,61 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 
 ```{r}
 largest_fmv_decreases <- working_data %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
 create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases")
 ```
+
+### 100 Largest FMV Initial Increases
+```{r}
+largest_fmv_increases <- working_data %>%
+  arrange(desc(diff_pred_pin_initial_fmv)) %>%
+  slice(1:100)
+
+# Call the function with the pre-sliced dataset
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases")
+```
+
+
+
+
+### 100 Largest Initial FMV Decreases
+
+```{r}
+largest_fmv_decreases <- working_data %>%
+  arrange(diff_pred_pin_initial_fmv) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases")
+```
+## Largest FMV Increase no Multicards
+
+```{r}
+largest_fmv_increases <- working_data %>%
+  group_by(meta_pin) %>%
+  filter(n() == 1) %>%
+  ungroup() %>%
+  arrange(desc(diff_pred_pin_final_fmv)) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
+
+```
+```{r}
+largest_fmv_decreases <- working_data %>%
+  group_by(meta_pin) %>%
+  filter(n() == 1) %>%
+  ungroup() %>%
+  arrange(diff_pred_pin_initial_fmv) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
+
+```
+
+
 
 :::
 
@@ -1130,18 +1208,14 @@ create_leaflet_map(bottom_10_data_relative, params$added_variable_shap, "Relativ
 
 :::
 
-# Deciding on the Use of a New Variable
-
-Feature selection for the lightgbm model is not as straightforward as selecting the statistical significant variables, and because we need interpretable results, all variables should represent a defined and understandable cause of for a change in estimated FMV (i.e., no dimension reduction). In general, the lightgbm model does a good job of basing the results on the most important features, meaning that the inclusion process can be inclusive rather than exclusive.
-
-
-Because of this, to deem that the added feature is not relevant, it should
-
-- Not improve model metrics
-- Be one of the lowest SHAP value indicators
-- Not have effects in particular neighborhoods
-
-Other metrics can be used to guide this, but are not a pre-requisite.
-
-- There is little correlation between SHAP values and the variable
-- The variable is highly correlated with another existing variable.
+Next steps
+- Think about shaps on neighborhood level
+- Descriptive stats about the variable - correlation plots - condense tables into one plot
+- Useful to see mean and median by town / triad
+- SHAP feature value plots are useful and should be added
+- two histograms / feature for training and feature for all properties
+- All performance stats should be on test set (both, but mostly test set)
+- Feels like there is a good amount of variability between runs and SHAPs.
+- Would want to pull maps of training data around xxx
+- SHAP of feature scaled to median SHAP of the neighborhood
+- feature correlation plot
