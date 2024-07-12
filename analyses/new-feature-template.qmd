@@ -198,6 +198,36 @@ assessment_pin_comparison <- data_comparison$assessment_pin %>%
   select(meta_pin, pred_pin_final_fmv, sale_ratio_study_price, meta_nbhd_code, meta_triad_code, pred_pin_initial_fmv, meta_township_code)
 ```
 
+```{r}
+write_parquet(assessment_data, "assessment_data.parquet")
+write_parquet(assessment_pin, "assessment_pin.parquet")
+write_parquet(assessment_card, "assessment_card.parquet")
+write_parquet(performance, "performance.parquet")
+write_parquet(shap, "shap.parquet")
+write_parquet(metadata, "metadata.parquet")
+write_parquet(assessment_pin_comparison, "assessment_pin_comparison.parquet")
+write_parquet(model_performance_assessment_comparison, "model_performance_assessment_comparison.parquet")
+write_parquet(shap_comparison, "shap_comparison.parquet")
+write_parquet(metadata_comparison, "metadata_comparison.parquet")
+```
+
+```{r}
+assessment_data <- read_parquet("assessment_data.parquet")
+assessment_pin <- read_parquet("assessment_pin.parquet")
+assessment_card <- read_parquet("assessment_card.parquet")
+performance <- read_parquet("performance.parquet")
+shap <- read_parquet("shap.parquet")
+metadata <- read_parquet("metadata.parquet")
+assessment_pin_comparison <- read_parquet("assessment_pin_comparison.parquet")
+model_performance_assessment_comparison <- read_parquet("model_performance_assessment_comparison.parquet")
+shap_comparison <- read_parquet("shap_comparison.parquet")
+metadata_comparison <- read_parquet("metadata_comparison.parquet")
+
+
+```
+
+
+
 ```{r data_processing}
 assessment_data_small <- assessment_data %>%
   select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, !!sym(params$added_variable))
@@ -275,6 +305,31 @@ ggplot(working_data, aes(x = !!sym(params$added_variable))) +
   annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
   annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
 ```
+
+
+## FMV Histogram
+```{r}
+ggplot(working_data, aes(x = diff_pred_pin_initial_fmv)) +
+  geom_histogram(binwidth = 1000, fill = "black", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean(diff_pred_pin_initial_fmv, na.rm = TRUE)),
+    color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
+  ) +
+  geom_vline(aes(xintercept = median(diff_pred_pin_initial_fmv, na.rm = TRUE)),
+    color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
+  ) +
+  labs(
+    title = "Histogram of Initial FMV",
+    x = "Initial FMV",
+    y = "Frequency"
+  ) +
+  scale_x_continuous(limits = c(-50000, 50000)) +
+  theme_minimal() +
+  annotate("text", x = mean(working_data$diff_pred_pin_initial_fmv), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
+  annotate("text", x = median(working_data$diff_pred_pin_initial_fmv), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = -1)
+
+```
+
+
 
 ## Correlation between Added Variable and Other Variables
 
