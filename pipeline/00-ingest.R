@@ -51,7 +51,6 @@ training_data <- dbGetQuery(
       sale.sv_outlier_reason2,
       sale.sv_outlier_reason3,
       sale.sv_run_id,
-      RANDOM() AS random,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
@@ -99,6 +98,20 @@ assessment_data <- dbGetQuery(
   ")
 )
 tictoc::toc()
+
+assessment_data <- assessment_data %>%
+  group_by(meta_pin) %>%
+  mutate(random = runif(1)) %>%
+  ungroup()
+
+# Creating the join data with distinct meta_pin and random value
+join_data <- assessment_data %>%
+  select(meta_pin, random) %>%
+  distinct()
+
+# Joining the random variable to the training_data
+training_data <- training_data %>%
+  left_join(join_data, by = c("meta_pin"))
 
 # Save both years for report generation using the characteristics
 assessment_data %>%
