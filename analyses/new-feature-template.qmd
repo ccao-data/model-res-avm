@@ -19,11 +19,11 @@ params:
   run_id_year: "2024"
   comparison_run_id: "2024-07-09-cool-takuya"
   comparison_run_id_year: "2024"
-  added_variable: "prox_nearest_new_construction_dist_ft"
-  added_variable_shap: "prox_nearest_new_construction_dist_ft_shap"
+  added_variable: "ccao_is_corner_lot"
+  added_variable_shap: "ccao_is_corner_lot_shap"
   min_range: 5
   max_range: 95
-  type: "continuous"
+  type: "categorical"
 ---
 
 ```{r packages}
@@ -230,8 +230,8 @@ assessment_pin_comparison <- data_comparison$assessment_pin %>%
 assessment_data_small <- assessment_data %>%
   select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, meta_township_name, !!sym(params$added_variable))
 
-# Process the working data
-working_data <- shap %>%
+# Create a card level dataset
+working_data_card <- shap %>%
   select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable)) %>%
   rename(!!params$added_variable_shap := !!sym(params$added_variable)) %>%
   inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
@@ -258,6 +258,7 @@ working_data <- shap %>%
     pred_pin_initial_fmv_comp = pred_pin_initial_fmv
   ) %>%
   mutate(
+    shap_relative = percent((!!sym(params$added_variable_shap) / pred_pin_initial_fmv_new), accuracy = 0.01),
     diff_pred_pin_final_fmv = round(pred_pin_final_fmv_new - pred_pin_final_fmv_comp, 2),
     pred_pin_final_fmv_new = scales::dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comparison = scales::dollar(pred_pin_final_fmv_comp),
@@ -266,9 +267,13 @@ working_data <- shap %>%
     pred_pin_initial_fmv_comp = scales::dollar(pred_pin_initial_fmv_comp)
   )
 
+# Filter to pin for clarity in later work
+working_data_pin <- working_data_card %>%
+  distinct(meta_pin, .keep_all = TRUE)
+
 nbhd <- ccao::nbhd_shp
 
-spatial_data <- working_data %>%
+spatial_data <- working_data_card %>%
   distinct(meta_nbhd_code, .keep_all = TRUE) %>%
   inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
@@ -283,63 +288,119 @@ spatial_data <- working_data %>%
 ## Overall
 
 ```{r mean_median}
-descriptives <- working_data %>%
-  summarize(
-    mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-    median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
-  )
+if (params$type == "continuous") {
+  descriptives <- working_data_pin %>%
+    summarize(
+      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    )
 
-datatable(descriptives,
-  options = list(
-    scrollY = "300px",
-    scrollX = TRUE,
-    paging = FALSE,
-    searching = FALSE
-  ),
-  rownames = FALSE
-)
+  datatable(descriptives,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+} else if (params$type == "categorical") {
+  category_percentages_township <- working_data_pin %>%
+    count(meta_township_name, !!sym(params$added_variable)) %>%
+    mutate(percentage = round(n / sum(n) * 100, 2)) %>%
+    select(meta_township_name, !!sym(params$added_variable), percentage) %>%
+    pivot_wider(names_from = !!sym(params$added_variable), values_from = percentage, values_fill = list(percentage = 0))
+
+  datatable(category_percentages_township,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
 ```
 
 ## Township
 ```{r mean_median_township}
-descriptives_township <- working_data %>%
-  group_by(meta_township_name) %>%
-  summarize(
-    mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-    median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+if (params$type == "continuous") {
+  descriptives_township <- working_data_pin %>%
+    group_by(meta_township_name) %>%
+    summarize(
+      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    )
+
+  datatable(descriptives_township,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
   )
+} else if (params$type == "categorical") {
+  category_percentages_township <- working_data_pin %>%
+    group_by(meta_township_name, !!sym(params$added_variable)) %>%
+    count() %>%
+    group_by(meta_township_name) %>%
+    mutate(percentage = round(n / sum(n) * 100, 2)) %>%
+    select(meta_township_name, !!sym(params$added_variable), percentage) %>%
+    pivot_wider(names_from = !!sym(params$added_variable), values_from = percentage, values_fill = list(percentage = 0))
 
 
-datatable(descriptives_township,
-  options = list(
-    scrollY = "300px",
-    scrollX = TRUE,
-    paging = FALSE,
-    searching = FALSE
-  ),
-  rownames = FALSE
-)
+  datatable(category_percentages_township,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
 ```
 
 ## Neighborhood
 
 ```{r mean_median_neighborhood}
-descriptives_nbhd <- working_data %>%
-  group_by(meta_nbhd_code) %>%
-  summarize(
-    mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-    median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
-  )
+if (params$type == "continuous") {
+  descriptives_nbhd <- working_data_pin %>%
+    group_by(meta_nbhd_code) %>%
+    summarize(
+      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    )
 
-datatable(descriptives_nbhd,
-  options = list(
-    scrollY = "300px",
-    scrollX = TRUE,
-    paging = FALSE,
-    searching = FALSE
-  ),
-  rownames = FALSE
-)
+  datatable(descriptives_nbhd,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+} else if (params$type == "categorical") {
+  category_percentages_nbhd <- working_data_pin %>%
+    group_by(meta_nbhd_code, !!sym(params$added_variable)) %>%
+    count() %>%
+    mutate(percentage = n / sum(n) * 100) %>%
+    select(meta_nbhd_code, !!sym(params$added_variable), percentage)
+
+  datatable(category_percentages_nbhd,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
 ```
 
 
@@ -348,36 +409,58 @@ datatable(descriptives_nbhd,
 ## Histogram
 
 ```{r histogram}
-ggplot(working_data, aes(x = !!sym(params$added_variable))) +
-  geom_histogram(binwidth = 1, fill = "black", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
-    color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
-  ) +
-  geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
-    color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
-  ) +
-  labs(
-    title = paste("Histogram of", params$added_variable),
-    x = params$added_variable,
-    y = "Frequency"
-  ) +
-  theme_minimal() +
-  annotate("text", x = mean(descriptives$mean), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
-  annotate("text", x = mean(descriptives$median), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 3)
+if (params$type == "continuous") {
+  descriptives <- working_data_pin %>%
+    distinct(meta_pin) %>%
+    summarize(
+      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+    )
+
+  ggplot(working_data_pin, aes(x = !!sym(params$added_variable))) +
+    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+    geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
+      color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
+    ) +
+    geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
+      color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
+    ) +
+    labs(
+      title = paste("Histogram of", params$added_variable),
+      x = params$added_variable,
+      y = "Frequency"
+    ) +
+    theme_minimal() +
+    annotate("text", x = descriptives$mean, y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -0.5) +
+    annotate("text", x = descriptives$median, y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 0.5)
+} else if (params$type == "categorical") {
+  category_percentages <- working_data_pin %>%
+    count(!!sym(params$added_variable)) %>%
+    mutate(percentage = n / sum(n) * 100)
+
+  ggplot(category_percentages, aes(x = !!sym(params$added_variable), y = percentage)) +
+    geom_bar(stat = "identity", fill = "blue", color = "black", alpha = 0.7) +
+    labs(
+      title = paste("Bar Chart of", params$added_variable),
+      x = params$added_variable,
+      y = "Percentage"
+    ) +
+    theme_minimal()
+}
 ```
 
 
 ## FMV Change Histogram
 ```{r}
 ggplot(
-  working_data %>%
+  working_data_pin %>%
     filter(
       diff_pred_pin_initial_fmv >= quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
         diff_pred_pin_initial_fmv <= quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
     ),
   aes(x = diff_pred_pin_initial_fmv)
 ) +
-  geom_histogram(fill = "black", color = "black", alpha = 0.7) +
+  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean(diff_pred_pin_initial_fmv, na.rm = TRUE)),
     color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
   ) +
@@ -389,8 +472,8 @@ ggplot(
     y = "Frequency"
   ) +
   theme_minimal() +
-  annotate("text", x = mean(working_data$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
-  annotate("text", x = median(working_data$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 3)
+  annotate("text", x = mean(working_data_pin$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -1) +
+  annotate("text", x = median(working_data_pin$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 1)
 ```
 
 ## SHAP Histogram
@@ -404,7 +487,7 @@ ggplot(
     ),
   aes(x = !!sym(params$added_variable))
 ) +
-  geom_histogram(fill = "black", color = "black", alpha = 0.7) +
+  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
     color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
   ) +
@@ -416,8 +499,8 @@ ggplot(
     y = "Frequency"
   ) +
   theme_minimal() +
-  annotate("text", x = mean(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -3) +
-  annotate("text", x = median(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 3)
+  annotate("text", x = mean(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -1) +
+  annotate("text", x = median(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 1)
 ```
 
 :::
@@ -468,6 +551,34 @@ if (params$type == "continuous") {
 } else {
   print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
 }
+```
+
+## SHAP Dependence Plot
+
+```{r shap_dependence_plot}
+correlation_results <- correlation_results %>%
+  arrange(desc(Abs_Correlation)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+# Select the top 20 highest absolute correlations
+top_20_correlations <- correlation_results %>%
+  head(20)
+
+# Gather the data for the top 20 variables
+top_vars <- top_20_correlations$Column
+working_data %>%
+  select(!!sym(params$added_variable), all_of(top_vars)) %>%
+  gather(key = "var", value = "value", -!!sym(params$added_variable)) %>%
+  ggplot(aes(x = !!sym(params$added_variable), y = value)) +
+  facet_wrap(~var, scales = "free") +
+  geom_point() +
+  stat_smooth() +
+  labs(
+    title = "Scatter Plots with Top 20 Highest Correlations",
+    x = params$added_variable,
+    y = "Value"
+  ) +
+  theme_minimal()
 ```
 
 # Overview of Model Metrics
@@ -581,7 +692,7 @@ generate_comparison_table <- function(df_new, df_comparison, group_var = NULL) {
       scrollY = "300px",
       scrollX = TRUE,
       paging = FALSE,
-      searching = FALSE
+      searching = TRUE
     ),
     rownames = FALSE
   )
@@ -715,7 +826,7 @@ create_summary_table <- function(data, added_variable) {
       scrollY = "300px",
       scrollX = TRUE,
       paging = FALSE,
-      searching = FALSE
+      searching = TRUE
     ),
     rownames = FALSE
   )
@@ -1017,7 +1128,7 @@ shap_comparison %>%
       scrollY = "300px",
       scrollX = TRUE,
       paging = FALSE,
-      searching = FALSE
+      searching = TRUE
     ),
     rownames = FALSE
   )
@@ -1044,12 +1155,23 @@ The spatial analysis is broken up into a few sections. The first panel looks at 
 ### Mean Variable
 
 ```{r mean_variable}
-spatial_data %>%
-  ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_neighborhood_mean")))) +
-  scale_fill_viridis_c(option = "viridis", name = "Value") +
-  theme_void() +
-  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+if (params$type == "categorical") {
+  spatial_data %>%
+    ggplot() +
+    geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_plurality_type")))) +
+    scale_fill_viridis_d(option = "viridis", name = "Type of Plurality") +
+    geom_sf(aes(alpha = !!sym(paste0(params$added_variable, "_plurality_percentage")))) +
+    scale_alpha_continuous(name = "Percentage of Plurality") +
+    theme_void() +
+    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+} else {
+  spatial_data %>%
+    ggplot() +
+    geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_neighborhood_mean")))) +
+    scale_fill_viridis_c(option = "viridis", name = "Value") +
+    theme_void() +
+    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+}
 ```
 
 ### Mean Absolute SHAP
@@ -1116,6 +1238,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
       popup = ~ paste(
         "<br>", "Pin: ", dataset$meta_pin,
         "<br>", "SHAP:", scales::dollar(dataset[[params$added_variable_shap]]),
+        "<br>", "Relative SHAP", dataset$shap_relative,
         "<br>", "Variable:", sprintf("%.2f", dataset[[params$added_variable]]),
         "<br>", "New FMV:", dataset$pred_pin_final_fmv_new,
         "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comparison,
@@ -1350,13 +1473,3 @@ create_leaflet_map(bottom_10_data_relative, params$added_variable_shap, "Relativ
 
 :::
 
-Next steps
-- Think about shaps on neighborhood level
-- Descriptive stats about the variable - correlation plots - condense tables into one plot
-- SHAP feature value plots are useful and should be added
-- two histograms / feature for training and feature for all properties
-- All performance stats should be on test set (both, but mostly test set)
-- Feels like there is a good amount of variability between runs and SHAPs.
-- Would want to pull maps of training data around xxx
-- SHAP of feature scaled to median SHAP of the neighborhood
-- feature correlation plot
