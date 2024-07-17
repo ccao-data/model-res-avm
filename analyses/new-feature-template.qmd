@@ -413,26 +413,26 @@ if (params$type == "continuous") {
 
 ```{r histogram}
 if (params$type == "continuous") {
-working_data_pin %>%
-  mutate(
-    mean_value = mean(!!sym(params$added_feature), na.rm = TRUE),
-    median_value = median(!!sym(params$added_feature), na.rm = TRUE)
-  ) %>%
-  ggplot(aes(x = !!sym(params$added_feature))) +
-  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  scale_color_manual(
-    name = "Statistics",
-    values = c(Mean = "red", Median = "green"),
-    labels = c("Mean", "Median")
-  ) +
-  labs(
-    title = paste("Histogram of", params$added_feature),
-    x = params$added_feature,
-    y = "Frequency"
-  ) +
-  theme_minimal()
+  working_data_pin %>%
+    mutate(
+      mean_value = mean(!!sym(params$added_feature), na.rm = TRUE),
+      median_value = median(!!sym(params$added_feature), na.rm = TRUE)
+    ) %>%
+    ggplot(aes(x = !!sym(params$added_feature))) +
+    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    scale_color_manual(
+      name = "Statistics",
+      values = c(Mean = "red", Median = "green"),
+      labels = c("Mean", "Median")
+    ) +
+    labs(
+      title = paste("Histogram of", params$added_feature),
+      x = params$added_feature,
+      y = "Frequency"
+    ) +
+    theme_minimal()
 } else if (params$type == "categorical") {
   category_percentages <- working_data_pin %>%
     count(!!sym(params$added_feature)) %>%
@@ -557,7 +557,6 @@ if (params$type == "continuous") {
   correlation_results <- correlation_results %>%
     arrange(dplyr::desc(Abs_Correlation)) %>%
     mutate(across(where(is.numeric), ~ round(., 2))) %>%
-
     filter(Correlation != 1)
   correlation_results <- clean_column_values(correlation_results, "Column")
 
@@ -1241,7 +1240,7 @@ assessment_pin %>%
 create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = "loc_longitude", latitude = "loc_latitude") {
   # Convert the dataset to an sf object
   dataset_sf <- st_as_sf(dataset, coords = c(longitude, latitude), crs = 4326)
-  
+
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
     st_transform(crs = st_crs(dataset_sf)) %>%
@@ -1415,7 +1414,9 @@ selected_data <- working_data_card %>%
   arrange(mean_value) %>%
   slice(c(1:2, (n() - 1):n())) %>%
   pull(meta_nbhd_code) %>%
-  {filter(working_data_card, meta_nbhd_code %in% .)}
+  {
+    filter(working_data_card, meta_nbhd_code %in% .)
+  }
 
 # Separate high and low mean value neighborhoods
 high_mean_data <- selected_data %>%
@@ -1423,7 +1424,6 @@ high_mean_data <- selected_data %>%
 
 low_mean_data <- selected_data %>%
   filter(meta_nbhd_code %in% selected_data$meta_nbhd_code[1:2])
-
 ```
 
 ### 2 Lowest SHAP Neighborhoods
