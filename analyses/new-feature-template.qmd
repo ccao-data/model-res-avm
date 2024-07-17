@@ -1,6 +1,6 @@
 ---
 title: "New Feature Template"
-subtitle: "Run ID: `r params$added_variable`"
+subtitle: "Run ID: `r params$added_feature`: `r params$description`"
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
 execute:
@@ -19,11 +19,12 @@ params:
   run_id_year: "2024"
   comparison_run_id: "2024-07-09-cool-takuya"
   comparison_run_id_year: "2024"
-  added_variable: "ccao_is_corner_lot"
-  added_variable_shap: "ccao_is_corner_lot_shap"
+  added_feature: "prox_nearest_new_construction_dist_ft"
+  added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
+  description: "A distance in feet to the nearest new construction"
   min_range: 5
   max_range: 95
-  type: "categorical"
+  type: "continuous"
 ---
 
 ```{r packages}
@@ -228,22 +229,22 @@ assessment_pin_comparison <- data_comparison$assessment_pin %>%
 
 ```{r data_processing}
 assessment_data_small <- assessment_data %>%
-  select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, meta_township_name, !!sym(params$added_variable))
+  select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, meta_township_name, !!sym(params$added_feature))
 
 # Create a card level dataset
 working_data_card <- shap %>%
-  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_variable)) %>%
-  rename(!!params$added_variable_shap := !!sym(params$added_variable)) %>%
+  select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_feature)) %>%
+  rename(!!params$added_feature_shap := !!sym(params$added_feature)) %>%
   inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
   inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
   group_by(meta_nbhd_code) %>%
   mutate(
-    !!paste0(params$added_variable, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_variable_shap)), na.rm = TRUE),
-    !!paste0(params$added_variable, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_variable_shap)), 0.9, na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_mean") := mean(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_median") := median(!!sym(params$added_variable), na.rm = TRUE),
-    !!paste0(params$added_variable, "_neighborhood_90th") := quantile(!!sym(params$added_variable), 0.9, na.rm = TRUE),
-    mean_value = mean(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE),
+    !!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
+    !!paste0(params$added_feature, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_feature_shap)), 0.9, na.rm = TRUE),
+    !!paste0(params$added_feature, "_neighborhood_mean") := mean(!!sym(params$added_feature), na.rm = TRUE),
+    !!paste0(params$added_feature, "_neighborhood_median") := median(!!sym(params$added_feature), na.rm = TRUE),
+    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE),
+    mean_value = mean(abs(!!sym(paste0(params$added_feature_shap))), na.rm = TRUE),
     median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
   ) %>%
   ungroup() %>%
@@ -258,7 +259,7 @@ working_data_card <- shap %>%
     pred_pin_initial_fmv_comp = pred_pin_initial_fmv
   ) %>%
   mutate(
-    shap_relative = percent((!!sym(params$added_variable_shap) / pred_pin_initial_fmv_new), accuracy = 0.01),
+    shap_relative = percent((!!sym(params$added_feature_shap) / pred_pin_initial_fmv_new), accuracy = 0.01),
     diff_pred_pin_final_fmv = round(pred_pin_final_fmv_new - pred_pin_final_fmv_comp, 2),
     pred_pin_final_fmv_new = scales::dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comparison = scales::dollar(pred_pin_final_fmv_comp),
@@ -281,6 +282,8 @@ spatial_data <- working_data_card %>%
 
 # Descriptive Statistics
 
+Based on the params$type feature, charts with the mean and median values of the feature are displayed for continuous features, and the percentage of each category is displayed for categorical features. These tables are broken down by township and neighborhood.
+
 
 ::: {.panel-tabset}
 
@@ -291,8 +294,8 @@ spatial_data <- working_data_card %>%
 if (params$type == "continuous") {
   descriptives <- working_data_pin %>%
     summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+      mean = round(mean(!!sym(params$added_feature), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_feature), na.rm = TRUE), 2)
     )
 
   datatable(descriptives,
@@ -306,10 +309,10 @@ if (params$type == "continuous") {
   )
 } else if (params$type == "categorical") {
   category_percentages_township <- working_data_pin %>%
-    count(meta_township_name, !!sym(params$added_variable)) %>%
+    count(meta_township_name, !!sym(params$added_feature)) %>%
     mutate(percentage = round(n / sum(n) * 100, 2)) %>%
-    select(meta_township_name, !!sym(params$added_variable), percentage) %>%
-    pivot_wider(names_from = !!sym(params$added_variable), values_from = percentage, values_fill = list(percentage = 0))
+    select(meta_township_name, !!sym(params$added_feature), percentage) %>%
+    pivot_wider(names_from = !!sym(params$added_feature), values_from = percentage, values_fill = list(percentage = 0))
 
   datatable(category_percentages_township,
     options = list(
@@ -329,8 +332,8 @@ if (params$type == "continuous") {
   descriptives_township <- working_data_pin %>%
     group_by(meta_township_name) %>%
     summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+      mean = round(mean(!!sym(params$added_feature), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_feature), na.rm = TRUE), 2)
     )
 
   datatable(descriptives_township,
@@ -344,12 +347,12 @@ if (params$type == "continuous") {
   )
 } else if (params$type == "categorical") {
   category_percentages_township <- working_data_pin %>%
-    group_by(meta_township_name, !!sym(params$added_variable)) %>%
+    group_by(meta_township_name, !!sym(params$added_feature)) %>%
     count() %>%
     group_by(meta_township_name) %>%
     mutate(percentage = round(n / sum(n) * 100, 2)) %>%
-    select(meta_township_name, !!sym(params$added_variable), percentage) %>%
-    pivot_wider(names_from = !!sym(params$added_variable), values_from = percentage, values_fill = list(percentage = 0))
+    select(meta_township_name, !!sym(params$added_feature), percentage) %>%
+    pivot_wider(names_from = !!sym(params$added_feature), values_from = percentage, values_fill = list(percentage = 0))
 
 
   datatable(category_percentages_township,
@@ -371,8 +374,8 @@ if (params$type == "continuous") {
   descriptives_nbhd <- working_data_pin %>%
     group_by(meta_nbhd_code) %>%
     summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
+      mean = round(mean(!!sym(params$added_feature), na.rm = TRUE), 2),
+      median = round(median(!!sym(params$added_feature), na.rm = TRUE), 2)
     )
 
   datatable(descriptives_nbhd,
@@ -386,10 +389,10 @@ if (params$type == "continuous") {
   )
 } else if (params$type == "categorical") {
   category_percentages_nbhd <- working_data_pin %>%
-    group_by(meta_nbhd_code, !!sym(params$added_variable)) %>%
+    group_by(meta_nbhd_code, !!sym(params$added_feature)) %>%
     count() %>%
     mutate(percentage = n / sum(n) * 100) %>%
-    select(meta_nbhd_code, !!sym(params$added_variable), percentage)
+    select(meta_nbhd_code, !!sym(params$added_feature), percentage)
 
   datatable(category_percentages_nbhd,
     options = list(
@@ -410,39 +413,36 @@ if (params$type == "continuous") {
 
 ```{r histogram}
 if (params$type == "continuous") {
-  descriptives <- working_data_pin %>%
-    distinct(meta_pin) %>%
-    summarize(
-      mean = round(mean(!!sym(params$added_variable), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_variable), na.rm = TRUE), 2)
-    )
-
-  ggplot(working_data_pin, aes(x = !!sym(params$added_variable))) +
-    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-    geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
-      color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
-    ) +
-    geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
-      color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
-    ) +
-    labs(
-      title = paste("Histogram of", params$added_variable),
-      x = params$added_variable,
-      y = "Frequency"
-    ) +
-    theme_minimal() +
-    annotate("text", x = descriptives$mean, y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -0.5) +
-    annotate("text", x = descriptives$median, y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 0.5)
+working_data_pin %>%
+  mutate(
+    mean_value = mean(!!sym(params$added_feature), na.rm = TRUE),
+    median_value = median(!!sym(params$added_feature), na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = !!sym(params$added_feature))) +
+  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  scale_color_manual(
+    name = "Statistics",
+    values = c(Mean = "red", Median = "green"),
+    labels = c("Mean", "Median")
+  ) +
+  labs(
+    title = paste("Histogram of", params$added_feature),
+    x = params$added_feature,
+    y = "Frequency"
+  ) +
+  theme_minimal()
 } else if (params$type == "categorical") {
   category_percentages <- working_data_pin %>%
-    count(!!sym(params$added_variable)) %>%
+    count(!!sym(params$added_feature)) %>%
     mutate(percentage = n / sum(n) * 100)
 
-  ggplot(category_percentages, aes(x = !!sym(params$added_variable), y = percentage)) +
+  ggplot(category_percentages, aes(x = !!sym(params$added_feature), y = percentage)) +
     geom_bar(stat = "identity", fill = "blue", color = "black", alpha = 0.7) +
     labs(
-      title = paste("Bar Chart of", params$added_variable),
-      x = params$added_variable,
+      title = paste("Bar Chart of", params$added_feature),
+      x = params$added_feature,
       y = "Percentage"
     ) +
     theme_minimal()
@@ -451,72 +451,84 @@ if (params$type == "continuous") {
 
 
 ## FMV Change Histogram
+
+This chart shows the distribution of the value of 'diff_pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. The largest 100 increases and decreases are displayed in maps in section X. 
 ```{r}
-ggplot(
-  working_data_pin %>%
-    filter(
-      diff_pred_pin_initial_fmv >= quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
-        diff_pred_pin_initial_fmv <= quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
-    ),
-  aes(x = diff_pred_pin_initial_fmv)
-) +
+working_data_pin %>%
+  filter(
+    diff_pred_pin_initial_fmv >= quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
+      diff_pred_pin_initial_fmv <= quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
+  ) %>%
+  mutate(
+    mean_value = mean(diff_pred_pin_initial_fmv, na.rm = TRUE),
+    median_value = median(diff_pred_pin_initial_fmv, na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = diff_pred_pin_initial_fmv)) +
   geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean(diff_pred_pin_initial_fmv, na.rm = TRUE)),
-    color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
-  ) +
-  geom_vline(aes(xintercept = median(diff_pred_pin_initial_fmv, na.rm = TRUE)),
-    color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
+  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  scale_color_manual(
+    name = "Statistics",
+    values = c(Mean = "red", Median = "green"),
+    labels = c("Mean", "Median")
   ) +
   labs(
     x = "Change in FMV",
     y = "Frequency"
   ) +
-  theme_minimal() +
-  annotate("text", x = mean(working_data_pin$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -1) +
-  annotate("text", x = median(working_data_pin$diff_pred_pin_initial_fmv, na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 1)
+  theme_minimal()
 ```
 
 ## SHAP Histogram
 
 ```{r}
-ggplot(
-  shap %>%
-    filter(
-      !!sym(params$added_variable) >= quantile(!!sym(params$added_variable), 0.025, na.rm = TRUE) &
-        !!sym(params$added_variable) <= quantile(!!sym(params$added_variable), 0.975, na.rm = TRUE)
-    ),
-  aes(x = !!sym(params$added_variable))
-) +
+shap %>%
+  filter(
+    !!sym(params$added_feature) >= quantile(!!sym(params$added_feature), 0.025, na.rm = TRUE) &
+      !!sym(params$added_feature) <= quantile(!!sym(params$added_feature), 0.975, na.rm = TRUE)
+  ) %>%
+  mutate(
+    mean_value = mean(!!sym(params$added_feature), na.rm = TRUE),
+    median_value = median(!!sym(params$added_feature), na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = !!sym(params$added_feature))) +
   geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean(!!sym(params$added_variable), na.rm = TRUE)),
-    color = "red", linetype = "dashed", linewidth = 1, show.legend = TRUE
-  ) +
-  geom_vline(aes(xintercept = median(!!sym(params$added_variable), na.rm = TRUE)),
-    color = "green", linetype = "dashed", linewidth = 1, show.legend = TRUE
+  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  scale_color_manual(
+    name = "Statistics",
+    values = c(Mean = "red", Median = "green"),
+    labels = c("Mean", "Median")
   ) +
   labs(
     x = "SHAP Value",
     y = "Frequency"
   ) +
-  theme_minimal() +
-  annotate("text", x = mean(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Mean", color = "red", vjust = 1.5, hjust = -1) +
-  annotate("text", x = median(shap[[params$added_variable]], na.rm = TRUE), y = Inf, label = "Median", color = "green", vjust = 1.5, hjust = 1)
+  theme_minimal()
 ```
 
 :::
 
-## Correlation between Added Variable and Other Variables
+## Correlation between Added feature and Other features
 
-Here, the goal is to see if the added variable *very* neatly aligns with other existing variables. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
+Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
 
-```{r correlation between variables}
+```{r correlation between features}
+clean_column_values <- function(df, column_name) {
+  df[[column_name]] <- df[[column_name]] %>%
+    gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .) %>%
+    gsub("_", " ", .)
+  return(df)
+}
+
 columns_to_remove <- c(
   "time_sale_year",
   "time_sale_month_of_year",
   "time_sale_day_of_year",
   "time_sale_day_of_week",
   "time_sale_day_of_month",
-  "time_sale_day"
+  "time_sale_day",
+  params$feature
 )
 
 if (params$type == "continuous") {
@@ -531,12 +543,12 @@ if (params$type == "continuous") {
   # Loop through each numeric column and calculate correlation and absolute correlation
   for (col_name in names(numeric_cols)) {
     # Filter out rows with missing values in the two columns being compared
-    complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data[[params$added_variable]])
+    complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data[[params$added_feature]])
 
     # Only compute correlation if there are complete cases
     if (sum(complete_cases) > 0) {
-      correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data[[params$added_variable]][complete_cases], use = "complete.obs")
-      abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data[[params$added_variable]][complete_cases]), use = "complete.obs"))
+      correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data[[params$added_feature]][complete_cases], use = "complete.obs")
+      abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data[[params$added_feature]][complete_cases]), use = "complete.obs"))
       correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
     }
   }
@@ -544,12 +556,15 @@ if (params$type == "continuous") {
   # Sort the correlation results in descending order by Correlation
   correlation_results <- correlation_results %>%
     arrange(dplyr::desc(Abs_Correlation)) %>%
-    mutate(across(where(is.numeric), ~ round(., 2)))
+    mutate(across(where(is.numeric), ~ round(., 2))) %>%
+
+    filter(Correlation != 1)
+  correlation_results <- clean_column_values(correlation_results, "Column")
 
   # Display the correlation results as a scrollable table
   datatable(correlation_results, options = list(scrollX = TRUE, scrollY = TRUE, pageLength = 10, order = list(list(1, "desc"))))
 } else {
-  print(paste("assessment_data$", params$added_variable, " is not numeric.", sep = ""))
+  print(paste("assessment_data$", params$added_feature, " is not numeric.", sep = ""))
 }
 ```
 
@@ -564,18 +579,18 @@ correlation_results <- correlation_results %>%
 top_20_correlations <- correlation_results %>%
   head(20)
 
-# Gather the data for the top 20 variables
+# Gather the data for the top 20 features
 top_vars <- top_20_correlations$Column
-working_data %>%
-  select(!!sym(params$added_variable), all_of(top_vars)) %>%
-  gather(key = "var", value = "value", -!!sym(params$added_variable)) %>%
-  ggplot(aes(x = !!sym(params$added_variable), y = value)) +
+working_data_card %>%
+  select(!!sym(params$added_feature), all_of(top_vars)) %>%
+  gather(key = "var", value = "value", -!!sym(params$added_feature)) %>%
+  ggplot(aes(x = !!sym(params$added_feature), y = value)) +
   facet_wrap(~var, scales = "free") +
   geom_point() +
   stat_smooth() +
   labs(
     title = "Scatter Plots with Top 20 Highest Correlations",
-    x = params$added_variable,
+    x = params$added_feature,
     y = "Value"
   ) +
   theme_minimal()
@@ -699,9 +714,9 @@ generate_comparison_table <- function(df_new, df_comparison, group_var = NULL) {
 }
 ```
 
-Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new variable *should* improve this metric. In this situation, the model sees a change of `r round(df_stat_no_group$rmse, 2)` to `r round(df_stat_no_group_comparison$rmse, 2)`, a change of `r round(df_stat_no_group$rmse - df_stat_no_group_comparison$rmse, 2)`.
+Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new feature *should* improve this metric. In this situation, the model sees a change of `r round(df_stat_no_group$rmse, 2)` to `r round(df_stat_no_group_comparison$rmse, 2)`, a change of `r round(df_stat_no_group$rmse - df_stat_no_group_comparison$rmse, 2)`.
 
-Below are other variables, organized by different geographies to see if the the added variable improves other metrics that the office is interested in. 
+Below are other features, organized by different geographies to see if the the added feature improves other metrics that the office is interested in. 
 
 
 # Stats
@@ -741,16 +756,16 @@ Some metrics may only improve within certain ranges. For example, proximity to a
 ```{r}
 new_range <- assessment_pin %>%
   inner_join(assessment_data_small, by = "meta_pin") %>%
-  mutate(!!params$added_variable := as.numeric(!!sym(params$added_variable))) %>%
-  filter(!!sym(params$added_variable) > params$min_range &
-    !!sym(params$added_variable) < params$max_range) %>%
+  mutate(!!params$added_feature := as.numeric(!!sym(params$added_feature))) %>%
+  filter(!!sym(params$added_feature) > params$min_range &
+    !!sym(params$added_feature) < params$max_range) %>%
   compute_stats(.)
 
 comparison_range <- assessment_pin_comparison %>%
   inner_join(assessment_data_small, by = "meta_pin") %>%
-  mutate(!!params$added_variable := as.numeric(!!sym(params$added_variable))) %>%
-  filter(!!sym(params$added_variable) > params$min_range &
-    !!sym(params$added_variable) < params$max_range) %>%
+  mutate(!!params$added_feature := as.numeric(!!sym(params$added_feature))) %>%
+  filter(!!sym(params$added_feature) > params$min_range &
+    !!sym(params$added_feature) < params$max_range) %>%
   compute_stats(.)
 
 generate_comparison_table(new_range, comparison_range)
@@ -762,7 +777,7 @@ generate_comparison_table(new_range, comparison_range)
 
 # SHAP
 
-The main metric that the CCAO Data team uses to assess the importance of a variable is the SHAP value. SHAP values are a way to explain the output of machine learning models. They assign the $value increase associated with each variable. The SHAP value is calculated for each observation in the dataset, and the median SHAP value is used to determine the importance of a variable. The higher the median SHAP value, the more important the variable is in the model.
+The primary metric that the CCAO Data team uses to assess the importance of a feature is its SHAP value. SHAP values provide the amount of value each feature contributes to a parcel's predicted value. The SHAP value is calculated for each observation in the dataset, and the median SHAP value for a feature is used to determine the relative influence of that feature. The higher the median SHAP value, the more influential the feature is in the model.
 
 ## Absolute Value Rank of SHAP Scores
 
@@ -804,18 +819,18 @@ ranked_overall_medians <- overall_medians %>%
   mutate(rank_abs = row_number())
 
 # Function to create summary tables
-create_summary_table <- function(data, added_variable) {
-  added_variable_data <- data %>%
-    filter(feature == added_variable)
+create_summary_table <- function(data, added_feature) {
+  added_feature_data <- data %>%
+    filter(feature == added_feature)
 
-  if (nrow(added_variable_data) == 0) {
+  if (nrow(added_feature_data) == 0) {
     return(NULL)
   }
 
-  non_added_variable_data <- data %>%
-    filter(feature != added_variable)
+  non_added_feature_data <- data %>%
+    filter(feature != added_feature)
 
-  combined_data <- bind_rows(added_variable_data, non_added_variable_data)
+  combined_data <- bind_rows(added_feature_data, non_added_feature_data)
 
   kable_chart <- combined_data %>%
     select(feature, median_abs_shap, median_shap, rank_abs) %>%
@@ -835,8 +850,8 @@ create_summary_table <- function(data, added_variable) {
 }
 
 # Generate the overall summary table
-added_variable <- params$added_variable
-overall_summary_table <- create_summary_table(ranked_overall_medians, added_variable)
+added_feature <- params$added_feature
+overall_summary_table <- create_summary_table(ranked_overall_medians, added_feature)
 
 # Calculate median values for each township and rank features
 ranked_shap_df <- shap_df_filtered_long %>%
@@ -858,7 +873,7 @@ township_names <- unique(ranked_shap_df$township_name)
 shap_tables <- lapply(township_names, function(name) {
   township_data <- ranked_shap_df %>%
     filter(township_name == name)
-  create_summary_table(township_data, added_variable)
+  create_summary_table(township_data, added_feature)
 })
 ```
 
@@ -1104,7 +1119,7 @@ shap_tables[[38]]
 
 ## SHAP Comparison
 
-Here, we compare the SHAP values from the comparison data and the new data. The goal here is to see which other variables, the added variable is influencing.
+Here, we compare the SHAP values from the comparison data and the new data. The goal here is to see which other features, the added feature is influencing.
 ```{r shap_comparisons}
 shap_comparison %>%
   inner_join(shap, by = c("meta_card_num", "meta_pin")) %>%
@@ -1120,8 +1135,8 @@ shap_comparison %>%
     across(ends_with("_comp"), list(median_comp = ~ median(.))),
     across(ends_with("_new"), list(median_new = ~ median(.)))
   ) %>%
-  pivot_longer(cols = everything(), names_to = c("variable", ".value"), names_sep = "_diff_|_comp_|_new_") %>%
-  arrange(variable) %>%
+  pivot_longer(cols = everything(), names_to = c("feature", ".value"), names_sep = "_diff_|_comp_|_new_") %>%
+  arrange(feature) %>%
   mutate(across(where(is.numeric), dollar, scale = 1, accuracy = 0.01)) %>%
   datatable(
     options = list(
@@ -1135,39 +1150,38 @@ shap_comparison %>%
 ```
 
 
-## Correlation between SHAP and the Added Variable
+## Correlation between SHAP and the Added Feature
 
-```{r shap_variable_correlation}
-correlation_value <- cor(pull(working_data, params$added_variable_shap), pull(working_data, params$added_variable), use = "complete.obs")
+```{r shap_feature_correlation}
+correlation_value <- cor(pull(working_data_card, params$added_feature_shap), pull(working_data_card, params$added_feature), use = "complete.obs")
 ```
 
-The assumption is, that if the added variable caused an important increase / decrease in assessed values, then the correlation would have a high absolute value. In this case, the correlation between the SHAP values and the added variable is `r round(correlation_value, 2)`.
-
+If the added feature leads to a significant change in predicted values, its correlation with the SHAP values should have a high absolute value. That correlation is `r round(correlation_value, 2)`.
 
 # Spatial Analysis
 
-The spatial analysis is broken up into a few sections. The first panel looks at four aggregated stats on the neighborhood level, the mean of the variable we are analyzing, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added variable. 
+The spatial analysis is broken up into a few sections. The first panel looks at four aggregated stats on the neighborhood level, the mean of the feature we are analyzing, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature. 
 
 ## Neighborhood Values
 
 ::: panel-tabset
 
-### Mean Variable
+### Mean feature
 
-```{r mean_variable}
+```{r mean_feature}
 if (params$type == "categorical") {
   spatial_data %>%
     ggplot() +
-    geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_plurality_type")))) +
+    geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_plurality_type")))) +
     scale_fill_viridis_d(option = "viridis", name = "Type of Plurality") +
-    geom_sf(aes(alpha = !!sym(paste0(params$added_variable, "_plurality_percentage")))) +
+    geom_sf(aes(alpha = !!sym(paste0(params$added_feature, "_plurality_percentage")))) +
     scale_alpha_continuous(name = "Percentage of Plurality") +
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 } else {
   spatial_data %>%
     ggplot() +
-    geom_sf(aes(fill = !!sym(paste0(params$added_variable, "_neighborhood_mean")))) +
+    geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_neighborhood_mean")))) +
     scale_fill_viridis_c(option = "viridis", name = "Value") +
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -1179,7 +1193,7 @@ if (params$type == "categorical") {
 ```{r mean_shap}
 spatial_data %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_variable_shap, "_neighborhood_mean")))) +
+  geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_mean")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -1190,13 +1204,14 @@ spatial_data %>%
 ```{r 90th_percentile_shap}
 spatial_data %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_variable_shap, "_neighborhood_90th")))) +
+  geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_90th")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
 ### Median change in Neighborhood FMV
+This value is defined as the neighborhood level median increase in value when adding the new feature to the model. For example, a value of 1% would mean that adding the feature increased properties within a neighborhood by 1%.
 
 ```{r neighborhood_change}
 assessment_pin %>%
@@ -1206,15 +1221,15 @@ assessment_pin %>%
   rename(pred_pin_final_fmv_comparison = pred_pin_final_fmv) %>%
   group_by(meta_nbhd_code) %>%
   summarize(
-    median_fmv_new = median(pred_pin_final_fmv_new),
-    median_fmv_comparison = median(pred_pin_final_fmv_comparison),
+    median_fmv_new = median(pred_pin_final_fmv_new, na.rm = TRUE),
+    median_fmv_comparison = median(pred_pin_final_fmv_comparison, na.rm = TRUE),
     fmv_ratio = (median_fmv_new / median_fmv_comparison) / median_fmv_comparison
   ) %>%
   inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   st_as_sf() %>%
   ggplot() +
   geom_sf(aes(fill = fmv_ratio)) +
-  scale_fill_viridis_c(option = "viridis", name = "fmv_ratio") +
+  scale_fill_viridis_c(option = "viridis", name = "FMV Ratio", labels = scales::percent_format(accuracy = 0.001)) +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
@@ -1224,12 +1239,23 @@ assessment_pin %>%
 
 ```{r leaflet_function}
 create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = "loc_longitude", latitude = "loc_latitude") {
+  # Convert the dataset to an sf object
+  dataset_sf <- st_as_sf(dataset, coords = c(longitude, latitude), crs = 4326)
+  
+  # Filter neighborhoods that have at least one observation
+  nbhd_borders <- nbhd %>%
+    st_transform(crs = st_crs(dataset_sf)) %>%
+    filter(st_intersects(., dataset_sf, sparse = FALSE) %>% rowSums() > 0)
+
   # Create the color palette
   pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
 
+  # Calculate the bounding box of the filtered neighborhoods
+  bbox <- st_bbox(nbhd_borders)
+
   # Create the leaflet map
   leaflet(dataset) %>%
-    addTiles() %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
     addCircleMarkers(
       lng = ~ get(longitude),
       lat = ~ get(latitude),
@@ -1237,13 +1263,19 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
       color = ~ pal(dataset[[legend_value]]),
       popup = ~ paste(
         "<br>", "Pin: ", dataset$meta_pin,
-        "<br>", "SHAP:", scales::dollar(dataset[[params$added_variable_shap]]),
+        "<br>", "SHAP:", dollar(dataset[[params$added_feature_shap]]),
         "<br>", "Relative SHAP", dataset$shap_relative,
-        "<br>", "Variable:", sprintf("%.2f", dataset[[params$added_variable]]),
+        "<br>", "feature:", sprintf("%.2f", dataset[[params$added_feature]]),
         "<br>", "New FMV:", dataset$pred_pin_final_fmv_new,
         "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comparison,
-        "<br>", "FMV Difference: ", scales::dollar(dataset$diff_pred_pin_final_fmv)
+        "<br>", "FMV Difference: ", dollar(dataset$diff_pred_pin_final_fmv)
       )
+    ) %>%
+    addPolygons(
+      data = nbhd_borders,
+      color = "black",
+      weight = 2,
+      fill = FALSE
     ) %>%
     addLegend(
       "bottomright",
@@ -1255,57 +1287,55 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
 ```
 
 ## Mapping the Highest and Lowest 100 Values
-Three different types of high and low values are produced; the values of the variable we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
+Three different types of high and low values are produced; the values of the feature we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
 
 ::: panel-tabset
 
 ### Largest 100 Values
 
 ```{r}
-highest_100 <- working_data %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
-  arrange(desc(!!sym(params$added_variable))) %>%
+highest_100 <- working_data_pin %>%
+  arrange(desc(!!sym(params$added_feature))) %>%
   slice(1:100)
 
-create_leaflet_map(highest_100, params$added_variable, "Largest 100 Values")
+create_leaflet_map(highest_100, params$added_feature, "Largest 100 Values")
 ```
 
 ### Lowest 100 Values
 
 ```{r}
-lowest_100 <- working_data %>%
+lowest_100 <- working_data_pin %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
-  arrange(!!sym(params$added_variable)) %>%
+  arrange(!!sym(params$added_feature)) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, params$added_variable, "Lowest 100 Values")
+create_leaflet_map(lowest_100, params$added_feature, "Lowest 100 Values")
 ```
 
 ### Highest 100 SHAP Values
 
 ```{r}
-highest_100 <- working_data %>%
-  arrange(desc(!!sym(params$added_variable_shap))) %>%
+highest_100 <- working_data_card %>%
+  arrange(desc(!!sym(params$added_feature_shap))) %>%
   slice(1:100)
 
-create_leaflet_map(highest_100, params$added_variable_shap, "Highest 100 SHAPs")
+create_leaflet_map(highest_100, params$added_feature_shap, "Highest 100 SHAPs")
 ```
 
 ### Lowest 100 SHAP Values
 
 ```{r}
 # Example usage with the dataset sliced outside the function
-lowest_100 <- working_data %>%
-  arrange(!!sym((params$added_variable_shap))) %>%
+lowest_100 <- working_data_card %>%
+  arrange(!!sym((params$added_feature_shap))) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, params$added_variable_shap, "Lowest 100 SHAPs")
+create_leaflet_map(lowest_100, params$added_feature_shap, "Lowest 100 SHAPs")
 ```
 
 ### 100 Largest FMV Increases
 ```{r}
-largest_fmv_increases <- working_data %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
+largest_fmv_increases <- working_data_pin %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
 
@@ -1316,8 +1346,7 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 ### 100 Largest FMV Decreases
 
 ```{r}
-largest_fmv_decreases <- working_data %>%
-  distinct(meta_pin, .keep_all = TRUE) %>%
+largest_fmv_decreases <- working_data_pin %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
@@ -1326,7 +1355,7 @@ create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FM
 
 ### 100 Largest FMV Initial Increases
 ```{r}
-largest_fmv_increases <- working_data %>%
+largest_fmv_increases <- working_data_card %>%
   arrange(desc(diff_pred_pin_initial_fmv)) %>%
   slice(1:100)
 
@@ -1335,12 +1364,10 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest 
 ```
 
 
-
-
 ### 100 Largest Initial FMV Decreases
 
 ```{r}
-largest_fmv_decreases <- working_data %>%
+largest_fmv_decreases <- working_data_pin %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
@@ -1349,7 +1376,7 @@ create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest 
 ## Largest FMV Increase no Multicards
 
 ```{r}
-largest_fmv_increases <- working_data %>%
+largest_fmv_increases <- working_data_card %>%
   group_by(meta_pin) %>%
   filter(n() == 1) %>%
   ungroup() %>%
@@ -1358,8 +1385,9 @@ largest_fmv_increases <- working_data %>%
 
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
 ```
+
 ```{r}
-largest_fmv_decreases <- working_data %>%
+largest_fmv_decreases <- working_data_card %>%
   group_by(meta_pin) %>%
   filter(n() == 1) %>%
   ungroup() %>%
@@ -1375,45 +1403,39 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 
 ## Neighborhoods with the Highest and Lowest SHAP Values
 
-These maps identify neighborhoods where the added variable is having the largest impact on SHAP values. By selecting neighborhoods with the highest mean(absolute value), you can take a closer look at how individual houses in these neighborhoods are affected.
+These maps identify neighborhoods where the added feature is having the largest impact on SHAP values. By selecting neighborhoods with the highest mean(absolute value), you can take a closer look at how individual parcels in these neighborhoods are affected.
 
 ::: panel-tabset
 ```{r processing_SHAP_values}
-working_data <- working_data %>%
+selected_data <- working_data_card %>%
   group_by(meta_nbhd_code) %>%
-  mutate(
-    mean_value = mean(abs(!!sym(paste0(params$added_variable_shap))), na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-selected_neighborhoods <- working_data %>%
+  mutate(mean_value = mean(abs(!!sym(paste0(params$added_feature_shap))), na.rm = TRUE)) %>%
+  ungroup() %>%
   distinct(meta_nbhd_code, .keep_all = TRUE) %>%
   arrange(mean_value) %>%
   slice(c(1:2, (n() - 1):n())) %>%
-  pull(meta_nbhd_code)
+  pull(meta_nbhd_code) %>%
+  {filter(working_data_card, meta_nbhd_code %in% .)}
 
-# Filter the data to include only the selected neighborhoods
-selected_data <- working_data %>%
-  filter(meta_nbhd_code %in% selected_neighborhoods)
-
-# Separate high and low standard deviation neighborhoods
+# Separate high and low mean value neighborhoods
 high_mean_data <- selected_data %>%
-  filter(meta_nbhd_code %in% selected_neighborhoods[(length(selected_neighborhoods) - 1):length(selected_neighborhoods)])
+  filter(meta_nbhd_code %in% selected_data$meta_nbhd_code[(length(selected_data$meta_nbhd_code) - 1):length(selected_data$meta_nbhd_code)])
 
 low_mean_data <- selected_data %>%
-  filter(meta_nbhd_code %in% selected_neighborhoods[1:2])
+  filter(meta_nbhd_code %in% selected_data$meta_nbhd_code[1:2])
+
 ```
 
 ### 2 Lowest SHAP Neighborhoods
 
 ```{r}
-create_leaflet_map(low_mean_data, params$added_variable_shap, "SHAP Values")
+create_leaflet_map(low_mean_data, params$added_feature_shap, "SHAP Values")
 ```
 
 ### 2 Highest SHAP Neighborhoods
 
 ```{r}
-create_leaflet_map(high_mean_data, params$added_variable_shap, "SHAP Values")
+create_leaflet_map(high_mean_data, params$added_feature_shap, "SHAP Values")
 ```
 
 :::
@@ -1421,54 +1443,54 @@ create_leaflet_map(high_mean_data, params$added_variable_shap, "SHAP Values")
 
 ## Within Neighborhood Largest Values
 
-Disparities may also be seen at the individual house level, and may be present within neighborhoods of all types, we select the top and bottom 10 SHAP values for each neighborhood. Because neighborhoods with *very* high FMVs have comparatively higher SHAP values, we also create a relative score, which can be understood as what percentage of the houses value is determined by this variable. This allows a comparison of within-neighborhood impact, while accounting for intra-neighborhood differences.
+These maps display the top and bottom 10 SHAP values by parcel for each neighborhood. Because neighborhoods with *very* high FMVs have comparatively higher SHAP values, we also use a relative score, the percentage of a parcel's value determined by the new feature. This allows a comparison of within-neighborhood impact, while accounting for intra-neighborhood differences.
 
 ::: panel-tabset
 
 ### 10 Highest SHAP Values per Neighborhood
 
 ```{r}
-top_10_data <- working_data %>%
+top_10_data <- working_data_card %>%
   group_by(meta_nbhd_code) %>%
-  top_n(10, wt = !!sym(paste0(params$added_variable_shap))) %>%
+  top_n(10, wt = !!sym(paste0(params$added_feature_shap))) %>%
   ungroup()
 
 
-create_leaflet_map(top_10_data, params$added_variable_shap, "SHAP Values")
+create_leaflet_map(top_10_data, params$added_feature_shap, "SHAP Values")
 ```
 
 ### 10 Lowest SHAP values per neighborhood
 
 ```{r}
-bottom_10_data <- working_data %>%
+bottom_10_data <- working_data_card %>%
   group_by(meta_nbhd_code) %>%
-  top_n(-10, wt = !!sym(paste0(params$added_variable_shap))) %>%
+  top_n(-10, wt = !!sym(paste0(params$added_feature_shap))) %>%
   ungroup()
 
-create_leaflet_map(bottom_10_data, params$added_variable_shap, "SHAP Values")
+create_leaflet_map(bottom_10_data, params$added_feature_shap, "SHAP Values")
 ```
 
 ### 10 Highest Relative SHAP values per neighborhood
 
 ```{r}
-top_10_data_relative <- working_data %>%
-  mutate(shap_relative_value = !!sym(params$added_variable_shap) / median_card_value) %>%
+top_10_data_relative <- working_data_card %>%
+  mutate(shap_relative_value = !!sym(params$added_feature_shap) / median_card_value) %>%
   group_by(meta_nbhd_code) %>%
   top_n(10, wt = shap_relative_value) %>%
   ungroup()
 
 
-create_leaflet_map(top_10_data_relative, params$added_variable_shap, "Relative SHAP Values")
+create_leaflet_map(top_10_data_relative, params$added_feature_shap, "Relative SHAP Values")
 ```
 ### Bottom 10 Relative SHAP Values per Neighborhood
 ```{r}
-bottom_10_data_relative <- working_data %>%
-  mutate(shap_relative_value = !!sym(params$added_variable_shap) / median_card_value) %>%
+bottom_10_data_relative <- working_data_card %>%
+  mutate(shap_relative_value = !!sym(params$added_feature_shap) / median_card_value) %>%
   group_by(meta_nbhd_code) %>%
   top_n(-10, wt = shap_relative_value) %>%
   ungroup()
 
-create_leaflet_map(bottom_10_data_relative, params$added_variable_shap, "Relative SHAP Values")
+create_leaflet_map(bottom_10_data_relative, params$added_feature_shap, "Relative SHAP Values")
 ```
 
 :::
