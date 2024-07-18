@@ -19,12 +19,12 @@ params:
   run_id_year: "2024"
   comparison_run_id: "2024-07-09-cool-takuya"
   comparison_run_id_year: "2024"
-  added_feature: "prox_nearest_new_construction_dist_ft" 
-  added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
+  added_feature: "ccao_is_corner_lot" 
+  added_feature_shap: "ccao_is_corner_lot_shap"
   description: "A distance in feet to the nearest new construction"
   min_range: 5
   max_range: 95
-  type: "continuous"
+  type: "categorical"
 ---
 
 ```{r packages}
@@ -152,7 +152,7 @@ performance <- data$performance
 metadata <- data$metadata
 shap <- data$shap
 assessment_card <- data$assessment_card %>%
-  select(meta_pin, meta_card_num, pred_card_initial_fmv, meta_nbhd_code)
+  select(meta_pin, meta_card_num, pred_card_initial_fmv, meta_nbhd_code, meta_township_code, !!sym(params$added_feature))
 
 assessment_pin <- data$assessment_pin
 
@@ -245,11 +245,11 @@ working_data_card <- shap %>%
     mean_value_shap = mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
     median_card_value = median(pred_card_initial_fmv, na.rm = TRUE),
     shap_relative = percent((!!sym(params$added_feature_shap) / pred_card_initial_fmv), accuracy = 0.01),
-  )
+  ) %>%
+  ungroup()
 
 
 working_data_pin <- assessment_data_small %>%
-  inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
   group_by(meta_nbhd_code) %>%
   mutate(
     !!paste0(params$added_feature, "_neighborhood_mean") := mean(!!sym(params$added_feature), na.rm = TRUE),
@@ -257,6 +257,7 @@ working_data_pin <- assessment_data_small %>%
     !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE)
   ) %>%
   ungroup() %>%
+  inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
   rename(
     pred_pin_final_fmv_new = pred_pin_final_fmv,
     pred_pin_initial_fmv_new = pred_pin_initial_fmv
@@ -568,6 +569,7 @@ if (params$type == "continuous") {
   top_10_features <- correlation_results %>%
     slice(1:10) %>%
     pull(Feature)
+
   correlation_results_clean <- clean_column_values(correlation_results, "Feature") %>%
     slice(2:n())
 
@@ -775,9 +777,6 @@ The primary metric that the CCAO Data team uses to assess the importance of a fe
 
 ## Absolute Value Rank of SHAP Scores
 
-```{r}
-shap_predictors <- unlist(metadata$model_predictor_all_name)
-```
 
 The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
@@ -1151,6 +1150,44 @@ correlation_value <- cor(pull(working_data_card, params$added_feature_shap), pul
 ```
 
 If the added feature leads to a significant change in predicted values, its correlation with the SHAP values should have a high absolute value. That correlation is `r round(correlation_value, 2)`.
+
+
+```{r shap_feature_plot}
+num_digits <- working_data_card %>%
+  pull(!!sym(params$added_feature_shap)) %>%
+  max(na.rm = TRUE) %>%
+  floor() %>%
+  as.character() %>%
+  str_length()
+
+if (params$type == "continuous") {
+  working_data_card %>%
+    select(meta_card_num, meta_pin, !!params$added_feature_shap, !!params$added_feature) %>%
+    mutate(bin = cut_number(!!sym(params$added_feature), n = 10, dig.lab = num_digits)) %>%
+    ggplot(aes(x = bin, y = !!sym(params$added_feature_shap))) +
+    geom_boxplot(fill = "#69b3a2") +
+    theme_minimal() +
+    xlab("Feature Value") +
+    ylab("SHAP Value") +
+    scale_x_discrete(labels = function(x) {
+      x <- gsub("\\.[^,\\]]*", "", x) # Remove everything between . and , or ]
+      x <- gsub("[^0-9,,]", "", x) # Keep only numbers and ,
+      gsub(",", "-", x)
+    }) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+} else if (params$type == "categorical") {
+  working_data_card %>%
+    select(meta_card_num, meta_pin, !!params$added_feature_shap, !!params$added_feature) %>%
+    mutate(feature_factor = factor(!!sym(params$added_feature))) %>%
+    ggplot(aes(x = feature_factor, y = !!sym(params$added_feature_shap))) +
+    geom_boxplot(fill = "#69b3a2") +
+    theme_minimal() +
+    xlab("Feature Value") +
+    ylab("SHAP Value") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+}
+```
+
 
 # Spatial Analysis
 
