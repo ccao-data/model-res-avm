@@ -1269,7 +1269,9 @@ assessment_pin %>%
 ```{r leaflet_function}
 create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = "loc_longitude", latitude = "loc_latitude") {
   # Convert the dataset to an sf object
-  dataset_sf <- st_as_sf(dataset, coords = c(longitude, latitude), crs = 4326)
+  dataset_sf <- dataset %>%
+    filter(!is.na(!!sym(longitude)) & !is.na(!!sym(latitude))) %>%
+    st_as_sf(coords = c(longitude, latitude), crs = 4326)
 
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
@@ -1294,7 +1296,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
         "<br>", "Pin: ", dataset$meta_pin,
         "<br>", "SHAP:", dollar(dataset[[params$added_feature_shap]]),
         "<br>", "Relative SHAP", dataset$shap_relative,
-        "<br>", "feature:", sprintf("%.2f", dataset[[params$added_feature]]),
+        "<br>", "Feature:", sprintf("%.2f", dataset[[params$added_feature]]),
         "<br>", "New FMV:", dataset$pred_pin_final_fmv_new,
         "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comparison,
         "<br>", "FMV Difference: ", dollar(dataset$diff_pred_pin_final_fmv)
