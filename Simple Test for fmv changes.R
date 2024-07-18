@@ -23,9 +23,11 @@ test4 <- test3 %>%
   ggplot(aes(x = fmv_change_comp)) +
   geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean_value, color = "Mean"),
-             linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    linetype = "dashed", linewidth = 1, show.legend = TRUE
+  ) +
   geom_vline(aes(xintercept = median_value, color = "Median"),
-             linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    linetype = "dashed", linewidth = 1, show.legend = TRUE
+  ) +
   scale_color_manual(
     name = "Statistics",
     values = c(Mean = "red", Median = "green"),

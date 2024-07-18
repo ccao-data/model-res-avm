@@ -19,7 +19,7 @@ params:
   run_id_year: "2024"
   comparison_run_id: "2024-07-09-cool-takuya"
   comparison_run_id_year: "2024"
-  added_feature: "prox_nearest_new_construction_dist_ft"
+  added_feature: "prox_nearest_new_construction_dist_ft" 
   added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
   description: "A distance in feet to the nearest new construction"
   min_range: 5
@@ -31,6 +31,7 @@ params:
 library(purrr)
 library(here)
 library(yaml)
+library(corrplot)
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
@@ -151,20 +152,21 @@ performance <- data$performance
 metadata <- data$metadata
 shap <- data$shap
 assessment_card <- data$assessment_card %>%
-  select(meta_pin, meta_card_num, pred_card_initial_fmv)
+  select(meta_pin, meta_card_num, pred_card_initial_fmv, meta_nbhd_code)
 
 assessment_pin <- data$assessment_pin
 
-lockfile <- metadata$dvc_md5_assessment_data
+lockfile_assessment <- metadata$dvc_md5_assessment_data
 
-s3_path <- paste0(
+# Define S3 paths for assessment and training data
+s3_path_assessment <- paste0(
   "s3://ccao-data-dvc-us-east-1/files/md5/",
-  substr(lockfile, 1, 2), "/",
-  substr(lockfile, 3, nchar(lockfile))
+  substr(lockfile_assessment, 1, 2), "/",
+  substr(lockfile_assessment, 3, nchar(lockfile_assessment))
 )
 
-# Read the Parquet file directly from S3
-assessment_data <- s3read_using(FUN = read_parquet, object = s3_path)
+
+assessment_data <- s3read_using(FUN = read_parquet, object = s3_path_assessment)
 ```
 
 ```{r download_comparison_data}
@@ -232,23 +234,29 @@ assessment_data_small <- assessment_data %>%
   select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, meta_township_name, !!sym(params$added_feature))
 
 # Create a card level dataset
+
 working_data_card <- shap %>%
   select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_feature)) %>%
-  rename(!!params$added_feature_shap := !!sym(params$added_feature)) %>%
-  inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
+  rename(!!sym(params$added_feature_shap) := !!sym(params$added_feature)) %>%
   inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
   group_by(meta_nbhd_code) %>%
-  mutate(
-    !!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
+  mutate(!!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
     !!paste0(params$added_feature, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_feature_shap)), 0.9, na.rm = TRUE),
+    mean_value_shap = mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
+    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE),
+    shap_relative = percent((!!sym(params$added_feature_shap) / pred_card_initial_fmv), accuracy = 0.01),
+  )
+
+
+working_data_pin <- assessment_data_small %>%
+  inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
+  group_by(meta_nbhd_code) %>%
+  mutate(
     !!paste0(params$added_feature, "_neighborhood_mean") := mean(!!sym(params$added_feature), na.rm = TRUE),
     !!paste0(params$added_feature, "_neighborhood_median") := median(!!sym(params$added_feature), na.rm = TRUE),
-    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE),
-    mean_value = mean(abs(!!sym(paste0(params$added_feature_shap))), na.rm = TRUE),
-    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
+    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE)
   ) %>%
   ungroup() %>%
-  inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
   rename(
     pred_pin_final_fmv_new = pred_pin_final_fmv,
     pred_pin_initial_fmv_new = pred_pin_initial_fmv
@@ -259,7 +267,6 @@ working_data_card <- shap %>%
     pred_pin_initial_fmv_comp = pred_pin_initial_fmv
   ) %>%
   mutate(
-    shap_relative = percent((!!sym(params$added_feature_shap) / pred_pin_initial_fmv_new), accuracy = 0.01),
     diff_pred_pin_final_fmv = round(pred_pin_final_fmv_new - pred_pin_final_fmv_comp, 2),
     pred_pin_final_fmv_new = scales::dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comparison = scales::dollar(pred_pin_final_fmv_comp),
@@ -268,13 +275,14 @@ working_data_card <- shap %>%
     pred_pin_initial_fmv_comp = scales::dollar(pred_pin_initial_fmv_comp)
   )
 
-# Filter to pin for clarity in later work
-working_data_pin <- working_data_card %>%
-  distinct(meta_pin, .keep_all = TRUE)
-
 nbhd <- ccao::nbhd_shp
 
-spatial_data <- working_data_card %>%
+spatial_data_card <- working_data_card %>%
+  distinct(meta_nbhd_code, .keep_all = TRUE) %>%
+  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf()
+
+spatial_data_pin <- working_data_pin %>%
   distinct(meta_nbhd_code, .keep_all = TRUE) %>%
   inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
@@ -527,8 +535,7 @@ columns_to_remove <- c(
   "time_sale_day_of_year",
   "time_sale_day_of_week",
   "time_sale_day_of_month",
-  "time_sale_day",
-  params$feature
+  "time_sale_day"
 )
 
 if (params$type == "continuous") {
@@ -538,7 +545,7 @@ if (params$type == "continuous") {
     select(-all_of(columns_to_remove))
 
   # Initialize a data frame to store correlation results
-  correlation_results <- data.frame(Column = character(), Correlation = numeric(), Abs_Correlation = numeric(), stringsAsFactors = FALSE)
+  correlation_results <- data.frame(Feature = character(), Correlation = numeric(), Abs_Correlation = numeric(), stringsAsFactors = FALSE)
 
   # Loop through each numeric column and calculate correlation and absolute correlation
   for (col_name in names(numeric_cols)) {
@@ -549,50 +556,38 @@ if (params$type == "continuous") {
     if (sum(complete_cases) > 0) {
       correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data[[params$added_feature]][complete_cases], use = "complete.obs")
       abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data[[params$added_feature]][complete_cases]), use = "complete.obs"))
-      correlation_results <- rbind(correlation_results, data.frame(Column = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
+      correlation_results <- rbind(correlation_results, data.frame(Feature = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
     }
   }
 
   # Sort the correlation results in descending order by Correlation
   correlation_results <- correlation_results %>%
     arrange(dplyr::desc(Abs_Correlation)) %>%
-    mutate(across(where(is.numeric), ~ round(., 2))) %>%
-    filter(Correlation != 1)
-  correlation_results <- clean_column_values(correlation_results, "Column")
+    mutate(across(where(is.numeric), ~ round(., 2)))
+
+  top_10_features <- correlation_results %>%
+    slice(1:10) %>%
+    pull(Feature)
+  correlation_results_clean <- clean_column_values(correlation_results, "Feature") %>%
+    slice(2:n())
 
   # Display the correlation results as a scrollable table
-  datatable(correlation_results, options = list(scrollX = TRUE, scrollY = TRUE, pageLength = 10, order = list(list(1, "desc"))))
+  datatable(correlation_results_clean, options = list(scrollX = TRUE, scrollY = TRUE, pageLength = 10, order = list(list(1, "desc"))))
 } else {
   print(paste("assessment_data$", params$added_feature, " is not numeric.", sep = ""))
 }
 ```
 
-## SHAP Dependence Plot
+## Correlation Matrix
 
-```{r shap_dependence_plot}
-correlation_results <- correlation_results %>%
-  arrange(desc(Abs_Correlation)) %>%
-  mutate(across(where(is.numeric), ~ round(., 2)))
-
-# Select the top 20 highest absolute correlations
-top_20_correlations <- correlation_results %>%
-  head(20)
-
-# Gather the data for the top 20 features
-top_vars <- top_20_correlations$Column
-working_data_card %>%
-  select(!!sym(params$added_feature), all_of(top_vars)) %>%
-  gather(key = "var", value = "value", -!!sym(params$added_feature)) %>%
-  ggplot(aes(x = !!sym(params$added_feature), y = value)) +
-  facet_wrap(~var, scales = "free") +
-  geom_point() +
-  stat_smooth() +
-  labs(
-    title = "Scatter Plots with Top 20 Highest Correlations",
-    x = params$added_feature,
-    y = "Value"
-  ) +
-  theme_minimal()
+```{r}
+assessment_data %>%
+  select(all_of(top_10_features)) %>%
+  na.omit() %>%
+  rename_with(~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)) %>%
+  rename_with(~ gsub("_", " ", .)) %>%
+  cor() %>%
+  corrplot()
 ```
 
 # Overview of Model Metrics
@@ -1169,7 +1164,7 @@ The spatial analysis is broken up into a few sections. The first panel looks at 
 
 ```{r mean_feature}
 if (params$type == "categorical") {
-  spatial_data %>%
+  spatial_data_pin %>%
     ggplot() +
     geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_plurality_type")))) +
     scale_fill_viridis_d(option = "viridis", name = "Type of Plurality") +
@@ -1178,7 +1173,7 @@ if (params$type == "categorical") {
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 } else {
-  spatial_data %>%
+  spatial_data_pin %>%
     ggplot() +
     geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_neighborhood_mean")))) +
     scale_fill_viridis_c(option = "viridis", name = "Value") +
@@ -1190,7 +1185,7 @@ if (params$type == "categorical") {
 ### Mean Absolute SHAP
 
 ```{r mean_shap}
-spatial_data %>%
+spatial_data_card %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_mean")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
@@ -1201,7 +1196,7 @@ spatial_data %>%
 ### 90th Percentile of Absolute SHAP
 
 ```{r 90th_percentile_shap}
-spatial_data %>%
+spatial_data_card %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_90th")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
