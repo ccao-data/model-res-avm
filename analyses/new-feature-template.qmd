@@ -19,12 +19,12 @@ params:
   run_id_year: "2024"
   comparison_run_id: "2024-07-09-cool-takuya"
   comparison_run_id_year: "2024"
-  added_feature: "ccao_is_corner_lot" 
-  added_feature_shap: "ccao_is_corner_lot_shap"
+  added_feature: "prox_nearest_new_construction_dist_ft" 
+  added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
   description: "A distance in feet to the nearest new construction"
   min_range: 5
   max_range: 95
-  type: "categorical"
+  type: "continuous"
 ---
 
 ```{r packages}
@@ -152,7 +152,7 @@ performance <- data$performance
 metadata <- data$metadata
 shap <- data$shap
 assessment_card <- data$assessment_card %>%
-  select(meta_pin, meta_card_num, pred_card_initial_fmv, meta_nbhd_code, meta_township_code, !!sym(params$added_feature))
+  select(meta_pin, loc_longitude, loc_latitude, meta_card_num, pred_card_initial_fmv, meta_nbhd_code, meta_township_code, !!sym(params$added_feature))
 
 assessment_pin <- data$assessment_pin
 
@@ -215,16 +215,16 @@ assessment_pin_comparison <- data_comparison$assessment_pin %>%
 ```
 
 ```{r}
-# assessment_data <- read_parquet("assessment_data.parquet")
-# assessment_pin <- read_parquet("assessment_pin.parquet")
-# assessment_card <- read_parquet("assessment_card.parquet")
-# performance <- read_parquet("performance.parquet")
-# shap <- read_parquet("shap.parquet")
-# metadata <- read_parquet("metadata.parquet")
-# assessment_pin_comparison <- read_parquet("assessment_pin_comparison.parquet")
-# model_performance_assessment_comparison <- read_parquet("model_performance_assessment_comparison.parquet")
-# shap_comparison <- read_parquet("shap_comparison.parquet")
-# metadata_comparison <- read_parquet("metadata_comparison.parquet")
+assessment_data <- read_parquet("assessment_data.parquet")
+assessment_pin <- read_parquet("assessment_pin.parquet")
+assessment_card <- read_parquet("assessment_card.parquet")
+performance <- read_parquet("performance.parquet")
+shap <- read_parquet("shap.parquet")
+metadata <- read_parquet("metadata.parquet")
+assessment_pin_comparison <- read_parquet("assessment_pin_comparison.parquet")
+model_performance_assessment_comparison <- read_parquet("model_performance_assessment_comparison.parquet")
+shap_comparison <- read_parquet("shap_comparison.parquet")
+metadata_comparison <- read_parquet("metadata_comparison.parquet")
 ```
 
 
@@ -237,24 +237,18 @@ assessment_data_small <- assessment_data %>%
 
 working_data_card <- shap %>%
   select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_feature)) %>%
-  rename(!!sym(params$added_feature_shap) := !!sym(params$added_feature)) %>%
+  rename(!!params$added_feature_shap := !!sym(params$added_feature)) %>%
+  inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
   inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
   group_by(meta_nbhd_code) %>%
-  mutate(!!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
-    !!paste0(params$added_feature, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_feature_shap)), 0.9, na.rm = TRUE),
-    mean_value_shap = mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
-    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE),
-    shap_relative = percent((!!sym(params$added_feature_shap) / pred_card_initial_fmv), accuracy = 0.01),
-  ) %>%
-  ungroup()
-
-
-working_data_pin <- assessment_data_small %>%
-  group_by(meta_nbhd_code) %>%
   mutate(
+    !!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
+    !!paste0(params$added_feature, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_feature_shap)), 0.9, na.rm = TRUE),
     !!paste0(params$added_feature, "_neighborhood_mean") := mean(!!sym(params$added_feature), na.rm = TRUE),
     !!paste0(params$added_feature, "_neighborhood_median") := median(!!sym(params$added_feature), na.rm = TRUE),
-    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE)
+    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE),
+    mean_value = mean(abs(!!sym(paste0(params$added_feature_shap))), na.rm = TRUE),
+    median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
   ) %>%
   ungroup() %>%
   inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
@@ -268,6 +262,7 @@ working_data_pin <- assessment_data_small %>%
     pred_pin_initial_fmv_comp = pred_pin_initial_fmv
   ) %>%
   mutate(
+    shap_relative = percent((!!sym(params$added_feature_shap) / pred_pin_initial_fmv_new), accuracy = 0.01),
     diff_pred_pin_final_fmv = round(pred_pin_final_fmv_new - pred_pin_final_fmv_comp, 2),
     pred_pin_final_fmv_new = scales::dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comparison = scales::dollar(pred_pin_final_fmv_comp),
@@ -276,14 +271,13 @@ working_data_pin <- assessment_data_small %>%
     pred_pin_initial_fmv_comp = scales::dollar(pred_pin_initial_fmv_comp)
   )
 
+# Filter to pin for clarity in later work
+working_data_pin <- working_data_card %>%
+  distinct(meta_pin, .keep_all = TRUE)
+
 nbhd <- ccao::nbhd_shp
 
-spatial_data_card <- working_data_card %>%
-  distinct(meta_nbhd_code, .keep_all = TRUE) %>%
-  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  st_as_sf()
-
-spatial_data_pin <- working_data_pin %>%
+spatial_data <- working_data_card %>%
   distinct(meta_nbhd_code, .keep_all = TRUE) %>%
   inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   st_as_sf()
@@ -1201,7 +1195,7 @@ The spatial analysis is broken up into a few sections. The first panel looks at 
 
 ```{r mean_feature}
 if (params$type == "categorical") {
-  spatial_data_pin %>%
+  spatial_data %>%
     ggplot() +
     geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_plurality_type")))) +
     scale_fill_viridis_d(option = "viridis", name = "Type of Plurality") +
@@ -1210,7 +1204,7 @@ if (params$type == "categorical") {
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 } else {
-  spatial_data_pin %>%
+  spatial_data %>%
     ggplot() +
     geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_neighborhood_mean")))) +
     scale_fill_viridis_c(option = "viridis", name = "Value") +
@@ -1222,7 +1216,7 @@ if (params$type == "categorical") {
 ### Mean Absolute SHAP
 
 ```{r mean_shap}
-spatial_data_card %>%
+spatial_data %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_mean")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
@@ -1233,7 +1227,7 @@ spatial_data_card %>%
 ### 90th Percentile of Absolute SHAP
 
 ```{r 90th_percentile_shap}
-spatial_data_card %>%
+spatial_data %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_90th")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
