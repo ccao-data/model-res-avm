@@ -1265,18 +1265,17 @@ assessment_pin %>%
 
 
 ```{r leaflet_function}
-create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = "loc_longitude", latitude = "loc_latitude") {
-  # Convert the dataset to an sf object
-  dataset_sf <- dataset %>%
-    filter(!is.na(!!sym(longitude)) & !is.na(!!sym(latitude))) %>%
-    st_as_sf(coords = c(longitude, latitude), crs = 4326)
-
+create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", longitude = "loc_longitude", latitude = "loc_latitude") {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
     right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
 
-  # Create the color palette
-  pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
+  # Create the color palette based on order_scheme
+  if (order_scheme == "low") {
+    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]], reverse = TRUE)
+  } else {
+    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
+  }
 
   # Calculate the bounding box of the filtered neighborhoods
   bbox <- st_bbox(nbhd_borders)
@@ -1308,7 +1307,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
     addLegend(
       "bottomright",
       pal = pal,
-      values = ~ dataset[[legend_value]],
+      values = dataset[[legend_value]],
       title = legend_title
     )
 }
@@ -1326,7 +1325,7 @@ highest_100 <- working_data_pin %>%
   arrange(desc(!!sym(params$added_feature))) %>%
   slice(1:100)
 
-create_leaflet_map(highest_100, params$added_feature, "Largest 100 Values")
+create_leaflet_map(highest_100, params$added_feature, "Largest 100 Values", order_scheme = "high")
 ```
 
 ### Lowest 100 Values
@@ -1337,7 +1336,7 @@ lowest_100 <- working_data_pin %>%
   arrange(!!sym(params$added_feature)) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, params$added_feature, "Lowest 100 Values")
+create_leaflet_map(lowest_100, params$added_feature, "Lowest 100 Values", order_scheme = "low")
 ```
 
 ### Highest 100 SHAP Values
@@ -1358,7 +1357,7 @@ lowest_100 <- working_data_card %>%
   arrange(!!sym((params$added_feature_shap))) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, params$added_feature_shap, "Lowest 100 SHAPs")
+create_leaflet_map(lowest_100, params$added_feature_shap, "Lowest 100 SHAPs", order_scheme = "low")
 ```
 
 ### 100 Largest FMV Increases
@@ -1378,7 +1377,7 @@ largest_fmv_decreases <- working_data_pin %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases")
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases", order_scheme = "low")
 ```
 
 ### 100 Largest FMV Initial Increases
@@ -1399,7 +1398,7 @@ largest_fmv_decreases <- working_data_pin %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases")
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low")
 ```
 ## Largest FMV Increase no Multicards
 
@@ -1422,7 +1421,7 @@ largest_fmv_decreases <- working_data_card %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", order_scheme = "low")
 ```
 
 
@@ -1460,17 +1459,19 @@ low_mean_data <- filtered_data %>%
   filter(meta_nbhd_code %in% selected_nbhd_codes[1:2])
 ```
 
-### 2 Lowest SHAP Neighborhoods
-
-```{r}
-create_leaflet_map(low_mean_data, params$added_feature_shap, "SHAP Values")
-```
 
 ### 2 Highest SHAP Neighborhoods
 
 ```{r}
 create_leaflet_map(high_mean_data, params$added_feature_shap, "SHAP Values")
 ```
+### 2 Lowest SHAP Neighborhoods
+
+
+```{r}
+create_leaflet_map(low_mean_data, params$added_feature_shap, "SHAP Values")
+```
+
 
 :::
 
@@ -1501,7 +1502,7 @@ bottom_10_data <- working_data_card %>%
   top_n(-10, wt = !!sym(paste0(params$added_feature_shap))) %>%
   ungroup()
 
-create_leaflet_map(bottom_10_data, params$added_feature_shap, "SHAP Values")
+create_leaflet_map(bottom_10_data, params$added_feature_shap, "SHAP Values", order_scheme = "low")
 ```
 
 ### 10 Highest Relative SHAP values per neighborhood
@@ -1524,7 +1525,7 @@ bottom_10_data_relative <- working_data_card %>%
   top_n(-10, wt = shap_relative_value) %>%
   ungroup()
 
-create_leaflet_map(bottom_10_data_relative, params$added_feature_shap, "Relative SHAP Values")
+create_leaflet_map(bottom_10_data_relative, params$added_feature_shap, "Relative SHAP Values", order_scheme = "low")
 ```
 
 :::
