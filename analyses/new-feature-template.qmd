@@ -1331,11 +1331,13 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 ```
 
 ## Mapping the Highest and Lowest 100 Values
-Three different types of high and low values are produced; the values of the feature we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
+Three different types of high and low values are produced; the values of the feature we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. 
 
 ::: panel-tabset
 
 ### Largest 100 Values
+
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
 
 ```{r}
 highest_100 <- working_data_pin %>%
@@ -1346,6 +1348,8 @@ create_leaflet_map(highest_100, params$added_feature, "Largest 100 Values", orde
 ```
 
 ### Lowest 100 Values
+
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
 
 ```{r}
 lowest_100 <- working_data_pin %>%
@@ -1378,6 +1382,8 @@ create_leaflet_map(lowest_100, params$added_feature_shap, "Lowest 100 SHAPs", or
 ```
 
 ### 100 Largest FMV Increases
+
+Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact. 
 ```{r}
 largest_fmv_increases <- working_data_pin %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
@@ -1389,6 +1395,7 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 
 ### 100 Largest FMV Decreases
 
+Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact. 
 ```{r}
 largest_fmv_decreases <- working_data_pin %>%
   arrange(diff_pred_pin_final_fmv) %>%
