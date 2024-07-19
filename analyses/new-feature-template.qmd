@@ -234,13 +234,16 @@ assessment_data_small <- assessment_data %>%
   select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, meta_township_name, !!sym(params$added_feature))
 
 # Create a card level dataset
-
 working_data_card <- shap %>%
   select(meta_pin, meta_card_num, pred_card_shap_baseline_fmv, !!sym(params$added_feature)) %>%
   rename(!!params$added_feature_shap := !!sym(params$added_feature)) %>%
   inner_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
   rename(added_feature_card = !!sym(params$added_feature)) %>%
-  inner_join(assessment_data_small, by = c("meta_pin", "meta_card_num")) %>%
+  inner_join(
+    assessment_data %>%
+      select(meta_pin, meta_card_num, meta_nbhd_code, loc_longitude, loc_latitude, meta_township_name, !!sym(params$added_feature)),
+    by = c("meta_pin", "meta_card_num")
+  ) %>%
   group_by(meta_nbhd_code) %>%
   mutate(
     !!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
@@ -527,7 +530,7 @@ shap %>%
 
 :::
 
-## Correlation between Added feature and Other features
+## Correlation between Added Feature and Other Features
 
 Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
 
@@ -589,8 +592,9 @@ if (params$type == "continuous") {
 }
 ```
 
-## Correlation Matrix
+## Correlation Plot
 
+This selects the 10 most correlated features (in terms of absolute value) from the previous chart and creates a correlation plot
 ```{r}
 # Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
 assessment_data %>%
@@ -840,6 +844,7 @@ create_summary_table <- function(data, added_feature) {
 
   kable_chart <- combined_data %>%
     select(feature, median_abs_shap, median_shap, rank_abs) %>%
+    clean_column_values("feature") %>%
     mutate(across(where(is.numeric), round, 2))
 
   datatable_chart <- datatable(kable_chart,
@@ -1143,6 +1148,7 @@ shap_comparison %>%
   ) %>%
   pivot_longer(cols = everything(), names_to = c("feature", ".value"), names_sep = "_diff_|_comp_|_new_") %>%
   arrange(feature) %>%
+  clean_column_values("feature") %>%
   mutate(across(where(is.numeric), dollar, scale = 1, accuracy = 0.01)) %>%
   datatable(
     options = list(
@@ -1164,6 +1170,7 @@ correlation_value <- cor(pull(working_data_card, params$added_feature_shap), pul
 
 If the added feature leads to a significant change in predicted values, its correlation with the SHAP values should have a high absolute value. That correlation is `r round(correlation_value, 2)`.
 
+## Box Plot comparing SHAP and the Added Feature
 
 ```{r shap_feature_plot}
 num_digits <- working_data_card %>%
@@ -1183,8 +1190,8 @@ if (params$type == "continuous") {
     xlab("Feature Value") +
     ylab("SHAP Value") +
     scale_x_discrete(labels = function(x) {
-      x <- gsub("\\.[^,\\]]*", "", x) # Remove everything between . and , or ]
-      x <- gsub("[^0-9,,]", "", x) # Keep only numbers and ,
+      x <- gsub("\\.[^,\\]]*", "", x) # Clean the factor levels for chart
+      x <- gsub("[^0-9,,]", "", x)
       gsub(",", "-", x)
     }) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -1210,7 +1217,7 @@ The spatial analysis is broken up into a few sections. The first panel looks at 
 
 ::: panel-tabset
 
-### Mean feature
+### Mean Value of the Feature by Neighborhood
 
 ```{r mean_feature}
 if (params$type == "categorical") {
@@ -1232,7 +1239,7 @@ if (params$type == "categorical") {
 }
 ```
 
-### Mean Absolute SHAP
+### Mean Absolute SHAP Value
 
 ```{r mean_shap}
 spatial_data %>%
@@ -1424,7 +1431,7 @@ largest_fmv_decreases <- working_data_pin %>%
 
 create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low")
 ```
-## Largest FMV Increase no Multicards
+## Largest FMV Increases no Multicards
 
 ```{r}
 largest_fmv_increases <- working_data_card %>%
@@ -1436,6 +1443,7 @@ largest_fmv_increases <- working_data_card %>%
 
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
 ```
+## Largest FMV Decreases no Multicards
 
 ```{r}
 largest_fmv_decreases <- working_data_card %>%
@@ -1518,7 +1526,7 @@ top_10_data <- working_data_card %>%
 create_leaflet_map(top_10_data, params$added_feature_shap, "SHAP Values")
 ```
 
-### 10 Lowest SHAP values per neighborhood
+### 10 Lowest SHAP values per Neighborhood
 
 ```{r}
 bottom_10_data <- working_data_card %>%
@@ -1529,11 +1537,11 @@ bottom_10_data <- working_data_card %>%
 create_leaflet_map(bottom_10_data, params$added_feature_shap, "SHAP Values", order_scheme = "low")
 ```
 
-### 10 Highest Relative SHAP values per neighborhood
+### 10 Highest Relative SHAP values per Neighborhood
 
 ```{r}
 top_10_data_relative <- working_data_card %>%
-  mutate(shap_relative_value = !!sym(params$added_feature_shap) / median_card_value) %>%
+  mutate(shap_relative_value = !!sym(params$added_feature_shap) / pred_card_initial_fmv) %>%
   group_by(meta_nbhd_code) %>%
   top_n(10, wt = shap_relative_value) %>%
   ungroup()
@@ -1544,7 +1552,7 @@ create_leaflet_map(top_10_data_relative, "shap_relative_value", "Relative SHAP V
 ### Bottom 10 Relative SHAP Values per Neighborhood
 ```{r}
 bottom_10_data_relative <- working_data_card %>%
-  mutate(shap_relative_value = !!sym(params$added_feature_shap) / median_card_value) %>%
+  mutate(shap_relative_value = !!sym(params$added_feature_shap) / pred_card_initial_fmv) %>%
   group_by(meta_nbhd_code) %>%
   top_n(-10, wt = shap_relative_value) %>%
   ungroup()
