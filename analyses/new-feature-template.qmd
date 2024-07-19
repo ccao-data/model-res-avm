@@ -245,12 +245,15 @@ working_data_card <- shap %>%
   mutate(
     !!paste0(params$added_feature, "_shap_neighborhood_mean") := mean(abs(!!sym(params$added_feature_shap)), na.rm = TRUE),
     !!paste0(params$added_feature, "_shap_neighborhood_90th") := quantile(abs(!!sym(params$added_feature_shap)), 0.9, na.rm = TRUE),
-    !!paste0(params$added_feature, "_neighborhood_mean") := mean(!!sym(params$added_feature), na.rm = TRUE),
-    !!paste0(params$added_feature, "_neighborhood_median") := median(!!sym(params$added_feature), na.rm = TRUE),
-    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE),
     mean_value = mean(abs(!!sym(paste0(params$added_feature_shap))), na.rm = TRUE),
     median_card_value = median(pred_card_initial_fmv, na.rm = TRUE)
   ) %>%
+  ungroup() %>%
+  group_by(meta_nbhd_code, meta_pin) %>%
+  mutate(
+    !!paste0(params$added_feature, "_neighborhood_mean") := mean(!!sym(params$added_feature), na.rm = TRUE),
+    !!paste0(params$added_feature, "_neighborhood_median") := median(!!sym(params$added_feature), na.rm = TRUE),
+    !!paste0(params$added_feature, "_neighborhood_90th") := quantile(!!sym(params$added_feature), 0.9, na.rm = TRUE)) %>%
   ungroup() %>%
   inner_join(assessment_pin %>% select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv), by = "meta_pin") %>%
   rename(
@@ -270,7 +273,23 @@ working_data_card <- shap %>%
     diff_pred_pin_initial_fmv = round(pred_pin_initial_fmv_new - pred_pin_initial_fmv_comp, 2),
     pred_pin_initial_fmv_new = scales::dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = scales::dollar(pred_pin_initial_fmv_comp)
-  )
+  ) 
+
+temp_plurality <- working_data_card %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  group_by(meta_nbhd_code) %>%
+  summarize(
+    plurality_type = ifelse(sum(get(params$added_feature)) == 0, NA,
+                            as.character(names(which.max(table(get(params$added_feature)))))),
+    plurality_percentage = ifelse(sum(get(params$added_feature)) == 0, NA,
+                                  max(get(params$added_feature)) / sum(get(params$added_feature)) * 100)
+  ) %>%
+  ungroup()
+
+# Join the temporary dataset back to the original dataset
+working_data_card <- working_data_card %>%
+  left_join(temp_plurality, by = "meta_nbhd_code")
+
 
 # Filter to pin for clarity in later work
 working_data_pin <- working_data_card %>%
@@ -576,13 +595,16 @@ if (params$type == "continuous") {
 ## Correlation Matrix
 
 ```{r}
+
+# Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
 assessment_data %>%
   select(all_of(top_10_features)) %>%
   na.omit() %>%
   rename_with(~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)) %>%
   rename_with(~ gsub("_", " ", .)) %>%
   cor() %>%
-  corrplot()
+  corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
+
 ```
 
 # Overview of Model Metrics
