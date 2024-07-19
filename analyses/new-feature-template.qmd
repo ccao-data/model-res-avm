@@ -1273,8 +1273,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, longitude = 
 
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
-    st_transform(crs = st_crs(dataset_sf)) %>%
-    filter(st_intersects(., dataset_sf, sparse = FALSE) %>% rowSums() > 0)
+    right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
 
   # Create the color palette
   pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
