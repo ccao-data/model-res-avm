@@ -23,6 +23,7 @@ cache/
 *.xlsm
 *.html
 *.rmarkdown
+*.quarto
 
 # Ignore scratch documents
 scratch*.*
