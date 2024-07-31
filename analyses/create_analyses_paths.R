@@ -25,3 +25,28 @@ analyses_paths <- list(
     )
   )
 )
+
+comp_paths <- list(
+  output = list(
+    list(
+      s3 = comp_paths$output$assessment_card$s3,
+      key = "assessment_card"
+    ),
+    list(
+      s3 = comp_paths$output$assessment_pin$s3,
+      key = "assessment_pin"
+    ),
+    list(
+      s3 = comp_paths$output$metadata$s3,
+      key = "metadata"
+    ),
+    list(
+      s3 = comp_paths$output$performance_test$s3,
+      key = "performance"
+    ),
+    list(
+      s3 = comp_paths$output$shap$s3,
+      key = "shap"
+    )
+  )
+)
