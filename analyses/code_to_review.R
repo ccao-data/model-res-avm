@@ -22,6 +22,8 @@ card_nbhd <- card_individual %>%
   summarize(
     avg_target_feature_shap =
       mean(!!sym({{target_feature_shap}}), na.rm = TRUE),
+    avg_target_feature_shap_abs =
+      mean(abs(!!sym({{target_feature_shap}})), na.rm = TRUE),
     avg_pred_card_shap_baseline_fmv =
       mean(pred_card_shap_baseline_fmv, na.rm = TRUE)
   ) %>%
@@ -79,3 +81,6 @@ pin_nbhd <- pin_individual %>%
     nbhd,
     by = c("meta_nbhd_code" = "town_nbhd")
   )
+
+
+
