@@ -3,62 +3,28 @@
 base_paths <- model_file_dict(params$run_id, params$run_id_year)
 comp_paths <-
   model_file_dict(params$comparison_run_id, params$comparison_run_id_year)
+run_id <- params$run_id
+comparison_run_id <- params$comparison_run_id
 
+# Define the list of outputs
+output_list <- list(
+  assessment_card = base_paths$output$assessment_card$s3,
+  assessment_pin = base_paths$output$assessment_pin$s3,
+  metadata = base_paths$output$metadata$s3,
+  performance_test = base_paths$output$performance_test$s3,
+  shap = base_paths$output$shap$s3
+)
+
+# Create the analyses_paths dynamically
 analyses_paths <- list(
-  output = list(
-    list(
-      s3 = base_paths$output$assessment_card$s3,
-      key = "assessment_card"
-    ),
-    list(
-      s3 = base_paths$output$assessment_pin$s3,
-      key = "assessment_pin"
-    ),
-    list(
-      s3 = base_paths$output$metadata$s3,
-      key = "metadata"
-    ),
-    list(
-      s3 = base_paths$output$performance_test$s3,
-      key = "performance"
-    ),
-    list(
-      s3 = base_paths$output$shap$s3,
-      key = "shap"
-    )
-  )
+  output = map(output_list, ~list(s3 = .x, key = gsub(".*\\$", "", deparse(substitute(.x)))))
 )
 
-comp_paths <- list(
-  output = list(
-    list(
-      s3 = comp_paths$output$assessment_card$s3,
-      key = "assessment_card"
-    ),
-    list(
-      s3 = comp_paths$output$assessment_pin$s3,
-      key = "assessment_pin"
-    ),
-    list(
-      s3 = comp_paths$output$metadata$s3,
-      key = "metadata"
-    ),
-    list(
-      s3 = comp_paths$output$performance_test$s3,
-      key = "performance"
-    ),
-    list(
-      s3 = comp_paths$output$shap$s3,
-      key = "shap"
-    )
-  )
-)
-
-## Create base datasets
 
 target_feature_value <- params$added_feature
 target_feature_shap <- params$added_feature_shap
 nbhd <- ccao::nbhd_shp
+
 
 # Selecting and joining relevant data
 card_individual <- shap %>%
