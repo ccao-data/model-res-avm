@@ -4,7 +4,7 @@ nbhd <- ccao::nbhd_shp
 
 
 
-# Selecting and joining relevant data
+# Create a individual card level dataset
 card_individual <- shap_new %>%
   select(
     meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
@@ -23,9 +23,11 @@ card_individual <- shap_new %>%
 card_nbhd <- card_individual %>%
   group_by(meta_nbhd_code) %>%
   summarize(
-    avg_target_feature_shap =
+    !!paste0({{ target_feature_shap }}, "_mean") :=
       mean(!!sym({{ target_feature_shap }}), na.rm = TRUE),
-    avg_target_feature_shap_abs =
+    !!paste0({{ target_feature_shap }}, "_90th") :=
+      quantile(!!sym({{ target_feature_shap }}), probs = 0.9, na.rm = TRUE),
+    !!paste0({{ target_feature_shap }}, "_mean_abs") :=
       mean(abs(!!sym({{ target_feature_shap }})), na.rm = TRUE)
   ) %>%
   ungroup() %>%
@@ -35,6 +37,7 @@ card_nbhd <- card_individual %>%
   ) %>%
   st_as_sf()
 
+## Create a pin level dataset
 pin_individual <- assessment_pin_new %>%
   select(meta_pin, pred_pin_final_fmv, pred_pin_initial_fmv) %>%
   rename(
@@ -74,6 +77,7 @@ pin_individual <- assessment_pin_new %>%
     by = "meta_pin"
   )
 
+# Aggregate to neighborhood level
 pin_nbhd <- pin_individual %>%
   group_by(meta_nbhd_code) %>%
   summarize(
@@ -91,6 +95,7 @@ pin_nbhd <- pin_individual %>%
   ) %>%
   st_as_sf()
 
+# Pivot wider for leaflet maps to allow multiple shap values
 leaflet_data <- card_individual %>%
   select(meta_pin, {{ target_feature_shap }}) %>%
   right_join(pin_individual, by = c("meta_pin" = "meta_pin")) %>%
