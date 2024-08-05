@@ -1,5 +1,3 @@
-
-
 create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", longitude = "loc_longitude", latitude = "loc_latitude") {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
@@ -26,7 +24,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
         "<br>", "FMV Difference: ", dollar(diff_pred_pin_final_fmv),
         collapse = "<br>---<br>"
       ),
-      .groups = 'drop'
+      .groups = "drop"
     )
 
   # Create the leaflet map
@@ -37,7 +35,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       lat = ~ get(latitude),
       radius = 5,
       color = ~ pal(dataset_grouped[[legend_value]]),
-      popup = ~ popup_content
+      popup = ~popup_content
     ) %>%
     addPolygons(
       data = nbhd_borders,
@@ -55,7 +53,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 
 
 highest_100 <- leaflet_data %>%
-  arrange(desc({{target_feature_value}})) %>%
+  arrange(desc({{ target_feature_value }})) %>%
   slice(1:100)
 
-create_leaflet_map(highest_100, {{target_feature_value}}, "Largest 100 Values", order_scheme = "high")
+create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values", order_scheme = "high")

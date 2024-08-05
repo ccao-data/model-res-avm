@@ -84,7 +84,7 @@ all_vars <- ls()
 for (var_name in all_vars) {
   # Check if the variable is a dataframe and ends with _run_id
   if (exists(var_name) && is.data.frame(get(var_name)) &&
-      grepl(paste0("_", params$run_id, "$"), var_name)) {
+    grepl(paste0("_", params$run_id, "$"), var_name)) {
     new_name <- sub(paste0("_", params$run_id, "$"), "_new", var_name)
     assign(new_name, get(var_name), envir = .GlobalEnv)
     rm(list = var_name, envir = .GlobalEnv)
@@ -92,7 +92,7 @@ for (var_name in all_vars) {
 
   # Check if the variable is a dataframe and ends with _comp_run_id
   if (exists(var_name) && is.data.frame(get(var_name)) &&
-      grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
+    grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
     new_name <- sub(paste0("_", params$comp_run_id, "$"), "_comparison", var_name)
     assign(new_name, get(var_name), envir = .GlobalEnv)
     rm(list = var_name, envir = .GlobalEnv)
@@ -103,7 +103,7 @@ for (var_name in all_vars) {
 for (var_name in all_vars) {
   # Check if the variable is a dataframe and ends with _run_id
   if (exists(var_name) && is.data.frame(get(var_name)) &&
-      grepl(paste0("_", params$run_id, "$"), var_name)) {
+    grepl(paste0("_", params$run_id, "$"), var_name)) {
     new_name <- sub(paste0("_", params$run_id, "$"), "_new", var_name)
     assign(new_name, get(var_name), envir = .GlobalEnv)
     rm(list = var_name, envir = .GlobalEnv)
@@ -111,7 +111,7 @@ for (var_name in all_vars) {
 
   # Check if the variable is a dataframe and ends with _comp_run_id
   if (exists(var_name) && is.data.frame(get(var_name)) &&
-      grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
+    grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
     new_name <- sub(paste0("_", params$comp_run_id, "$"), "_comparison", var_name)
     assign(new_name, get(var_name), envir = .GlobalEnv)
     rm(list = var_name, envir = .GlobalEnv)
@@ -174,13 +174,13 @@ pin_individual <- assessment_pin_new %>%
     diff_pred_pin_final_fmv = round(((
       pred_pin_final_fmv_new -
         pred_pin_final_fmv_comp) /
-        pred_pin_final_fmv_comp), 4),
+      pred_pin_final_fmv_comp), 4),
     pred_pin_final_fmv_new = dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comp = dollar(pred_pin_final_fmv_comp),
     diff_pred_pin_initial_fmv = round(((
       pred_pin_initial_fmv_new -
         pred_pin_initial_fmv_comp) /
-        pred_pin_initial_fmv_comp), 4),
+      pred_pin_initial_fmv_comp), 4),
     pred_pin_initial_fmv_new = dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%

@@ -81,6 +81,3 @@ print(subset_paths)
 
 # Calling the function directly with the subset paths
 model_fetch_run_subset("2024-07-09-cool-takuya", "2024", subset_paths, TRUE)
-
-
-
