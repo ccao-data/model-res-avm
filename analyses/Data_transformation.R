@@ -2,8 +2,6 @@ target_feature_value <- params$added_feature
 target_feature_shap <- params$added_feature_shap
 nbhd <- ccao::nbhd_shp
 
-
-
 # Create a individual card level dataset
 card_individual <- shap_new %>%
   select(
@@ -97,7 +95,7 @@ pin_nbhd <- pin_individual %>%
 
 # Pivot wider for leaflet maps to allow multiple shap values
 leaflet_data <- card_individual %>%
-  select(meta_pin, {{ target_feature_shap }}) %>%
+  select(meta_pin, relative_shap, {{ target_feature_shap }}) %>%
   right_join(pin_individual, by = c("meta_pin" = "meta_pin")) %>%
   group_by(meta_pin) %>%
   mutate(variable_index = row_number()) %>%
