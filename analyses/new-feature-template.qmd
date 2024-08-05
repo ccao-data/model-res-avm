@@ -175,7 +175,7 @@ fetch_analyses <- function(run_id, year, analyses_paths) {
 }
 
 data <- fetch_analyses(params$run_id, params$run_id_year, analyses_paths)
-metadata_comparison <- fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, comp_paths)
+data_comparison <- fetch_analyses(params$comparison_run_id, params$comparison_run_id_year, comp_paths)
 
 performance <- data$performance
 metadata <- data$metadata

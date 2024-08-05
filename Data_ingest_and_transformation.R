@@ -34,12 +34,12 @@ analyses_paths <- list(
 
 source("analyses/Ingest_script.qmd")
 
-data_new <- fetch_analyses(
+data_new <- model_fetch_run_subset(
   params$run_id,
   params$run_id_year, analyses_paths, TRUE
 )
 
-list2env(data_new, envir = .GlobalEnv)
+list2env(data, envir = .GlobalEnv)
 
 rm(data_new)
 
@@ -84,7 +84,7 @@ all_vars <- ls()
 for (var_name in all_vars) {
   # Check if the variable is a dataframe and ends with _run_id
   if (exists(var_name) && is.data.frame(get(var_name)) &&
-    grepl(paste0("_", params$run_id, "$"), var_name)) {
+      grepl(paste0("_", params$run_id, "$"), var_name)) {
     new_name <- sub(paste0("_", params$run_id, "$"), "_new", var_name)
     assign(new_name, get(var_name), envir = .GlobalEnv)
     rm(list = var_name, envir = .GlobalEnv)
@@ -92,7 +92,26 @@ for (var_name in all_vars) {
 
   # Check if the variable is a dataframe and ends with _comp_run_id
   if (exists(var_name) && is.data.frame(get(var_name)) &&
-    grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
+      grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
+    new_name <- sub(paste0("_", params$comp_run_id, "$"), "_comparison", var_name)
+    assign(new_name, get(var_name), envir = .GlobalEnv)
+    rm(list = var_name, envir = .GlobalEnv)
+  }
+}
+
+# Loop through the variables and rename those that match the patterns
+for (var_name in all_vars) {
+  # Check if the variable is a dataframe and ends with _run_id
+  if (exists(var_name) && is.data.frame(get(var_name)) &&
+      grepl(paste0("_", params$run_id, "$"), var_name)) {
+    new_name <- sub(paste0("_", params$run_id, "$"), "_new", var_name)
+    assign(new_name, get(var_name), envir = .GlobalEnv)
+    rm(list = var_name, envir = .GlobalEnv)
+  }
+
+  # Check if the variable is a dataframe and ends with _comp_run_id
+  if (exists(var_name) && is.data.frame(get(var_name)) &&
+      grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
     new_name <- sub(paste0("_", params$comp_run_id, "$"), "_comparison", var_name)
     assign(new_name, get(var_name), envir = .GlobalEnv)
     rm(list = var_name, envir = .GlobalEnv)
@@ -155,13 +174,13 @@ pin_individual <- assessment_pin_new %>%
     diff_pred_pin_final_fmv = round(((
       pred_pin_final_fmv_new -
         pred_pin_final_fmv_comp) /
-      pred_pin_final_fmv_comp), 4),
+        pred_pin_final_fmv_comp), 4),
     pred_pin_final_fmv_new = dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comp = dollar(pred_pin_final_fmv_comp),
     diff_pred_pin_initial_fmv = round(((
       pred_pin_initial_fmv_new -
         pred_pin_initial_fmv_comp) /
-      pred_pin_initial_fmv_comp), 4),
+        pred_pin_initial_fmv_comp), 4),
     pred_pin_initial_fmv_new = dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%
@@ -194,41 +213,7 @@ pin_nbhd <- pin_individual_new %>%
 
 leaflet_data <- card_individual %>%
   select(meta_pin, {{ target_feature_shap }}) %>%
-  right_join(pin_individual,
-    by = c("meta_pin" = "meta_pin")
-  )
-
-
-## Example of violin plots
-
-pin_individual %>%
-  filter(
-    diff_pred_pin_initial_fmv >=
-      ## Keeping all values creates really weird charts
-      quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
-      diff_pred_pin_initial_fmv <=
-        quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
-  ) %>%
-  mutate(
-    mean_value = mean(diff_pred_pin_initial_fmv, na.rm = TRUE),
-    median_value = median(diff_pred_pin_initial_fmv, na.rm = TRUE)
-  ) %>%
-  ggplot(aes(x = 1, y = diff_pred_pin_initial_fmv)) +
-  geom_violin(fill = "blue", color = "black", alpha = 0.7) +
-  geom_hline(aes(yintercept = mean_value, color = "Mean"),
-    linetype = "dashed", linewidth = 1, show.legend = TRUE
-  ) +
-  geom_hline(aes(yintercept = median_value, color = "Median"),
-    linetype = "dashed", linewidth = 1, show.legend = TRUE
-  ) +
-  scale_color_manual(
-    name = "Statistics",
-    values = c(Mean = "red", Median = "green"),
-    labels = c("Mean", "Median")
-  ) +
-  scale_y_continuous(labels = scales::percent) + # Format y-axis as percentages
-  labs(
-    x = "Distribution",
-    y = "Change in FMV"
-  ) +
-  theme_minimal()
+  group_by(meta_pin) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(names_from = row, values_from = {{ target_feature_shap }}, names_prefix = "target_feature_shap_") %>%
+  right_join(pin_individual, by = c("meta_pin" = "meta_pin"))
