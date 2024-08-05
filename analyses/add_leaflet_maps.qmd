@@ -1,6 +1,5 @@
-
 ```{r}
-create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", longitude = "loc_longitude", latitude = "loc_latitude") {
+create_leaflet_map <- function(dataset, legend_value, legend_title, target_feature_shap, order_scheme = "high", longitude = "loc_longitude", latitude = "loc_latitude") {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
     right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
@@ -15,6 +14,25 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
   # Calculate the bounding box of the filtered neighborhoods
   bbox <- st_bbox(nbhd_borders)
 
+  # Function to dynamically create the SHAP values string
+  generate_shap_values <- function(dataset, target_feature_shap) {
+    shap_values <- ""
+    i <- 1
+    while (TRUE) {
+      column_name <- paste0(target_feature_shap, "_", i)
+      if (!column_name %in% names(dataset)) {
+        break
+      }
+      shap_value <- dataset[[column_name]][1]  # Ensure we're dealing with a single value
+      if (is.na(shap_value)) {
+        break
+      }
+      shap_values <- paste0(shap_values, "<br> SHAP_", i, ": ", dollar(shap_value))
+      i <- i + 1
+    }
+    return(shap_values)
+  }
+
   # Create the leaflet map
   leaflet(dataset) %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
@@ -25,12 +43,12 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       color = ~ pal(dataset[[legend_value]]),
       popup = ~ paste(
         "<br>", "Pin: ", dataset$meta_pin,
-        "<br>", "SHAP:", dollar(dataset[[params$added_feature_shap]]),
+        generate_shap_values(dataset, target_feature_shap),
         "<br>", "Relative SHAP", dataset$shap_relative,
         "<br>", "Feature:", sprintf("%.2f", dataset[[params$added_feature]]),
         "<br>", "New FMV:", dataset$pred_pin_final_fmv_new,
-        "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comparison,
-        "<br>", "FMV Difference: ", dollar(dataset$diff_pred_pin_final_fmv)
+        "<br>", "Comparison FMV: ", dataset$pred_pin_final_fmv_comp,
+        "<br>", "FMV Difference: ", scales::percent(dataset$diff_pred_pin_final_fmv)
       )
     ) %>%
     addPolygons(
@@ -46,29 +64,30 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       title = legend_title
     )
 }
+
+
 ```
 
-
 ## Highest and Lowest 100 Values
-Three different types of high and low values are produced; the values of the feature we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV. 
+
+Three different types of high and low values are produced; the values of the feature we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV.
 
 ::: panel-tabset
-
 ### Largest 100 Values
 
-Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
 ```{r}
 highest_100 <- leaflet_data %>%
   arrange(desc(!!sym(params$added_feature))) %>%
   slice(1:100)
 
-create_leaflet_map(highest_100, params$added_feature, "Largest 100 Values", order_scheme = "high")
+create_leaflet_map(highest_100, params$added_feature, "Largest 100 Values", "target_feature_shap")
 ```
 
 ### Lowest 100 Values
 
-Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation. 
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
 ```{r}
 lowest_100 <- working_data_pin %>%
@@ -82,7 +101,7 @@ create_leaflet_map(lowest_100, params$added_feature, "Lowest 100 Values", order_
 ### Highest 100 SHAP Values
 
 ```{r}
-highest_100 <- working_data_card %>%
+highest_100 <- leaflet_data %>%
   arrange(desc(!!sym(params$added_feature_shap))) %>%
   slice(1:100)
 
@@ -99,15 +118,13 @@ lowest_100 <- working_data_card %>%
 
 create_leaflet_map(lowest_100, params$added_feature_shap, "Lowest 100 SHAPs", order_scheme = "low")
 ```
-
 :::
 
 ## Largest FMV Changes
 
-Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact. 
+Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact.
 
 ::: panel-tabset
-
 ### 100 Largest FMV Increases
 
 ```{r}
@@ -121,7 +138,8 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 
 ### 100 Largest FMV Decreases
 
-Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact. 
+Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact.
+
 ```{r}
 largest_fmv_decreases <- working_data_pin %>%
   arrange(diff_pred_pin_final_fmv) %>%
@@ -131,6 +149,7 @@ create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FM
 ```
 
 ### 100 Largest FMV Initial Increases
+
 ```{r}
 largest_fmv_increases <- working_data_card %>%
   arrange(desc(diff_pred_pin_initial_fmv)) %>%
@@ -139,7 +158,6 @@ largest_fmv_increases <- working_data_card %>%
 # Call the function with the pre-sliced dataset
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases")
 ```
-
 
 ### 100 Largest Initial FMV Decreases
 
@@ -150,6 +168,7 @@ largest_fmv_decreases <- working_data_pin %>%
 
 create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low")
 ```
+
 ## Largest FMV Increases no Multicards
 
 ```{r}
@@ -162,6 +181,7 @@ largest_fmv_increases <- working_data_card %>%
 
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
 ```
+
 ## Largest FMV Decreases no Multicards
 
 ```{r}
@@ -174,9 +194,6 @@ largest_fmv_decreases <- working_data_card %>%
 
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", order_scheme = "low")
 ```
-
-
-
 :::
 
 ## Neighborhoods with the Highest and Lowest SHAP Values
@@ -210,17 +227,15 @@ low_mean_data <- filtered_data %>%
   filter(meta_nbhd_code %in% selected_nbhd_codes[1:2])
 ```
 
-
 ### 2 Highest SHAP Neighborhoods
 
 ```{r}
 create_leaflet_map(high_mean_data, params$added_feature_shap, "SHAP Values")
 ```
-### 2 Lowest SHAP Neighborhoods
 
+### 2 Lowest SHAP Neighborhoods
 
 ```{r}
 create_leaflet_map(low_mean_data, params$added_feature_shap, "SHAP Values")
 ```
-
 :::
