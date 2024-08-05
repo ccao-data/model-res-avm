@@ -1,104 +1,3 @@
-base_paths <- model_file_dict(params$run_id, params$run_id_year)
-comparison_paths <- model_file_dict(
-  params$comparison_run_id,
-  params$comparison_run_id_year
-)
-run_id <- params$run_id
-comparison_run_id <- params$comparison_run_id
-
-
-analyses_paths <- list(
-  output = list(
-    list(
-      s3 = base_paths$output$assessment_card$s3,
-      key = "assessment_card"
-    ),
-    list(
-      s3 = base_paths$output$assessment_pin$s3,
-      key = "assessment_pin"
-    ),
-    list(
-      s3 = base_paths$output$metadata$s3,
-      key = "metadata"
-    ),
-    list(
-      s3 = base_paths$output$performance_test$s3,
-      key = "performance_test"
-    ),
-    list(
-      s3 = base_paths$output$shap$s3,
-      key = "shap"
-    )
-  )
-)
-
-source("analyses/Ingest_script.qmd")
-
-data_new <- model_fetch_run_subset(
-  params$run_id,
-  params$run_id_year, analyses_paths, TRUE
-)
-
-list2env(data_new, envir = .GlobalEnv)
-
-rm(data_new)
-
-comparison_paths <- list(
-  output = list(
-    list(
-      s3 = base_paths$output$assessment_card$s3,
-      key = "assessment_card"
-    ),
-    list(
-      s3 = base_paths$output$assessment_pin$s3,
-      key = "assessment_pin"
-    ),
-    list(
-      s3 = base_paths$output$metadata$s3,
-      key = "metadata"
-    ),
-    list(
-      s3 = base_paths$output$performance_test$s3,
-      key = "performance_test"
-    ),
-    list(
-      s3 = base_paths$output$shap$s3,
-      key = "shap"
-    )
-  )
-)
-
-data_comparison <- model_fetch_run_subset(
-  params$comparison_run_id,
-  params$comparison_run_id_year,
-  comparison_paths, TRUE
-)
-
-list2env(data_comparison, envir = .GlobalEnv)
-
-rm(data_comparison)
-
-all_vars <- ls()
-
-# Loop through the variables and rename those that match the patterns
-for (var_name in all_vars) {
-  # Check if the variable is a dataframe and ends with _run_id
-  if (exists(var_name) && is.data.frame(get(var_name)) &&
-      grepl(paste0("_", params$run_id, "$"), var_name)) {
-    new_name <- sub(paste0("_", params$run_id, "$"), "_new", var_name)
-    assign(new_name, get(var_name), envir = .GlobalEnv)
-    rm(list = var_name, envir = .GlobalEnv)
-  }
-
-  # Check if the variable is a dataframe and ends with _comp_run_id
-  if (exists(var_name) && is.data.frame(get(var_name)) &&
-      grepl(paste0("_", params$comp_run_id, "$"), var_name)) {
-    new_name <- sub(paste0("_", params$comp_run_id, "$"), "_comparison", var_name)
-    assign(new_name, get(var_name), envir = .GlobalEnv)
-    rm(list = var_name, envir = .GlobalEnv)
-  }
-}
-
 target_feature_value <- params$added_feature
 target_feature_shap <- params$added_feature_shap
 nbhd <- ccao::nbhd_shp
@@ -155,13 +54,13 @@ pin_individual <- assessment_pin_new %>%
     diff_pred_pin_final_fmv = round(((
       pred_pin_final_fmv_new -
         pred_pin_final_fmv_comp) /
-        pred_pin_final_fmv_comp), 4),
+      pred_pin_final_fmv_comp), 4),
     pred_pin_final_fmv_new = dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comp = dollar(pred_pin_final_fmv_comp),
     diff_pred_pin_initial_fmv = round(((
       pred_pin_initial_fmv_new -
         pred_pin_initial_fmv_comp) /
-        pred_pin_initial_fmv_comp), 4),
+      pred_pin_initial_fmv_comp), 4),
     pred_pin_initial_fmv_new = dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%
@@ -175,7 +74,7 @@ pin_individual <- assessment_pin_new %>%
     by = "meta_pin"
   )
 
-pin_nbhd <- pin_individual_new %>%
+pin_nbhd <- pin_individual %>%
   group_by(meta_nbhd_code) %>%
   summarize(
     !!paste0({{ target_feature_value }}, "_neighborhood_mean") :=
@@ -194,6 +93,12 @@ pin_nbhd <- pin_individual_new %>%
 
 leaflet_data <- card_individual %>%
   select(meta_pin, {{ target_feature_shap }}) %>%
-  right_join(pin_individual,
-             by = c("meta_pin" = "meta_pin")
-  )
+  right_join(pin_individual, by = c("meta_pin" = "meta_pin")) %>%
+  group_by(meta_pin) %>%
+  mutate(variable_index = row_number()) %>%
+  pivot_wider(
+    names_from = variable_index,
+    values_from = {{ target_feature_shap }},
+    names_prefix = paste0(deparse(substitute(target_feature_shap)), "_")
+  ) %>%
+  ungroup()
