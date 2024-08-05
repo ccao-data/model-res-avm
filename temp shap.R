@@ -25,10 +25,6 @@ create_shapviz <- function(shap_df, assessment_df, idx) {
   )
 }
 
-shap_idx_full_model <- which(
-  as.character(assessment_card_filtered$township_code) %in% shap_townships_list
-)
-
 shapviz::shapviz(
   object = shap_df_filtered %>%
     select(all_of(shap_predictors)) %>%
