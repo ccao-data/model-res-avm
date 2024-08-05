@@ -1,0 +1,103 @@
+```{r}
+ratio_stats <- performance_test_new %>%
+  filter(by_class == FALSE,
+         geography_type %in% c("nbhd_code", "township_code", "triad_code")) %>%
+  inner_join(
+    performance_test_comparison %>%
+      filter(by_class == FALSE,
+             geography_type %in% c("nbhd_code", "township_code", "triad_code")),
+    by = c("geography_type", "geography_id", "triad_code"), 
+    suffix = c("_new", "_comparison")
+  ) %>%
+ mutate(
+    cod_diff = cod_new - cod_comparison,
+    prd_diff = prd_new - prd_comparison,
+    prb_diff = prd_new - prb_comparison,
+    mki_diff = mki_new - mki_comparison,
+    median_ratio_diff = median_ratio_new - median_ratio_comparison,
+    rmse_diff = rmse_new - rmse_comparison,
+    r_squared_diff = r_squared_new - r_squared_comparison
+  ) %>%
+  select(
+    triad_code,
+    geography_type,
+    geography_id,
+    cod_new,
+    cod_comparison,
+    cod_diff,
+    prd_new,
+    prd_comparison,
+    prd_diff,
+    prd_new,
+    prb_comparison,
+    prb_diff,
+    mki_new,
+    mki_comparison,
+    mki_diff,
+    median_ratio_new,
+    median_ratio_comparison,
+    median_ratio_diff,
+    rmse_new,
+    rmse_comparison,
+    rmse_diff,
+    r_squared_new,
+    r_squared_comparison,
+    r_squared_diff
+  ) %>%
+  group_split(geography_type)
+
+```
+
+
+::: {.panel-tabset}
+
+## Triad
+
+```{r}
+ratio_stats[[3]] %>%
+  select(-c(geography_id, geography_type)) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+  
+```
+
+## Township
+
+```{r}
+ratio_stats[[2]] %>%
+  select(-c(geography_type)) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+```
+
+## Neighborhood
+
+```{r}
+ratio_stats[[1]] %>%
+  select(-c(geography_type)) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+```
+
+:::
