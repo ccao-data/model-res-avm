@@ -1,15 +1,19 @@
 ```{r}
 ratio_stats <- performance_test_new %>%
-  filter(by_class == FALSE,
-         geography_type %in% c("nbhd_code", "township_code", "triad_code")) %>%
+  filter(
+    by_class == FALSE,
+    geography_type %in% c("nbhd_code", "township_code", "triad_code")
+  ) %>%
   inner_join(
     performance_test_comparison %>%
-      filter(by_class == FALSE,
-             geography_type %in% c("nbhd_code", "township_code", "triad_code")),
-    by = c("geography_type", "geography_id", "triad_code"), 
+      filter(
+        by_class == FALSE,
+        geography_type %in% c("nbhd_code", "township_code", "triad_code")
+      ),
+    by = c("geography_type", "geography_id", "triad_code"),
     suffix = c("_new", "_comparison")
   ) %>%
- mutate(
+  mutate(
     cod_diff = cod_new - cod_comparison,
     prd_diff = prd_new - prd_comparison,
     prb_diff = prd_new - prb_comparison,
@@ -45,7 +49,6 @@ ratio_stats <- performance_test_new %>%
     r_squared_diff
   ) %>%
   group_split(geography_type)
-
 ```
 
 
@@ -65,7 +68,6 @@ ratio_stats[[3]] %>%
     ),
     rownames = FALSE
   )
-  
 ```
 
 ## Township
