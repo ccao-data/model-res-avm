@@ -105,4 +105,4 @@ s3_path_assessment <- paste0(
   substr(lockfile_assessment, 3, nchar(lockfile_assessment))
 )
 
-assessment_data_new <- s3read_using(s3_path_assessment)
+assessment_data_new <- read_parquet(s3_path_assessment)
