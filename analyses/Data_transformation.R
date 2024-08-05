@@ -18,8 +18,6 @@ card_individual <- shap_new %>%
     relative_shap = round({{ target_feature_shap }} / pred_card_initial_fmv, 2)
   )
 
-assessment_card_new$pred_card_initial_fmv
-
 # Summarizing data by neighborhood code
 card_nbhd <- card_individual %>%
   group_by(meta_nbhd_code) %>%
