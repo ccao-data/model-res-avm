@@ -1,0 +1,67 @@
+
+# Spatial Analysis
+
+This panel looks at four stats, aggregated on the neighborhood level; the mean of the feature added feature, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature.
+
+## Neighborhood Values
+
+::: panel-tabset
+
+### Mean Value of the Feature by Neighborhood
+
+```{r mean_feature}
+pin_nbhd %>%
+    ggplot() +
+    geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_neighborhood_mean")))) +
+    scale_fill_viridis_c(option = "viridis", name = "Value") +
+    theme_void() +
+    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Mean Absolute SHAP Value
+
+```{r mean_shap}
+card_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_mean")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### 90th Percentile of Absolute SHAP
+
+```{r 90th_percentile_shap}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_90th")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Median change in Neighborhood FMV
+This value is defined as the neighborhood level median increase in value when adding the new feature to the model. For example, a value of 1% would mean that adding the feature increased properties within a neighborhood by 1%.
+
+```{r neighborhood_change}
+assessment_pin %>%
+  select(meta_pin, loc_longitude, loc_latitude, pred_pin_final_fmv) %>%
+  rename(pred_pin_final_fmv_new = pred_pin_final_fmv) %>%
+  inner_join(assessment_pin_comparison, by = "meta_pin") %>%
+  rename(pred_pin_final_fmv_comparison = pred_pin_final_fmv) %>%
+  group_by(meta_nbhd_code) %>%
+  summarize(
+    median_fmv_new = median(pred_pin_final_fmv_new, na.rm = TRUE),
+    median_fmv_comparison = median(pred_pin_final_fmv_comparison, na.rm = TRUE),
+    fmv_ratio = (median_fmv_new / median_fmv_comparison) / median_fmv_comparison
+  ) %>%
+  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = fmv_ratio)) +
+  scale_fill_viridis_c(option = "viridis", name = "FMV Ratio", labels = scales::percent_format(accuracy = 0.001)) +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+:::
