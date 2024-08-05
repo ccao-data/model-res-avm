@@ -14,13 +14,13 @@ ratio_stats <- performance_test_new %>%
     suffix = c("_new", "_comparison")
   ) %>%
   mutate(
-    cod_diff = cod_new - cod_comparison,
-    prd_diff = prd_new - prd_comparison,
-    prb_diff = prd_new - prb_comparison,
-    mki_diff = mki_new - mki_comparison,
-    median_ratio_diff = median_ratio_new - median_ratio_comparison,
-    rmse_diff = rmse_new - rmse_comparison,
-    r_squared_diff = r_squared_new - r_squared_comparison
+    cod_diff = round(cod_new - cod_comparison, 2),
+    prd_diff = round(prd_new - prd_comparison, 2),
+    prb_diff = round(prd_new - prb_comparison, 2),
+    mki_diff = round(mki_new - mki_comparison, 2),
+    median_ratio_diff = round(median_ratio_new - median_ratio_comparison, 2),
+    rmse_diff = round(rmse_new - rmse_comparison, 2),
+    r_squared_diff = round(r_squared_new - r_squared_comparison, 2)
   ) %>%
   select(
     triad_code,
