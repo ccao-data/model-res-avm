@@ -4,70 +4,68 @@
 
 ::: {.panel-tabset}
 
+```{r}
+library(dplyr)
+library(DT)
+
+# Function to create summary tables
+create_summary_table <- function(data, target_feature, group_by_column = NULL) {
+  target_feature <- sym(target_feature)
+
+  summary_data <- if (!is.null(group_by_column)) {
+    data %>%
+      group_by(!!sym(group_by_column)) %>%
+      summarize(
+        Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
+        Median = round(median(!!target_feature, na.rm = TRUE), 2),
+        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
+        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+      )
+  } else {
+    data %>%
+      summarize(
+        Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
+        Median = round(median(!!target_feature, na.rm = TRUE), 2),
+        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
+        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+      )
+  }
+
+  # Display the summary in a datatable
+  datatable(
+    summary_data,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
+```
 
 ## Overall
 
 ```{r mean_median}
-pin_individual %>%
-    summarize(
-    Mean = round(mean(!!sym({{target_feature_value}}), na.rm = TRUE), 2),
-    Median = round(median(!!sym({{target_feature_value}}), na.rm = TRUE), 2),
-    '10th Percentile' = round(quantile(!!sym({{target_feature_value}}), 0.1, na.rm = TRUE), 2),
-    '90th Percentile' = round(quantile(!!sym({{target_feature_value}}), 0.9, na.rm = TRUE), 2),
-    Mode = round(as.numeric(names(sort(table(!!sym({{target_feature_value}})), decreasing = TRUE)[1])), 2)) %>%
-    datatable(
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
+# For Overall
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }})
 ```
 
 ## Township
 ```{r mean_median_township}
-pin_individual %>%
-    group_by(meta_township_name) %>%
-    summarize(
-    Mean = round(mean(!!sym({{target_feature_value}}), na.rm = TRUE), 2),
-    Median = round(median(!!sym({{target_feature_value}}), na.rm = TRUE), 2),
-    '10th Percentile' = round(quantile(!!sym({{target_feature_value}}), 0.1, na.rm = TRUE), 2),
-    '90th Percentile' = round(quantile(!!sym({{target_feature_value}}), 0.9, na.rm = TRUE), 2),
-    Mode = round(as.numeric(names(sort(table(!!sym({{target_feature_value}})), decreasing = TRUE)[1])), 2)) %>%
-    datatable(
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
+# For Township
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
 ```
 
 
 ## Neighborhood
 
 ```{r mean_median_neighborhood}
-pin_individual %>%
-    group_by(meta_nbhd_code) %>%
-    summarize(
-    Mean = round(mean(!!sym({{target_feature_value}}), na.rm = TRUE), 2),
-    Median = round(median(!!sym({{target_feature_value}}), na.rm = TRUE), 2),
-    '10th Percentile' = round(quantile(!!sym({{target_feature_value}}), 0.1, na.rm = TRUE), 2),
-    '90th Percentile' = round(quantile(!!sym({{target_feature_value}}), 0.9, na.rm = TRUE), 2),
-    Mode = round(as.numeric(names(sort(table(!!sym({{target_feature_value}})), decreasing = TRUE)[1])), 2)) %>%
-    datatable(
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
+# For Neighborhood
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
 ```
 
 :::
@@ -76,25 +74,24 @@ pin_individual %>%
 
 ```{r }
 pin_individual %>%
-    mutate(
-      mean_value = mean(!!sym({{target_feature_value}}), na.rm = TRUE),
-      median_value = median(!!sym({{target_feature_value}}), na.rm = TRUE)
-    ) %>%
-    ggplot(aes(x = !!sym({{target_feature_value}}))) +
-    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    scale_color_manual(
-      name = "Statistics",
-      values = c(Mean = "red", Median = "green"),
-      labels = c("Mean", "Median")
-    ) +
-    labs(
-      x = {{target_feature_value}},
-      y = "Frequency"
-    ) +
-    theme_minimal()
-
+  mutate(
+    mean_value = mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
+    median_value = median(!!sym({{ target_feature_value }}), na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = !!sym({{ target_feature_value }}))) +
+  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  scale_color_manual(
+    name = "Statistics",
+    values = c(Mean = "red", Median = "green"),
+    labels = c("Mean", "Median")
+  ) +
+  labs(
+    x = {{ target_feature_value }},
+    y = "Frequency"
+  ) +
+  theme_minimal()
 ```
 
 
@@ -132,14 +129,14 @@ pin_individual %>%
 ```{r}
 shap_new %>%
   filter(
-    !!sym({{target_feature_value}}) >= quantile(!!sym({{target_feature_value}}), 0.025, na.rm = TRUE) &
-      !!sym({{target_feature_value}}) <= quantile(!!sym({{target_feature_value}}), 0.975, na.rm = TRUE)
+    !!sym({{ target_feature_value }}) >= quantile(!!sym({{ target_feature_value }}), 0.025, na.rm = TRUE) &
+      !!sym({{ target_feature_value }}) <= quantile(!!sym({{ target_feature_value }}), 0.975, na.rm = TRUE)
   ) %>%
   mutate(
-    mean_value = mean(!!sym({{target_feature_value}}), na.rm = TRUE),
-    median_value = median(!!sym({{target_feature_value}}), na.rm = TRUE)
+    mean_value = mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
+    median_value = median(!!sym({{ target_feature_value }}), na.rm = TRUE)
   ) %>%
-  ggplot(aes(x = !!sym({{target_feature_value}}))) +
+  ggplot(aes(x = !!sym({{ target_feature_value }}))) +
   geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
   geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
