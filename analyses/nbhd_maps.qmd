@@ -44,7 +44,7 @@ card_nbhd %>%
 This value is defined as the neighborhood level median increase in value when adding the new feature to the model. For example, a value of 1% would mean that adding the feature increased properties within a neighborhood by 1%.
 
 ```{r neighborhood_change}
-assessment_pin %>%
+assessment_pin_new %>%
   select(meta_pin, loc_longitude, loc_latitude, pred_pin_final_fmv) %>%
   rename(pred_pin_final_fmv_new = pred_pin_final_fmv) %>%
   inner_join(assessment_pin_comparison, by = "meta_pin") %>%
