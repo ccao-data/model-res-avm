@@ -5,9 +5,6 @@
 ::: {.panel-tabset}
 
 ```{r}
-library(dplyr)
-library(DT)
-
 # Function to create summary tables
 create_summary_table <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
