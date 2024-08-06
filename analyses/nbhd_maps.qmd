@@ -11,22 +11,22 @@ This panel looks at four stats, aggregated on the neighborhood level; the mean o
 
 ```{r mean_feature}
 pin_nbhd %>%
-    ggplot() +
-    geom_sf(aes(fill = !!sym(paste0({{target_feature_value}}, "_neighborhood_mean")))) +
-    scale_fill_viridis_c(option = "viridis", name = "Value") +
-    theme_void() +
-    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
 ### Median Value of the Feature by Neighborhood
 
 ```{r mean_feature}
 pin_nbhd %>%
-    ggplot() +
-    geom_sf(aes(fill = !!sym(paste0({{target_feature_value}}, "_neighborhood_median")))) +
-    scale_fill_viridis_c(option = "viridis", name = "Value") +
-    theme_void() +
-    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
 ### Mean Absolute SHAP Value
@@ -34,7 +34,7 @@ pin_nbhd %>%
 ```{r mean_shap}
 card_nbhd %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0({{target_feature_shap}}, "_mean_abs")))) +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_mean_abs")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -45,7 +45,7 @@ card_nbhd %>%
 ```{r 90th_percentile_shap}
 card_nbhd %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0({{target_feature_shap}}, "_90th")))) +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_90th")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
