@@ -1,7 +1,6 @@
 
 # Descriptive Statistics
 
-
 ::: {.panel-tabset}
 
 ```{r}
@@ -56,7 +55,6 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 # For Township
 create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
 ```
-
 
 ## Neighborhood
 
