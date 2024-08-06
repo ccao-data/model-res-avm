@@ -120,19 +120,19 @@ shap_df_filtered_long %>%
 ```{r violin_plots_shap_to_feature}
 # Calculate the number of digits
 num_digits <- card_individual %>%
-  pull(!!sym(target_feature_shap)) %>%
+  pull({{target_feature_shap}}) %>%
   max(na.rm = TRUE) %>%
   floor() %>%
   as.character() %>%
   str_length()
 
 quantiles <- card_individual %>%
-  pull(!!sym(target_feature_shap)) %>%
+  pull({{target_feature_shap}}) %>%
   quantile(c(0.025, 0.975), na.rm = TRUE)
 
 # Create the violin plot, excluding outliers only in the display
 card_individual %>%
-  select(meta_card_num, meta_pin, !!sym(target_feature_shap), !!sym(target_feature_value)) %>%
+  select(meta_card_num, meta_pin, {{target_feature_shap}}, {{target_feature_value}}) %>%
   mutate(bin = cut_number(!!sym(target_feature_value), n = 10, dig.lab = num_digits)) %>%
   ggplot(aes(x = bin, y = !!sym(target_feature_shap))) +
   geom_violin(fill = "#69b3a2") +
