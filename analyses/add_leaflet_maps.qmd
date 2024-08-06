@@ -25,11 +25,10 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       popup = ~ {
         shap_values <- dataset %>%
           select(starts_with("target_feature_shap_")) %>%
-          summarise_all(~ ifelse(!is.na(.), sprintf("SHAP: %.2f", .), NA)) %>%
+          summarise_all(~ ifelse(!is.na(.), sprintf("SHAP: %s", scales::dollar(.)), NA)) %>%
           apply(1, function(row) {
             paste(na.omit(row), collapse = "<br>")
           })
-
         paste(
           "Pin: ", meta_pin,
           ifelse(shap_values == "", "", paste0("<br>", shap_values)),
