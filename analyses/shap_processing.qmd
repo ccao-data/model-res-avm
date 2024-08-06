@@ -55,10 +55,10 @@ shap_df_filtered_long %>%
   ) %>%
   clean_column_values("feature") %>%
   select(
-    Feature = feature, 
-    'Median Absolute Shap', 
-    'Median SHAP', 
-    'Rank Absolute' = rank_absolute
+    Feature = feature,
+    "Median Absolute Shap",
+    "Median SHAP",
+    "Rank Absolute" = rank_absolute
   ) %>%
   datatable(
     options = list(
@@ -69,7 +69,6 @@ shap_df_filtered_long %>%
     ),
     rownames = FALSE
   )
-
 ```
 
 ### SHAP Median Absolute Value by Township
@@ -99,11 +98,11 @@ shap_df_filtered_long %>%
   ) %>%
   clean_column_values("feature") %>%
   select(
-    Township = township_name, 
-    `Township Code` = township_code, 
-    Feature = feature, 
-    `Median Absolute Shap`, 
-    `Median SHAP`, 
+    Township = township_name,
+    `Township Code` = township_code,
+    Feature = feature,
+    `Median Absolute Shap`,
+    `Median SHAP`,
     `Township Rank Absolute` = township_rank_absolute
   ) %>%
   datatable(
@@ -115,9 +114,6 @@ shap_df_filtered_long %>%
     ),
     rownames = FALSE
   )
-
-
-
 ```
 
 
@@ -148,7 +144,7 @@ card_individual %>%
     x <- gsub("[^0-9,,]", "", x)
     gsub(",", "-", x)
   }) +
-  coord_cartesian(ylim = quantiles) +  # Focus only on the range between the 2.5% and 97.5% quantiles
+  coord_cartesian(ylim = quantiles) + # Focus only on the range between the 2.5% and 97.5% quantiles
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
