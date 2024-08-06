@@ -53,10 +53,6 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       title = legend_title
     )
 }
-
-
-
-
 ```
 
 ## Highest and Lowest 100 Values
@@ -70,10 +66,10 @@ Be careful interpreting values which are the max and min of the raw value, since
 
 ```{r}
 highest_100 <- leaflet_data %>%
-   arrange(desc(!!sym(target_feature_value))) %>%
-   dplyr::slice(1:100)
+  arrange(desc(!!sym(target_feature_value))) %>%
+  dplyr::slice(1:100)
 
-create_leaflet_map(highest_100, {{target_feature_value}}, "Largest 100 Values")
+create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values")
 ```
 
 ### Lowest 100 Values
@@ -83,10 +79,10 @@ Be careful interpreting values which are the max and min of the raw value, since
 ```{r}
 lowest_100 <- leaflet_data %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
-  arrange(!!sym({{target_feature_value}})) %>%
+  arrange(!!sym({{ target_feature_value }})) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, {{target_feature_value}}, "Lowest 100 Values", order_scheme = "low")
+create_leaflet_map(lowest_100, {{ target_feature_value }}, "Lowest 100 Values", order_scheme = "low")
 ```
 
 ### Highest 100 SHAP Values
