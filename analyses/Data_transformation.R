@@ -8,14 +8,14 @@ card_individual <- shap_new %>%
     meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
     {{ target_feature_value }}
   ) %>%
-  rename(!!target_feature_shap := {{ target_feature_value }}) %>%
+  rename(!!sym(target_feature_shap) := !!sym(target_feature_value)) %>%
   inner_join(
     assessment_card_new %>%
-      select(meta_pin, meta_card_num, pred_card_initial_fmv),
+      select(meta_pin, meta_nbhd_code, meta_card_num, pred_card_initial_fmv, {{ target_feature_value }}),
     by = c("meta_pin", "meta_card_num")
   ) %>%
   mutate(
-    relative_shap = round({{ target_feature_shap }} / pred_card_initial_fmv, 2)
+    relative_shap = round(!!sym(target_feature_shap) / pred_card_initial_fmv, 2)
   )
 
 # Summarizing data by neighborhood code
