@@ -11,11 +11,11 @@ card_individual <- shap_new %>%
   rename(!!sym(target_feature_shap) := !!sym(target_feature_value)) %>%
   inner_join(
     assessment_card_new %>%
-      select(meta_pin, meta_nbhd_code, meta_card_num, pred_card_initial_fmv, {{ target_feature_value }}),
+      select(meta_pin, meta_nbhd_code,
+             meta_card_num,
+             pred_card_initial_fmv,
+             {{ target_feature_value }}),
     by = c("meta_pin", "meta_card_num")
-  ) %>%
-  mutate(
-    relative_shap = round(!!sym(target_feature_shap) / pred_card_initial_fmv, 2)
   )
 
 # Summarizing data by neighborhood code
@@ -53,16 +53,14 @@ pin_individual <- assessment_pin_new %>%
     pred_pin_initial_fmv_comp = pred_pin_initial_fmv
   ) %>%
   mutate(
-    diff_pred_pin_final_fmv = round(((
-      pred_pin_final_fmv_new -
-        pred_pin_final_fmv_comp) /
-      pred_pin_final_fmv_comp), 4),
+    diff_pred_pin_final_fmv =
+      round(((pred_pin_final_fmv_new - pred_pin_final_fmv_comp) /
+               pred_pin_final_fmv_comp), 4),
     pred_pin_final_fmv_new = dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comp = dollar(pred_pin_final_fmv_comp),
-    diff_pred_pin_initial_fmv = round(((
-      pred_pin_initial_fmv_new -
-        pred_pin_initial_fmv_comp) /
-      pred_pin_initial_fmv_comp), 4),
+    diff_pred_pin_initial_fmv =
+      round(((pred_pin_initial_fmv_new - pred_pin_initial_fmv_comp) /
+               pred_pin_initial_fmv_comp), 4),
     pred_pin_initial_fmv_new = dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%
@@ -97,12 +95,25 @@ pin_nbhd <- pin_individual %>%
 # Pivot wider for leaflet maps to allow multiple shap values
 leaflet_data <- card_individual %>%
   select(meta_pin, relative_shap, {{ target_feature_shap }}) %>%
-  right_join(pin_individual, by = c("meta_pin" = "meta_pin")) %>%
   group_by(meta_pin) %>%
-  mutate(variable_index = row_number()) %>%
-  pivot_wider(
-    names_from = variable_index,
-    values_from = {{ target_feature_shap }},
-    names_prefix = paste0(deparse(substitute(target_feature_shap)), "_")
+  mutate(
+    shap_total = sum(!!sym({{ target_feature_shap }})),
+    variable_index = row_number(),
+    name_col = paste0(deparse(substitute(
+                                         target_feature_shap)), "_",
+    variable_index)
   ) %>%
-  ungroup()
+  pivot_wider(
+    id_cols = c("meta_pin", "shap_total"),
+    names_from = name_col,
+    values_from = !!sym({{ target_feature_shap }})
+  ) %>%
+  ungroup() %>%
+  right_join(pin_individual, by = c("meta_pin" = "meta_pin")) %>%
+  mutate(
+    pred_pin_initial_fmv_new_numeric =
+      as.numeric(gsub("[$,]", "", pred_pin_initial_fmv_new)),
+    relative_shap =
+      round(as.numeric(shap_total) / pred_pin_initial_fmv_new_numeric, 2)
+  ) %>%
+  distinct(meta_pin, .keep_all = TRUE)
