@@ -1,7 +1,7 @@
 
 # Spatial Analysis
 
-This panel looks at four stats, aggregated on the neighborhood level; the mean of the feature added feature, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature.
+This panel looks at four stats, aggregated on the neighborhood level; the mean of the added feature, the median of the added feature, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature.
 
 ## Neighborhood Values
 
@@ -13,6 +13,17 @@ This panel looks at four stats, aggregated on the neighborhood level; the mean o
 pin_nbhd %>%
     ggplot() +
     geom_sf(aes(fill = !!sym(paste0({{target_feature_value}}, "_neighborhood_mean")))) +
+    scale_fill_viridis_c(option = "viridis", name = "Value") +
+    theme_void() +
+    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Median Value of the Feature by Neighborhood
+
+```{r mean_feature}
+pin_nbhd %>%
+    ggplot() +
+    geom_sf(aes(fill = !!sym(paste0({{target_feature_value}}, "_neighborhood_median")))) +
     scale_fill_viridis_c(option = "viridis", name = "Value") +
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
