@@ -11,10 +11,12 @@ card_individual <- shap_new %>%
   rename(!!sym(target_feature_shap) := !!sym(target_feature_value)) %>%
   inner_join(
     assessment_card_new %>%
-      select(meta_pin, meta_nbhd_code,
-             meta_card_num,
-             pred_card_initial_fmv,
-             {{ target_feature_value }}),
+      select(
+        meta_pin, meta_nbhd_code,
+        meta_card_num,
+        pred_card_initial_fmv,
+        {{ target_feature_value }}
+      ),
     by = c("meta_pin", "meta_card_num")
   )
 
@@ -55,12 +57,12 @@ pin_individual <- assessment_pin_new %>%
   mutate(
     diff_pred_pin_final_fmv =
       round(((pred_pin_final_fmv_new - pred_pin_final_fmv_comp) /
-               pred_pin_final_fmv_comp), 4),
+        pred_pin_final_fmv_comp), 4),
     pred_pin_final_fmv_new = dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comp = dollar(pred_pin_final_fmv_comp),
     diff_pred_pin_initial_fmv =
       round(((pred_pin_initial_fmv_new - pred_pin_initial_fmv_comp) /
-               pred_pin_initial_fmv_comp), 4),
+        pred_pin_initial_fmv_comp), 4),
     pred_pin_initial_fmv_new = dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%
@@ -99,9 +101,12 @@ leaflet_data <- card_individual %>%
   mutate(
     shap_total = sum(!!sym({{ target_feature_shap }})),
     variable_index = row_number(),
-    name_col = paste0(deparse(substitute(
-                                         target_feature_shap)), "_",
-    variable_index)
+    name_col = paste0(
+      deparse(substitute(
+        target_feature_shap
+      )), "_",
+      variable_index
+    )
   ) %>%
   pivot_wider(
     id_cols = c("meta_pin", "shap_total"),
