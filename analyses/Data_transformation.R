@@ -68,7 +68,7 @@ pin_individual <- assessment_pin_new %>%
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%
   inner_join(
-    assessment_data %>%
+    assessment_data_new %>%
       distinct(meta_pin, .keep_all = TRUE) %>%
       select(
         meta_pin, meta_nbhd_code, loc_longitude,
@@ -78,34 +78,37 @@ pin_individual <- assessment_pin_new %>%
   )
 
 # Aggregate to neighborhood level
-pin_nbhd <- pin_individual %>%
-  group_by(meta_nbhd_code) %>%
-  if (type == "continuous") {
+if (type == "continuous") {
+  pin_nbhd <- pin_individual %>%
+    group_by(meta_nbhd_code) %>%
     summarize(
-      !!paste0({{ target_feature_value }}, "_neighborhood_mean") :=
-        mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
-      !!paste0({{ target_feature_value }}, "_neighborhood_median") :=
-        median(!!sym({{ target_feature_value }}), na.rm = TRUE),
-      !!paste0({{ target_feature_value }}, "_neighborhood_90th") :=
-        quantile(!!sym({{ target_feature_value }}), 0.9, na.rm = TRUE)
+      !!paste0(target_feature_value, "_neighborhood_mean") :=
+        mean(!!sym(target_feature_value), na.rm = TRUE),
+      !!paste0(target_feature_value, "_neighborhood_median") :=
+        median(!!sym(target_feature_value), na.rm = TRUE),
+      !!paste0(target_feature_value, "_neighborhood_90th") :=
+        quantile(!!sym(target_feature_value), 0.9, na.rm = TRUE)
     )
-  } else {
-    summarize(
-      !!paste0({{ target_feature_value }}, "_most_common_value") :=
-        names(sort(table(!!sym({{ target_feature_value }})), decreasing = TRUE)[1]),
-      !!paste0({{ target_feature_value }}, "_top5_common_values_percent") := {
-        freq <- sort(table(!!sym({{ target_feature_value }})), decreasing = TRUE)
-        top5 <- head(freq, 5)
-        sum(top5) / sum(freq) * 100
-      }
-    )
-  }
-ungroup() %>%
-  inner_join(
-    nbhd,
-    by = c("meta_nbhd_code" = "town_nbhd")
-  ) %>%
-  st_as_sf()
+} else {
+  {
+    pin_nbhd <- pin_individual %>%
+      group_by(meta_nbhd_code, !!sym({{ target_feature_value }})) %>%
+      count() %>%
+      ungroup() %>%
+      group_by(meta_nbhd_code) %>%
+      mutate(percentage = n / sum(n) * 100) %>%
+      select(meta_nbhd_code, !!sym({{ target_feature_value }}), percentage) %>%
+      arrange(meta_nbhd_code, desc(percentage)) %>% # Arrange to have the highest percentage first
+      mutate(rank = row_number()) %>%
+      pivot_wider(
+        names_from = rank,
+        values_from = c(!!sym({{ target_feature_value }}), percentage),
+        names_glue = "{.value}_{rank}"
+      )
+  } %>%
+    inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+    st_as_sf()
+}
 
 # Pivot wider for leaflet maps to allow multiple shap values
 leaflet_data <- card_individual %>%
