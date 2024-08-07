@@ -1,5 +1,6 @@
 target_feature_value <- params$added_feature
 target_feature_shap <- params$added_feature_shap
+type <- params$type
 nbhd <- ccao::nbhd_shp
 
 # Create a individual card level dataset
@@ -79,15 +80,27 @@ pin_individual <- assessment_pin_new %>%
 # Aggregate to neighborhood level
 pin_nbhd <- pin_individual %>%
   group_by(meta_nbhd_code) %>%
-  summarize(
-    !!paste0({{ target_feature_value }}, "_neighborhood_mean") :=
-      mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
-    !!paste0({{ target_feature_value }}, "_neighborhood_median") :=
-      median(!!sym({{ target_feature_value }}), na.rm = TRUE),
-    !!paste0({{ target_feature_value }}, "_neighborhood_90th") :=
-      quantile(!!sym({{ target_feature_value }}), 0.9, na.rm = TRUE)
-  ) %>%
-  ungroup() %>%
+  if (type == "continuous") {
+    summarize(
+      !!paste0({{ target_feature_value }}, "_neighborhood_mean") :=
+        mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
+      !!paste0({{ target_feature_value }}, "_neighborhood_median") :=
+        median(!!sym({{ target_feature_value }}), na.rm = TRUE),
+      !!paste0({{ target_feature_value }}, "_neighborhood_90th") :=
+        quantile(!!sym({{ target_feature_value }}), 0.9, na.rm = TRUE)
+    )
+  } else {
+    summarize(
+      !!paste0({{ target_feature_value }}, "_most_common_value") :=
+        names(sort(table(!!sym({{ target_feature_value }})), decreasing = TRUE)[1]),
+      !!paste0({{ target_feature_value }}, "_top5_common_values_percent") := {
+        freq <- sort(table(!!sym({{ target_feature_value }})), decreasing = TRUE)
+        top5 <- head(freq, 5)
+        sum(top5) / sum(freq) * 100
+      }
+    )
+  }
+ungroup() %>%
   inner_join(
     nbhd,
     by = c("meta_nbhd_code" = "town_nbhd")
