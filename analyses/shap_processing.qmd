@@ -148,3 +148,18 @@ card_individual %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
+### Scatterplot Demonstrating the Relationship between SHAP and Feature Value
+
+```{r}
+shapviz::shapviz(
+  object = shap_new %>%
+    select(all_of(shap_predictors)) %>%
+    as.matrix(),
+  X = assessment_card_new %>%
+    select(all_of(shap_predictors)),
+  baseline = shap_new$pred_card_shap_baseline_fmv[1]
+) %>%
+  shapviz::sv_dependence(
+    v = target_feature_value
+    )
+```
