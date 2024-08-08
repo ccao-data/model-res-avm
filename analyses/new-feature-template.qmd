@@ -434,8 +434,6 @@ if (params$type == "continuous") {
   )
 }
 ```
-
-
 :::
 
 ## Histogram
@@ -538,28 +536,39 @@ shap %>%
 
 ## Correlation Between Added Feature and Other Features
 
+
 Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
+
 
 ```{r correlation between features}
 clean_column_values <- function(df, column_name) {
   df[[column_name]] <- df[[column_name]] %>%
     gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .) %>%
-    gsub("_", " ", .)
+    gsub("_", " ", .) %>%
+    stringr::str_to_title()
   return(df)
 }
 
 columns_to_remove <- c(
-  "time_sale_year",
-  "time_sale_month_of_year",
-  "time_sale_day_of_year",
-  "time_sale_day_of_week",
-  "time_sale_day_of_month",
-  "time_sale_day"
+  "Sale Year",
+  "Sale Month of Year",
+  "Sale Day of Year",
+  "Sale Day of Week",
+  "Sale Day of Month"
 )
 
 if (params$type == "continuous") {
-  # Select only numeric columns from assessment_data and remove the specified columns
-  numeric_cols <- assessment_data %>%
+  numeric_cols <- assessment_data_new %>%
+    rename(
+      "Property Class Meta" = meta_class,
+      "Property Class Char" = char_class
+    ) %>%
+    ccao::vars_rename(
+      names_from = "model",
+      names_to = "pretty",
+      type = "inplace",
+      dict = ccao::vars_dict
+    ) %>%
     select_if(is.numeric) %>%
     select(-all_of(columns_to_remove))
 
@@ -569,12 +578,12 @@ if (params$type == "continuous") {
   # Loop through each numeric column and calculate correlation and absolute correlation
   for (col_name in names(numeric_cols)) {
     # Filter out rows with missing values in the two columns being compared
-    complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data[[params$added_feature]])
+    complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data_new[[params$added_feature]])
 
     # Only compute correlation if there are complete cases
     if (sum(complete_cases) > 0) {
-      correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data[[params$added_feature]][complete_cases], use = "complete.obs")
-      abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data[[params$added_feature]][complete_cases]), use = "complete.obs"))
+      correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data_new[[params$added_feature]][complete_cases], use = "complete.obs")
+      abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data_new[[params$added_feature]][complete_cases]), use = "complete.obs"))
       correlation_results <- rbind(correlation_results, data.frame(Feature = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
     }
   }
@@ -588,22 +597,37 @@ if (params$type == "continuous") {
     slice(1:10) %>%
     pull(Feature)
 
-  correlation_results_clean <- clean_column_values(correlation_results, "Feature") %>%
+  correlation_results_clean <- correlation_results %>%
+    clean_column_values("Feature") %>%
     slice(2:n())
+
 
   # Display the correlation results as a scrollable table
   datatable(correlation_results_clean, options = list(scrollX = TRUE, scrollY = TRUE, pageLength = 10, order = list(list(1, "desc"))))
 } else {
-  print(paste("assessment_data$", params$added_feature, " is not numeric.", sep = ""))
+  print(paste("assessment_data_new$", params$added_feature, " is not numeric.", sep = ""))
 }
 ```
+
 
 ## Correlation Plot
 
 This selects the 10 most correlated features (in terms of absolute value) from the previous chart and creates a correlation plot
 ```{r}
 # Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
-assessment_data %>%
+assessment_data_new %>%
+  rename(
+    "Property Class Meta" = meta_class,
+    "Property Class Char" = char_class
+  ) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
+  select_if(is.numeric) %>%
+  select(-all_of(columns_to_remove)) %>%
   select(all_of(top_10_features)) %>%
   na.omit() %>%
   rename_with(~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)) %>%

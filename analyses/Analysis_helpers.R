@@ -74,3 +74,11 @@ rename_var <- function(var_name, suffix, new_suffix) {
     }
   }
 }
+
+clean_column_values <- function(df, column_name) {
+  df[[column_name]] <- df[[column_name]] %>%
+    gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .) %>%
+    gsub("_", " ", .) %>%
+    stringr::str_to_title()
+  return(df)
+}
