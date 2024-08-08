@@ -63,3 +63,14 @@ model_fetch_run_subset <- function(run_id, year, analyses_paths, append_run_id =
   tictoc::toc()
   return(data_list)
 }
+
+
+rename_var <- function(var_name, suffix, new_suffix) {
+  if (exists(var_name) && is.data.frame(get(var_name))) {
+    if (grepl(paste0("_", suffix, "$"), var_name)) {
+      new_name <- sub(paste0("_", suffix, "$"), new_suffix, var_name)
+      assign(new_name, get(var_name), envir = .GlobalEnv)
+      rm(list = var_name, envir = .GlobalEnv)
+    }
+  }
+}
