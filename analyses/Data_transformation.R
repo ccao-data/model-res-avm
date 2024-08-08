@@ -91,22 +91,28 @@ if (type == "continuous") {
     ) %>%
     inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
     st_as_sf()
-} else {{ pin_nbhd <- pin_individual %>%
-  group_by(meta_nbhd_code, !!sym({{ target_feature_value }})) %>%
-  count() %>%
-  ungroup() %>%
-  group_by(meta_nbhd_code) %>%
-  mutate(percentage = n / sum(n) * 100) %>%
-  select(meta_nbhd_code, !!sym({{ target_feature_value }}), percentage) %>%
-  arrange(meta_nbhd_code, desc(percentage)) %>% # Arrange to have the highest percentage first
-  mutate(rank = row_number()) %>%
-  pivot_wider(
-    names_from = rank,
-    values_from = c(!!sym({{ target_feature_value }}), percentage),
-    names_glue = "{.value}_{rank}"
-  ) %>%
-  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
-  st_as_sf() }
+} else {
+  pin_nbhd <- pin_individual %>%
+    group_by(meta_nbhd_code, !!sym(target_feature_value)) %>%
+    count() %>%
+    ungroup() %>%
+    group_by(meta_nbhd_code) %>%
+    mutate(
+      percentage = n / sum(n) * 100
+    ) %>%
+    arrange(meta_nbhd_code, desc(n)) %>%
+    mutate(
+      plurality_factor = first(!!sym(target_feature_value))
+    ) %>%
+    ungroup() %>%
+    select(meta_nbhd_code, !!sym(target_feature_value), percentage, plurality_factor) %>%
+    pivot_wider(
+      names_from = !!sym(target_feature_value),
+      values_from = percentage,
+      names_prefix = "percentage_"
+    ) %>%
+    inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+    st_as_sf()
 }
 
 # Pivot wider for leaflet maps to allow multiple shap values
