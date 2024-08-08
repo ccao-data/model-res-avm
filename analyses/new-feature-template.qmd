@@ -93,7 +93,7 @@ analyses_paths <- list(
   )
 )
 
-source("analyses/Analysis_helpers.R")
+source("Analysis_helpers.R")
 data_new <- model_fetch_run_subset(
   params$run_id,
   params$run_id_year,
@@ -107,24 +107,12 @@ rm(data_new)
 comparison_paths <- list(
   output = list(
     list(
-      s3 = base_paths$output$assessment_card$s3,
-      key = "assessment_card"
-    ),
-    list(
       s3 = base_paths$output$assessment_pin$s3,
       key = "assessment_pin"
     ),
     list(
-      s3 = base_paths$output$metadata$s3,
-      key = "metadata"
-    ),
-    list(
       s3 = base_paths$output$performance_test$s3,
       key = "performance_test"
-    ),
-    list(
-      s3 = base_paths$output$shap$s3,
-      key = "shap"
     )
   )
 )
@@ -146,7 +134,6 @@ for (var_name in all_vars) {
   rename_var(var_name, params$run_id, "_new")
   rename_var(var_name, params$comparison_run_id, "_comparison")
 }
-
 
 lockfile_assessment <- metadata_new$dvc_md5_assessment_data
 
@@ -183,7 +170,7 @@ card_individual <- shap_new %>%
         {{ target_feature_value }}
       ),
     by = c("meta_pin", "meta_card_num")
-  )
+  ) 
 
 # Summarizing data by neighborhood code
 card_nbhd <- card_individual %>%
@@ -281,7 +268,7 @@ if (type == "continuous") {
 
 # Pivot wider for leaflet maps to allow multiple shap values
 leaflet_data <- card_individual %>%
-  select(meta_pin, relative_shap, {{ target_feature_shap }}) %>%
+  select(meta_pin, {{ target_feature_shap }}) %>%
   group_by(meta_pin) %>%
   mutate(
     shap_total = sum(!!sym({{ target_feature_shap }})),
@@ -357,7 +344,6 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
 ## Overall
 
 ```{r mean_median}
-# For Overall
 create_summary_table(pin_individual, target_feature = {{ target_feature_value }})
 ```
 
@@ -376,86 +362,82 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 
 :::
 
-## Histogram
+# Histogram
 
-```{r }
-pin_individual %>%
-  mutate(
-    mean_value = mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
-    median_value = median(!!sym({{ target_feature_value }}), na.rm = TRUE)
-  ) %>%
-  ggplot(aes(x = !!sym({{ target_feature_value }}))) +
-  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  scale_color_manual(
-    name = "Statistics",
-    values = c(Mean = "red", Median = "green"),
-    labels = c("Mean", "Median")
-  ) +
-  labs(
-    x = {{ target_feature_value }},
-    y = "Frequency"
-  ) +
-  theme_minimal()
+
+```{r}
+create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
+  
+  # Conditionally filter outliers if requested
+  if (filter_outliers && !is.null(filter_column)) {
+    data <- data %>%
+      filter(
+        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
+          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
+      )
+  }
+  
+  # Calculate mean and median
+  data <- data %>%
+    mutate(
+      mean_value = mean(!!sym(target_feature), na.rm = TRUE),
+      median_value = median(!!sym(target_feature), na.rm = TRUE)
+    )
+  
+  # Create the plot
+  plot <- data %>%
+    ggplot(aes(x = !!sym(target_feature))) +
+    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    scale_color_manual(
+      name = "Statistics",
+      values = c(Mean = "red", Median = "green"),
+      labels = c("Mean", "Median")
+    ) +
+    labs(
+      x = x_label,
+      y = y_label
+    ) +
+    theme_minimal()
+  
+  return(plot)
+}
+
 ```
 
+## Feature Histogram
+```{r, feature_histogram}
+create_histogram_with_statistics(
+  data = pin_individual,
+  target_feature = target_feature_value,
+  x_label = target_feature_value
+)
+```
 
 ## FMV Change Histogram
 
 This chart shows the distribution of the value of 'diff_pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. The largest 100 increases and decreases are displayed in maps in section X. 
-```{r}
-pin_individual %>%
-  filter(
-    diff_pred_pin_initial_fmv >= quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
-      diff_pred_pin_initial_fmv <= quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
-  ) %>%
-  mutate(
-    mean_value = mean(diff_pred_pin_initial_fmv, na.rm = TRUE),
-    median_value = median(diff_pred_pin_initial_fmv, na.rm = TRUE)
-  ) %>%
-  ggplot(aes(x = diff_pred_pin_initial_fmv)) +
-  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  scale_color_manual(
-    name = "Statistics",
-    values = c(Mean = "red", Median = "green"),
-    labels = c("Mean", "Median")
-  ) +
-  labs(
-    x = "Change in FMV",
-    y = "Frequency"
-  ) +
-  theme_minimal()
+```{r, fmv_change_histogram}
+create_histogram_with_statistics(
+  data = pin_individual,
+  target_feature = "diff_pred_pin_initial_fmv",
+  x_label = "Change in FMV",
+  filter_outliers = TRUE,
+  filter_column = "diff_pred_pin_initial_fmv"
+)
 ```
 
 ## SHAP Histogram
 
 ```{r}
-shap_new %>%
-  filter(
-    !!sym({{ target_feature_value }}) >= quantile(!!sym({{ target_feature_value }}), 0.025, na.rm = TRUE) &
-      !!sym({{ target_feature_value }}) <= quantile(!!sym({{ target_feature_value }}), 0.975, na.rm = TRUE)
-  ) %>%
-  mutate(
-    mean_value = mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
-    median_value = median(!!sym({{ target_feature_value }}), na.rm = TRUE)
-  ) %>%
-  ggplot(aes(x = !!sym({{ target_feature_value }}))) +
-  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-  scale_color_manual(
-    name = "Statistics",
-    values = c(Mean = "red", Median = "green"),
-    labels = c("Mean", "Median")
-  ) +
-  labs(
-    x = "SHAP Value",
-    y = "Frequency"
-  ) +
-  theme_minimal()
+create_histogram_with_statistics(
+  data = shap_new,
+  target_feature = target_feature_value,
+  x_label = "SHAP Value",
+  filter_outliers = TRUE,
+  filter_column = target_feature_value
+)
 ```
 
 :::
@@ -465,14 +447,6 @@ shap_new %>%
 Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
 
 ```{r correlation between features}
-clean_column_values <- function(df, column_name) {
-  df[[column_name]] <- df[[column_name]] %>%
-    gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .) %>%
-    gsub("_", " ", .) %>%
-    stringr::str_to_title()
-  return(df)
-}
-
 columns_to_remove <- c(
   "Sale Year",
   "Sale Month of Year",
@@ -575,14 +549,15 @@ ratio_stats <- performance_test_new %>%
     suffix = c("_new", "_comparison")
   ) %>%
   mutate(
-    cod_diff = round(cod_new - cod_comparison, 2),
-    prd_diff = round(prd_new - prd_comparison, 2),
-    prb_diff = round(prd_new - prb_comparison, 2),
-    mki_diff = round(mki_new - mki_comparison, 2),
-    median_ratio_diff = round(median_ratio_new - median_ratio_comparison, 2),
-    rmse_diff = round(rmse_new - rmse_comparison, 2),
-    r_squared_diff = round(r_squared_new - r_squared_comparison, 2)
+    cod_diff = cod_new - cod_comparison,
+    prd_diff = prd_new - prd_comparison,
+    prb_diff = prd_new - prb_comparison,
+    mki_diff = mki_new - mki_comparison,
+    median_ratio_diff = median_ratio_new - median_ratio_comparison,
+    rmse_diff = rmse_new - rmse_comparison,
+    r_squared_diff = r_squared_new - r_squared_comparison
   ) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 2))) %>%
   select(
     triad_code,
     geography_type,
@@ -609,7 +584,10 @@ ratio_stats <- performance_test_new %>%
     r_squared_comparison,
     r_squared_diff
   ) %>%
-  group_split(geography_type)
+  rename_with(~ str_replace_all(., "_", " ") %>%
+              str_to_title() %>%
+              str_replace_all(., " ", " ")) %>%
+  split(.$'Geography Type')
 ```
 # Ratio Stats
 
@@ -619,7 +597,7 @@ ratio_stats <- performance_test_new %>%
 
 ```{r}
 ratio_stats[[3]] %>%
-  select(-c(geography_id, geography_type)) %>%
+  select(-c('Geography Id', 'Geography Type')) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -635,7 +613,7 @@ ratio_stats[[3]] %>%
 
 ```{r}
 ratio_stats[[2]] %>%
-  select(-c(geography_type)) %>%
+  select(-c('Geography Type')) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -651,7 +629,7 @@ ratio_stats[[2]] %>%
 
 ```{r}
 ratio_stats[[1]] %>%
-  select(-c(geography_type)) %>%
+  select(-c('Geography Type')) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -839,7 +817,7 @@ This panel looks at four stats, aggregated on the neighborhood level; the mean o
 
 ### Mean Value of the Feature by Neighborhood
 
-```{r mean_feature}
+```{r mean_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean")))) +
@@ -850,7 +828,7 @@ pin_nbhd %>%
 
 ### Median Value of the Feature by Neighborhood
 
-```{r mean_feature}
+```{r median_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median")))) +
@@ -861,7 +839,7 @@ pin_nbhd %>%
 
 ### Mean Absolute SHAP Value
 
-```{r mean_shap}
+```{r mean_shap_neighborhood}
 card_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_mean_abs")))) +
@@ -905,6 +883,7 @@ assessment_pin_new %>%
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
+# Leaflet Maps
 :::
 ```{r}
 create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", longitude = "loc_longitude", latitude = "loc_latitude") {
@@ -965,14 +944,12 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 
 ## Highest and Lowest 100 Values
 
-Three different types of high and low values are produced; the values of the feature we are analyzing, the impact that can be determined through the SHAPs, and the largest effects in change in FMV.
-
 ::: panel-tabset
 ### Largest 100 Values
 
 Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
-```{r}
+```{r largest_values}
 highest_100 <- leaflet_data %>%
   arrange(desc(!!sym(target_feature_value))) %>%
   dplyr::slice(1:100)

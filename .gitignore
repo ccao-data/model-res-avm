@@ -30,3 +30,5 @@ scratch*.*
 
 # Python files
 __pycache__
+
+/.quarto/
