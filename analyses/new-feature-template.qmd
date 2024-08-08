@@ -364,6 +364,8 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 
 # Histogram
 
+::: {.panel-tabset}
+
 
 ```{r}
 create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
@@ -442,6 +444,10 @@ create_histogram_with_statistics(
 
 :::
 
+# Correlations
+
+::: panel-tabset
+
 ## Correlation Between Added Feature and Other Features
 
 Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
@@ -507,9 +513,8 @@ if (params$type == "continuous") {
 }
 ```
 
-## Correlation Plot
+## Correlation Plot of 10 Features (absolute value)
 
-This selects the 10 most correlated features (in terms of absolute value) from the previous chart and creates a correlation plot
 ```{r}
 # Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
 assessment_data_new %>%
@@ -646,6 +651,8 @@ ratio_stats[[1]] %>%
 # SHAP
 
 The primary metric that the CCAO Data team uses to assess the importance of a feature is its SHAP value. SHAP values provide the amount of value each feature contributes to a parcel's predicted value. The SHAP value is calculated for each observation in the dataset, and the median SHAP value for a feature is used to determine the relative influence of that feature. The higher the median SHAP value, the more influential the feature is in the model.
+
+::: {.panel-tabset}
 
 ## Absolute Value Rank of SHAP Scores
 
@@ -806,6 +813,7 @@ shapviz::shapviz(
     v = target_feature_value
   )
 ```
+:::
 
 # Spatial Analysis
 
@@ -886,10 +894,17 @@ assessment_pin_new %>%
 # Leaflet Maps
 :::
 ```{r}
-create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", longitude = "loc_longitude", latitude = "loc_latitude") {
+create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", 
+                               longitude = "loc_longitude", latitude = "loc_latitude", 
+                               display_as_percent = FALSE) {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
     right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
+
+  # Adjust the dataset values if display_as_percent is TRUE
+  if (display_as_percent) {
+    dataset[[legend_value]] <- dataset[[legend_value]] * 100
+  }
 
   # Create the color palette based on order_scheme
   if (order_scheme == "low") {
@@ -937,9 +952,11 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       "bottomright",
       pal = pal,
       values = dataset[[legend_value]],
-      title = legend_title
+      title = legend_title,
+      labFormat = if (display_as_percent) labelFormat(suffix = "%") else labelFormat()
     )
 }
+
 ```
 
 ## Highest and Lowest 100 Values
@@ -1004,7 +1021,7 @@ largest_fmv_increases <- leaflet_data %>%
   slice(1:100)
 
 # Call the function with the pre-sliced dataset
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)")
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases",  display_as_percent = TRUE)
 ```
 
 ### 100 Largest FMV Decreases
@@ -1014,7 +1031,7 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases (%)", order_scheme = "low")
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases", order_scheme = "low",  display_as_percent = TRUE)
 ```
 
 ### 100 Largest FMV Initial Increases
@@ -1025,7 +1042,7 @@ largest_fmv_increases <- leaflet_data %>%
   slice(1:100)
 
 # Call the function with the pre-sliced dataset
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases (%)")
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases",  display_as_percent = TRUE)
 ```
 
 ### 100 Largest Initial FMV Decreases
@@ -1035,7 +1052,7 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases (%)", order_scheme = "low")
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low",  display_as_percent = TRUE)
 ```
 
 ## Largest FMV Increases no Multicards
@@ -1048,7 +1065,7 @@ largest_fmv_increases <- leaflet_data %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases")
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases",  display_as_percent = TRUE)
 ```
 
 ## Largest FMV Decreases no Multicards
@@ -1061,7 +1078,7 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low")
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low",  display_as_percent = TRUE)
 ```
 :::
 
