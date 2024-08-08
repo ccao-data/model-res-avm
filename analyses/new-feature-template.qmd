@@ -170,7 +170,7 @@ card_individual <- shap_new %>%
         {{ target_feature_value }}
       ),
     by = c("meta_pin", "meta_card_num")
-  ) 
+  )
 
 # Summarizing data by neighborhood code
 card_nbhd <- card_individual %>%
@@ -369,7 +369,6 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 
 ```{r}
 create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
-  
   # Conditionally filter outliers if requested
   if (filter_outliers && !is.null(filter_column)) {
     data <- data %>%
@@ -378,14 +377,14 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
           !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
       )
   }
-  
+
   # Calculate mean and median
   data <- data %>%
     mutate(
       mean_value = mean(!!sym(target_feature), na.rm = TRUE),
       median_value = median(!!sym(target_feature), na.rm = TRUE)
     )
-  
+
   # Create the plot
   plot <- data %>%
     ggplot(aes(x = !!sym(target_feature))) +
@@ -402,10 +401,9 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
       y = y_label
     ) +
     theme_minimal()
-  
+
   return(plot)
 }
-
 ```
 
 ## Feature Histogram
@@ -590,9 +588,9 @@ ratio_stats <- performance_test_new %>%
     r_squared_diff
   ) %>%
   rename_with(~ str_replace_all(., "_", " ") %>%
-              str_to_title() %>%
-              str_replace_all(., " ", " ")) %>%
-  split(.$'Geography Type')
+    str_to_title() %>%
+    str_replace_all(., " ", " ")) %>%
+  split(.$"Geography Type")
 ```
 # Ratio Stats
 
@@ -602,7 +600,7 @@ ratio_stats <- performance_test_new %>%
 
 ```{r}
 ratio_stats[[3]] %>%
-  select(-c('Geography Id', 'Geography Type')) %>%
+  select(-c("Geography Id", "Geography Type")) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -618,7 +616,7 @@ ratio_stats[[3]] %>%
 
 ```{r}
 ratio_stats[[2]] %>%
-  select(-c('Geography Type')) %>%
+  select(-c("Geography Type")) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -634,7 +632,7 @@ ratio_stats[[2]] %>%
 
 ```{r}
 ratio_stats[[1]] %>%
-  select(-c('Geography Type')) %>%
+  select(-c("Geography Type")) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -894,8 +892,8 @@ assessment_pin_new %>%
 # Leaflet Maps
 :::
 ```{r}
-create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high", 
-                               longitude = "loc_longitude", latitude = "loc_latitude", 
+create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
+                               longitude = "loc_longitude", latitude = "loc_latitude",
                                display_as_percent = FALSE) {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
@@ -956,7 +954,6 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       labFormat = if (display_as_percent) labelFormat(suffix = "%") else labelFormat()
     )
 }
-
 ```
 
 ## Highest and Lowest 100 Values
@@ -1021,7 +1018,7 @@ largest_fmv_increases <- leaflet_data %>%
   slice(1:100)
 
 # Call the function with the pre-sliced dataset
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases",  display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
 ```
 
 ### 100 Largest FMV Decreases
@@ -1031,7 +1028,7 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases", order_scheme = "low",  display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
 ```
 
 ### 100 Largest FMV Initial Increases
@@ -1042,7 +1039,7 @@ largest_fmv_increases <- leaflet_data %>%
   slice(1:100)
 
 # Call the function with the pre-sliced dataset
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases",  display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases", display_as_percent = TRUE)
 ```
 
 ### 100 Largest Initial FMV Decreases
@@ -1052,10 +1049,10 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low",  display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
 ```
 
-## Largest FMV Increases no Multicards
+## Largest FMV (Final) Increases no Multicards
 
 ```{r}
 largest_fmv_increases <- leaflet_data %>%
@@ -1065,10 +1062,10 @@ largest_fmv_increases <- leaflet_data %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases",  display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
 ```
 
-## Largest FMV Decreases no Multicards
+## Largest FMV (Final) Decreases no Multicards
 
 ```{r}
 largest_fmv_decreases <- leaflet_data %>%
@@ -1078,7 +1075,7 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low",  display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low", display_as_percent = TRUE)
 ```
 :::
 
