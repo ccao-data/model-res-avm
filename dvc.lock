@@ -30,35 +30,34 @@ stages:
               bldg_sf: 25
               yrblt: 4
               dist_ft: 250
-    outs:
+       outs:
     - path: input/assessment_data.parquet
       hash: md5
-      md5: 61eefbc454b94a2d43f62aff4f3eca5d
-      size: 387765774
+      md5: c5c5b10a62f815a8b47de9101424dea6
+      size: 309845333
     - path: input/char_data.parquet
       hash: md5
-      md5: 6de5988c3e3c2b6c5acd613b91a6b89d
-      size: 770551785
+      md5: 95b41b06f03b055c8f1ba77bf80c8d30
+      size: 616908148
     - path: input/complex_id_data.parquet
       hash: md5
-      md5: 5c2f60740e513cc4ff9af362b6eccde0
-      size: 696684
+      md5: d0b2c6cb1dbf8ae90de2ccee2e99568d
+      size: 702334
     - path: input/hie_data.parquet
       hash: md5
-      md5: cd03b9c1f60aa54786eb6c0ae9f6667a
-      size: 1924821
+      md5: 675edaaee68b015e15a9d753a3531124
+      size: 1924257
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
-      md5: 6c1baaf2acbcba9869025bb336f4ad25
+      md5: e508daf5790982c303d6503fe1cb8e2b
       size: 4413
     - path: input/land_site_rate_data.parquet
-      hash: md5
-      md5: ff8f0dd619f94dd9c93d17b5b2714dc4
-      size: 197302
+      md5: 7c6d3de25d8ec0d523e2ffd8f7b4e542
+      size: 2109
     - path: input/training_data.parquet
       hash: md5
-      md5: 026d3afe8054fb425e45398e31ef6463
-      size: 235392537
+      md5: 787d2c901d1d957b87ecaee83663e8e5
+      size: 163303649
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
