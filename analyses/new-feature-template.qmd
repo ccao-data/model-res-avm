@@ -309,41 +309,40 @@ leaflet_data <- card_individual %>%
   distinct(meta_pin, .keep_all = TRUE)
 ```
 
+
 # Descriptive Statistics
-
-Based on the params$type feature, charts with the mean and median values of the feature are displayed for continuous features, and the percentage of each category is displayed for categorical features. These tables are broken down by township and neighborhood.
-
 
 ::: {.panel-tabset}
 
+```{r}
+# Function to create summary tables
+create_summary_table <- function(data, target_feature, group_by_column = NULL) {
+  target_feature <- sym(target_feature)
 
-## Overall
+  summary_data <- if (!is.null(group_by_column)) {
+    data %>%
+      group_by(!!sym(group_by_column)) %>%
+      summarize(
+        Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
+        Median = round(median(!!target_feature, na.rm = TRUE), 2),
+        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
+        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+      )
+  } else {
+    data %>%
+      summarize(
+        Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
+        Median = round(median(!!target_feature, na.rm = TRUE), 2),
+        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
+        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+      )
+  }
 
-```{r mean_median}
-if (params$type == "continuous") {
-  descriptives <- working_data_pin %>%
-    summarize(
-      mean = round(mean(!!sym(params$added_feature), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_feature), na.rm = TRUE), 2)
-    )
-
-  datatable(descriptives,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
-} else if (params$type == "categorical") {
-  category_percentages_township <- working_data_pin %>%
-    count(meta_township_name, !!sym(params$added_feature)) %>%
-    mutate(percentage = round(n / sum(n) * 100, 2)) %>%
-    select(meta_township_name, !!sym(params$added_feature), percentage) %>%
-    pivot_wider(names_from = !!sym(params$added_feature), values_from = percentage, values_fill = list(percentage = 0))
-
-  datatable(category_percentages_township,
+  # Display the summary in a datatable
+  datatable(
+    summary_data,
     options = list(
       scrollY = "300px",
       scrollX = TRUE,
@@ -355,123 +354,50 @@ if (params$type == "continuous") {
 }
 ```
 
+## Overall
+
+```{r mean_median}
+# For Overall
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }})
+```
+
 ## Township
 ```{r mean_median_township}
-if (params$type == "continuous") {
-  descriptives_township <- working_data_pin %>%
-    group_by(meta_township_name) %>%
-    summarize(
-      mean = round(mean(!!sym(params$added_feature), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_feature), na.rm = TRUE), 2)
-    )
-
-  datatable(descriptives_township,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
-} else if (params$type == "categorical") {
-  category_percentages_township <- working_data_pin %>%
-    group_by(meta_township_name, !!sym(params$added_feature)) %>%
-    count() %>%
-    group_by(meta_township_name) %>%
-    mutate(percentage = round(n / sum(n) * 100, 2)) %>%
-    select(meta_township_name, !!sym(params$added_feature), percentage) %>%
-    pivot_wider(names_from = !!sym(params$added_feature), values_from = percentage, values_fill = list(percentage = 0))
-
-
-  datatable(category_percentages_township,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
-}
+# For Township
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
 ```
 
 ## Neighborhood
 
 ```{r mean_median_neighborhood}
-if (params$type == "continuous") {
-  descriptives_nbhd <- working_data_pin %>%
-    group_by(meta_nbhd_code) %>%
-    summarize(
-      mean = round(mean(!!sym(params$added_feature), na.rm = TRUE), 2),
-      median = round(median(!!sym(params$added_feature), na.rm = TRUE), 2)
-    )
-
-  datatable(descriptives_nbhd,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
-} else if (params$type == "categorical") {
-  category_percentages_nbhd <- working_data_pin %>%
-    group_by(meta_nbhd_code, !!sym(params$added_feature)) %>%
-    count() %>%
-    mutate(percentage = n / sum(n) * 100) %>%
-    select(meta_nbhd_code, !!sym(params$added_feature), percentage)
-
-  datatable(category_percentages_nbhd,
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
-}
+# For Neighborhood
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
 ```
+
 :::
 
 ## Histogram
 
-```{r histogram}
-if (params$type == "continuous") {
-  working_data_pin %>%
-    mutate(
-      mean_value = mean(!!sym(params$added_feature), na.rm = TRUE),
-      median_value = median(!!sym(params$added_feature), na.rm = TRUE)
-    ) %>%
-    ggplot(aes(x = !!sym(params$added_feature))) +
-    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    scale_color_manual(
-      name = "Statistics",
-      values = c(Mean = "red", Median = "green"),
-      labels = c("Mean", "Median")
-    ) +
-    labs(
-      x = params$added_feature,
-      y = "Frequency"
-    ) +
-    theme_minimal()
-} else if (params$type == "categorical") {
-  category_percentages <- working_data_pin %>%
-    count(!!sym(params$added_feature)) %>%
-    mutate(percentage = n / sum(n) * 100)
-
-  ggplot(category_percentages, aes(x = !!sym(params$added_feature), y = percentage)) +
-    geom_bar(stat = "identity", fill = "blue", color = "black", alpha = 0.7) +
-    labs(
-      x = params$added_feature,
-      y = "Percentage"
-    ) +
-    theme_minimal()
-}
+```{r }
+pin_individual %>%
+  mutate(
+    mean_value = mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
+    median_value = median(!!sym({{ target_feature_value }}), na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = !!sym({{ target_feature_value }}))) +
+  geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+  geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+  scale_color_manual(
+    name = "Statistics",
+    values = c(Mean = "red", Median = "green"),
+    labels = c("Mean", "Median")
+  ) +
+  labs(
+    x = {{ target_feature_value }},
+    y = "Frequency"
+  ) +
+  theme_minimal()
 ```
 
 
@@ -479,7 +405,7 @@ if (params$type == "continuous") {
 
 This chart shows the distribution of the value of 'diff_pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. The largest 100 increases and decreases are displayed in maps in section X. 
 ```{r}
-working_data_pin %>%
+pin_individual %>%
   filter(
     diff_pred_pin_initial_fmv >= quantile(diff_pred_pin_initial_fmv, 0.025, na.rm = TRUE) &
       diff_pred_pin_initial_fmv <= quantile(diff_pred_pin_initial_fmv, 0.975, na.rm = TRUE)
@@ -507,16 +433,16 @@ working_data_pin %>%
 ## SHAP Histogram
 
 ```{r}
-shap %>%
+shap_new %>%
   filter(
-    !!sym(params$added_feature) >= quantile(!!sym(params$added_feature), 0.025, na.rm = TRUE) &
-      !!sym(params$added_feature) <= quantile(!!sym(params$added_feature), 0.975, na.rm = TRUE)
+    !!sym({{ target_feature_value }}) >= quantile(!!sym({{ target_feature_value }}), 0.025, na.rm = TRUE) &
+      !!sym({{ target_feature_value }}) <= quantile(!!sym({{ target_feature_value }}), 0.975, na.rm = TRUE)
   ) %>%
   mutate(
-    mean_value = mean(!!sym(params$added_feature), na.rm = TRUE),
-    median_value = median(!!sym(params$added_feature), na.rm = TRUE)
+    mean_value = mean(!!sym({{ target_feature_value }}), na.rm = TRUE),
+    median_value = median(!!sym({{ target_feature_value }}), na.rm = TRUE)
   ) %>%
-  ggplot(aes(x = !!sym(params$added_feature))) +
+  ggplot(aes(x = !!sym({{ target_feature_value }}))) +
   geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
   geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
   geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
@@ -536,9 +462,7 @@ shap %>%
 
 ## Correlation Between Added Feature and Other Features
 
-
 Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
-
 
 ```{r correlation between features}
 clean_column_values <- function(df, column_name) {
@@ -608,7 +532,6 @@ if (params$type == "continuous") {
   print(paste("assessment_data_new$", params$added_feature, " is not numeric.", sep = ""))
 }
 ```
-
 
 ## Correlation Plot
 
