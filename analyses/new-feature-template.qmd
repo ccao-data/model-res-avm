@@ -859,6 +859,8 @@ generate_comparison_table(new_range, comparison_range)
 :::
 
 
+
+
 # SHAP
 
 The primary metric that the CCAO Data team uses to assess the importance of a feature is its SHAP value. SHAP values provide the amount of value each feature contributes to a parcel's predicted value. The SHAP value is calculated for each observation in the dataset, and the median SHAP value for a feature is used to determine the relative influence of that feature. The higher the median SHAP value, the more influential the feature is in the model.
@@ -866,7 +868,7 @@ The primary metric that the CCAO Data team uses to assess the importance of a fe
 ## Absolute Value Rank of SHAP Scores
 
 ```{r}
-shap_predictors <- unlist(metadata$model_predictor_all_name)
+shap_predictors <- unlist(metadata_new$model_predictor_all_name)
 ```
 
 The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
@@ -874,9 +876,9 @@ The following table produces the median absolute SHAP value by township, and cre
 
 ```{r shap_processing}
 # Combine data
-shap_df_filtered_long <- shap %>%
+shap_df_filtered_long <- shap_new %>%
   inner_join(
-    assessment_data %>%
+    assessment_data_new %>%
       select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
       rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code),
     by = c("meta_pin", "meta_card_num")
@@ -887,53 +889,39 @@ shap_df_filtered_long <- shap %>%
     names_to = "feature",
     values_to = "shap"
   )
+```
 
-# Calculate median values for the overall data
-ranked_overall_medians <- shap_df_filtered_long %>%
+### SHAP Median Absolute Value
+```{r shap_full_importance}
+shap_df_filtered_long %>%
   group_by(feature) %>%
-  summarize(
-    median_abs_shap = median(abs(shap), na.rm = TRUE),
-    median_shap = median(shap, na.rm = TRUE)
+  mutate(
+    median_abs_shap = round(median(abs(shap), na.rm = TRUE), 2),
+    median_shap = round(median(shap, na.rm = TRUE), 2)
   ) %>%
   ungroup() %>%
+  distinct(feature, .keep_all = TRUE) %>%
   arrange(desc(median_abs_shap)) %>%
-  mutate(rank_abs = row_number())
-
-
-# Rank features based on median absolute SHAP values
-ranked_overall_medians_township <- shap_df_filtered_long %>%
-  group_by(township_code, feature) %>% # Group by township and feature
-  summarize(
-    median_abs_shap = median(abs(shap), na.rm = TRUE),
-    median_shap = median(shap, na.rm = TRUE)
+  mutate(
+    rank_absolute = row_number(),
+    `Median Absolute Shap` = scales::dollar(median_abs_shap),
+    `Median SHAP` = scales::dollar(median_shap)
   ) %>%
-  ungroup() %>%
-  group_by(township_code) %>% # Group by township code
-  arrange(desc(median_abs_shap), .by_group = TRUE) %>% # Arrange within each township
-  mutate(rank_abs = row_number()) %>% # Create rank within each township
-  ungroup()
-
-
-# Function to create summary tables
-create_summary_table <- function(data, added_feature) {
-  added_feature_data <- data %>%
-    filter(feature == added_feature)
-
-  if (nrow(added_feature_data) == 0) {
-    return(NULL)
-  }
-
-  non_added_feature_data <- data %>%
-    filter(feature != added_feature)
-
-  combined_data <- bind_rows(added_feature_data, non_added_feature_data)
-
-  kable_chart <- combined_data %>%
-    select(feature, median_abs_shap, median_shap, rank_abs) %>%
-    clean_column_values("feature") %>%
-    mutate(across(where(is.numeric), round, 2))
-
-  datatable_chart <- datatable(kable_chart,
+  inner_join(ccao::town_dict, by = c("township_code" = "township_code")) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
+  clean_column_values("feature") %>%
+  select(
+    Feature = feature,
+    "Median Absolute Shap",
+    "Median SHAP",
+    "Rank Absolute" = rank_absolute
+  ) %>%
+  datatable(
     options = list(
       scrollY = "300px",
       scrollX = TRUE,
@@ -942,302 +930,42 @@ create_summary_table <- function(data, added_feature) {
     ),
     rownames = FALSE
   )
+```
 
-  return(datatable_chart)
-}
-
-# Generate the overall summary table
-added_feature <- params$added_feature
-overall_summary_table <- create_summary_table(ranked_overall_medians, {{ added_feature }})
-overall_summary_table_township <- create_summary_table(ranked_overall_medians_township, {{ added_feature }})
-
-
-# Calculate median values for each township and rank features
-ranked_shap_df <- shap_df_filtered_long %>%
+### SHAP Median Absolute Value by Township
+```{r shap_township_importance}
+shap_df_filtered_long %>%
   group_by(township_code, feature) %>%
   mutate(
-    median_abs_shap = median(abs(shap), na.rm = TRUE),
-    median_shap = median(shap, na.rm = TRUE)
+    median_abs_shap = round(median(abs(shap), na.rm = TRUE), 2),
+    median_shap = round(median(shap, na.rm = TRUE), 2)
   ) %>%
   ungroup() %>%
   distinct(township_code, feature, .keep_all = TRUE) %>%
   group_by(township_code) %>%
   arrange(desc(median_abs_shap), .by_group = TRUE) %>%
-  mutate(rank_abs = row_number()) %>%
-  ungroup() %>%
-  inner_join(ccao::town_dict, by = c("township_code" = "township_code"))
-
-# Generate the township-specific tables
-township_names <- unique(ranked_shap_df$township_name)
-shap_tables <- lapply(township_names, function(name) {
-  township_data <- ranked_shap_df %>%
-    filter(township_name == name)
-  create_summary_table(township_data, added_feature)
-})
-```
-
-
-### Overall SHAP Summary
-```{r shap_summary}
-overall_summary_table
-```
-
-
-## SHAPS by Township
-::: panel-tabset
-
-### `r township_names[1]`
-
-
-```{r, results = 'asis'}
-shap_tables[[1]]
-```
-### `r township_names[2]`
-
-```{r, results = 'asis'}
-shap_tables[[2]]
-```
-
-### `r township_names[3]`
-
-
-```{r, results = 'asis'}
-shap_tables[[3]]
-```
-
-### `r township_names[4]`
-
-
-```{r, results = 'asis'}
-shap_tables[[4]]
-```
-### `r township_names[5]`
-
-
-```{r, results = 'asis'}
-shap_tables[[5]]
-```
-
-### `r township_names[6]`
-
-```{r, results = 'asis'}
-shap_tables[[6]]
-```
-
-###  `r township_names[7]`
-
-```{r, results = 'asis'}
-shap_tables[[7]]
-```
-
-###  `r township_names[8]`
-
-```{r, results = 'asis'}
-shap_tables[[8]]
-```
-
-###  `r township_names[9]`
-
-```{r, results = 'asis'}
-shap_tables[[9]]
-```
-
-###  `r township_names[10]`
-
-```{r, results = 'asis'}
-shap_tables[[10]]
-```
-
-###  `r township_names[11]`
-
-```{r, results = 'asis'}
-shap_tables[[11]]
-```
-###  `r township_names[12]`
-
-```{r, results = 'asis'}
-shap_tables[[12]]
-```
-
-###  `r township_names[13]`
-
-```{r, results = 'asis'}
-shap_tables[[13]]
-```
-
-###  `r township_names[14]`
-
-```{r, results = 'asis'}
-shap_tables[[14]]
-```
-
-###  `r township_names[15]`
-
-```{r, results = 'asis'}
-shap_tables[[15]]
-```
-
-###  `r township_names[16]`
-
-```{r, results = 'asis'}
-shap_tables[[16]]
-```
-
-###  `r township_names[17]`
-
-```{r, results = 'asis'}
-shap_tables[[17]]
-```
-
-###  `r township_names[18]`
-
-```{r, results = 'asis'}
-shap_tables[[18]]
-```
-
-###  `r township_names[19]`
-
-```{r, results = 'asis'}
-shap_tables[[19]]
-```
-
-###  `r township_names[20]`
-
-
-```{r, results = 'asis'}
-shap_tables[[20]]
-```
-
-###  `r township_names[21]`
-
-```{r, results = 'asis'}
-shap_tables[[21]]
-```
-###  `r township_names[22]`
-
-```{r, results = 'asis'}
-shap_tables[[22]]
-```
-
-###  `r township_names[23]`
-
-```{r, results = 'asis'}
-shap_tables[[23]]
-```
-
-###  `r township_names[24]`
-
-```{r, results = 'asis'}
-shap_tables[[24]]
-```
-
-###  `r township_names[25]`
-
-```{r, results = 'asis'}
-shap_tables[[25]]
-```
-
-###  `r township_names[26]`
-
-```{r, results = 'asis'}
-shap_tables[[26]]
-```
-
-###  `r township_names[27]`
-
-```{r, results = 'asis'}
-shap_tables[[27]]
-```
-
-###  `r township_names[28]`
-
-```{r, results = 'asis'}
-shap_tables[[28]]
-```
-
-###  `r township_names[29]`
-
-```{r, results = 'asis'}
-shap_tables[[29]]
-```
-
-###  `r township_names[30]`
-
-```{r, results = 'asis'}
-shap_tables[[30]]
-```
-
-###  `r township_names[31]`
-
-```{r, results = 'asis'}
-shap_tables[[31]]
-```
-###  `r township_names[32]`
-
-```{r, results = 'asis'}
-shap_tables[[32]]
-```
-
-###  `r township_names[33]`
-
-```{r, results = 'asis'}
-shap_tables[[33]]
-```
-
-###  `r township_names[34]`
-
-```{r, results = 'asis'}
-shap_tables[[34]]
-```
-
-###  `r township_names[35]`
-
-```{r, results = 'asis'}
-shap_tables[[35]]
-```
-
-###  `r township_names[36]`
-
-```{r, results = 'asis'}
-shap_tables[[36]]
-```
-
-###  `r township_names[37]`
-
-```{r, results = 'asis'}
-shap_tables[[37]]
-```
-
-###  `r township_names[38]`
-
-```{r, results = 'asis'}
-shap_tables[[38]]
-```
-
-:::
-
-## SHAP Comparison
-
-Here, we compare the SHAP values from the comparison data and the new data. The goal here is to see which other features, the added feature is influencing.
-```{r shap_comparisons}
-shap_comparison %>%
-  inner_join(shap, by = c("meta_card_num", "meta_pin")) %>%
-  select(-c(meta_pin, meta_card_num, meta_year.x, meta_year.y)) %>%
-  rename_with(~ sub("\\.x$", "_comp", .), ends_with(".x")) %>%
-  rename_with(~ sub("\\.y$", "_new", .), ends_with(".y")) %>%
-  mutate(across(ends_with("_new"), ~ . - get(sub("_new$", "_comp", cur_column())), .names = "{sub('_new$', '_diff', .col)}")) %>%
-  summarize(
-    across(ends_with("_diff"), list(
-      median_change = ~ median(.),
-      median_abs_change = ~ median(abs(.))
-    )),
-    across(ends_with("_comp"), list(median_comp = ~ median(.))),
-    across(ends_with("_new"), list(median_new = ~ median(.)))
+  mutate(
+    township_rank_absolute = row_number(),
+    `Median Absolute Shap` = scales::dollar(median_abs_shap),
+    `Median SHAP` = scales::dollar(median_shap)
   ) %>%
-  pivot_longer(cols = everything(), names_to = c("feature", ".value"), names_sep = "_diff_|_comp_|_new_") %>%
-  arrange(feature) %>%
+  ungroup() %>%
+  inner_join(ccao::town_dict, by = c("township_code" = "township_code")) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
   clean_column_values("feature") %>%
-  mutate(across(where(is.numeric), dollar, scale = 1, accuracy = 0.01)) %>%
+  select(
+    Township = township_name,
+    `Township Code` = township_code,
+    Feature = feature,
+    `Median Absolute Shap`,
+    `Median SHAP`,
+    `Township Rank Absolute` = township_rank_absolute
+  ) %>%
   datatable(
     options = list(
       scrollY = "300px",
@@ -1250,53 +978,52 @@ shap_comparison %>%
 ```
 
 
-## Correlation between SHAP and the Added Feature
-
-```{r shap_feature_correlation}
-correlation_value <- cor(pull(working_data_card, params$added_feature_shap), pull(working_data_card, params$added_feature), use = "complete.obs")
-```
-
-If the added feature leads to a significant change in predicted values, its correlation with the SHAP values should have a high absolute value. That correlation is `r round(correlation_value, 2)`.
-
-## Box Plot Comparing SHAP and the Added Feature
-
-```{r shap_feature_plot}
-num_digits <- working_data_card %>%
-  pull(!!sym(params$added_feature_shap)) %>%
+```{r violin_plots_shap_to_feature}
+# Calculate the number of digits
+num_digits <- card_individual %>%
+  pull({{ target_feature_shap }}) %>%
   max(na.rm = TRUE) %>%
   floor() %>%
   as.character() %>%
   str_length()
 
-if (params$type == "continuous") {
-  working_data_card %>%
-    select(meta_card_num, meta_pin, !!params$added_feature_shap, !!params$added_feature) %>%
-    mutate(bin = cut_number(!!sym(params$added_feature), n = 10, dig.lab = num_digits)) %>%
-    ggplot(aes(x = bin, y = !!sym(params$added_feature_shap))) +
-    geom_boxplot(fill = "#69b3a2") +
-    theme_minimal() +
-    xlab("Feature Value") +
-    ylab("SHAP Value") +
-    scale_x_discrete(labels = function(x) {
-      x <- gsub("\\.[^,\\]]*", "", x) # Clean the factor levels for chart
-      x <- gsub("[^0-9,,]", "", x)
-      gsub(",", "-", x)
-    }) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-} else if (params$type == "categorical") {
-  working_data_card %>%
-    select(meta_card_num, meta_pin, !!params$added_feature_shap, !!params$added_feature) %>%
-    mutate(feature_factor = factor(!!sym(params$added_feature))) %>%
-    ggplot(aes(x = feature_factor, y = !!sym(params$added_feature_shap))) +
-    geom_boxplot(fill = "#69b3a2") +
-    theme_minimal() +
-    xlab("Feature Value") +
-    ylab("SHAP Value") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-}
+quantiles <- card_individual %>%
+  pull({{ target_feature_shap }}) %>%
+  quantile(c(0.025, 0.975), na.rm = TRUE)
+
+# Create the violin plot, excluding outliers only in the display
+card_individual %>%
+  select(meta_card_num, meta_pin, {{ target_feature_shap }}, {{ target_feature_value }}) %>%
+  mutate(bin = cut_number(!!sym(target_feature_value), n = 10, dig.lab = num_digits)) %>%
+  ggplot(aes(x = bin, y = !!sym(target_feature_shap))) +
+  geom_violin(fill = "#69b3a2") +
+  theme_minimal() +
+  xlab("Feature Value") +
+  ylab("SHAP Value") +
+  scale_x_discrete(labels = function(x) {
+    x <- gsub("\\.[^,\\]]*", "", x) # Clean the factor levels for chart
+    x <- gsub("[^0-9,,]", "", x)
+    gsub(",", "-", x)
+  }) +
+  coord_cartesian(ylim = quantiles) + # Focus only on the range between the 2.5% and 97.5% quantiles
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
+### Scatterplot Demonstrating the Relationship between SHAP and Feature Value
 
+```{r}
+shapviz::shapviz(
+  object = shap_new %>%
+    select(all_of(shap_predictors)) %>%
+    as.matrix(),
+  X = assessment_card_new %>%
+    select(all_of(shap_predictors)),
+  baseline = shap_new$pred_card_shap_baseline_fmv[1]
+) %>%
+  shapviz::sv_dependence(
+    v = target_feature_value
+  )
+```
 
 # Spatial Analysis
 
