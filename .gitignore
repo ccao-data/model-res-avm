@@ -24,6 +24,7 @@ cache/
 *.html
 *.rmarkdown
 *.quarto
+*.png
 
 # Ignore scratch documents
 scratch*.*
