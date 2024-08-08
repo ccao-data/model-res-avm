@@ -367,7 +367,7 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 ::: {.panel-tabset}
 
 
-```{r. histogram_function}
+```{r, histogram_function}
 create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
   # Conditionally filter outliers if requested
   if (filter_outliers && !is.null(filter_column)) {

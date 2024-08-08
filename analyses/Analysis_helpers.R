@@ -1,4 +1,5 @@
-model_fetch_run_subset <- function(run_id, year, analyses_paths, append_run_id = FALSE) {
+model_fetch_run_subset <- function(run_id, year,
+                                   analyses_paths, append_run_id = FALSE) {
   tictoc::tic(paste0("Fetched run: ", run_id))
 
   s3_objs <- grep("s3://", unlist(analyses_paths$output), value = TRUE)
@@ -9,11 +10,15 @@ model_fetch_run_subset <- function(run_id, year, analyses_paths, append_run_id =
   for (analyses_path in analyses_paths$output) {
     is_directory <- endsWith(analyses_path$s3, "/")
     if (is_directory) {
-      partitioned_by_run <- endsWith(analyses_path$s3, paste0("run_id=", run_id, "/"))
+      partitioned_by_run <- endsWith(
+        analyses_path$s3, paste0("run_id=", run_id, "/")
+      )
       if (partitioned_by_run) {
         dir_path <- analyses_path$s3
       } else {
-        dir_path <- paste0(analyses_path$s3, "year=", year, "/run_id=", run_id, "/")
+        dir_path <- paste0(
+          analyses_path$s3, "year=", year, "/run_id=", run_id, "/"
+        )
       }
 
       message("Now fetching: ", dir_path)
@@ -47,10 +52,18 @@ model_fetch_run_subset <- function(run_id, year, analyses_paths, append_run_id =
     } else {
       message("Now fetching: ", analyses_path$s3)
       if (aws.s3::object_exists(analyses_path$s3, bucket = bucket)) {
-        local_temp_path <- file.path(tempdir(), basename(analyses_path$s3))
-        aws.s3::save_object(analyses_path$s3, bucket = bucket, file = local_temp_path)
+        local_temp_path <- file.path(
+          tempdir(),
+          basename(analyses_path$s3)
+        )
+        aws.s3::save_object(analyses_path$s3,
+          bucket = bucket, file = local_temp_path
+        )
         if (append_run_id) {
-          data_list[[paste0(analyses_path$key, "_", run_id)]] <- arrow::read_parquet(local_temp_path)
+          data_list[[paste0(
+            analyses_path$key, "_",
+            run_id
+          )]] <- arrow::read_parquet(local_temp_path)
         } else {
           data_list[[analyses_path$key]] <- arrow::read_parquet(local_temp_path)
         }
@@ -63,7 +76,6 @@ model_fetch_run_subset <- function(run_id, year, analyses_paths, append_run_id =
   tictoc::toc()
   return(data_list)
 }
-
 
 rename_var <- function(var_name, suffix, new_suffix) {
   if (exists(var_name) && is.data.frame(get(var_name))) {
