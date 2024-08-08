@@ -1297,9 +1297,10 @@ if (params$type == "continuous") {
 ```
 
 
+
 # Spatial Analysis
 
-The spatial analysis is broken up into a few sections. The first panel looks at four aggregated stats on the neighborhood level, the mean of the feature we are analyzing, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature. 
+This panel looks at four stats, aggregated on the neighborhood level; the mean of the added feature, the median of the added feature, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature.
 
 ## Neighborhood Values
 
@@ -1308,31 +1309,31 @@ The spatial analysis is broken up into a few sections. The first panel looks at 
 ### Mean Value of the Feature by Neighborhood
 
 ```{r mean_feature}
-if (params$type == "categorical") {
-  spatial_data %>%
-    ggplot() +
-    geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_plurality_type")))) +
-    scale_fill_viridis_d(option = "viridis", name = "Type of Plurality") +
-    geom_sf(aes(alpha = !!sym(paste0(params$added_feature, "_plurality_percentage")))) +
-    scale_alpha_continuous(name = "Percentage of Plurality") +
-    theme_void() +
-    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
-} else {
-  spatial_data %>%
-    ggplot() +
-    geom_sf(aes(fill = !!sym(paste0(params$added_feature, "_neighborhood_mean")))) +
-    scale_fill_viridis_c(option = "viridis", name = "Value") +
-    theme_void() +
-    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
-}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Median Value of the Feature by Neighborhood
+
+```{r mean_feature}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
 ### Mean Absolute SHAP Value
 
 ```{r mean_shap}
-spatial_data %>%
+card_nbhd %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_mean")))) +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_mean_abs")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -1341,9 +1342,9 @@ spatial_data %>%
 ### 90th Percentile of Absolute SHAP
 
 ```{r 90th_percentile_shap}
-spatial_data %>%
+card_nbhd %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0(params$added_feature_shap, "_neighborhood_90th")))) +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_90th")))) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -1353,7 +1354,7 @@ spatial_data %>%
 This value is defined as the neighborhood level median increase in value when adding the new feature to the model. For example, a value of 1% would mean that adding the feature increased properties within a neighborhood by 1%.
 
 ```{r neighborhood_change}
-assessment_pin %>%
+assessment_pin_new %>%
   select(meta_pin, loc_longitude, loc_latitude, pred_pin_final_fmv) %>%
   rename(pred_pin_final_fmv_new = pred_pin_final_fmv) %>%
   inner_join(assessment_pin_comparison, by = "meta_pin") %>%
