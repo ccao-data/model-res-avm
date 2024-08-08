@@ -160,42 +160,6 @@ s3_path_assessment <- paste0(
 assessment_data_new <- read_parquet(s3_path_assessment)
 ```
 
-```{r download_comparison_data}
-metadata_comparison <- data_comparison$metadata
-model_performance_assessment_comparison <- data_comparison$performance
-shap_comparison <- data_comparison$shap
-
-assessment_pin_comparison <- data_comparison$assessment_pin %>%
-  select(meta_pin, pred_pin_final_fmv, sale_ratio_study_price, meta_nbhd_code, meta_triad_code, pred_pin_initial_fmv, meta_township_code)
-```
-
-```{r}
-# write_parquet(assessment_data, "assessment_data.parquet")
-# write_parquet(assessment_pin, "assessment_pin.parquet")
-# write_parquet(assessment_card, "assessment_card.parquet")
-# write_parquet(assessment_card_full, "assessment_card_full.parquet")
-# write_parquet(performance, "performance.parquet")
-# write_parquet(shap, "shap.parquet")
-# write_parquet(metadata, "metadata.parquet")
-# write_parquet(assessment_pin_comparison, "assessment_pin_comparison.parquet")
-# write_parquet(model_performance_assessment_comparison, "model_performance_assessment_comparison.parquet")
-# write_parquet(shap_comparison, "shap_comparison.parquet")
-# write_parquet(metadata_comparison, "metadata_comparison.parquet")
-```
-
-```{r}
-assessment_data <- read_parquet("assessment_data.parquet")
-assessment_pin <- read_parquet("assessment_pin.parquet")
-assessment_card <- read_parquet("assessment_card.parquet")
-assessment_card_full <- read_parquet("assessment_card_full.parquet")
-performance <- read_parquet("performance.parquet")
-shap <- read_parquet("shap.parquet")
-metadata <- read_parquet("metadata.parquet")
-assessment_pin_comparison <- read_parquet("assessment_pin_comparison.parquet")
-model_performance_assessment_comparison <- read_parquet("model_performance_assessment_comparison.parquet")
-shap_comparison <- read_parquet("shap_comparison.parquet")
-metadata_comparison <- read_parquet("metadata_comparison.parquet")
-```
 
 ```{r}
 target_feature_value <- params$added_feature
@@ -641,113 +605,68 @@ assessment_data %>%
   corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
 ```
 
-# Overview of Model Metrics
+```{r}
+ratio_stats <- performance_test_new %>%
+  filter(
+    by_class == FALSE,
+    geography_type %in% c("nbhd_code", "township_code", "triad_code")
+  ) %>%
+  inner_join(
+    performance_test_comparison %>%
+      filter(
+        by_class == FALSE,
+        geography_type %in% c("nbhd_code", "township_code", "triad_code")
+      ),
+    by = c("geography_type", "geography_id", "triad_code"),
+    suffix = c("_new", "_comparison")
+  ) %>%
+  mutate(
+    cod_diff = round(cod_new - cod_comparison, 2),
+    prd_diff = round(prd_new - prd_comparison, 2),
+    prb_diff = round(prd_new - prb_comparison, 2),
+    mki_diff = round(mki_new - mki_comparison, 2),
+    median_ratio_diff = round(median_ratio_new - median_ratio_comparison, 2),
+    rmse_diff = round(rmse_new - rmse_comparison, 2),
+    r_squared_diff = round(r_squared_new - r_squared_comparison, 2)
+  ) %>%
+  select(
+    triad_code,
+    geography_type,
+    geography_id,
+    cod_new,
+    cod_comparison,
+    cod_diff,
+    prd_new,
+    prd_comparison,
+    prd_diff,
+    prd_new,
+    prb_comparison,
+    prb_diff,
+    mki_new,
+    mki_comparison,
+    mki_diff,
+    median_ratio_new,
+    median_ratio_comparison,
+    median_ratio_diff,
+    rmse_new,
+    rmse_comparison,
+    rmse_diff,
+    r_squared_new,
+    r_squared_comparison,
+    r_squared_diff
+  ) %>%
+  group_split(geography_type)
+```
+# Ratio Stats
 
-```{r model_stats}
-# Function to calculate the percentage difference
-percentage_diff <- function(x, y) {
-  scales::percent((y - x) / x)
-}
+::: {.panel-tabset}
 
+## Triad
 
-min_n <- 10
-
-gte_n <- \(n_sales, min_n, fn, na_type) {
-  ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
-}
-rs_fns_list <- list(
-  cod_no_sop = \(x, y) gte_n(y, 2, cod(x / y, na.rm = TRUE), NA_real_),
-  prd_no_sop = \(x, y) gte_n(y, 2, prd(x, y, na.rm = TRUE), NA_real_),
-  prb_no_sop = \(x, y) gte_n(y, 2, prb(x, y, na.rm = TRUE), NA_real_),
-  mki_no_sop = \(x, y) gte_n(y, 2, mki(x, y, na.rm = TRUE), NA_real_),
-  cod = \(x, y) gte_n(y, min_n, cod(x / y, na.rm = TRUE), NA_real_),
-  cod_met = \(x, y) gte_n(y, min_n, cod_met(cod(x / y, na.rm = TRUE)), NA),
-  prd = \(x, y) gte_n(y, min_n, prd(x, y, na.rm = TRUE), NA_real_),
-  prd_met = \(x, y) gte_n(y, min_n, prd_met(prd(x, y, na.rm = TRUE)), NA),
-  prb = \(x, y) gte_n(y, min_n, prb(x, y, na.rm = TRUE), NA_real_),
-  prb_met = \(x, y) gte_n(y, min_n, prb_met(prb(x, y, na.rm = TRUE)), NA),
-  mki = \(x, y) gte_n(y, min_n, mki(x, y, na.rm = TRUE), NA_real_),
-  mki_met = \(x, y) gte_n(y, min_n, mki_met(mki(x, y, na.rm = TRUE)), NA)
-)
-
-
-
-ys_fns_list <- list(
-  rmse        = rmse_vec,
-  r_squared   = rsq_vec,
-  mae         = mae_vec,
-  mpe         = mpe_vec,
-  mape        = mape_vec,
-  mdape       = mdape_vec # From R/helpers.R
-)
-
-compute_stats <- function(data, group_var = NULL) {
-  if (!is.null(group_var)) {
-    data <- data %>%
-      group_by(across(all_of(group_var)))
-  }
-
-  result <- data %>%
-    summarize(
-      num_pin_no_class = n(),
-      num_sale_no_class = sum(!is.na(sale_ratio_study_price)),
-      rs_lst = list(map(rs_fns_list, ~ exec(.x, pmax(pred_pin_initial_fmv, 1), sale_ratio_study_price))),
-      ys_lst = list(map(ys_fns_list, ~ exec(.x, sale_ratio_study_price, pred_pin_initial_fmv))),
-      median_ratio = median(pred_pin_initial_fmv / sale_ratio_study_price, na.rm = TRUE),
-      .groups = ifelse(is.null(group_var), "drop", "keep")
-    ) %>%
-    unnest_wider(rs_lst) %>%
-    unnest_wider(ys_lst)
-
-  return(result)
-}
-
-df_stat_no_group <- compute_stats(assessment_pin)
-df_stat_triad <- compute_stats(assessment_pin, "meta_triad_code")
-df_stat_township <- compute_stats(assessment_pin, "meta_township_code")
-df_stat_nbhd <- compute_stats(assessment_pin, "meta_nbhd_code")
-
-df_stat_no_group_comparison <- compute_stats(assessment_pin_comparison)
-df_stat_triad_comparison <- compute_stats(assessment_pin_comparison, "meta_triad_code")
-df_stat_township_comparison <- compute_stats(assessment_pin_comparison, "meta_township_code")
-df_stat_nbhd_comparison <- compute_stats(assessment_pin_comparison, "meta_nbhd_code")
-
-
-
-generate_comparison_table <- function(df_new, df_comparison, group_var = NULL) {
-  if (is.null(group_var)) {
-    df_comparison_renamed <- df_comparison %>%
-      rename_with(~ paste0(., "_new"))
-
-    result <- bind_cols(df_new, df_comparison_renamed)
-  } else {
-    df_new <- df_new %>%
-      rename_with(~ paste0(., "_new"), -all_of(group_var))
-
-    result <- inner_join(df_comparison, df_new, by = group_var)
-  }
-
-  result <- result %>%
-    mutate(
-      rmse_pct_diff = percentage_diff(rmse, rmse_new),
-      mki_pct_diff = percentage_diff(mki, mki_new),
-      cod_pct_diff = percentage_diff(cod, cod_new),
-      prb_pct_diff = percentage_diff(prb, prb_new),
-      prd_pct_diff = percentage_diff(prd, prd_new),
-      r_squared_pct_diff = percentage_diff(r_squared, r_squared_new)
-    ) %>%
-    select(
-      if (!is.null(group_var)) all_of(group_var) else NULL,
-      rmse, rmse_new, rmse_pct_diff,
-      mki, mki_new, mki_pct_diff,
-      cod, cod_new, cod_pct_diff,
-      prb, prb_new, prb_pct_diff,
-      prd, prd_new, prd_pct_diff,
-      r_squared, r_squared_new, r_squared_pct_diff
-    ) %>%
-    mutate(across(where(is.numeric), \(x) round(x, 2)))
-
-  datatable(result,
+```{r}
+ratio_stats[[3]] %>%
+  select(-c(geography_id, geography_type)) %>%
+  datatable(
     options = list(
       scrollY = "300px",
       scrollX = TRUE,
@@ -756,69 +675,41 @@ generate_comparison_table <- function(df_new, df_comparison, group_var = NULL) {
     ),
     rownames = FALSE
   )
-}
-```
-
-Before running this report, make sure that the lightgbm model is set to optimize the Root Mean Square Error (RMSE). This means that the addition of a new feature *should* improve this metric. In this situation, the model sees a change of `r round(df_stat_no_group$rmse, 2)` to `r round(df_stat_no_group_comparison$rmse, 2)`, a change of `r round(df_stat_no_group$rmse - df_stat_no_group_comparison$rmse, 2)`.
-
-Below are other features, organized by different geographies to see if the the added feature improves other metrics that the office is interested in. 
-
-
-# Stats
-
-::: {.panel-tabset}
-
-## Overall
-
-```{r}
-generate_comparison_table(df_stat_no_group, df_stat_no_group_comparison)
-```
-
-
-## Triad
-
-```{r}
-generate_comparison_table(df_stat_triad, df_stat_triad_comparison, "meta_triad_code")
 ```
 
 ## Township
 
 ```{r}
-generate_comparison_table(df_stat_township, df_stat_township_comparison, "meta_township_code")
+ratio_stats[[2]] %>%
+  select(-c(geography_type)) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
 ```
 
 ## Neighborhood
 
 ```{r}
-generate_comparison_table(df_stat_nbhd, df_stat_nbhd_comparison, "meta_nbhd_code")
+ratio_stats[[1]] %>%
+  select(-c(geography_type)) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
 ```
-
-
-## Range Test
-
-Some metrics may only improve within certain ranges. For example, proximity to an amenity may only matter within 100 feet. The following table uses the param to filter the range to a minimum of `r params$min_range` and a maximum of `r params$max_range`.
-
-```{r}
-new_range <- assessment_pin %>%
-  inner_join(assessment_data_small, by = "meta_pin") %>%
-  mutate(!!params$added_feature := as.numeric(!!sym(params$added_feature))) %>%
-  filter(!!sym(params$added_feature) > params$min_range &
-    !!sym(params$added_feature) < params$max_range) %>%
-  compute_stats(.)
-
-comparison_range <- assessment_pin_comparison %>%
-  inner_join(assessment_data_small, by = "meta_pin") %>%
-  mutate(!!params$added_feature := as.numeric(!!sym(params$added_feature))) %>%
-  filter(!!sym(params$added_feature) > params$min_range &
-    !!sym(params$added_feature) < params$max_range) %>%
-  compute_stats(.)
-
-generate_comparison_table(new_range, comparison_range)
-```
-
 
 :::
-
 
 
 
