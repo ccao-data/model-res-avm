@@ -15,7 +15,6 @@ suffixes <- pin_nbhd %>%
   select(starts_with("percentage_")) %>%
   names() %>%
   gsub("percentage_", "", .)
-
 ```
 
 ```{r}
@@ -27,7 +26,7 @@ maps <- lapply(suffixes, function(suffix) {
     theme_void() +
     coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2)) +
     ggtitle(paste0("Map for ", suffix))
-  
+
   return(map1)
 })
 ```
@@ -48,12 +47,11 @@ for (i in seq_along(maps)) {
 
 ```{r}
 pin_nbhd %>%
-    ggplot() +
-    geom_sf(aes(fill = as.factor(plurality_factor))) +
-    scale_fill_viridis_d(option = "viridis") +
-    labs(fill = "Variable") +
-    theme_void() +
-    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2)) +
-    ggtitle("Plurality Variable")
-
+  ggplot() +
+  geom_sf(aes(fill = as.factor(plurality_factor))) +
+  scale_fill_viridis_d(option = "viridis") +
+  labs(fill = "Variable") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2)) +
+  ggtitle("Plurality Variable")
 ```
