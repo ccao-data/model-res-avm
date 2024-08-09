@@ -3,11 +3,6 @@ title: "aggregated_maps_categorical"
 format: html
 ---
 
----
-title: "Untitled"
-format: html
----
-
 ```{r}
 # Extracting suffixes
 suffixes <- pin_nbhd %>%
