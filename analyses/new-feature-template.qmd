@@ -17,7 +17,7 @@ format:
 params:
   run_id: "2024-07-03-charming-boni"
   run_id_year: "2024"
-  comparison_run_id: "2024-07-09-cool-takuya"
+  comparison_run_id: "2024-07-13-great-eric"
   comparison_run_id_year: "2024"
   added_feature: "prox_nearest_new_construction_dist_ft" 
   added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
@@ -27,7 +27,7 @@ params:
   type: "continuous"
 ---
 
-```{r packages}
+```{r packages, include = FALSE}
 library(purrr)
 library(here)
 library(yaml)
@@ -59,7 +59,7 @@ cpp11::cpp_source(code = "
 ignore_sigpipes()
 ```
 
-```{r download_new_data}
+```{r download_new_data, include = FALSE}
 base_paths <- model_file_dict(params$run_id, params$run_id_year)
 comparison_paths <- model_file_dict(
   params$comparison_run_id,
@@ -107,11 +107,11 @@ rm(data_new)
 comparison_paths <- list(
   output = list(
     list(
-      s3 = base_paths$output$assessment_pin$s3,
+      s3 = comparison_paths$output$assessment_pin$s3,
       key = "assessment_pin"
     ),
     list(
-      s3 = base_paths$output$performance_test$s3,
+      s3 = comparison_paths$output$performance_test$s3,
       key = "performance_test"
     )
   )
@@ -302,22 +302,25 @@ leaflet_data <- card_individual %>%
 ::: {.panel-tabset}
 
 ```{r}
-# Function to create summary tables
 create_summary_table <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
 
-  summary_data <- if (!is.null(group_by_column)) {
-    data %>%
+  if (!is.null(group_by_column)) {
+    formatted_group_by_column <- str_to_title(str_replace_all(group_by_column, "_", " "))
+
+    summary_data <- data %>%
       group_by(!!sym(group_by_column)) %>%
       summarize(
+        !!formatted_group_by_column := first(!!sym(group_by_column)),
         Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
         Median = round(median(!!target_feature, na.rm = TRUE), 2),
         `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
         `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
         Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
-      )
+      ) %>%
+      select(-!!sym(group_by_column))
   } else {
-    data %>%
+    summary_data <- data %>%
       summarize(
         Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
         Median = round(median(!!target_feature, na.rm = TRUE), 2),
@@ -417,7 +420,7 @@ create_histogram_with_statistics(
 
 ## FMV Change Histogram
 
-This chart shows the distribution of the value of 'diff_pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. The largest 100 increases and decreases are displayed in maps in section X. 
+This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
 ```{r, fmv_change_histogram}
 create_histogram_with_statistics(
   data = pin_individual,
@@ -448,7 +451,7 @@ create_histogram_with_statistics(
 
 ## Correlation Between Added Feature and Other Features
 
-Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the correlation to help decipher the direction of the relationship.
+Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the raw value to help decipher the direction of the relationship.
 
 ```{r correlation_between_features}
 columns_to_remove <- c(
@@ -535,7 +538,9 @@ assessment_data_new %>%
   cor() %>%
   corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
 ```
+::: 
 
+# Ratio Stats
 ```{r, ratio_stats_function}
 ratio_stats <- performance_test_new %>%
   filter(
@@ -592,7 +597,6 @@ ratio_stats <- performance_test_new %>%
     str_replace_all(., " ", " ")) %>%
   split(.$"Geography Type")
 ```
-# Ratio Stats
 
 ::: {.panel-tabset}
 
@@ -652,14 +656,9 @@ The primary metric that the CCAO Data team uses to assess the importance of a fe
 
 ::: {.panel-tabset}
 
-## Absolute Value Rank of SHAP Scores
-
 ```{r, shap_count}
 shap_predictors <- unlist(metadata_new$model_predictor_all_name)
 ```
-
-The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature in a township, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
-
 
 ```{r shap_processing}
 # Combine data
@@ -679,6 +678,8 @@ shap_df_filtered_long <- shap_new %>%
 ```
 
 ### SHAP Median Absolute Value
+The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
+
 ```{r shap_full_importance}
 shap_df_filtered_long %>%
   group_by(feature) %>%
@@ -720,6 +721,8 @@ shap_df_filtered_long %>%
 ```
 
 ### SHAP Median Absolute Value by Township
+
+This is the same table, except ranked by township. To identify the rank of an indicator within a township, simply search for that township in the search bar.
 ```{r shap_township_importance}
 shap_df_filtered_long %>%
   group_by(township_code, feature) %>%
@@ -764,7 +767,7 @@ shap_df_filtered_long %>%
   )
 ```
 
-
+### Violin Plot Comparing SHAP to Feature
 ```{r violin_plots_shap_to_feature}
 # Calculate the number of digits
 num_digits <- card_individual %>%
@@ -815,13 +818,11 @@ shapviz::shapviz(
 
 # Spatial Analysis
 
-This panel looks at four stats, aggregated on the neighborhood level; the mean of the added feature, the median of the added feature, the mean of the absolute value of the SHAP, the 90th percentile of the SHAP, and the change in FMV based on the added feature.
-
 ## Neighborhood Values
 
 ::: panel-tabset
 
-### Mean Value of the Feature by Neighborhood
+### Mean Value of the Feature
 
 ```{r mean_feature_neighborhood}
 pin_nbhd %>%
@@ -832,7 +833,7 @@ pin_nbhd %>%
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
 
-### Median Value of the Feature by Neighborhood
+### Median Value of the Feature
 
 ```{r median_feature_neighborhood}
 pin_nbhd %>%
@@ -888,9 +889,9 @@ assessment_pin_new %>%
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
-
-# Leaflet Maps
 :::
+# Leaflet Maps
+
 ```{r, leaflet_function}
 create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
                                longitude = "loc_longitude", latitude = "loc_latitude",
