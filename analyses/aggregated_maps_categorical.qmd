@@ -33,7 +33,6 @@ maps <- lapply(suffixes, function(suffix) {
 
 ## Categorical Maps
 
-
 ```{r, results = 'asis'}
 for (i in seq_along(maps)) {
   cat("### Map for ", suffixes[i], "\n\n")
@@ -41,7 +40,6 @@ for (i in seq_along(maps)) {
   cat("\n\n")
 }
 ```
-
 
 ## Plurality in Each Neighborhood
 
