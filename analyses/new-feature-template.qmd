@@ -1053,7 +1053,7 @@ largest_fmv_decreases <- leaflet_data %>%
 create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
 ```
 
-## Largest FMV (Final) Increases no Multicards
+### Largest FMV (Final) Increases no Multicards
 
 ```{r, 100_largest_fmv_increases_no_multicards}}
 largest_fmv_increases <- leaflet_data %>%
@@ -1066,7 +1066,7 @@ largest_fmv_increases <- leaflet_data %>%
 create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
 ```
 
-## Largest FMV (Final) Decreases no Multicards
+### Largest FMV (Final) Decreases no Multicards
 
 ```{r, 100_largest_fmv_decreases_no_multicards}}}
 largest_fmv_decreases <- leaflet_data %>%
