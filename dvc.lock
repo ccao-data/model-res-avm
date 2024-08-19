@@ -2,6 +2,11 @@ schema: '2.0'
 stages:
   ingest:
     cmd: Rscript pipeline/00-ingest.R
+    deps:
+    - path: pipeline/00-ingest.R
+      hash: md5
+      md5: c04f9224e873b1ee29a64fa68aa6c8d9
+      size: 23355
     params:
       params.yaml:
         assessment:
@@ -61,6 +66,10 @@ stages:
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
+    - path: pipeline/01-train.R
+      hash: md5
+      md5: 46115d48cf066d35b0db14dc13a8d9b3
+      size: 17448
     - path: input/training_data.parquet
       hash: md5
       md5: 680e07bdb2a55166b7070155c4ff5a38
@@ -332,6 +341,10 @@ stages:
   assess:
     cmd: Rscript pipeline/02-assess.R
     deps:
+    - path: pipeline/02-assess.R
+      hash: md5
+      md5: 5e8c9b7d547ea41d9ec9441465e6e275
+      size: 22749
     - path: input/assessment_data.parquet
       hash: md5
       md5: 5450bfd412c9b552a1a2722b04e49706
@@ -520,6 +533,10 @@ stages:
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
     deps:
+    - path: pipeline/03-evaluate.R
+      hash: md5
+      md5: d33c8e642e5e29a0683463ce885771f8
+      size: 16292
     - path: output/assessment_pin/model_assessment_pin.parquet
       hash: md5
       md5: f5641cb4506847814181996692064b6e
@@ -577,6 +594,10 @@ stages:
   interpret:
     cmd: Rscript pipeline/04-interpret.R
     deps:
+    - path: pipeline/04-interpret.R
+      hash: md5
+      md5: 1cc57c0bcdaf2725fa343c6d88c1592c
+      size: 9619
     - path: input/assessment_data.parquet
       hash: md5
       md5: 582a6197429e99ee24271a3d4f9e9323
@@ -700,6 +721,10 @@ stages:
   finalize:
     cmd: Rscript pipeline/05-finalize.R
     deps:
+    - path: pipeline/05-finalize.R
+      hash: md5
+      md5: 5c5a5100ebae2013bc24e8f9333d136b
+      size: 8762
     - path: output/intermediate/timing/model_timing_assess.parquet
       hash: md5
       md5: 5f93cb109c073d91a9c9b55b3a56755b
@@ -991,6 +1016,11 @@ stages:
       size: 73
   export:
     cmd: Rscript pipeline/07-export.R
+    deps:
+    - path: pipeline/07-export.R
+      hash: md5
+      md5: b4615315b52165eed4a030c94def015b
+      size: 33718
     params:
       params.yaml:
         assessment.year: '2023'
@@ -1024,6 +1054,10 @@ stages:
   upload:
     cmd: Rscript pipeline/06-upload.R
     deps:
+    - path: pipeline/06-upload.R
+      hash: md5
+      md5: 3b7d11c518447cf6c14ec7668c488968
+      size: 11733
     - path: output/assessment_card/model_assessment_card.parquet
       hash: md5
       md5: 7f558cd27ce54a39390180383a0af3fc
