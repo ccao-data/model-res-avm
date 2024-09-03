@@ -30,7 +30,7 @@ stages:
               bldg_sf: 25
               yrblt: 4
               dist_ft: 250
-       outs:
+    outs:
     - path: input/assessment_data.parquet
       hash: md5
       md5: c5c5b10a62f815a8b47de9101424dea6
