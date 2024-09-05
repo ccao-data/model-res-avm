@@ -1,0 +1,84 @@
+---
+title: "add_descriptive_stats_categorical"
+format: html
+---
+
+```{r}
+create_category_percentages <- function(data, group_var, feature_var) {
+  group_vars <- if (!is.null(group_var)) {
+    list(sym(group_var), sym(feature_var))
+  } else {
+    list(sym(feature_var))
+  }
+
+  mode_function <- function(x) {
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+  }
+
+  category_percentages <- data %>%
+    group_by(!!!group_vars) %>%
+    count() %>%
+    group_by(!!!if (!is.null(group_var)) list(sym(group_var)) else list()) %>%
+    mutate(percentage = scales::percent(n / sum(n), accuracy = 0.01)) %>%
+    select(!!!group_vars, percentage) %>%
+    pivot_wider(names_from = !!sym(feature_var), values_from = percentage, values_fill = list(percentage = scales::percent(0)))
+
+  # Calculate mode for each group (if group_var is present) and add it as a new column
+  mode_column <- data %>%
+    group_by(!!!if (!is.null(group_var)) list(sym(group_var)) else list()) %>%
+    summarize(mode_value = mode_function(!!sym(feature_var))) %>%
+    ungroup()
+
+  # Join the mode column to the category_percentages data
+  category_percentages <- category_percentages %>%
+    left_join(mode_column, by = if (!is.null(group_var)) group_var else character(0)) %>%
+    mutate(mode = as.character(mode_value)) %>%
+    select(-mode_value)
+
+  datatable(category_percentages,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
+```
+
+## Descriptive Stats for Categorical Variables
+
+::: panel-tabset
+
+### Descriptive Stats for the County
+```{r}
+create_category_percentages(pin_individual, NULL, params$added_feature)
+```
+
+### Descriptive Stats for the Township
+```{r}
+create_category_percentages(pin_individual, "meta_township_name", params$added_feature)
+```
+
+### Descriptive Stats for the Neighborhood
+```{r}
+create_category_percentages(pin_individual, "meta_nbhd_code", params$added_feature)
+```
+
+### Historgram of the Target Feature
+```{r}
+pin_individual %>%
+  count(!!sym({{ target_feature_value }})) %>%
+  mutate(percentage = n / sum(n) * 100) %>%
+  ggplot(aes(x = !!sym({{ target_feature_value }}), y = percentage)) +
+  geom_bar(stat = "identity", fill = "blue", color = "black", alpha = 0.7) +
+  labs(
+    x = target_feature_value,
+    y = "Percentage"
+  ) +
+  theme_minimal()
+```
+
+:::
