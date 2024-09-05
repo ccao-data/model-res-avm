@@ -137,7 +137,7 @@ for (var_name in all_vars) {
 
 lockfile_assessment <- metadata_new$dvc_md5_assessment_data
 
-# Define S3 paths for assessment' data
+# Define S3 paths for data retrieved via dvc
 s3_path_assessment <- paste0(
   "s3://ccao-data-dvc-us-east-1/files/md5/",
   substr(lockfile_assessment, 1, 2), "/",
