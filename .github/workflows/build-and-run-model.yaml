@@ -69,12 +69,11 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/persist-batch-compute-environment-update-policy
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
-      ref: jeancochrane/persist-batch-compute-environment-update-policy
       backend: "ec2"
-      vcpu: "8"
-      memory: "32000"
+      vcpu: "40"
+      memory: "158000"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
       role-duration-seconds: 21000
