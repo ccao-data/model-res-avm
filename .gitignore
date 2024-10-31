@@ -23,9 +23,13 @@ cache/
 *.xlsm
 *.html
 *.rmarkdown
+*.quarto
+*.png
 
 # Ignore scratch documents
 scratch*.*
 
 # Python files
 __pycache__
+
+/.quarto/

@@ -1,0 +1,50 @@
+---
+title: "aggregated_maps_categorical"
+format: html
+---
+
+```{r}
+# Extracting suffixes
+suffixes <- pin_nbhd %>%
+  as_tibble() %>%
+  select(starts_with("percentage_")) %>%
+  names() %>%
+  gsub("percentage_", "", .)
+```
+
+```{r}
+maps <- lapply(suffixes, function(suffix) {
+  map1 <- pin_nbhd %>%
+    ggplot() +
+    geom_sf(aes(fill = !!sym(paste0("percentage_", suffix)))) +
+    scale_fill_viridis_c(option = "viridis", name = paste0("Value: ", suffix)) +
+    theme_void() +
+    coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2)) +
+    ggtitle(paste0("Map for ", suffix))
+
+  return(map1)
+})
+```
+
+## Categorical Maps
+
+```{r, results = 'asis'}
+for (i in seq_along(maps)) {
+  cat("### Map for ", suffixes[i], "\n\n")
+  print(maps[[i]])
+  cat("\n\n")
+}
+```
+
+## Plurality in Each Neighborhood
+
+```{r}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = as.factor(plurality_factor))) +
+  scale_fill_viridis_d(option = "viridis") +
+  labs(fill = "Variable") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2)) +
+  ggtitle("Plurality Variable")
+```

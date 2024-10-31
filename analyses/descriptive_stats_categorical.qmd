@@ -1,3 +1,8 @@
+---
+title: "add_descriptive_stats_categorical"
+format: html
+---
+
 
 ```{r}
 create_category_percentages <- function(data, group_var, feature_var) {
@@ -44,6 +49,10 @@ create_category_percentages <- function(data, group_var, feature_var) {
 }
 ```
 
+## Descriptive Stats for Categorical Variables
+
+::: panel-tabset
+
 ### Descriptive Stats for the County
 ```{r}
 create_category_percentages(pin_individual, NULL, params$added_feature)
@@ -73,3 +82,4 @@ pin_individual %>%
   theme_minimal()
 ```
 
+:::
