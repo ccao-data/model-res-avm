@@ -12,8 +12,14 @@ tictoc::tic("Evaluate")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Enable parallel backend for generating stats more quickly
-plan(multisession, workers = num_threads)
+# Enable parallel backend for generating stats faster.
+if (supportsMulticore()) {
+  # Limit to half the available cores to avoid hogging resources
+  plan(multicore, workers = ceiling(num_threads / 2))
+} else {
+  # Multisession performance begins to degrade beyond 5 workers
+  plan(multisession, workers = 5)
+}
 
 # Renaming dictionary for input columns. We want the actual value of the column
 # to become geography_id and the NAME of the column to become geography_name
