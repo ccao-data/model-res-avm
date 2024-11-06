@@ -12,7 +12,7 @@ tictoc::tic("Evaluate")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Enable parallel backend for generating stats faster.
+# Enable parallel backend for generating stats faster
 if (supportsMulticore()) {
   # Limit to half the available cores to avoid hogging resources
   plan(multicore, workers = ceiling(num_threads / 2))
