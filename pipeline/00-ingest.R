@@ -169,7 +169,7 @@ process_array_columns <- function(data, selector) {
   data %>%
     mutate(
       across(
-        selector,
+        !!enquo(selector),
         ~ sapply(.x, function(cell) {
           if (length(cell) > 1) {
             paste(cell, collapse = ", ")
