@@ -185,6 +185,50 @@ training_data %>%
   )
 ```
 
+
+
+### By Price Per Square Foot
+
+```{r _outliers_dist_price_per_sqft}
+outliers_dist_price_per_sqft <- training_data %>%
+  filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
+  mutate(ppsf = meta_sale_price / char_bldg_sf)
+outliers_dist_price_per_sqft %>%
+  summarise(
+    Min = min(ppsf),
+    Median = median(ppsf),
+    Mean = mean(ppsf),
+    Max = max(ppsf),
+    `Std. Dev` = sd(ppsf),
+    .by = sv_is_outlier
+  ) %>%
+  mutate(Category = ifelse(sv_is_outlier, "Outlier", "Not outlier")) %>%
+  relocate(Category, .before = NULL) %>%
+  select(-sv_is_outlier) %>%
+  mutate(across(Min:`Std. Dev`, dollar)) %>%
+  kable() %>%
+  kable_styling(full_width = TRUE)
+outliers_dist_price_per_sqft %>%
+  mutate(
+    Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
+    Category = factor(Category, levels = c("Outlier", "Not Outlier"))
+  ) %>%
+  filter(meta_sale_price < 2.5e6) %>%
+  ggplot(aes(ppsf, fill = Category)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Cumulative Distribution") +
+  theme_minimal() +
+  labs(x = "Log Price Per Square Foot") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_log10(labels = scales::dollar_format()) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+```
+
 ### By Township
 
 ```{r _outliers_dist_township, fig.height=8, fig.width=7}
