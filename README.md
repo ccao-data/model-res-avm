@@ -1465,8 +1465,8 @@ commands:
     dependency as necessary
 4.  Run `renv::snapshot()` to update the reporting lockfile with the
     dependencies defined in the `DESCRIPTION` file
-5.  Run `renv::activate()` if you would like to switch back to the
-    default renv profile
+5.  Run `renv::activate(profile = "default")` if you would like to switch
+    back to the default renv profile
 
 ## Troubleshooting
 
