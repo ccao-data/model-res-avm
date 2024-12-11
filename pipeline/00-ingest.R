@@ -1,7 +1,6 @@
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
 
@@ -11,13 +10,6 @@ tictoc::tic("Ingest")
 
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
-
-# Load additional dev R libraries (see README#managing-r-dependencies)
-suppressPackageStartupMessages({
-  library(DBI)
-  library(igraph)
-  library(noctua)
-})
 
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
@@ -96,16 +88,26 @@ assessment_data <- dbGetQuery(
   WHERE year BETWEEN '{as.numeric(params$assessment$data_year) - 1}'
     AND '{params$assessment$data_year}'
   ")
-)
+) %>%
+  group_by(loc_census_tract_geoid) %>%
+  mutate(sq_ft_variance = sd(char_bldg_sf) / mean(char_bldg_sf),
+         age_variance = sd(char_yrblt) / mean(char_yrblt)) %>%
+  ungroup()
 tictoc::toc()
 
 # Save both years for report generation using the characteristics
 assessment_data %>%
   write_parquet(paths$input$char$local)
 
+join_data <- assessment_data %>%
+  select(meta_pin, sq_ft_variance, age_variance)
+
 # Save only the assessment year data to use for assessing values
 assessment_data <- assessment_data %>%
   filter(year == params$assessment$data_year)
+
+training_data <- training_data %>%
+  left_join(join_data, by = "meta_pin")
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
@@ -151,11 +153,11 @@ recode_column_type <- function(col, col_name, dict = col_type_dict) {
     filter(var_name == col_name) %>%
     pull(var_type)
   switch(col_type,
-    numeric = as.numeric(col),
-    character = as.character(col),
-    logical = as.logical(as.numeric(col)),
-    categorical = as.factor(col),
-    date = lubridate::as_date(col)
+         numeric = as.numeric(col),
+         character = as.character(col),
+         logical = as.logical(as.numeric(col)),
+         categorical = as.factor(col),
+         date = lubridate::as_date(col)
   )
 }
 
@@ -549,14 +551,14 @@ complex_id_temp <- assessment_data_clean %>%
     char_bldg_sf.x <= char_bldg_sf.y + params$input$complex$match_fuzzy$bldg_sf,
     # nolint start
     (char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
-      char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
+       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
       is.na(char_yrblt.x),
     # Units must be within 250 feet of other units
     (loc_x_3435.x >= loc_x_3435.y - params$input$complex$match_fuzzy$dist_ft &
-      loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+       loc_x_3435.x <= loc_x_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_x_3435.x),
     (loc_y_3435.x >= loc_y_3435.y - params$input$complex$match_fuzzy$dist_ft &
-      loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
+       loc_y_3435.x <= loc_y_3435.y + params$input$complex$match_fuzzy$dist_ft) |
       is.na(loc_y_3435.x)
     # nolint end
   ) %>%
