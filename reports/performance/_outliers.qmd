@@ -49,8 +49,6 @@ training_data %>%
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
   )
-
-
 ```
 
 ### Count by Type and Year
@@ -65,7 +63,6 @@ training_data %>%
   kable() %>%
   kable_styling("striped")
 
-
 training_data %>%
   filter(sv_is_outlier) %>%
   group_by(meta_year, price_outlier_reason) %>%
@@ -74,7 +71,6 @@ training_data %>%
   pivot_wider(id_cols = Year, names_from = price_outlier_reason, values_from = n) %>%
   kable() %>%
   kable_styling("striped")
-
 ```
 
 ### Percentage by Class
