@@ -18,7 +18,12 @@ noctua_options(unload = TRUE)
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
 
 
-
+# Load additional dev R libraries (see README#managing-r-dependencies)
+suppressPackageStartupMessages({
+  library(DBI)
+  library(igraph)
+  library(noctua)
+})
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Pull Data -----------------------------------------------------------------
