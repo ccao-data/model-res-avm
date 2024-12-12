@@ -1,1 +1,3 @@
-# This identifies the root directory for quarto
+---
+project:
+  output-dir: reports/_output
