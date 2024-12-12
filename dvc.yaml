@@ -64,7 +64,6 @@ stages:
     - input/training_data.parquet
     - input/assessment_data.parquet
     - input/complex_id_data.parquet
-    - input/land_site_rate_data.parquet
     - input/land_nbhd_rate_data.parquet
     - output/workflow/fit/model_workflow_fit.zip
     - output/workflow/recipe/model_workflow_recipe.rds

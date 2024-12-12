@@ -22,10 +22,6 @@ rsn_prefix <- gsub("_tot", "", params$ratio_study$near_column)
 sales_data <- read_parquet(paths$input$training$local)
 
 # Load land rates from file
-land_site_rate <- read_parquet(
-  paths$input$land_site_rate$local,
-  c("meta_pin", "land_rate_per_pin")
-)
 land_nbhd_rate <- read_parquet(
   paths$input$land_nbhd_rate$local
 )
@@ -167,32 +163,20 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     char_land_sf, pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate
   ) %>%
   ungroup() %>%
-  left_join(land_site_rate, by = "meta_pin") %>%
   left_join(
     land_nbhd_rate,
     by = c("meta_nbhd_code" = "meta_nbhd", "meta_class")
   ) %>%
   mutate(
     pred_pin_final_fmv_land = ceiling(case_when(
-      # nolint start
-      # Use the fixed late value first (unless it exceeds the land % cap)
-      !is.na(land_rate_per_pin) &
-        (land_rate_per_pin > pred_pin_final_fmv_round_no_prorate *
-          params$pv$land_pct_of_total_cap) ~
-        pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
-      !is.na(land_rate_per_pin) ~ land_rate_per_pin,
-      # nolint end
-      # Otherwise, use the land $/sqft rate (again checking against the cap)
+      # Use the land $/sqft rate (unless it exceeds the % of total value cap)
       char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round_no_prorate *
         params$pv$land_pct_of_total_cap ~
         pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
     )),
     # Keep the uncapped value for display in desk review
-    pred_pin_uncapped_fmv_land = ceiling(case_when(
-      !is.na(land_rate_per_pin) ~ land_rate_per_pin,
-      TRUE ~ char_land_sf * land_rate_per_sqft
-    ))
+    pred_pin_uncapped_fmv_land = ceiling(char_land_sf * land_rate_per_sqft)
   )
 
 
@@ -254,7 +238,7 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
   select(
     meta_year, meta_pin, meta_complex_id,
     pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate,
-    land_rate_per_pin, land_rate_per_sqft, pred_pin_uncapped_fmv_land,
+    land_rate_per_sqft, pred_pin_uncapped_fmv_land,
     pred_pin_final_fmv_land, pred_pin_final_fmv_bldg_no_prorate,
     pred_pin_final_fmv_bldg, pred_pin_final_fmv_round
   ) %>%
@@ -447,7 +431,7 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
     hie_num_expired,
 
     # Keep PIN-level predicted values and land rates
-    land_rate_per_pin, land_rate_per_sqft,
+    land_rate_per_sqft,
     pred_pin_initial_fmv,
     pred_pin_final_fmv, pred_pin_final_fmv_round_no_prorate,
     pred_pin_uncapped_fmv_land, pred_pin_final_fmv_land,
@@ -557,7 +541,6 @@ assessment_pin_data_final %>%
   ) %>%
   # Coerce columns to their expected Athena output type
   mutate(
-    land_rate_per_pin = as.numeric(land_rate_per_pin),
     meta_complex_id = as.numeric(meta_complex_id),
     flag_hie_num_expired = as.numeric(flag_hie_num_expired)
   ) %>%
