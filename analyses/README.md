@@ -1,4 +1,18 @@
-The new-feature-template is a feature selection tool which provides insight into if new feature provides an added value to the model.
+The analyses folder provides one-off assessments whenever new features are created. The purpose of it is to identify if adding them to the model adds useful information, as well as potentially providing
+
+The produced reports aim to provide the following information.
+
+-   Summary statistics for the added variable (mean, median, mode, etc.)
+
+-   Does the added feature correlate with existing variables?
+
+-   Does the added feature improve model performance?
+
+-   Do SHAP values demonstrate that the added value is an important added feature?
+
+-   Are their spatial disparities to the added feature and the changes in assessed values?
+
+The new feature template has two folders, categorical and continuous representing two types of variables which can be added to the model. These produce similar outputs, but some
 
 To complete this report, execute the following steps:
 
