@@ -23,7 +23,10 @@ suppressPackageStartupMessages({
 noctua_options(unload = TRUE)
 
 # Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
+  noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
 
 
 
