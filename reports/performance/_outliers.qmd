@@ -8,7 +8,7 @@ This section examines flagged, non-arms-length sales, hereafter called "outliers
 
 ::: panel-tabset
 
-As of 12/6/2024 we have three columns that represent distinct outlier reasons.
+As of 12/6/2024, we have three columns that represent distinct outlier reasons.
 Sales are classified as outliers only if they have certain price-related outlier
 reasons. That is, if they are a certain number of standard deviations away
 from the mean of a group of properties. We are going to look strictly at the
