@@ -183,14 +183,14 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       sum_rsf_lst = sum_fns_list %>%
         set_names(paste0("prior_far_fmv_", names(.))) %>%
         map(., \(f) suppressWarnings(
-          exec(f, {{ rsf_col }}))
-        ) %>%
+          exec(f, {{ rsf_col }})
+        )) %>%
         list(),
       sum_rsf_sf_lst = sum_sqft_fns_list %>%
         set_names(paste0("prior_far_fmv_per_sqft_", names(.))) %>%
         map(., \(f) suppressWarnings(
-          exec(f, {{ rsf_col }}, {{ bldg_sqft }}))
-        ) %>%
+          exec(f, {{ rsf_col }}, {{ bldg_sqft }})
+        )) %>%
         list(),
       yoy_rsf_lst = yoy_fns_list %>%
         set_names(paste0("prior_far_yoy_pct_chg_", names(.))) %>%
