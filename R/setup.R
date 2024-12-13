@@ -108,13 +108,3 @@ early_stopping_enable <-
   get(params_obj_name)$model$parameter$validation_prop > 0 &&
     !is.null(get(params_obj_name)$model$parameter$stop_iter) && # nolint
     get(params_obj_name)$model$parameter$stop_iter > 0 # nolint
-
-# Load any additional PINs to generate reports for from environment
-report_pins <- unique(c(
-  get(params_obj_name)$ratio_study$pins,
-  Sys.getenv("REPORT_ADDITIONAL_PINS", unset = "") %>%
-    str_split(" ") %>%
-    unlist() %>%
-    str_trim() %>%
-    discard(~ .x == "")
-))
