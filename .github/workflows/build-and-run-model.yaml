@@ -18,12 +18,12 @@ on:
         type: choice
         description: Run type or purpose
         options:
-        - junk
-        - rejected
-        - test
-        - baseline
-        - candidate
-        - final
+          - junk
+          - rejected
+          - test
+          - baseline
+          - candidate
+          - final
         default: test
         required: true
       run_note:
