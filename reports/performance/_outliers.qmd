@@ -338,7 +338,6 @@ outliers_table_township_summary <- training_data %>%
   filter(meta_class != "200" & meta_triad_name == run_triad)
 
 outliers_table_township_summary <- outliers_table_township_summary %>%
-  # Proceed as before, but now using price_outlier_reason
   filter(sv_is_outlier) %>%
   summarise(
     `Min. Sale Price` = min(meta_sale_price, na.rm = TRUE),
