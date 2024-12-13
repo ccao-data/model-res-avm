@@ -85,6 +85,20 @@ represent the target pin, while the colored dots represent the comparable sales.
 Each color represents a group of comparables given a target PIN.
 
 ```{r _comp_map}
+# Selection of random PINs that are useful for testing comps
+report_pins <- c(
+  "13253180150000", # Typical 211 2-flat in Logan Square, 2100 sqft
+  "05174150240000", # Large 6 bed Georgian in Winnetka, 4600 sqft
+  "14074220130000", # Uptown 205, 3 bed, 2.5 bath, 2000 sqft
+  "20102120200000", # Bronzeville greystone, 211, 11 beds, 4100 sqft
+  "20321100160000", # Auburn Gresham 203, 5 bed, 3 bath, 2400 sqft
+  "20202080210000", # West Englewood 211, 6 bed, 2 bath post-fire, 2000 sqft
+  "17203230280000", # Pilsen 211 2-flat, 4 bed, 2 bath, 1800 sqft
+  "14321100320000", # Lincoln Park 206, 4 bed, 3 bath, 4000 sqft
+  "16054270120000", # Austin 205, 6 bed, 2 bath, 2000 sqft
+  "20142140140000" # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
+)
+
 comp_df_filtered <- comp_df %>%
   filter(pin %in% report_pins) %>%
   select(-starts_with("comp_score_")) %>%
