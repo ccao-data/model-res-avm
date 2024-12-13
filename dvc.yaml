@@ -5,17 +5,17 @@ stages:
       Ingest training and assessment data from Athena + generate townhome
       complex identifiers
     deps:
-    - pipeline/00-ingest.R
+      - pipeline/00-ingest.R
     params:
-    - assessment
-    - input
+      - assessment
+      - input
     outs:
-    - input/assessment_data.parquet
-    - input/char_data.parquet
-    - input/complex_id_data.parquet
-    - input/hie_data.parquet
-    - input/land_nbhd_rate_data.parquet
-    - input/training_data.parquet
+      - input/assessment_data.parquet
+      - input/char_data.parquet
+      - input/complex_id_data.parquet
+      - input/hie_data.parquet
+      - input/land_nbhd_rate_data.parquet
+      - input/training_data.parquet
 
     frozen: true
   train:
@@ -24,34 +24,34 @@ stages:
       Train a LightGBM model with cross-validation. Generate model objects,
       data recipes, and predictions on the test set (most recent 10% of sales)
     deps:
-    - pipeline/01-train.R
-    - input/training_data.parquet
+      - pipeline/01-train.R
+      - input/training_data.parquet
     params:
-    - cv
-    - model.engine
-    - model.hyperparameter
-    - model.objective
-    - model.parameter
-    - model.predictor
-    - model.seed
-    - model.verbose
-    - ratio_study
-    - toggle.cv_enable
+      - cv
+      - model.engine
+      - model.hyperparameter
+      - model.objective
+      - model.parameter
+      - model.predictor
+      - model.seed
+      - model.verbose
+      - ratio_study
+      - toggle.cv_enable
     outs:
-    - output/intermediate/timing/model_timing_train.parquet:
-        cache: false
-    - output/parameter_final/model_parameter_final.parquet:
-        cache: false
-    - output/parameter_range/model_parameter_range.parquet:
-        cache: false
-    - output/parameter_search/model_parameter_search.parquet:
-        cache: false
-    - output/test_card/model_test_card.parquet:
-        cache: false
-    - output/workflow/fit/model_workflow_fit.zip:
-        cache: false
-    - output/workflow/recipe/model_workflow_recipe.rds:
-        cache: false
+      - output/intermediate/timing/model_timing_train.parquet:
+          cache: false
+      - output/parameter_final/model_parameter_final.parquet:
+          cache: false
+      - output/parameter_range/model_parameter_range.parquet:
+          cache: false
+      - output/parameter_search/model_parameter_search.parquet:
+          cache: false
+      - output/test_card/model_test_card.parquet:
+          cache: false
+      - output/workflow/fit/model_workflow_fit.zip:
+          cache: false
+      - output/workflow/recipe/model_workflow_recipe.rds:
+          cache: false
 
   assess:
     cmd: Rscript pipeline/02-assess.R
@@ -60,26 +60,25 @@ stages:
       County. Also generate flags, calculate land values, and make any
       post-modeling changes
     deps:
-    - pipeline/02-assess.R
-    - input/training_data.parquet
-    - input/assessment_data.parquet
-    - input/complex_id_data.parquet
-    - input/land_site_rate_data.parquet
-    - input/land_nbhd_rate_data.parquet
-    - output/workflow/fit/model_workflow_fit.zip
-    - output/workflow/recipe/model_workflow_recipe.rds
+      - pipeline/02-assess.R
+      - input/training_data.parquet
+      - input/assessment_data.parquet
+      - input/complex_id_data.parquet
+      - input/land_nbhd_rate_data.parquet
+      - output/workflow/fit/model_workflow_fit.zip
+      - output/workflow/recipe/model_workflow_recipe.rds
     params:
-    - assessment
-    - pv
-    - ratio_study
-    - model.predictor.all
+      - assessment
+      - pv
+      - ratio_study
+      - model.predictor.all
     outs:
-    - output/assessment_card/model_assessment_card.parquet:
-        cache: false
-    - output/assessment_pin/model_assessment_pin.parquet:
-        cache: false
-    - output/intermediate/timing/model_timing_assess.parquet:
-        cache: false
+      - output/assessment_card/model_assessment_card.parquet:
+          cache: false
+      - output/assessment_pin/model_assessment_pin.parquet:
+          cache: false
+      - output/intermediate/timing/model_timing_assess.parquet:
+          cache: false
 
   evaluate:
     cmd: Rscript pipeline/03-evaluate.R
@@ -89,23 +88,23 @@ stages:
         2. An assessor-specific ratio study comparing estimated assessments to
            the previous year's sales
     deps:
-    - pipeline/03-evaluate.R
-    - output/test_card/model_test_card.parquet
-    - output/assessment_pin/model_assessment_pin.parquet
+      - pipeline/03-evaluate.R
+      - output/test_card/model_test_card.parquet
+      - output/assessment_pin/model_assessment_pin.parquet
     params:
-    - assessment
-    - ratio_study
+      - assessment
+      - ratio_study
     outs:
-    - output/performance/model_performance_test.parquet:
-        cache: false
-    - output/performance_quantile/model_performance_quantile_test.parquet:
-        cache: false
-    - output/performance/model_performance_assessment.parquet:
-        cache: false
-    - output/performance_quantile/model_performance_quantile_assessment.parquet:
-        cache: false
-    - output/intermediate/timing/model_timing_evaluate.parquet:
-        cache: false
+      - output/performance/model_performance_test.parquet:
+          cache: false
+      - output/performance_quantile/model_performance_quantile_test.parquet:
+          cache: false
+      - output/performance/model_performance_assessment.parquet:
+          cache: false
+      - output/performance_quantile/model_performance_quantile_assessment.parquet:
+          cache: false
+      - output/intermediate/timing/model_timing_evaluate.parquet:
+          cache: false
 
   interpret:
     cmd: Rscript pipeline/04-interpret.R
@@ -113,25 +112,25 @@ stages:
       Generate SHAP values for each card and feature as well as feature
       importance metrics for each feature
     deps:
-    - pipeline/04-interpret.R
-    - input/assessment_data.parquet
-    - input/training_data.parquet
-    - output/assessment_card/model_assessment_card.parquet
-    - output/workflow/fit/model_workflow_fit.zip
-    - output/workflow/recipe/model_workflow_recipe.rds
+      - pipeline/04-interpret.R
+      - input/assessment_data.parquet
+      - input/training_data.parquet
+      - output/assessment_card/model_assessment_card.parquet
+      - output/workflow/fit/model_workflow_fit.zip
+      - output/workflow/recipe/model_workflow_recipe.rds
     params:
-    - toggle.shap_enable
-    - toggle.comp_enable
-    - model.predictor.all
+      - toggle.shap_enable
+      - toggle.comp_enable
+      - model.predictor.all
     outs:
-    - output/shap/model_shap.parquet:
-        cache: false
-    - output/feature_importance/model_feature_importance.parquet:
-        cache: false
-    - output/intermediate/timing/model_timing_interpret.parquet:
-        cache: false
-    - output/comp/model_comp.parquet:
-        cache: false
+      - output/shap/model_shap.parquet:
+          cache: false
+      - output/feature_importance/model_feature_importance.parquet:
+          cache: false
+      - output/intermediate/timing/model_timing_interpret.parquet:
+          cache: false
+      - output/comp/model_comp.parquet:
+          cache: false
 
   finalize:
     cmd: Rscript pipeline/05-finalize.R
@@ -139,28 +138,28 @@ stages:
       Save run timings and run metadata to disk and render a performance report
       using Quarto.
     deps:
-    - pipeline/05-finalize.R
-    - output/intermediate/timing/model_timing_train.parquet
-    - output/intermediate/timing/model_timing_assess.parquet
-    - output/intermediate/timing/model_timing_evaluate.parquet
-    - output/intermediate/timing/model_timing_interpret.parquet
+      - pipeline/05-finalize.R
+      - output/intermediate/timing/model_timing_train.parquet
+      - output/intermediate/timing/model_timing_assess.parquet
+      - output/intermediate/timing/model_timing_evaluate.parquet
+      - output/intermediate/timing/model_timing_interpret.parquet
     params:
-    - run_note
-    - toggle
-    - input
-    - cv
-    - model
-    - pv
-    - ratio_study
+      - run_note
+      - toggle
+      - input
+      - cv
+      - model
+      - pv
+      - ratio_study
     outs:
-    - output/intermediate/timing/model_timing_finalize.parquet:
-        cache: false
-    - output/timing/model_timing.parquet:
-        cache: false
-    - output/metadata/model_metadata.parquet:
-        cache: false
-    - reports/performance/performance.html:
-        cache: false
+      - output/intermediate/timing/model_timing_finalize.parquet:
+          cache: false
+      - output/timing/model_timing.parquet:
+          cache: false
+      - output/metadata/model_metadata.parquet:
+          cache: false
+      - reports/performance/performance.html:
+          cache: false
 
   upload:
     cmd: Rscript pipeline/06-upload.R
@@ -170,25 +169,25 @@ stages:
       outputs prior to upload and attach a unique run ID. This step requires
       access to the CCAO Data AWS account, and so is assumed to be internal-only
     deps:
-    - pipeline/06-upload.R
-    - output/parameter_final/model_parameter_final.parquet
-    - output/parameter_range/model_parameter_range.parquet
-    - output/parameter_search/model_parameter_search.parquet
-    - output/workflow/fit/model_workflow_fit.zip
-    - output/workflow/recipe/model_workflow_recipe.rds
-    - output/test_card/model_test_card.parquet
-    - output/assessment_card/model_assessment_card.parquet
-    - output/assessment_pin/model_assessment_pin.parquet
-    - output/performance/model_performance_test.parquet
-    - output/performance_quantile/model_performance_quantile_test.parquet
-    - output/performance/model_performance_assessment.parquet
-    - output/performance_quantile/model_performance_quantile_assessment.parquet
-    - output/shap/model_shap.parquet
-    - output/comp/model_comp.parquet
-    - output/feature_importance/model_feature_importance.parquet
-    - output/metadata/model_metadata.parquet
-    - output/timing/model_timing.parquet
-    - reports/performance/performance.html
+      - pipeline/06-upload.R
+      - output/parameter_final/model_parameter_final.parquet
+      - output/parameter_range/model_parameter_range.parquet
+      - output/parameter_search/model_parameter_search.parquet
+      - output/workflow/fit/model_workflow_fit.zip
+      - output/workflow/recipe/model_workflow_recipe.rds
+      - output/test_card/model_test_card.parquet
+      - output/assessment_card/model_assessment_card.parquet
+      - output/assessment_pin/model_assessment_pin.parquet
+      - output/performance/model_performance_test.parquet
+      - output/performance_quantile/model_performance_quantile_test.parquet
+      - output/performance/model_performance_assessment.parquet
+      - output/performance_quantile/model_performance_quantile_assessment.parquet
+      - output/shap/model_shap.parquet
+      - output/comp/model_comp.parquet
+      - output/feature_importance/model_feature_importance.parquet
+      - output/metadata/model_metadata.parquet
+      - output/timing/model_timing.parquet
+      - reports/performance/performance.html
 
   export:
     cmd: Rscript pipeline/07-export.R
@@ -197,11 +196,11 @@ stages:
       run. NOT automatically run since it is typically only run once. Manually
       run once a model is selected
     deps:
-    - pipeline/07-export.R
+      - pipeline/07-export.R
     params:
-    - assessment.year
-    - input.min_sale_year
-    - input.max_sale_year
-    - ratio_study
-    - export
+      - assessment.year
+      - input.min_sale_year
+      - input.max_sale_year
+      - ratio_study
+      - export
     frozen: true
