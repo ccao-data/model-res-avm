@@ -21,18 +21,18 @@ run_note: |
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: FALSE
+  cv_enable: false
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: TRUE
+  shap_enable: true
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: TRUE
+  comp_enable: true
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
-  # to FALSE if you are not a CCAO employee
-  upload_enable: TRUE
+  # to false if you are not a CCAO employee
+  upload_enable: true
 
 
 # Data/Ingest ------------------------------------------------------------------
@@ -139,8 +139,8 @@ model:
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
   seed: 2024
-  deterministic: TRUE
-  force_row_wise: TRUE
+  deterministic: true
+  force_row_wise: true
 
   # Model verbosity: < 0: Fatal, = 0: Error (Warning), = 1: Info, > 1: Debug
   verbose: -1
@@ -292,9 +292,9 @@ model:
     validation_metric: "rmse"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
-    # to TRUE will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
+    # to true will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
     # This is to prevent tune_bayes from exploring useless parameter space
-    link_max_depth: TRUE
+    link_max_depth: true
 
     # During CV, the number of iterations to go without improvement before
     # stopping training. Early stopping is deactivated when NULL
@@ -340,19 +340,19 @@ model:
       # number actual used is reported in the lgbm_final_params object in the
       # train stage and parameter_final table in the run outputs/Athena
       num_iterations: [100, 2500]
-      learning_rate: [-3.0, -0.4] # 10 ^ X
+      learning_rate: [-3.0, -0.4]  # 10 ^ X
       max_bin: [50, 512]
       num_leaves: [32, 2048]
       add_to_linked_depth: [1, 7]
       feature_fraction: [0.3, 0.7]
-      min_gain_to_split: [-3.0, 4.0] # 10 ^ X
+      min_gain_to_split: [-3.0, 4.0]  # 10 ^ X
       min_data_in_leaf: [2, 400]
       max_cat_threshold: [10, 250]
       min_data_per_group: [2, 400]
       cat_smooth: [10.0, 200.0]
-      cat_l2: [-3, 2] # 10 ^ X
-      lambda_l1: [-3, 2] # 10 ^ X
-      lambda_l2: [-3, 2] # 10 ^ X
+      cat_l2: [-3, 2]  # 10 ^ X
+      lambda_l1: [-3, 2]  # 10 ^ X
+      lambda_l2: [-3, 2]  # 10 ^ X
 
 
 # Post-Valuation ---------------------------------------------------------------
@@ -413,22 +413,22 @@ ratio_study:
   # Pins for which to generate Quarto reports using reports/pin/pin.qmd. Can
   # also be appended to using the environmental variable REPORT_ADDITIONAL_PINS
   pins:
-    - "13253180150000" # Typical 211 2-flat in Logan Square, 2100 sqft
-    - "05174150240000" # Large 6 bed Georgian in Winnetka, 4600 sqft
-    - "14074220130000" # Uptown 205, 3 bed, 2.5 bath, 2000 sqft
-    - "20102120200000" # Bronzeville greystone, 211, 11 beds, 4100 sqft
-    - "20321100160000" # Auburn Gresham 203, 5 bed, 3 bath, 2400 sqft
-    - "20202080210000" # West Englewood 211, 6 bed, 2 bath post-fire, 2000 sqft
-    - "17203230280000" # Pilsen 211 2-flat, 4 bed, 2 bath, 1800 sqft
-    - "14321100320000" # Lincoln Park 206, 4 bed, 3 bath, 4000 sqft
-    - "16054270120000" # Austin 205, 6 bed, 2 bath, 2000 sqft
-    - "20142140140000" # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
+    - "13253180150000"  # Typical 211 2-flat in Logan Square, 2100 sqft
+    - "05174150240000"  # Large 6 bed Georgian in Winnetka, 4600 sqft
+    - "14074220130000"  # Uptown 205, 3 bed, 2.5 bath, 2000 sqft
+    - "20102120200000"  # Bronzeville greystone, 211, 11 beds, 4100 sqft
+    - "20321100160000"  # Auburn Gresham 203, 5 bed, 3 bath, 2400 sqft
+    - "20202080210000"  # West Englewood 211, 6 bed, 2 bath post-fire, 2000 sqft
+    - "17203230280000"  # Pilsen 211 2-flat, 4 bed, 2 bath, 1800 sqft
+    - "14321100320000"  # Lincoln Park 206, 4 bed, 3 bath, 4000 sqft
+    - "16054270120000"  # Austin 205, 6 bed, 2 bath, 2000 sqft
+    - "20142140140000"  # Hyde Park greystone, 210, 5 beds, 4 baths, 3000 sqft
 
 
 # Comparables ------------------------------------------------------------------
 
 # Parameters related to the experimental comparables finding feature
-# in the interpret pipeline stage. Only used if comp_enable = TRUE
+# in the interpret pipeline stage. Only used if comp_enable = true
 comp:
   # Number of comps to generate for each PIN/card
   num_comps: 20
