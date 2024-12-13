@@ -5,7 +5,6 @@
 # R project files
 .Rproj.user/
 reports/*_files/
-reports/_output/
 
 # knitr and R markdown default cache directories
 *_cache/
