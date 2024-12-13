@@ -9,10 +9,12 @@ This section examines flagged, non-arms-length sales, hereafter called "outliers
 ::: panel-tabset
 
 As of 12/6/2024, we have three columns that represent distinct outlier reasons.
-Sales are classified as outliers only if they have certain price-related outlier
-reasons. That is, if they are a certain number of standard deviations away
-from the mean of a group of properties. We are going to look strictly at the
-price reasons that invoke outlier status.
+
+Sales are considered outliers only if they meet specific price-related
+criteria—namely, if their price falls a certain number of standard deviations
+away from the average price within a comparable property group. We will focus
+exclusively on these price-based factors that determine outlier status.
+
 
 ### Count by Type
 
