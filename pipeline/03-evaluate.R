@@ -171,11 +171,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       # Summary stats of sale price and sale price per sqft
       sum_sale_lst = sum_fns_list %>%
         set_names(paste0("sale_fmv_", names(.))) %>%
-        map(., \(f) exec(f, {{ truth }})) %>%
+        map(., \(f) suppressWarnings(exec(f, {{ truth }}))) %>%
         list(),
       sum_sale_sf_lst = sum_sqft_fns_list %>%
         set_names(paste0("sale_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) exec(f, {{ truth }}, {{ bldg_sqft }})) %>%
+        map(., \(f) suppressWarnings(exec(f, {{ truth }}, {{ bldg_sqft }}))) %>%
         list(),
 
       # Summary stats of prior values and value per sqft
@@ -267,8 +267,9 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
     summarize(
       num_sale = sum(!is.na({{ truth }})),
       median_ratio = median(({{ estimate }} / {{ truth }}), na.rm = TRUE),
-      lower_bound = min({{ truth }}, na.rm = TRUE),
-      upper_bound = max({{ truth }}, na.rm = TRUE),
+      # Suppress warnings resulting from groups of size 0 or 1
+      lower_bound = suppressWarnings(min({{ truth }}, na.rm = TRUE)),
+      upper_bound = suppressWarnings(max({{ truth }}, na.rm = TRUE)),
       prior_near_yoy_pct_chg_median = median(
         ({{ estimate }} - {{ rsn_col }}) / {{ rsn_col }},
         na.rm = TRUE
