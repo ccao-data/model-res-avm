@@ -157,15 +157,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
 
       # Yardstick (ML-specific) performance stats
       ys_lst = ys_fns_list %>%
-        map(
-          .,
-          \(f) gte_n(
-            {{ truth }},
-            2,
-            exec(f, {{ truth }}, {{ estimate }}),
-            NA_real_
-          )
-        ) %>%
+        map(., \(f) gte_n({{ truth }}, 2, exec(f, {{ truth }}, {{ estimate }}), NA_real_)) %>% # nolint
         list(),
 
       # Summary stats of sale price and sale price per sqft
@@ -182,21 +174,15 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
       prior_far_num_missing = sum(is.na({{ rsf_col }})),
       sum_rsf_lst = sum_fns_list %>%
         set_names(paste0("prior_far_fmv_", names(.))) %>%
-        map(., \(f) suppressWarnings(
-          exec(f, {{ rsf_col }})
-        )) %>%
+        map(., \(f) suppressWarnings(exec(f, {{ rsf_col }}))) %>%
         list(),
       sum_rsf_sf_lst = sum_sqft_fns_list %>%
         set_names(paste0("prior_far_fmv_per_sqft_", names(.))) %>%
-        map(., \(f) suppressWarnings(
-          exec(f, {{ rsf_col }}, {{ bldg_sqft }})
-        )) %>%
+        map(., \(f) suppressWarnings(exec(f, {{ rsf_col }}, {{ bldg_sqft }}))) %>% # nolint
         list(),
       yoy_rsf_lst = yoy_fns_list %>%
         set_names(paste0("prior_far_yoy_pct_chg_", names(.))) %>%
-        map(., \(f) suppressWarnings(
-          exec(f, {{ estimate }}, {{ rsf_col }})
-        )) %>%
+        map(., \(f) suppressWarnings(exec(f, {{ estimate }}, {{ rsf_col }}))) %>% # nolint
         list(),
       prior_near_num_missing = sum(is.na({{ rsn_col }})),
       sum_rsn_lst = sum_fns_list %>%
