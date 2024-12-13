@@ -181,8 +181,6 @@ training_data %>%
   )
 ```
 
-
-
 ### By Price Per Square Foot
 
 ```{r _outliers_dist_price_per_sqft}
