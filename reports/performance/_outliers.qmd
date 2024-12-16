@@ -229,7 +229,7 @@ outliers_dist_price_per_sqft %>%
 
 ```{r _outliers_dist_township, fig.height=8, fig.width=7}
 training_data %>%
-  filter(meta_triad_name == "North") %>%
+  filter(meta_triad_name == run_triad) %>%
   mutate(
     township_name = ccao::town_convert(meta_township_code),
     Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
@@ -257,7 +257,7 @@ training_data %>%
 ```{r _outliers_dist_class, fig.height=8, fig.width=7}
 training_data %>%
   filter(
-    meta_triad_name == "North",
+    meta_triad_name == run_triad,
     !meta_class %in% c("218", "219")
   ) %>%
   mutate(
@@ -335,7 +335,7 @@ outliers_ratio_comparison %>%
 # This object is joined to itself using different filters, which is why this
 # filtering is applied here rather than below.
 outliers_table_township_summary <- training_data %>%
-  filter(meta_class != "200" & meta_triad_name == "North")
+  filter(meta_class != "200" & meta_triad_name == run_triad)
 
 outliers_table_township_summary <- outliers_table_township_summary %>%
   filter(sv_is_outlier) %>%
@@ -380,7 +380,7 @@ outliers_table_township_summary %>%
 
 ```{r _outliers_table_class_summary}
 outliers_table_class_summary <- training_data %>%
-  filter(meta_class != "200" & meta_triad_name == "North")
+  filter(meta_class != "200" & meta_triad_name == run_triad)
 
 outliers_table_class_summary <- outliers_table_class_summary %>%
   filter(sv_is_outlier) %>%
