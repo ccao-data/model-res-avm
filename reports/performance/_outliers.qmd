@@ -20,10 +20,13 @@ exclusively on these price-based factors that determine outlier status.
 ```{r _outliers_type_breakdown}
 # Subset important outlier information
 training_data <- training_data %>%
-  mutate(outlier_reasons_to_graph = case_when(
-    sv_is_outlier == TRUE ~ paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
-    TRUE ~ NA_character_
-  )) %>%
+  mutate(
+    outlier_reasons_to_graph = if_else(
+      sv_is_outlier == TRUE,
+      paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
+      NA_character_
+    )
+  ) %>%
   # Yank NA string values to make output cleaner
   mutate(outlier_reasons_to_graph = str_remove_all(outlier_reasons_to_graph, " \\(NA\\)"))
 
