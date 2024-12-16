@@ -23,7 +23,10 @@ suppressPackageStartupMessages({
 noctua_options(unload = TRUE)
 
 # Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
+  noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
 
 
 
@@ -107,17 +110,8 @@ assessment_data %>%
 assessment_data <- assessment_data %>%
   filter(year == params$assessment$data_year)
 
-# Pull site-specific (pre-determined) land values and neighborhood-level land
-# rates ($/sqft), as calculated by Valuations
+# Pull neighborhood-level land rates ($/sqft), as calculated by Valuations
 tictoc::tic("Land rate data pulled")
-land_site_rate_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT *
-  FROM ccao.land_site_rate
-  WHERE year = '{params$assessment$year}'
-  ")
-)
-
 land_nbhd_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
@@ -146,8 +140,8 @@ col_type_dict <- ccao::vars_dict %>%
   drop_na(var_name)
 
 # Mini-function to ensure that columns are the correct type
-recode_column_type <- function(col, col_name, dict = col_type_dict) {
-  col_type <- dict %>%
+recode_column_type <- function(col, col_name, dictionary = col_type_dict) {
+  col_type <- dictionary %>%
     filter(var_name == col_name) %>%
     pull(var_type)
   switch(col_type,
@@ -298,12 +292,12 @@ training_data_clean <- training_data_w_hie %>%
   # Recode factor variables using the definitions stored in ccao::vars_dict
   # This will remove any categories not stored in the dictionary and convert
   # them to NA (useful since there are a lot of misrecorded variables)
-  ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  ccao::vars_recode(cols = starts_with("char_"), code_type = "code") %>%
   # Recode the number of apartments from its numeric code to its actual number
   # of units. Additionally, ensure non-multi-family PINs always have NONE apts
   ccao::vars_recode(
     cols = all_of("char_apts"),
-    type = "short",
+    code_type = "short",
     as_factor = FALSE
   ) %>%
   mutate(
@@ -415,10 +409,10 @@ training_data_clean <- training_data_w_hie %>%
 # used on. The cleaning steps are the same as above, with the exception of the
 # time variables and identifying complexes
 assessment_data_clean <- assessment_data_w_hie %>%
-  ccao::vars_recode(cols = starts_with("char_"), type = "code") %>%
+  ccao::vars_recode(cols = starts_with("char_"), code_type = "code") %>%
   ccao::vars_recode(
     cols = all_of("char_apts"),
-    type = "short",
+    code_type = "short",
     as_factor = FALSE
   ) %>%
   # Apply the helper function to process array columns
@@ -610,9 +604,6 @@ complex_id_data <- assessment_data_clean %>%
 message("Saving land rates")
 
 # Write land data directly to file, since it's already mostly clean
-land_site_rate_data %>%
-  select(meta_pin = pin, meta_class = class, land_rate_per_pin, year) %>%
-  write_parquet(paths$input$land_site_rate$local)
 land_nbhd_rate_data %>%
   select(meta_nbhd = town_nbhd, meta_class = class, land_rate_per_sqft) %>%
   write_parquet(paths$input$land_nbhd_rate$local)
