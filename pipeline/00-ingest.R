@@ -14,12 +14,6 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
 
-# Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(
-  noctua::athena(),
-  rstudio_conn_tab = FALSE
-)
-
 
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
@@ -27,6 +21,14 @@ suppressPackageStartupMessages({
   library(igraph)
   library(noctua)
 })
+
+# Establish Athena connection
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
+  noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
+
+
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Pull Data -----------------------------------------------------------------
