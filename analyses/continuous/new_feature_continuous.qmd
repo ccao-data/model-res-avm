@@ -1,0 +1,40 @@
+---
+title: "New Feature Analysis"
+subtitle: "Run ID: `r params$added_feature`: `r params$description`"
+date: "`r Sys.Date()`"
+author: "Cook County Assessor's Office Data Department"
+execute:
+  echo: false
+  warning: false
+  asis: true
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+params:
+  run_id: "2024-12-02-determined-sam"
+  run_id_year: "2024"
+  comparison_run_id: "2024-07-13-great-eric"
+  comparison_run_id_year: "2024"
+  added_feature: "prox_nearest_road_arterial_daily_traffic" 
+  added_feature_shap: "prox_nearest_road_arterial_daily_traffic_shap"
+  description: "Daily traffic of the nearest arterial road"
+  min_range: 5
+  max_range: 95
+  type: "continuous"
+---
+
+{{< include ../shared/setup_shared.qmd >}}
+
+{{< include _data_processing_continuous.qmd >}}
+
+{{< include _descriptive_stats_continuous.qmd >}}
+
+{{< include ../shared/_ratio_stats_shared.qmd >}}
+
+{{< include _shaps_continuous.qmd >}}
+
+{{< include _spatial_analysis_continuous.qmd >}}

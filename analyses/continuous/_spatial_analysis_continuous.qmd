@@ -1,0 +1,319 @@
+# Spatial Analysis
+
+## Neighborhood Values
+
+::: panel-tabset
+
+### Mean Value of the Feature
+
+```{r mean_feature_neighborhood}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Median Value of the Feature
+
+```{r median_feature_neighborhood}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+
+### Mode Value of the Feature
+
+```{r mode_feature_neighborhood}
+pin_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mode")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Mean Absolute SHAP Value
+
+```{r mean_shap_neighborhood}
+card_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_mean_abs")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### 90th Percentile of Absolute SHAP
+
+```{r 90th_percentile_shap}
+card_nbhd %>%
+  ggplot() +
+  geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_90th")))) +
+  scale_fill_viridis_c(option = "viridis", name = "Value") +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+
+### Median change in Neighborhood FMV
+This value is defined as the neighborhood level median increase in value when adding the new feature to the model. For example, a value of 1% would mean that adding the feature increased properties within a neighborhood by 1%.
+
+```{r neighborhood_change}
+assessment_pin_new %>%
+  select(meta_pin, loc_longitude, loc_latitude, pred_pin_final_fmv) %>%
+  rename(pred_pin_final_fmv_new = pred_pin_final_fmv) %>%
+  inner_join(assessment_pin_comparison, by = "meta_pin") %>%
+  rename(pred_pin_final_fmv_comparison = pred_pin_final_fmv) %>%
+  group_by(meta_nbhd_code) %>%
+  summarize(
+    median_fmv_new = median(pred_pin_final_fmv_new, na.rm = TRUE),
+    median_fmv_comparison = median(pred_pin_final_fmv_comparison, na.rm = TRUE),
+    fmv_ratio = (median_fmv_new / median_fmv_comparison) / median_fmv_comparison
+  ) %>%
+  inner_join(nbhd, by = c("meta_nbhd_code" = "town_nbhd")) %>%
+  st_as_sf() %>%
+  ggplot() +
+  geom_sf(aes(fill = fmv_ratio)) +
+  scale_fill_viridis_c(option = "viridis", name = "FMV Ratio", labels = scales::percent_format(accuracy = 0.001)) +
+  theme_void() +
+  coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
+```
+:::
+# Leaflet Maps
+
+```{r, leaflet_function}
+create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
+                               longitude = "loc_longitude", latitude = "loc_latitude",
+                               display_as_percent = FALSE) {
+  # Filter neighborhoods that have at least one observation
+  nbhd_borders <- nbhd %>%
+    right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
+
+  # Adjust the dataset values if display_as_percent is TRUE
+  if (display_as_percent) {
+    dataset[[legend_value]] <- dataset[[legend_value]] * 100
+  }
+
+  # Create the color palette based on order_scheme
+  if (order_scheme == "low") {
+    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]], reverse = TRUE)
+  } else {
+    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
+  }
+
+  # Calculate the bounding box of the filtered neighborhoods
+  bbox <- st_bbox(nbhd_borders)
+
+  # Create the leaflet map
+  leaflet(dataset) %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+    addCircleMarkers(
+      lng = ~ get(longitude),
+      lat = ~ get(latitude),
+      radius = 5,
+      color = ~ pal(dataset[[legend_value]]),
+      popup = ~ {
+        shap_values <- dataset %>%
+          select(starts_with("target_feature_shap_")) %>%
+          summarise_all(~ ifelse(!is.na(.), sprintf("SHAP: %s", scales::dollar(.)), NA)) %>%
+          apply(1, function(row) {
+            paste(na.omit(row), collapse = "<br>")
+          })
+        paste(
+          "Pin: ", meta_pin,
+          ifelse(shap_values == "", "", paste0("<br>", shap_values)),
+          "<br>", "Relative SHAP: ", scales::percent(relative_shap, accuracy = 0.01),
+          "<br>", "Feature: ", sprintf("%.2f", get(params$added_feature)),
+          "<br>", "New FMV: ", pred_pin_final_fmv_new,
+          "<br>", "Comparison FMV: ", pred_pin_final_fmv_comp,
+          "<br>", "FMV Difference: ", scales::percent(diff_pred_pin_final_fmv)
+        )
+      }
+    ) %>%
+    addPolygons(
+      data = nbhd_borders,
+      color = "black",
+      weight = 2,
+      fill = FALSE
+    ) %>%
+    addLegend(
+      "bottomright",
+      pal = pal,
+      values = dataset[[legend_value]],
+      title = legend_title,
+      labFormat = if (display_as_percent) labelFormat(suffix = "%") else labelFormat()
+    )
+}
+```
+
+## Highest and Lowest 100 Values
+
+::: panel-tabset
+
+### Largest 100 Values
+
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation"`
+
+```{r largest_values}
+highest_100 <- leaflet_data %>%
+  arrange(desc(!!sym(target_feature_value))) %>%
+  dplyr::slice(1:100)
+
+create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values")
+```
+
+### Lowest 100 Values
+
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation."`
+
+
+```{r, 100_lowest}
+highest_100 <- leaflet_data %>%
+  arrange(desc(!!sym(target_feature_value))) %>%
+  dplyr::slice(1:100)
+
+create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values")
+```
+
+### Highest 100 SHAP Values
+
+```{r, 100_highest_shap}
+highest_100 <- leaflet_data %>%
+  arrange(desc(shap_total)) %>%
+  slice(1:100)
+
+create_leaflet_map(highest_100, "shap_total", "Highest 100 SHAPs")
+```
+
+### Lowest 100 SHAP Values
+
+```{r, 100_lowest_shap}
+lowest_100 <- leaflet_data %>%
+  arrange(shap_total) %>%
+  slice(1:100)
+
+create_leaflet_map(lowest_100, "shap_total", "Lowest 100 SHAPs", order_scheme = "low")
+```
+:::
+
+## Largest FMV Changes
+
+Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact.
+
+::: panel-tabset
+### 100 Largest FMV Increases
+
+```{r, 100_largest_fmv_increases}
+largest_fmv_increases <- leaflet_data %>%
+  arrange(desc(diff_pred_pin_final_fmv)) %>%
+  slice(1:100)
+
+# Call the function with the pre-sliced dataset
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
+```
+
+### 100 Largest FMV Decreases
+
+```{r, 100_largest_fmv_decreases}}
+largest_fmv_decreases <- leaflet_data %>%
+  arrange(diff_pred_pin_final_fmv) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
+```
+
+### 100 Largest FMV Initial Increases
+
+```{r, 100_largest_fmv_initial_increases}
+largest_fmv_increases <- leaflet_data %>%
+  arrange(desc(diff_pred_pin_initial_fmv)) %>%
+  slice(1:100)
+
+# Call the function with the pre-sliced dataset
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases", display_as_percent = TRUE)
+```
+
+### 100 Largest Initial FMV Decreases
+
+```{r, 100_largest_fmv_initial_decreases}}
+largest_fmv_decreases <- leaflet_data %>%
+  arrange(diff_pred_pin_initial_fmv) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
+```
+
+### Largest FMV (Final) Increases no Multicards
+
+```{r, 100_largest_fmv_increases_no_multicards}}
+largest_fmv_increases <- leaflet_data %>%
+  group_by(meta_pin) %>%
+  filter(n() == 1) %>%
+  ungroup() %>%
+  arrange(desc(diff_pred_pin_final_fmv)) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
+```
+
+### Largest FMV (Final) Decreases no Multicards
+
+```{r, 100_largest_fmv_decreases_no_multicards}}}
+largest_fmv_decreases <- leaflet_data %>%
+  group_by(meta_pin) %>%
+  filter(n() == 1) %>%
+  ungroup() %>%
+  arrange(diff_pred_pin_initial_fmv) %>%
+  slice(1:100)
+
+create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low", display_as_percent = TRUE)
+```
+:::
+
+## Neighborhoods with the Highest and Lowest SHAP Values
+
+These maps identify neighborhoods where the added feature is having the largest impact on SHAP values. By selecting neighborhoods with the highest mean(absolute value), you can take a closer look at how individual parcels in these neighborhoods are affected.
+
+::: panel-tabset
+```{r processing_SHAP_values}
+selected_data <- leaflet_data %>%
+  group_by(meta_nbhd_code) %>%
+  mutate(mean_value = mean(abs(shap_total)), na.rm = TRUE) %>%
+  ungroup() %>%
+  distinct(meta_nbhd_code, .keep_all = TRUE) %>%
+  arrange(mean_value)
+
+# Select top 2 and bottom 2 neighborhoods based on mean SHAP values
+selected_nbhd_codes <- selected_data %>%
+  slice(c(1:2, (n() - 1):n())) %>%
+  pull(meta_nbhd_code)
+
+
+filtered_data <- filter(leaflet_data, meta_nbhd_code %in% selected_nbhd_codes)
+
+
+# Separate high and low mean value neighborhoods
+high_mean_data <- filtered_data %>%
+  filter(meta_nbhd_code %in% selected_nbhd_codes[(length(selected_nbhd_codes) - 1):length(selected_nbhd_codes)])
+
+low_mean_data <- filtered_data %>%
+  filter(meta_nbhd_code %in% selected_nbhd_codes[1:2])
+```
+
+### 2 Highest SHAP Neighborhoods
+
+```{r, 2_highest_shap_nbhd}
+create_leaflet_map(high_mean_data, "shap_total", "SHAP Values")
+```
+
+### 2 Lowest SHAP Neighborhoods
+
+```{r, 2_lowest_shap_nbhd}
+create_leaflet_map(low_mean_data, "shap_total", "SHAP Values")
+```
+:::

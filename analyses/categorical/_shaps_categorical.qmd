@@ -1,0 +1,164 @@
+# SHAP
+
+The primary metric that the CCAO Data team uses to assess the importance of a feature is its SHAP value. SHAP values provide the amount of value each feature contributes to a parcel's predicted value. The SHAP value is calculated for each observation in the dataset, and the median SHAP value for a feature is used to determine the relative influence of that feature. The higher the median SHAP value, the more influential the feature is in the model.
+
+::: {.panel-tabset}
+
+```{r, shap_count}
+shap_predictors <- unlist(metadata_new$model_predictor_all_name)
+```
+
+```{r shap_processing}
+# Combine data
+shap_df_filtered_long <- shap_new %>%
+  inner_join(
+    assessment_data_new %>%
+      select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
+      rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code),
+    by = c("meta_pin", "meta_card_num")
+  ) %>%
+  select(township_code, all_of(shap_predictors)) %>%
+  pivot_longer(
+    cols = all_of(shap_predictors),
+    names_to = "feature",
+    values_to = "shap"
+  )
+```
+
+## SHAP Median Absolute Value
+The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
+
+```{r shap_full_importance}
+shap_df_filtered_long %>%
+  group_by(feature) %>%
+  mutate(
+    median_abs_shap = round(median(abs(shap), na.rm = TRUE), 2),
+    median_shap = round(median(shap, na.rm = TRUE), 2)
+  ) %>%
+  ungroup() %>%
+  distinct(feature, .keep_all = TRUE) %>%
+  arrange(desc(median_abs_shap)) %>%
+  mutate(
+    rank_absolute = row_number(),
+    `Median Absolute Shap` = scales::dollar(median_abs_shap),
+    `Median SHAP` = scales::dollar(median_shap)
+  ) %>%
+  inner_join(ccao::town_dict, by = c("township_code" = "township_code")) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
+  clean_column_values("feature") %>%
+  select(
+    Feature = feature,
+    "Median Absolute Shap",
+    "Median SHAP",
+    "Rank Absolute" = rank_absolute
+  ) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+```
+
+## SHAP Median Absolute Value by Township
+
+This is the same table, except ranked by township. To identify the rank of an indicator within a township, simply search for that township in the search bar.
+```{r shap_township_importance, include = FALSE}
+shaps_township <- shap_df_filtered_long %>%
+  group_by(township_code, feature) %>%
+  mutate(
+    median_abs_shap = round(median(abs(shap), na.rm = TRUE), 2),
+    median_shap = round(median(shap, na.rm = TRUE), 2)
+  ) %>%
+  ungroup() %>%
+  distinct(township_code, feature, .keep_all = TRUE) %>%
+  group_by(township_code) %>%
+  arrange(desc(median_abs_shap), .by_group = TRUE) %>%
+  mutate(
+    township_rank_absolute = row_number(),
+    `Median Absolute Shap` = scales::dollar(median_abs_shap),
+    `Median SHAP` = scales::dollar(median_shap)
+  ) %>%
+  ungroup() %>%
+  inner_join(ccao::town_dict, by = c("township_code" = "township_code")) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
+  clean_column_values("feature") %>%
+  select(
+    Township = township_name,
+    `Township Code` = township_code,
+    Feature = feature,
+    `Median Absolute Shap`,
+    `Median SHAP`,
+    `Township Rank Absolute` = township_rank_absolute
+  ) %>%
+  datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+```
+
+```{r}
+shaps_township
+```
+
+## Violin Plots of SHAP Values by Feature Value
+
+```{r violin_plots_shap_to_feature, echo=FALSE, warning=FALSE ,message=FALSE, error=FALSE, results='asis', fig.keep='all'}
+# Calculate quantiles
+quantiles <- card_individual %>%
+  pull({{ target_feature_shap }}) %>%
+  quantile(c(0.025, 0.975), na.rm = TRUE)
+
+# Filter data and limit categorical variable values to 30 characters
+card_individual %>%
+  filter(!!sym(target_feature_shap) >= quantiles[1] & !!sym(target_feature_shap) <= quantiles[2]) %>%
+  mutate(!!sym(target_feature_value) := substr(!!sym(target_feature_value), 1, 25)) %>%
+  select(meta_card_num, meta_pin, {{ target_feature_shap }}, {{ target_feature_value }}) %>%
+  ggplot(aes(x = !!sym(target_feature_value), y = !!sym(target_feature_shap))) +
+  geom_violin(fill = "#69b3a2") +
+  theme_minimal() +
+  xlab("Feature Category") +
+  ylab("SHAP Value") +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)
+  )
+```
+
+## Scatterplot Demonstrating the Relationship between SHAP and Feature Value
+
+```{r SHAP_scatterplot, fig.keep='all'}
+shapviz::shapviz(
+  object = shap_new %>%
+    select(all_of(shap_predictors)) %>%
+    as.matrix(),
+  X = assessment_card_new %>%
+    select(all_of(shap_predictors)),
+  baseline = shap_new$pred_card_shap_baseline_fmv[1]
+) %>%
+  shapviz::sv_dependence(
+    v = target_feature_value
+  ) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  scale_x_discrete(labels = function(labels) {
+    substr(labels, 1, 25)
+  })
+```
+:::

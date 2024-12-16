@@ -1,0 +1,138 @@
+---
+params:
+  run_id: "2024-12-02-determined-sam"
+  run_id_year: "2024"
+  comparison_run_id: "2024-07-13-great-eric"
+  comparison_run_id_year: "2024"
+  added_feature: "prox_nearest_road_arterial_surface_type" 
+  added_feature_shap: "prox_nearest_road_arterial_surface_type_shap"
+  description: "Surface type of the nearest arterial road"
+  min_range: 5
+  max_range: 95
+  type: "categorical"
+---
+```{r packages, include = FALSE}
+library(purrr)
+library(here)
+library(yaml)
+library(corrplot)
+library(RColorBrewer)
+
+# Load list of helper files and main libraries
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+
+# Load reporting-only R libraries
+suppressPackageStartupMessages({
+  reporting_libs <- "Config/renv/profiles/reporting/dependencies"
+  purrr::walk(
+    strsplit(read_yaml(here::here("DESCRIPTION"))[[reporting_libs]], ", ")[[1]],
+    library,
+    character.only = TRUE
+  )
+})
+
+# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = "
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+")
+
+ignore_sigpipes()
+```
+
+```{r download_new_data, include = FALSE}
+base_paths <- model_file_dict(params$run_id, params$run_id_year)
+comparison_paths <- model_file_dict(
+  params$comparison_run_id,
+  params$comparison_run_id_year
+)
+run_id <- params$run_id
+comparison_run_id <- params$comparison_run_id
+
+analyses_paths <- list(
+  output = list(
+    list(
+      s3 = base_paths$output$assessment_card$s3,
+      key = "assessment_card"
+    ),
+    list(
+      s3 = base_paths$output$assessment_pin$s3,
+      key = "assessment_pin"
+    ),
+    list(
+      s3 = base_paths$output$metadata$s3,
+      key = "metadata"
+    ),
+    list(
+      s3 = base_paths$output$performance_test$s3,
+      key = "performance_test"
+    ),
+    list(
+      s3 = base_paths$output$shap$s3,
+      key = "shap"
+    )
+  )
+)
+
+source("../shared/helpers.R")
+data_new <- model_fetch_run_subset(
+  params$run_id,
+  params$run_id_year,
+  analyses_paths, TRUE
+)
+
+list2env(data_new, envir = .GlobalEnv)
+
+rm(data_new)
+
+comparison_paths <- list(
+  output = list(
+    list(
+      s3 = comparison_paths$output$assessment_pin$s3,
+      key = "assessment_pin"
+    ),
+    list(
+      s3 = comparison_paths$output$performance_test$s3,
+      key = "performance_test"
+    )
+  )
+)
+
+data_comparison <- model_fetch_run_subset(
+  params$comparison_run_id,
+  params$comparison_run_id_year,
+  comparison_paths, TRUE
+)
+
+list2env(data_comparison, envir = .GlobalEnv)
+
+rm(data_comparison)
+
+all_vars <- ls()
+
+# Iterate over all variables and rename if necessary
+for (var_name in all_vars) {
+  rename_var(var_name, params$run_id, "_new")
+  rename_var(var_name, params$comparison_run_id, "_comparison")
+}
+
+lockfile_assessment <- metadata_new$dvc_md5_assessment_data
+
+s3_path_assessment <- paste0(
+  "s3://ccao-data-dvc-us-east-1/files/md5/",
+  substr(lockfile_assessment, 1, 2), "/",
+  substr(lockfile_assessment, 3, nchar(lockfile_assessment))
+)
+
+assessment_data_new <- read_parquet(s3_path_assessment)
+
+target_feature_value <- params$added_feature
+target_feature_shap <- params$added_feature_shap
+type <- params$type
+nbhd <- ccao::nbhd_shp
+```

@@ -1,0 +1,160 @@
+---
+execute:
+  echo: false
+  warning: false
+  asis: true
+  message: false
+  tabset: true
+---
+
+# Descriptive Statistics 
+
+## Percentages of Characteristics by Geography
+
+::: {.panel-tabset}
+
+```{r}
+# Categorical summary function
+create_category_percentages <- function(data, target_feature, group_by_column = NULL) {
+  target_feature <- sym(target_feature)
+  group_vars <- if (!is.null(group_by_column)) {
+    list(sym(group_by_column), target_feature)
+  } else {
+    list(target_feature)
+  }
+
+  category_percentages <- data %>%
+    group_by(!!!group_vars) %>%
+    count() %>%
+    group_by(!!!if (!is.null(group_by_column)) list(sym(group_by_column)) else list()) %>%
+    mutate(percentage = scales::percent(n / sum(n), accuracy = 0.01)) %>%
+    select(!!!group_vars, percentage) %>%
+    pivot_wider(names_from = !!target_feature, values_from = percentage, values_fill = list(percentage = scales::percent(0)))
+
+  # Calculate mode for each group (if group_by_column is present) and add it as a new column
+  mode_column <- data %>%
+    group_by(!!!if (!is.null(group_by_column)) list(sym(group_by_column)) else list()) %>%
+    summarize(mode_value = mode_function(!!target_feature)) %>%
+    ungroup()
+
+  # Join the mode column to the category_percentages data
+  category_percentages <- category_percentages %>%
+    left_join(mode_column, by = if (!is.null(group_by_column)) group_by_column else character(0)) %>%
+    mutate(mode = as.character(mode_value)) %>%
+    select(-mode_value)
+
+  datatable(category_percentages,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
+```
+
+### Overall
+
+```{r mean_median}
+create_category_percentages(pin_individual, target_feature = {{ target_feature_value }})
+```
+
+### Township
+```{r mean_median_township}
+create_category_percentages(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
+```
+
+### Neighborhood
+
+```{r mean_median_neighborhood}
+create_category_percentages(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
+```
+:::
+
+
+
+```{r, histogram_function}
+create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
+  # Conditionally filter outliers if requested
+  if (filter_outliers && !is.null(filter_column)) {
+    data <- data %>%
+      filter(
+        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
+          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
+      )
+  }
+
+  # Calculate mean and median
+  mean_value <- mean(data[[target_feature]], na.rm = TRUE)
+  median_value <- median(data[[target_feature]], na.rm = TRUE)
+
+
+  # Create the plot
+  # Calculate dynamic binwidth based on data range
+  range_value <- range(data[[target_feature]], na.rm = TRUE)
+  dynamic_binwidth <- (range_value[2] - range_value[1]) / 30 # Adjust '30' as needed for more or fewer bins
+
+  htmltools::tagList(
+    plot <- data %>%
+      ggplot(aes(x = !!sym(target_feature))) +
+      geom_histogram(
+        fill = "blue",
+        color = "black",
+        alpha = 0.7,
+        binwidth = dynamic_binwidth
+      ) +
+      geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+      geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+      scale_color_manual(
+        name = "Statistics",
+        values = c(Mean = "red", Median = "green"),
+        labels = c("Mean", "Median")
+      ) +
+      labs(
+        x = x_label,
+        y = y_label
+      ) +
+      theme_minimal()
+  )
+
+
+
+  return(plot)
+}
+
+fmv_histogram <- create_histogram_with_statistics(
+  data = pin_individual,
+  target_feature = "diff_pred_pin_initial_fmv",
+  x_label = "Change in FMV",
+  filter_outliers = TRUE,
+  filter_column = "diff_pred_pin_initial_fmv"
+)
+
+shap_histogram <- create_histogram_with_statistics(
+  data = shap_new,
+  target_feature = target_feature_value,
+  x_label = "SHAP Value",
+  filter_outliers = TRUE,
+  filter_column = target_feature_value
+)
+```
+
+## Histograms
+
+::: {.panel-tabset}
+
+### FMV Change Histogram
+
+This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
+```{r fmv_change_histogram, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+fmv_histogram
+```
+
+### SHAP Histogram
+
+```{r shap_histogram, echo=FALSE, warning=FALSE, message=FALSE, error=FALSE, results='asis', fig.keep='all'}
+shap_histogram
+```
+:::

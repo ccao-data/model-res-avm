@@ -1,0 +1,243 @@
+
+# Descriptive Statistics
+
+::: {.panel-tabset}
+
+```{r}
+# Continuous summary function
+create_summary_table <- function(data, target_feature, group_by_column = NULL) {
+  target_feature <- sym(target_feature)
+
+  if (!is.null(group_by_column)) {
+    formatted_group_by_column <- str_to_title(str_replace_all(group_by_column, "_", " "))
+
+    summary_data <- data %>%
+      group_by(!!sym(group_by_column)) %>%
+      summarize(
+        !!formatted_group_by_column := first(!!sym(group_by_column)),
+        Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
+        Median = round(median(!!target_feature, na.rm = TRUE), 2),
+        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
+        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+      ) %>%
+      select(-!!sym(group_by_column))
+  } else {
+    summary_data <- data %>%
+      summarize(
+        Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
+        Median = round(median(!!target_feature, na.rm = TRUE), 2),
+        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
+        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+      )
+  }
+
+  # Display the summary in a datatable
+  datatable(
+    summary_data,
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = FALSE,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+}
+```
+
+## Overall
+
+```{r mean_median}
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }})
+```
+
+## Township
+```{r mean_median_township}
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
+```
+
+## Neighborhood
+
+```{r mean_median_neighborhood}
+create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
+```
+
+:::
+
+# Histogram
+
+::: {.panel-tabset}
+
+
+```{r histogram_function}
+create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
+  # Conditionally filter outliers if requested
+  if (filter_outliers && !is.null(filter_column)) {
+    data <- data %>%
+      filter(
+        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
+          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
+      )
+  }
+
+  # Calculate mean and median
+  data <- data %>%
+    mutate(
+      mean_value = mean(!!sym(target_feature), na.rm = TRUE),
+      median_value = median(!!sym(target_feature), na.rm = TRUE)
+    )
+
+  # Create the plot
+  plot <- data %>%
+    ggplot(aes(x = !!sym(target_feature))) +
+    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
+    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    scale_color_manual(
+      name = "Statistics",
+      values = c(Mean = "red", Median = "green"),
+      labels = c("Mean", "Median")
+    ) +
+    labs(
+      x = x_label,
+      y = y_label
+    ) +
+    theme_minimal()
+
+  return(plot)
+}
+```
+
+
+## Feature Histogram`
+
+```{r feature_histogram}
+create_histogram_with_statistics(
+  data = pin_individual,
+  target_feature = target_feature_value,
+  x_label = target_feature_value
+)
+```
+
+## FMV Change Histogram
+
+This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
+```{r fmv_change_histogram, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+create_histogram_with_statistics(
+  data = pin_individual,
+  target_feature = "diff_pred_pin_initial_fmv",
+  x_label = "Change in FMV",
+  filter_outliers = TRUE,
+  filter_column = "diff_pred_pin_initial_fmv"
+)
+```
+
+## SHAP Histogram
+
+```{r shap_change_histogram, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+create_histogram_with_statistics(
+  data = shap_new,
+  target_feature = target_feature_value,
+  x_label = "SHAP Value",
+  filter_outliers = TRUE,
+  filter_column = target_feature_value
+)
+```
+
+:::
+
+# Correlations
+
+::: panel-tabset
+
+## Correlation Between Added Feature and Other Features
+
+Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the raw value to help decipher the direction of the relationship.
+
+
+```{r correlation_between_features}
+columns_to_remove <- c(
+  "Sale Year",
+  "Sale Month of Year",
+  "Sale Day of Year",
+  "Sale Day of Week",
+  "Sale Day of Month"
+)
+
+
+numeric_cols <- assessment_data_new %>%
+  rename(
+    "Property Class Meta" = meta_class,
+    "Property Class Char" = char_class
+  ) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
+  select_if(is.numeric) %>%
+  select(-all_of(columns_to_remove))
+
+# Initialize a data frame to store correlation results
+correlation_results <- data.frame(Feature = character(), Correlation = numeric(), Abs_Correlation = numeric(), stringsAsFactors = FALSE)
+
+# Loop through each numeric column and calculate correlation and absolute correlation
+for (col_name in names(numeric_cols)) {
+  # Filter out rows with missing values in the two columns being compared
+  complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data_new[[params$added_feature]])
+
+  # Only compute correlation if there are complete cases
+  if (sum(complete_cases) > 0) {
+    correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data_new[[params$added_feature]][complete_cases], use = "complete.obs")
+    abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data_new[[params$added_feature]][complete_cases]), use = "complete.obs"))
+    correlation_results <- rbind(correlation_results, data.frame(Feature = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
+  }
+}
+
+# Sort the correlation results in descending order by Correlation
+correlation_results <- correlation_results %>%
+  arrange(dplyr::desc(Abs_Correlation)) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+top_10_features <- correlation_results %>%
+  slice(1:10) %>%
+  pull(Feature)
+
+correlation_results_clean <- correlation_results %>%
+  clean_column_values("Feature") %>%
+  slice(2:n())
+
+
+# Display the correlation results as a scrollable table
+datatable(correlation_results_clean, options = list(scrollX = TRUE, scrollY = TRUE, pageLength = 10, order = list(list(1, "desc"))))
+```
+
+## Correlation Plot of 10 Features (absolute value)
+
+```{r top_10_correlation_plot}
+# Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
+
+assessment_data_new %>%
+  rename(
+    "Property Class Meta" = meta_class,
+    "Property Class Char" = char_class
+  ) %>%
+  ccao::vars_rename(
+    names_from = "model",
+    names_to = "pretty",
+    type = "inplace",
+    dict = ccao::vars_dict
+  ) %>%
+  select_if(is.numeric) %>%
+  select(-all_of(columns_to_remove)) %>%
+  select(all_of(top_10_features)) %>%
+  na.omit() %>%
+  rename_with(~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)) %>%
+  rename_with(~ gsub("_", " ", .)) %>%
+  cor() %>%
+  corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
+```
+:::
