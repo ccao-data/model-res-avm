@@ -1,4 +1,4 @@
-The analyses folder provides one-off assessments whenever new features are created. The purpose of it is to identify if adding them to the model adds useful information, as well as potentially providing
+The analyses folder provides one-off assessments whenever new features are created. The purpose of it is to identify if adding them to the model adds useful information, providing
 
 The produced reports aim to provide the following information.
 
@@ -12,7 +12,7 @@ The produced reports aim to provide the following information.
 
 -   Are their spatial disparities to the added feature and the changes in assessed values?
 
-The new feature template has two folders, categorical and continuous representing two types of variables which can be added to the model. These produce similar outputs, but some
+The new feature template has two folders, categorical and continuous representing two types of variables which can be added to the model. In general, these produce similar outputs, although there are some differences. For example, rather than identifying the mean of a variable, we can identify the percentage of the most common and second most common feature.
 
 To complete this report, execute the following steps:
 
