@@ -499,7 +499,7 @@ outlier_decile_breakout <- function(data, dec) {
     ) +
     theme_minimal() +
     theme(
-      axis.text.y = element_text(angle = 0, hjust = 1),
+      axis.text.y = element_text(hjust = 1),
       axis.title.y = element_blank(),
       axis.title.x = element_blank()
     ) +
