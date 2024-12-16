@@ -257,10 +257,10 @@ select_iterations <- function(tune_results, metric, type = "mean") {
 # to numbers
 var_encode <- function(data,
                        cols = dplyr::everything(),
-                       dict = ccao::vars_dict) {
+                       dictionary = ccao::vars_dict) {
   var <- "var_code"
 
-  dict_long <- dict %>%
+  dict_long <- dictionary %>%
     dplyr::filter(
       .data$var_type == "char" &
         .data$var_data_type == "categorical"

@@ -298,7 +298,7 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "2b027d45f1ebef427a11911c6c975d3e7cd4aba7",
+      "RemoteSha": "6445f79e6b4207a174c22d7a139511cf8e2516b6",
       "RemoteHost": "api.github.com",
       "Requirements": [
         "R",
@@ -308,7 +308,7 @@
         "rlang",
         "tidyr"
       ],
-      "Hash": "c5cc36b87e5ed28e7e67c48f6f3e70c1"
+      "Hash": "d452fba08dff15c8379f18aa03af084e"
     },
     "class": {
       "Package": "class",
@@ -1308,10 +1308,12 @@
     "renv": {
       "Package": "renv",
       "Version": "1.0.11",
-      "OS_type": null,
-      "NeedsCompilation": "no",
+      "Source": "Repository",
       "Repository": "CRAN",
-      "Source": "Repository"
+      "Requirements": [
+        "utils"
+      ],
+      "Hash": "47623f66b4e80b3b0587bc5d7b309888"
     },
     "reticulate": {
       "Package": "reticulate",
