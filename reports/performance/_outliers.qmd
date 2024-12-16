@@ -18,34 +18,35 @@ exclusively on these price-based factors that determine outlier status.
 ### Count by Type
 
 ```{r _outliers_type_breakdown}
-# Make new column for a few cells of the outliers section
+# Subset important outlier information
 training_data <- training_data %>%
-  mutate(price_outlier_reason = case_when(
-    str_detect(sv_outlier_reason1, regex("price", ignore_case = TRUE)) ~ sv_outlier_reason1,
-    str_detect(sv_outlier_reason2, regex("price", ignore_case = TRUE)) ~ sv_outlier_reason2,
-    str_detect(sv_outlier_reason3, regex("price", ignore_case = TRUE)) ~ sv_outlier_reason3,
+  mutate(outlier_reasons_to_graph = case_when(
+    sv_is_outlier == TRUE ~ paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
     TRUE ~ NA_character_
-  ))
+  )) %>%
+  # Yank NA string values to make output cleaner
+  mutate(outlier_reasons_to_graph = str_remove_all(outlier_reasons_to_graph, " \\(NA\\)"))
 
 # Determine the axis limit
 y_lim_axis_outlier_breakdown <- training_data %>%
   filter(sv_is_outlier) %>%
-  count(price_outlier_reason) %>%
+  count(outlier_reasons_to_graph) %>%
   summarise(max_value = max(n)) %>%
   pull(max_value)
 
 
 training_data %>%
   filter(sv_is_outlier) %>%
-  count(price_outlier_reason) %>%
-  ggplot(aes(x = reorder(price_outlier_reason, -n), y = n)) +
+  count(outlier_reasons_to_graph) %>%
+  filter(n > 20) %>% 
+  ggplot(aes(x = reorder(outlier_reasons_to_graph, -n), y = n)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = comma(n)), vjust = -0.5) +
-  ylim(0, 1.03 * y_lim_axis_outlier_breakdown) +
+  ylim(0, 1.05 * y_lim_axis_outlier_breakdown) +
   labs(y = "Number of Sales", x = "Outlier Reasons") +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(angle = 60, hjust = 1),
+    axis.text.x = element_text(angle = 70, hjust = 1),
     axis.text.y = element_text(angle = 45, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
@@ -57,19 +58,19 @@ training_data %>%
 ```{r _outliers_type_breakdown_table}
 training_data %>%
   filter(sv_is_outlier) %>%
-  group_by(meta_year, price_outlier_reason) %>%
+  group_by(meta_year, outlier_reasons_to_graph) %>%
   summarise(n = n()) %>%
   rename(Year = meta_year) %>%
-  pivot_wider(id_cols = Year, names_from = price_outlier_reason, values_from = n) %>%
+  pivot_wider(id_cols = Year, names_from = outlier_reasons_to_graph, values_from = n) %>%
   kable() %>%
   kable_styling("striped")
 
 training_data %>%
   filter(sv_is_outlier) %>%
-  group_by(meta_year, price_outlier_reason) %>%
+  group_by(meta_year, outlier_reasons_to_graph) %>%
   summarise(n = n(), .groups = "drop") %>%
   rename(Year = meta_year) %>%
-  pivot_wider(id_cols = Year, names_from = price_outlier_reason, values_from = n) %>%
+  pivot_wider(id_cols = Year, names_from = outlier_reasons_to_graph, values_from = n) %>%
   kable() %>%
   kable_styling("striped")
 ```
@@ -93,7 +94,7 @@ training_data %>%
   theme_minimal() +
   scale_y_continuous(
     labels = scales::percent_format(),
-    expand = expansion(add = c(0, 0.015))
+    expand = expansion(add = c(0, 0.02))
   ) +
   theme(
     axis.title.y = element_blank(),
@@ -228,7 +229,7 @@ outliers_dist_price_per_sqft %>%
 
 ```{r _outliers_dist_township, fig.height=8, fig.width=7}
 training_data %>%
-  filter(meta_triad_name == run_triad) %>%
+  filter(meta_triad_name == "North") %>%
   mutate(
     township_name = ccao::town_convert(meta_township_code),
     Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
@@ -256,7 +257,7 @@ training_data %>%
 ```{r _outliers_dist_class, fig.height=8, fig.width=7}
 training_data %>%
   filter(
-    meta_triad_name == run_triad,
+    meta_triad_name == "North",
     !meta_class %in% c("218", "219")
   ) %>%
   mutate(
@@ -334,7 +335,7 @@ outliers_ratio_comparison %>%
 # This object is joined to itself using different filters, which is why this
 # filtering is applied here rather than below.
 outliers_table_township_summary <- training_data %>%
-  filter(meta_class != "200" & meta_triad_name == run_triad)
+  filter(meta_class != "200" & meta_triad_name == "North")
 
 outliers_table_township_summary <- outliers_table_township_summary %>%
   filter(sv_is_outlier) %>%
@@ -343,7 +344,7 @@ outliers_table_township_summary <- outliers_table_township_summary %>%
     `Med. Sale Price` = median(meta_sale_price, na.rm = TRUE),
     `Max. Sale Price` = max(meta_sale_price, na.rm = TRUE),
     Count = n(),
-    .by = c(price_outlier_reason, meta_township_name)
+    .by = c(outlier_reasons_to_graph, meta_township_name)
   ) %>%
   left_join(
     outliers_table_township_summary %>%
@@ -357,7 +358,7 @@ outliers_table_township_summary <- outliers_table_township_summary %>%
   mutate(across(contains("Sale"), dollar)) %>%
   relocate(meta_township_name) %>%
   dplyr::rename(
-    "Outlier Type" = price_outlier_reason,
+    "Outlier Type" = outlier_reasons_to_graph,
     "Township Name" = meta_township_name
   ) %>%
   arrange(`Township Name`, desc(Count))
@@ -379,7 +380,7 @@ outliers_table_township_summary %>%
 
 ```{r _outliers_table_class_summary}
 outliers_table_class_summary <- training_data %>%
-  filter(meta_class != "200" & meta_triad_name == run_triad)
+  filter(meta_class != "200" & meta_triad_name == "North")
 
 outliers_table_class_summary <- outliers_table_class_summary %>%
   filter(sv_is_outlier) %>%
@@ -388,7 +389,7 @@ outliers_table_class_summary <- outliers_table_class_summary %>%
     `Med. Sale Price` = median(meta_sale_price, na.rm = TRUE),
     `Max. Sale Price` = max(meta_sale_price, na.rm = TRUE),
     Count = n(),
-    .by = c(price_outlier_reason, meta_class)
+    .by = c(outlier_reasons_to_graph, meta_class)
   ) %>%
   left_join(
     outliers_table_class_summary %>%
@@ -402,7 +403,7 @@ outliers_table_class_summary <- outliers_table_class_summary %>%
   mutate(across(contains("Sale"), dollar)) %>%
   relocate(meta_class) %>%
   dplyr::rename(
-    "Outlier Type" = price_outlier_reason,
+    "Outlier Type" = outlier_reasons_to_graph,
     "Class" = meta_class
   ) %>%
   arrange(`Class`, desc(Count))
@@ -473,7 +474,7 @@ outlier_decile_breakout <- function(data, dec) {
     arrange(meta_sale_price) %>%
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     filter(decile == dec & sv_is_outlier == TRUE) %>%
-    group_by(price_outlier_reason) %>%
+    group_by(outlier_reasons_to_graph) %>%
     summarise(count = n()) %>%
     ungroup() %>%
     slice_max(count, n = 1) %>%
@@ -483,24 +484,26 @@ outlier_decile_breakout <- function(data, dec) {
     arrange(meta_sale_price) %>%
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     filter(decile == dec & sv_is_outlier) %>%
-    summarise(count = n(), .by = price_outlier_reason) %>%
-    ggplot(aes(x = reorder(price_outlier_reason, -count), y = count)) +
+    summarise(count = n(), .by = outlier_reasons_to_graph) %>%
+    filter(count > 20) %>% 
+    ggplot(aes(x = reorder(outlier_reasons_to_graph, count), y = count)) +
     labs(
       y = "Number of Sales",
       x = "Outlier Types"
     ) +
     geom_bar(stat = "identity") +
-    geom_text(aes(label = comma(count)), vjust = -0.5) +
+    geom_text(aes(label = comma(count)), vjust = -0.1) +
     scale_y_continuous(
       labels = comma,
       limits = c(0, 1.05 * outlier_decile_y_axis_lim)
     ) +
     theme_minimal() +
     theme(
-      axis.text.y = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(angle = 0, hjust = 1),
       axis.title.y = element_blank(),
       axis.title.x = element_blank()
-    )
+    ) +
+    coord_flip()
 }
 
 outlier_decile_breakout(training_data, 10)
