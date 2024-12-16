@@ -51,7 +51,7 @@ on:
         default: false
         required: true
   push:
-    branches: [master]
+    branches: [master, "*-assessment-year"]
 
 jobs:
   build-and-run-model:
