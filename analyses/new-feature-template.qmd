@@ -19,7 +19,7 @@ params:
   run_id_year: "2024"
   comparison_run_id: "2024-07-13-great-eric"
   comparison_run_id_year: "2024"
-  added_feature: "prox_nearest_new_construction_dist_ft" 
+  added_feature: "prox_nearest_new_construction_dist_ft"
   added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
   description: "A distance in feet to the nearest new construction"
   min_range: 5
@@ -419,7 +419,7 @@ create_histogram_with_statistics(
 
 ## FMV Change Histogram
 
-This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
+This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable.
 ```{r, fmv_change_histogram}
 create_histogram_with_statistics(
   data = pin_individual,
@@ -470,8 +470,8 @@ if (params$type == "continuous") {
     ccao::vars_rename(
       names_from = "model",
       names_to = "pretty",
-      type = "inplace",
-      dict = ccao::vars_dict
+      output_type = "inplace",
+      dictionary = ccao::vars_dict
     ) %>%
     select_if(is.numeric) %>%
     select(-all_of(columns_to_remove))
@@ -525,8 +525,8 @@ assessment_data_new %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
-    dict = ccao::vars_dict
+    output_type = "inplace",
+    dictionary = ccao::vars_dict
   ) %>%
   select_if(is.numeric) %>%
   select(-all_of(columns_to_remove)) %>%
@@ -537,7 +537,7 @@ assessment_data_new %>%
   cor() %>%
   corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
 ```
-::: 
+:::
 
 # Ratio Stats
 ```{r, ratio_stats_function}
@@ -698,8 +698,8 @@ shap_df_filtered_long %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
-    dict = ccao::vars_dict
+    output_type = "inplace",
+    dictionary = ccao::vars_dict
   ) %>%
   clean_column_values("feature") %>%
   select(
@@ -743,8 +743,8 @@ shap_df_filtered_long %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
-    dict = ccao::vars_dict
+    output_type = "inplace",
+    dictionary = ccao::vars_dict
   ) %>%
   clean_column_values("feature") %>%
   select(
