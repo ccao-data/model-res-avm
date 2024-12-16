@@ -116,7 +116,7 @@ assessment_data <- assessment_data %>%
   filter(year == params$assessment$data_year)
 
 training_data <- training_data %>%
-  left_join(join_data, by = "meta_pin", "meta_card")
+  left_join(join_data, by = c("meta_pin", "meta_card"))
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
