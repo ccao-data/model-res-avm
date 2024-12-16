@@ -41,7 +41,7 @@ y_lim_axis_outlier_breakdown <- training_data %>%
 training_data %>%
   filter(sv_is_outlier) %>%
   count(outlier_reasons_to_graph) %>%
-  filter(n > 20) %>% 
+  filter(n > 20) %>%
   ggplot(aes(x = reorder(outlier_reasons_to_graph, -n), y = n)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = comma(n)), vjust = -0.5) +
@@ -488,7 +488,7 @@ outlier_decile_breakout <- function(data, dec) {
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     filter(decile == dec & sv_is_outlier) %>%
     summarise(count = n(), .by = outlier_reasons_to_graph) %>%
-    filter(count > 20) %>% 
+    filter(count > 20) %>%
     ggplot(aes(x = reorder(outlier_reasons_to_graph, count), y = count)) +
     labs(
       y = "Number of Sales",
