@@ -109,14 +109,14 @@ assessment_data %>%
   write_parquet(paths$input$char$local)
 
 join_data <- assessment_data %>%
-  select(meta_pin, sq_ft_variance, age_variance)
+  select(meta_pin, sq_ft_variance, age_variance, meta_card)
 
 # Save only the assessment year data to use for assessing values
 assessment_data <- assessment_data %>%
   filter(year == params$assessment$data_year)
 
 training_data <- training_data %>%
-  left_join(join_data, by = "meta_pin")
+  left_join(join_data, by = "meta_pin", "meta_card")
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
