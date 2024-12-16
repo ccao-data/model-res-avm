@@ -15,7 +15,10 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 noctua_options(unload = TRUE)
 
 # Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
+  noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
 
 
 # Load additional dev R libraries (see README#managing-r-dependencies)
@@ -111,20 +114,16 @@ join_data <- assessment_data %>%
 assessment_data <- assessment_data %>%
   filter(year == params$assessment$data_year)
 
+<<<<<<< HEAD
 training_data <- training_data %>%
   left_join(join_data, by = "meta_pin")
 
 # Pull site-specific (pre-determined) land values and neighborhood-level land
 # rates ($/sqft), as calculated by Valuations
+=======
+# Pull neighborhood-level land rates ($/sqft), as calculated by Valuations
+>>>>>>> 72d9a4cfefbcda45091e2ac8162341dacdf55835
 tictoc::tic("Land rate data pulled")
-land_site_rate_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT *
-  FROM ccao.land_site_rate
-  WHERE year = '{params$assessment$year}'
-  ")
-)
-
 land_nbhd_rate_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
@@ -176,7 +175,7 @@ process_array_columns <- function(data, selector) {
   data %>%
     mutate(
       across(
-        selector,
+        !!enquo(selector),
         ~ sapply(.x, function(cell) {
           if (length(cell) > 1) {
             paste(cell, collapse = ", ")
@@ -617,9 +616,6 @@ complex_id_data <- assessment_data_clean %>%
 message("Saving land rates")
 
 # Write land data directly to file, since it's already mostly clean
-land_site_rate_data %>%
-  select(meta_pin = pin, meta_class = class, land_rate_per_pin, year) %>%
-  write_parquet(paths$input$land_site_rate$local)
 land_nbhd_rate_data %>%
   select(meta_nbhd = town_nbhd, meta_class = class, land_rate_per_sqft) %>%
   write_parquet(paths$input$land_nbhd_rate$local)

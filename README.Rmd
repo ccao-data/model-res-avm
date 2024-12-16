@@ -859,7 +859,7 @@ The process for updating *dependencies for other lockfiles** is more complex, si
 2. Make sure that the dependency is defined in the `DESCRIPTION` file under the `Config/renv/profiles/<profile_name>/dependencies` key
 3. Run `renv::install("<dependency_name>")` to add or update the dependency as necessary
 4. Run `renv::snapshot()` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
-5. Run `renv::activate()` if you would like to switch back to the default renv profile
+5. Run `renv::activate(profile = "default")` if you would like to switch back to the default renv profile
 
 ## Troubleshooting
 

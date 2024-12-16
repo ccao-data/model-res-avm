@@ -239,22 +239,6 @@ if (upload_enable) {
     paths$output$report_performance$local,
     paths$output$report_performance$s3
   )
-
-  # Upload PIN report(s)
-  pin_report_files <- list.files(
-    paths$output$report_pin$local,
-    pattern = paste0(report_pins, collapse = "|"),
-    full.names = TRUE
-  )
-  pin_report_files <- gsub("(?<!:)/+", "/", pin_report_files, perl = TRUE)
-
-  for (local_path in pin_report_files) {
-    s3_path <- gsub("(?<!:)/+", "/", file.path(
-      paths$output$report_pin$s3,
-      basename(local_path)
-    ), perl = TRUE)
-    aws.s3::put_object(local_path, s3_path)
-  }
 }
 
 
