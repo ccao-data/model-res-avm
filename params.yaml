@@ -245,6 +245,8 @@ model:
       - "time_sale_day_of_month"
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
+      - "sq_ft_variance"
+      - "age_variance"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
