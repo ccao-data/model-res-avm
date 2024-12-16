@@ -140,8 +140,8 @@ col_type_dict <- ccao::vars_dict %>%
   drop_na(var_name)
 
 # Mini-function to ensure that columns are the correct type
-recode_column_type <- function(col, col_name, dict = col_type_dict) {
-  col_type <- dict %>%
+recode_column_type <- function(col, col_name, dictionary = col_type_dict) {
+  col_type <- dictionary %>%
     filter(var_name == col_name) %>%
     pull(var_type)
   switch(col_type,
