@@ -15,8 +15,12 @@ run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
+<<<<<<< HEAD
 run_note: |
   Test of variance feature
+=======
+run_note: Preparing for 2025 model with 2024 data
+>>>>>>> c1b17c28e129dced7444a7340bd4902f3cb18cde
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -45,17 +49,18 @@ assessment:
   # The statutorily set "sale date" for the purpose of prediction
   date: "2024-01-01"
 
-  # Added context for model artifacts stored in S3. Does not change behavior
-  triad: "city"
+  # Added context for model artifacts stored in S3. Also updates the triad
+  # displayed in email notifications on model completion
+  triad: "north"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
   data_year: "2023"
 
-  # Year used to partition data on S3. Working year in this case means the year
-  # the Data Department is currently creating models for
-  working_year: "2024"
+  # Year used to partition data on S3. Working year in this case means
+  # the year the Data Department is currently creating models for
+  working_year: "2025"
 
 # Parameters used to define the input/training data
 input:
