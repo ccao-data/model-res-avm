@@ -5,10 +5,10 @@ FROM rocker/r-ver:4.4.1
 WORKDIR /setup
 
 # Use PPM for binary installs
-ENV RENV_CONFIG_REPOS_OVERRIDE "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
-ENV RENV_CONFIG_SANDBOX_ENABLED FALSE
-ENV RENV_PATHS_LIBRARY renv/library
-ENV RENV_PATHS_CACHE /setup/cache
+ENV RENV_CONFIG_REPOS_OVERRIDE="https://packagemanager.posit.co/cran/__linux__/jammy/latest"
+ENV RENV_CONFIG_SANDBOX_ENABLED=FALSE
+ENV RENV_PATHS_LIBRARY=renv/library
+ENV RENV_PATHS_CACHE=/setup/cache
 
 # Install system dependencies
 RUN apt-get update && \
@@ -47,4 +47,4 @@ COPY ./ .
 RUN rm -Rf /model-res-avm/renv && \
     mv /setup/renv /model-res-avm/renv
 
-CMD dvc pull && dvc repro
+CMD ["sh", "-c", "dvc pull && dvc repro"]
