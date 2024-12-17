@@ -21,14 +21,13 @@ exclusively on these price-based factors that determine outlier status.
 # Subset important outlier information
 training_data <- training_data %>%
   mutate(
-    outlier_reasons_to_graph = if_else(
-      sv_is_outlier,
-      paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
-      NA_character_
+    outlier_reasons_to_graph = case_when(
+      sv_is_outlier & !is.na(sv_outlier_reason2) ~
+        paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
+      sv_is_outlier & is.na(sv_outlier_reason2) ~ sv_outlier_reason1,
+      TRUE ~ NA_character_
     )
-  ) %>%
-  # Yank NA string values to make output cleaner
-  mutate(outlier_reasons_to_graph = str_remove_all(outlier_reasons_to_graph, " \\(NA\\)"))
+  )
 
 # Determine the axis limit
 y_lim_axis_outlier_breakdown <- training_data %>%

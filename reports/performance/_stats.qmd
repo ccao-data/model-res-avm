@@ -56,8 +56,8 @@ stats_sf_parcels <- chars_data %>%
   ) %>%
   select(sale, all_of(stats_regression_vars)) %>%
   vars_recode(
-    type = "long",
-    dict = ccao::vars_dict_legacy
+    code_type = "long",
+    dictionary = ccao::vars_dict_legacy
   ) %>%
   vars_rename(names_from = "athena", names_to = "pretty") %>%
   rename_with(~ gsub("loc_", "", .x)) %>%
