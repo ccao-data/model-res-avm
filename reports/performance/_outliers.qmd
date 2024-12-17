@@ -22,7 +22,7 @@ exclusively on these price-based factors that determine outlier status.
 training_data <- training_data %>%
   mutate(
     outlier_reasons_to_graph = if_else(
-      sv_is_outlier == TRUE,
+      sv_is_outlier,
       paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
       NA_character_
     )
