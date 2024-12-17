@@ -15,12 +15,7 @@ run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-<<<<<<< HEAD
-run_note: |
-  Test of variance feature
-=======
-run_note: Preparing for 2025 model with 2024 data
->>>>>>> c1b17c28e129dced7444a7340bd4902f3cb18cde
+run_note: Test of variance feature
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
