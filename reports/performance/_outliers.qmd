@@ -22,7 +22,8 @@ exclusively on these price-based factors that determine outlier status.
 training_data <- training_data %>%
   mutate(
     outlier_reasons_to_graph = case_when(
-      sv_is_outlier & !is.na(sv_outlier_reason2) ~ paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
+      sv_is_outlier & !is.na(sv_outlier_reason2) ~
+        paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
       sv_is_outlier & is.na(sv_outlier_reason2) ~ sv_outlier_reason1,
       TRUE ~ NA_character_
     )
