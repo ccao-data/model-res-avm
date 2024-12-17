@@ -75,7 +75,11 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           class, col_dict, min_n) {
   # Helper function to return NA when sale sample size is too small
   gte_n <- \(n_sales, min_n, fn, na_type) {
-    ifelse(sum(!is.na(n_sales)) >= min_n, fn, na_type)
+    if (sum(!is.na(n_sales)) >= min_n) {
+      return(fn)
+    } else {
+      return(rep(na_type, length(n_sales)))
+    }
   }
 
   # List of summary stat/performance functions applied within summarize() below
