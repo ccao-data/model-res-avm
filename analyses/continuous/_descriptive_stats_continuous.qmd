@@ -238,6 +238,17 @@ assessment_data_new %>%
   rename_with(~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)) %>%
   rename_with(~ gsub("_", " ", .)) %>%
   cor() %>%
-  corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
+  as.data.frame() %>%
+  rownames_to_column(var = "Feature1") %>%
+  pivot_longer(-Feature1, names_to = "Feature2", values_to = "Correlation") %>%
+  ggplot(aes(x = Feature1, y = Feature2, fill = Correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1, 1)) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8)
+  ) +
+  labs(title = "Correlation Heatmap", fill = "Correlation")
 ```
 :::
