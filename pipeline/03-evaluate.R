@@ -78,7 +78,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     if (sum(!is.na(n_sales)) >= min_n) {
       return(fn)
     } else {
-      return(rep(na_type, length(n_sales)))
+      return(na_type)
     }
   }
 
