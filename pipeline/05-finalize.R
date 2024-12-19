@@ -187,7 +187,7 @@ timings <- list.files(
 # Convert the intermediate timing logs to a wide data frame, then save to file
 timings_df <- purrr::map_dfr(timings, read_parquet) %>%
   mutate(
-    run_id = run_id,
+    run_id = !!run_id,
     run_end_timestamp = run_end_timestamp,
     elapsed = round(toc - tic, 2),
     stage = paste0(tolower(stringr::word(msg, 1)), "_sec_elapsed"),
