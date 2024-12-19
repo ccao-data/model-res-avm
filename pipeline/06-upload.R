@@ -48,7 +48,7 @@ if (upload_enable) {
 
   # Upload finalized run parameters
   read_parquet(paths$output$parameter_final$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     # Max_depth is set by lightsnip if link_max_depth is true, so we need to
     # back out its value. Otherwise, use whichever value is chosen by CV
