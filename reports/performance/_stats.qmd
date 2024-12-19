@@ -351,11 +351,19 @@ stats_median_yoy_delta %>%
   mutate(
     change_percent_ratio = cell_spec(
       change_percent_ratio,
-      color = ifelse(between(change_percent_ratio, 0.95, 1.05), "green", "red")
+      color = case_when(
+        is.na(change_percent_ratio) | is.nan(change_percent_ratio) ~ "grey80",
+        between(change_percent_ratio, 0.95, 1.05) ~ "green",
+        TRUE ~ "red"
+      )
     ),
     change_dollars_ratio = cell_spec(
       change_dollars_ratio,
-      color = ifelse(between(change_dollars_ratio, 0.95, 1.05), "green", "red")
+      color = case_when(
+        is.na(change_dollars_ratio) | is.nan(change_dollars_ratio) ~ "grey80",
+        between(change_dollars_ratio, 0.95, 1.05) ~ "green",
+        TRUE ~ "red"
+      )
     )
   ) %>%
   kable(
