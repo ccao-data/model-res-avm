@@ -303,7 +303,7 @@ of whether a home has sold recently. This table compares the median change in AV
 (dollar and percentage) for homes which have sold in the three years prior to
 the assessment year those which did not sell.
 
-```{r _model_in_v_out_of_sample_delta}
+```{r _stats_in_v_out_of_sample_delta}
 stats_median_yoy_delta <- assessment_pin %>%
   mutate(
     Township = ccao::town_convert(meta_township_code),
