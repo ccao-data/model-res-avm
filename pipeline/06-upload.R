@@ -48,7 +48,7 @@ if (upload_enable) {
 
   # Upload finalized run parameters
   read_parquet(paths$output$parameter_final$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     # Max_depth is set by lightsnip if link_max_depth is true, so we need to
     # back out its value. Otherwise, use whichever value is chosen by CV
@@ -65,7 +65,7 @@ if (upload_enable) {
 
   # Upload the test set predictions
   read_parquet(paths$output$test_card$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$test_card$s3)
 
@@ -82,7 +82,7 @@ if (upload_enable) {
 
     # Upload the parameter ranges used for CV
     read_parquet(paths$output$parameter_range$local) %>%
-      mutate(run_id = run_id) %>%
+      mutate(run_id = !!run_id) %>%
       relocate(run_id) %>%
       write_parquet(paths$output$parameter_range$s3)
 
@@ -90,7 +90,7 @@ if (upload_enable) {
     bind_cols(
       read_parquet(paths$output$parameter_raw$local) %>%
         tidyr::unnest(cols = .metrics) %>%
-        mutate(run_id = run_id) %>%
+        mutate(run_id = !!run_id) %>%
         left_join(
           rename(., notes = .notes) %>%
             tidyr::unnest(cols = notes) %>%
@@ -124,7 +124,7 @@ if (upload_enable) {
   # reduce file size and improve query performance we partition them by year,
   # run ID, and township
   read_parquet(paths$output$assessment_card$local) %>%
-    mutate(run_id = run_id, year = params$assessment$working_year) %>%
+    mutate(run_id = !!run_id, year = params$assessment$working_year) %>%
     group_by(year, run_id, township_code) %>%
     arrow::write_dataset(
       path = paths$output$assessment_card$s3,
@@ -133,7 +133,7 @@ if (upload_enable) {
       compression = "snappy"
     )
   read_parquet(paths$output$assessment_pin$local) %>%
-    mutate(run_id = run_id, year = params$assessment$working_year) %>%
+    mutate(run_id = !!run_id, year = params$assessment$working_year) %>%
     group_by(year, run_id, township_code) %>%
     arrow::write_dataset(
       path = paths$output$assessment_pin$s3,
@@ -149,32 +149,32 @@ if (upload_enable) {
   # Upload test set performance
   message("Uploading test set evaluation")
   read_parquet(paths$output$performance_test$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$performance_test$s3)
   read_parquet(paths$output$performance_quantile_test$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test$s3)
 
   message("Uploading test linear baseline")
   read_parquet(paths$output$performance_test_linear$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$performance_test_linear$s3)
   read_parquet(paths$output$performance_quantile_test_linear$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test_linear$s3)
 
   # Upload assessment set performance
   message("Uploading assessment set evaluation")
   read_parquet(paths$output$performance_assessment$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$performance_assessment$s3)
   read_parquet(paths$output$performance_quantile_assessment$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_assessment$s3)
 
@@ -187,7 +187,7 @@ if (upload_enable) {
   if (shap_enable) {
     message("Uploading SHAP values")
     read_parquet(paths$output$shap$local) %>%
-      mutate(run_id = run_id, year = params$assessment$working_year) %>%
+      mutate(run_id = !!run_id, year = params$assessment$working_year) %>%
       group_by(year, run_id, township_code) %>%
       arrow::write_dataset(
         path = paths$output$shap$s3,
@@ -200,7 +200,7 @@ if (upload_enable) {
   # Upload feature importance metrics
   message("Uploading feature importance metrics")
   read_parquet(paths$output$feature_importance$local) %>%
-    mutate(run_id = run_id) %>%
+    mutate(run_id = !!run_id) %>%
     relocate(run_id) %>%
     write_parquet(paths$output$feature_importance$s3)
 
@@ -208,7 +208,7 @@ if (upload_enable) {
   if (comp_enable) {
     message("Uploading comps")
     read_parquet(paths$output$comp$local) %>%
-      mutate(run_id = run_id, year = params$assessment$working_year) %>%
+      mutate(run_id = !!run_id, year = params$assessment$working_year) %>%
       group_by(year, run_id) %>%
       arrow::write_dataset(
         path = paths$output$comp$s3,
