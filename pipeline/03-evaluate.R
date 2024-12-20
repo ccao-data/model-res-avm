@@ -90,7 +90,6 @@ add_triad_code <- \(data) {
 gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
                           rsn_col, rsf_col, triad, geography,
                           class, col_dict, min_n) {
-
   # List of summary stat/performance functions applied within summarize() below
   # Each function is listed on the right while the name of the function is on
   # the left
