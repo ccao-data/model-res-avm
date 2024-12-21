@@ -175,6 +175,17 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
         pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
     )),
+    # If the land $/sqft is missing, just use the max capped land value as a
+    # default (usually 50% of the predicted value). Data doesn't usually get
+    # land $/sqft until the beginning of the year we're modeling for, but a
+    # predicted land value is required to calculate the final estimated FMV. As
+    # such, setting this default lets us start modeling before we receive the
+    # finalized land $/sqft rates
+    pred_pin_final_fmv_land = ifelse(
+      is.na(pred_pin_final_fmv_land),
+      pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
+      pred_pin_final_fmv_land
+    ),
     # Keep the uncapped value for display in desk review
     pred_pin_uncapped_fmv_land = ceiling(char_land_sf * land_rate_per_sqft)
   )
@@ -311,7 +322,11 @@ assessment_card_data_merged %>%
     ccao_n_years_exe_homeowner = as.integer(ccao_n_years_exe_homeowner),
     char_apts = as.character(char_apts)
   ) %>%
-  ccao::vars_recode(any_of(char_vars), type = "long", as_factor = FALSE) %>%
+  ccao::vars_recode(
+    cols = any_of(char_vars),
+    code_type = "long",
+    as_factor = FALSE
+  ) %>%
   write_parquet(paths$output$assessment_card$local)
 
 
@@ -536,7 +551,7 @@ message("Saving final PIN-level data")
 assessment_pin_data_final %>%
   ccao::vars_recode(
     cols = starts_with("char_"),
-    type = "short",
+    code_type = "short",
     as_factor = FALSE
   ) %>%
   # Coerce columns to their expected Athena output type

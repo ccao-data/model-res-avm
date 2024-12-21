@@ -56,8 +56,8 @@ stats_sf_parcels <- chars_data %>%
   ) %>%
   select(sale, all_of(stats_regression_vars)) %>%
   vars_recode(
-    type = "long",
-    dict = ccao::vars_dict_legacy
+    code_type = "long",
+    dictionary = ccao::vars_dict_legacy
   ) %>%
   vars_rename(names_from = "athena", names_to = "pretty") %>%
   rename_with(~ gsub("loc_", "", .x)) %>%
@@ -303,7 +303,7 @@ of whether a home has sold recently. This table compares the median change in AV
 (dollar and percentage) for homes which have sold in the three years prior to
 the assessment year those which did not sell.
 
-```{r _model_in_v_out_of_sample_delta}
+```{r _stats_in_v_out_of_sample_delta}
 stats_median_yoy_delta <- assessment_pin %>%
   mutate(
     Township = ccao::town_convert(meta_township_code),
@@ -351,11 +351,19 @@ stats_median_yoy_delta %>%
   mutate(
     change_percent_ratio = cell_spec(
       change_percent_ratio,
-      color = ifelse(between(change_percent_ratio, 0.95, 1.05), "green", "red")
+      color = case_when(
+        is.na(change_percent_ratio) | is.nan(change_percent_ratio) ~ "grey80",
+        between(change_percent_ratio, 0.95, 1.05) ~ "green",
+        TRUE ~ "red"
+      )
     ),
     change_dollars_ratio = cell_spec(
       change_dollars_ratio,
-      color = ifelse(between(change_dollars_ratio, 0.95, 1.05), "green", "red")
+      color = case_when(
+        is.na(change_dollars_ratio) | is.nan(change_dollars_ratio) ~ "grey80",
+        between(change_dollars_ratio, 0.95, 1.05) ~ "green",
+        TRUE ~ "red"
+      )
     )
   ) %>%
   kable(

@@ -524,7 +524,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
       char_land_sf, char_apts, char_ncu
     ) %>%
-    ccao::vars_recode(type = "long") %>%
+    ccao::vars_recode(code_type = "long") %>%
     mutate(
       char_apts = format_char_apts(char_apts),
       char_ncu = ifelse(char_class == "212", char_ncu, NA)
