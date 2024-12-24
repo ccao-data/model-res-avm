@@ -15,13 +15,13 @@ format:
     fig-align: center
     fontsize: 12pt
 params:
-  run_id: "2024-12-13-quizzical-matt"
-  run_id_year: "2024"
-  comparison_run_id: "2024-12-17-priceless-christian"
-  comparison_run_id_year: "2024"
-  added_feature: "sq_ft_variance" 
-  added_feature_shap: "sq_ft_variance_shap"
-  description: "Square foot variance on the census tract level"
+  run_id: "2024-12-21-youthful-nicole"
+  run_id_year: "2025"
+  comparison_run_id: "2024-12-20-quizzical-tristan"
+  comparison_run_id_year: "2025"
+  added_feature: "random" 
+  added_feature_shap: "random_shap"
+  description: "Test with a random variable"
   type: "continuous"
 ---
 

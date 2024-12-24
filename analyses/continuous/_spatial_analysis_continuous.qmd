@@ -1,3 +1,5 @@
+{{< include ../shared/setup_shared.qmd >}}
+
 # Spatial Analysis
 
 ## Neighborhood Values
@@ -94,11 +96,6 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
   nbhd_borders <- nbhd %>%
     right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
 
-  # Adjust the dataset values if display_as_percent is TRUE
-  if (display_as_percent) {
-    dataset[[legend_value]] <- dataset[[legend_value]] * 100
-  }
-
   # Create the color palette based on order_scheme
   if (order_scheme == "low") {
     pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]], reverse = TRUE)
@@ -146,9 +143,14 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       pal = pal,
       values = dataset[[legend_value]],
       title = legend_title,
-      labFormat = if (display_as_percent) labelFormat(suffix = "%") else labelFormat()
+      labFormat = if (display_as_percent) {
+        function(type, cuts, p) scales::percent(cuts)
+      } else {
+        labelFormat()
+      }
     )
 }
+
 ```
 
 ## Highest and Lowest 100 Values
@@ -271,7 +273,7 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low", display_as_percent = TRUE)
+create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases (%)", order_scheme = "low", display_as_percent = TRUE)
 ```
 :::
 
@@ -293,9 +295,7 @@ selected_nbhd_codes <- selected_data %>%
   slice(c(1:2, (n() - 1):n())) %>%
   pull(meta_nbhd_code)
 
-
 filtered_data <- filter(leaflet_data, meta_nbhd_code %in% selected_nbhd_codes)
-
 
 # Separate high and low mean value neighborhoods
 high_mean_data <- filtered_data %>%

@@ -1,19 +1,20 @@
 ---
 params:
-  run_id: "2024-12-13-quizzical-matt"
-  run_id_year: "2024"
-  comparison_run_id: "2024-12-17-priceless-christian"
-  comparison_run_id_year: "2024"
-  added_feature: "sq_ft_variance" 
-  added_feature_shap: "sq_ft_variance_shap"
-  description: "Square foot variance on the census tract level"
-  type: "continuous"
+  run_id: "2024-12-21-youthful-nicole"
+  run_id_year: "2025"
+  comparison_run_id: "2024-12-20-quizzical-tristan"
+  comparison_run_id_year: "2025"
+  added_feature: "random" 
+  added_feature_shap: "random_shap"
+  description: "Test with a random variable"
 ---
-```{r packages, include = FALSE}
+```{r, include = FALSE}
 library(purrr)
 library(here)
 library(yaml)
 library(RColorBrewer)
+install.packages("corrplot")
+library(corrplot)
 
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
@@ -42,7 +43,7 @@ cpp11::cpp_source(code = "
 ignore_sigpipes()
 ```
 
-```{r download_new_data, include = FALSE}
+```{r, include = FALSE}
 base_paths <- model_file_dict(params$run_id, params$run_id_year)
 comparison_paths <- model_file_dict(
   params$comparison_run_id,

@@ -1,4 +1,6 @@
 
+{{< include ../shared/setup_shared.qmd >}}
+
 # SHAP
 
 The primary metric that the CCAO Data team uses to assess the importance of a feature is its SHAP value. SHAP values provide the amount of value each feature contributes to a parcel's predicted value. The SHAP value is calculated for each observation in the dataset, and the median SHAP value for a feature is used to determine the relative influence of that feature. The higher the median SHAP value, the more influential the feature is in the model.
@@ -50,8 +52,8 @@ shap_df_filtered_long %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
-    dict = ccao::vars_dict
+    output_type = "inplace",
+    dictionary = ccao::vars_dict
   ) %>%
   clean_column_values("feature") %>%
   select(
@@ -95,8 +97,8 @@ shap_df_filtered_long %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
-    dict = ccao::vars_dict
+    output_type = "inplace",
+    dictionary = ccao::vars_dict
   ) %>%
   clean_column_values("feature") %>%
   select(
@@ -152,35 +154,28 @@ quantiles <- card_individual %>%
   pull({{ target_feature_shap }}) %>%
   quantile(c(0.025, 0.975), na.rm = TRUE)
 
-# Create the violin plot, excluding outliers only in the display
-
-# Check if the column is numeric
-if (!is.numeric(card_individual %>% pull({{ target_feature_value }}))) {
-  # Convert to factor and manually group top categories
-  card_individual <- card_individual %>%
-    mutate(bin = forcats::fct_lump_n(!!sym(target_feature_value), n = 5))
-} else {
-  # Bin numerically if the column is numeric
-  card_individual <- card_individual %>%
-    mutate(bin = cut_number(!!sym(target_feature_value), n = 5, dig.lab = num_digits))
-}
-
-# Calculate quantiles
-quantiles <- quantile(card_individual %>% pull({{ target_feature_shap }}), c(0.025, 0.975), na.rm = TRUE)
+card_individual <- card_individual %>%
+  mutate(
+    bin = if (n_distinct(!!sym(target_feature_value)) <= 5) {
+      as.character(!!sym(target_feature_value))
+    } else {
+      cut_number(!!sym(target_feature_value), n = 5, dig.lab = 2)
+    }
+  )
 
 # Create the violin plot
 card_individual %>%
   ggplot(aes(x = bin, y = !!sym(target_feature_shap))) +
   geom_violin(fill = "#69b3a2", alpha = 0.7) +
   theme_minimal() +
-  xlab("Feature Value (Binned or Categorized)") +
+  xlab("Feature Value") +
   ylab("SHAP Value") +
   coord_cartesian(ylim = quantiles) +
   theme(
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
     plot.title = element_text(hjust = 0.5)
   ) +
-  ggtitle("Violin Plot of SHAP Values for Top 5 Largest Features")
+  ggtitle("Violin Plot of SHAP Values for Top 5 Largest Feature Ranges")
 ```
 :::
 

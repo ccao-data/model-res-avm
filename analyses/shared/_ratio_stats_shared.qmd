@@ -35,7 +35,6 @@ ratio_stats <- performance_test_new %>%
     prd_new,
     prd_comparison,
     prd_diff,
-    prd_new,
     prb_comparison,
     prb_diff,
     mki_new,
@@ -62,49 +61,55 @@ ratio_stats <- performance_test_new %>%
 ## Triad
 
 ```{r, ratio_stats_triad}
-ratio_stats[[3]] %>%
-  select(-c("Geography Id", "Geography Type")) %>%
-  datatable(
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
+if ("triad_code" %in% names(ratio_stats)) {
+  ratio_stats$triad_code %>%
+    select(-c("Geography Id", "Geography Type")) %>%
+    datatable(
+      options = list(
+        scrollY = "300px",
+        scrollX = TRUE,
+        paging = FALSE,
+        searching = TRUE
+      ),
+      rownames = FALSE
+    )
+}
 ```
 
 ## Township
 
 ```{r, ratio_stats_township}
-ratio_stats[[2]] %>%
-  select(-c("Geography Type")) %>%
-  datatable(
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
+if ("township_code" %in% names(ratio_stats)) {
+  ratio_stats$township_code %>%
+    select(-c("Geography Type")) %>%
+    datatable(
+      options = list(
+        scrollY = "300px",
+        scrollX = TRUE,
+        paging = FALSE,
+        searching = TRUE
+      ),
+      rownames = FALSE
+    )
+}
 ```
 
 ## Neighborhood
 
 ```{r, ratio_stats_neighborhood}
-ratio_stats[[1]] %>%
-  select(-c("Geography Type")) %>%
-  datatable(
-    options = list(
-      scrollY = "300px",
-      scrollX = TRUE,
-      paging = FALSE,
-      searching = TRUE
-    ),
-    rownames = FALSE
-  )
+if ("nbhd_code" %in% names(ratio_stats)) {
+  ratio_stats$nbhd_code %>%
+    select(-c("Geography Type")) %>%
+    datatable(
+      options = list(
+        scrollY = "300px",
+        scrollX = TRUE,
+        paging = FALSE,
+        searching = TRUE
+      ),
+      rownames = FALSE
+    )
+}
 ```
 
 :::
