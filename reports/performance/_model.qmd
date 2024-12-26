@@ -1265,7 +1265,7 @@ model_big_misses_assessment %>%
 
 
 ```{r, include = FALSE}
-training_data_monthlytraining_data_monthly <- training_data_pred %>%
+training_data_monthly <- training_data_pred %>%
   mutate(
     meta_sale_date = as.Date(meta_sale_date),
     year = year(meta_sale_date),
