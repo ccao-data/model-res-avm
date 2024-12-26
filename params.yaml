@@ -24,14 +24,14 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: true
+  shap_enable: false
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: true
+  comp_enable: false
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to false if you are not a CCAO employee
-  upload_enable: true
+  upload_enable: false
 
 
 # Data/Ingest ------------------------------------------------------------------
@@ -165,14 +165,11 @@ model:
       - "char_ext_wall"
       - "char_fbath"
       - "char_frpl"
-      - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
       - "char_hbath"
       - "char_land_sf"
-      - "char_heat"
       - "char_ncu"
-      - "char_porch"
       - "char_roof_cnst"
       - "char_rooms"
       - "char_tp_dsgn"
@@ -182,7 +179,6 @@ model:
       - "loc_latitude"
       - "loc_census_tract_geoid"
       - "loc_env_flood_fs_factor"
-      - "loc_env_airport_noise_dnl"
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
       - "loc_access_cmap_walk_nta_score"
@@ -191,8 +187,6 @@ model:
       - "prox_num_pin_in_half_mile"
       - "prox_num_bus_stop_in_half_mile"
       - "prox_num_foreclosure_per_1000_pin_past_5_years"
-      - "prox_num_school_in_half_mile"
-      - "prox_num_school_with_rating_in_half_mile"
       - "prox_avg_school_rating_in_half_mile"
       - "prox_airport_dnl_total"
       - "prox_nearest_bike_trail_dist_ft"
@@ -214,7 +208,6 @@ model:
       - "acs5_percent_age_children"
       - "acs5_percent_age_senior"
       - "acs5_median_age_total"
-      - "acs5_percent_mobility_no_move"
       - "acs5_percent_mobility_moved_from_other_state"
       - "acs5_percent_household_family_married"
       - "acs5_percent_household_nonfamily_alone"
@@ -229,8 +222,6 @@ model:
       - "acs5_median_household_total_occupied_year_built"
       - "acs5_median_household_renter_occupied_gross_rent"
       - "acs5_percent_household_owner_occupied"
-      - "acs5_percent_household_total_occupied_w_sel_cond"
-      - "acs5_percent_mobility_moved_in_county"
       - "other_tax_bill_rate"
       - "other_school_district_elementary_avg_rating"
       - "other_school_district_secondary_avg_rating"
@@ -260,11 +251,8 @@ model:
       - "char_bsmt_fin"
       - "char_class"
       - "char_ext_wall"
-      - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
-      - "char_heat"
-      - "char_porch"
       - "char_roof_cnst"
       - "char_tp_dsgn"
       - "char_type_resd"
