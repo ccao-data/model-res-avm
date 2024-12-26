@@ -246,6 +246,36 @@ model:
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
 
+      - "other_affordability_risk_index"
+      - "other_distressed_community_index"
+      - "other_ihs_avg_year_index"
+
+      - "shp_parcel_centroid_dist_ft_sd"
+      - "shp_parcel_edge_len_ft_sd"
+      - "shp_parcel_interior_angle_sd"
+      - "shp_parcel_mrr_area_ratio"
+      - "shp_parcel_mrr_side_ratio"
+      - "shp_parcel_num_vertices"
+
+      - "prox_nearest_road_arterial_daily_traffic"
+      - "prox_nearest_road_arterial_dist_ft"
+      - "prox_nearest_road_arterial_lanes"
+      - "prox_nearest_road_arterial_speed_limit"
+      - "prox_nearest_road_arterial_surface_type"
+      - "prox_nearest_road_collector_daily_traffic"
+      - "prox_nearest_road_collector_dist_ft"
+      - "prox_nearest_road_collector_lanes"
+      - "prox_nearest_road_collector_speed_limit"
+      - "prox_nearest_road_collector_surface_type"
+      - "prox_nearest_road_highway_daily_traffic"
+      - "prox_nearest_road_highway_dist_ft"
+      - "prox_nearest_road_highway_lanes"
+      - "prox_nearest_road_highway_speed_limit"
+      - "prox_nearest_road_highway_surface_type"
+
+      - "prox_nearest_stadium_dist_ft"
+      - "prox_nearest_new_construction_dist_ft"
+
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
     # else LightGBM will treat them as numeric
@@ -273,6 +303,10 @@ model:
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
       - "time_sale_quarter_of_year"
+
+      - "prox_nearest_road_arterial_surface_type"
+      - "prox_nearest_road_collector_surface_type"
+      - "prox_nearest_road_highway_surface_type"
 
     # List of identifiers for each observation, can be ignored
     id:
