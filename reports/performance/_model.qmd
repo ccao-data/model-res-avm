@@ -1261,6 +1261,8 @@ model_big_misses_assessment %>%
 
 ## Variance Over Time
 
+These charts look at the variance of the sale price and estimated FMV over time. Ideally, these should remain stable. One should be aware that while ratios for variance may stay stable, because housing values tend to increase over time, the aggregate difference may increase.
+
 ::: {.panel-tabset}
 
 
@@ -1301,7 +1303,7 @@ training_data_monthly_long <- training_data_monthly %>%
   )
 ```
 
-### Variance Ratio
+### Variance Ratio (FMV / Sale Price)
 
 ```{r}
 ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
@@ -1313,7 +1315,8 @@ ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
   ) +
   theme_minimal()
 ```
-### Total $ Variance of Sale Price and FMV
+
+### Comparison Between Total FMV and Sale Price Variance
 ```{r}
 ggplot(
   training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "variance_fmv")),
@@ -1339,7 +1342,9 @@ ggplot(
   }) +
   theme_minimal()
 ```
-### Difference Between Variance of FMV and Sale Price
+
+
+### $ Difference abs(FMV - Sale Price)
 
 ```{r}
 ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
@@ -1356,21 +1361,22 @@ ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
   }) +
   theme_minimal()
 ```
+
 ### Distribution of Sales and SSE
 
 ```{r}
 ggplot(training_data_monthly, aes(x = date)) +
   geom_bar(aes(y = percent_sales, fill = "Sales"),
-    stat = "identity", position = "identity", alpha = 0.5
-  ) +
+           stat = "identity", position = "identity", alpha = 0.5) +
   geom_bar(aes(y = percent_sse, fill = "Sum of Square Errors"),
-    stat = "identity", position = "identity", alpha = 0.5
-  ) +
+           stat = "identity", position = "identity", alpha = 0.5) +
   labs(
     x = "Month",
-    y = "Normalized Scale"
+    y = "Normalized Scale",
+    fill = "",
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
+
 ```
 :::
