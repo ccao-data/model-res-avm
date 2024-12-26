@@ -387,6 +387,5 @@ stats_median_yoy_delta %>%
 ```
 
 ```{r}
-
 ```
 

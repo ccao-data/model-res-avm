@@ -1299,7 +1299,6 @@ training_data_monthly_long <- training_data_monthly %>%
     names_to = "Metric",
     values_to = "Value"
   )
-
 ```
 
 ### Variance Ratio
@@ -1313,12 +1312,13 @@ ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
     y = "Variance Ratio"
   ) +
   theme_minimal()
-
 ```
 ### Total $ Variance of Sale Price and FMV
 ```{r}
-ggplot(training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "variance_fmv")),
-       aes(x = date, y = Value, color = Metric)) +
+ggplot(
+  training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "variance_fmv")),
+  aes(x = date, y = Value, color = Metric)
+) +
   geom_line() +
   geom_point() +
   geom_smooth(method = "loess", se = FALSE) +
@@ -1328,11 +1328,13 @@ ggplot(training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "var
     color = "Metric"
   ) +
   scale_color_discrete(
-    labels = c("variance_sale" = "Variance of Sale Price", 
-               "variance_fmv" = "Variance of FMV")
+    labels = c(
+      "variance_sale" = "Variance of Sale Price",
+      "variance_fmv" = "Variance of FMV"
+    )
   ) +
   scale_y_continuous(labels = function(x) {
-    scales::label_scientific()(x) %>% 
+    scales::label_scientific()(x) %>%
       paste0("$", .)
   }) +
   theme_minimal()
@@ -1349,27 +1351,26 @@ ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
     y = "Difference in Variance ($)"
   ) +
   scale_y_continuous(labels = function(x) {
-    scales::label_scientific()(x) %>% 
+    scales::label_scientific()(x) %>%
       paste0("$", .)
   }) +
   theme_minimal()
-
-
 ```
 ### Distribution of Sales and SSE
 
 ```{r}
 ggplot(training_data_monthly, aes(x = date)) +
-  geom_bar(aes(y = percent_sales, fill = "Sales"), 
-           stat = "identity", position = "identity", alpha = 0.5) +
-  geom_bar(aes(y = percent_sse, fill = "Sum of Square Errors"), 
-           stat = "identity", position = "identity", alpha = 0.5)  +
+  geom_bar(aes(y = percent_sales, fill = "Sales"),
+    stat = "identity", position = "identity", alpha = 0.5
+  ) +
+  geom_bar(aes(y = percent_sse, fill = "Sum of Square Errors"),
+    stat = "identity", position = "identity", alpha = 0.5
+  ) +
   labs(
     x = "Month",
     y = "Normalized Scale"
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
-
 ```
 :::
