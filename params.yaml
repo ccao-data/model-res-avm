@@ -24,14 +24,14 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: false
+  shap_enable: true
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: false
+  comp_enable: true
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to false if you are not a CCAO employee
-  upload_enable: false
+  upload_enable: true
 
 
 # Data/Ingest ------------------------------------------------------------------
@@ -165,11 +165,14 @@ model:
       - "char_ext_wall"
       - "char_fbath"
       - "char_frpl"
+      - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
       - "char_hbath"
       - "char_land_sf"
+      - "char_heat"
       - "char_ncu"
+      - "char_porch"
       - "char_roof_cnst"
       - "char_rooms"
       - "char_tp_dsgn"
@@ -251,8 +254,11 @@ model:
       - "char_bsmt_fin"
       - "char_class"
       - "char_ext_wall"
+      - "char_gar1_att"
       - "char_gar1_cnst"
       - "char_gar1_size"
+      - "char_heat"
+      - "char_porch"
       - "char_roof_cnst"
       - "char_tp_dsgn"
       - "char_type_resd"
