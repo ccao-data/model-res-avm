@@ -200,20 +200,6 @@ if (comp_enable) {
     type = "leaf"
   ) %>%
     as_tibble()
-  training_leaf_nodes$predicted_value <- predict(
-    object = lgbm_final_full_fit$fit,
-    newdata = as.matrix(training_data_prepped)
-  ) %>%
-    # Round predicted values down for binning
-    floor()
-
-  # Get predicted values for the assessment set, which we already have in
-  # the assessment card set
-  leaf_nodes$predicted_value <- comp_assessment_data %>%
-    left_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
-    # Round predicted values down for binning
-    mutate(pred_card_initial_fmv = floor(pred_card_initial_fmv)) %>%
-    dplyr::pull(pred_card_initial_fmv)
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects
