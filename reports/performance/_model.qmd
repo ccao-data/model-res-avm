@@ -1367,9 +1367,11 @@ ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
 ```{r}
 ggplot(training_data_monthly, aes(x = date)) +
   geom_bar(aes(y = percent_sales, fill = "Sales"),
-           stat = "identity", position = "identity", alpha = 0.5) +
+    stat = "identity", position = "identity", alpha = 0.5
+  ) +
   geom_bar(aes(y = percent_sse, fill = "Sum of Square Errors"),
-           stat = "identity", position = "identity", alpha = 0.5) +
+    stat = "identity", position = "identity", alpha = 0.5
+  ) +
   labs(
     x = "Month",
     y = "Normalized Scale",
@@ -1377,6 +1379,5 @@ ggplot(training_data_monthly, aes(x = date)) +
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
-
 ```
 :::
