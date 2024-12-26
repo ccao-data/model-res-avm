@@ -1258,3 +1258,124 @@ model_big_misses_assessment %>%
 ```
 
 :::
+
+## Variance Over Time
+
+::: {.panel-tabset}
+
+
+```{r, include = FALSE}
+training_data_monthly <- training_data_pred %>%
+  mutate(
+    meta_sale_date = as.Date(meta_sale_date),
+    year = year(meta_sale_date),
+    month = month(meta_sale_date),
+    difference = (pred_card_initial_fmv - meta_sale_price),
+    squared_difference = difference^2
+  ) %>%
+  filter(abs(difference) < 100000) %>%
+  group_by(year, month) %>%
+  summarize(
+    total_sales = sum(meta_sale_price),
+    total_fmv = sum(pred_card_initial_fmv),
+    variance_sale = var(meta_sale_price),
+    variance_fmv = var(pred_card_initial_fmv),
+    mean_difference = mean(difference),
+    sse = sum(squared_difference),  # Sum of Square Error
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    variance_sale = variance_sale,
+    variance_fmv = variance_fmv,
+    total_sales_overall = sum(n),
+    total_sse_overall = sum(sse),
+    percent_sales = total_sales_overall / n * 100,
+    percent_sse = sse / total_sse_overall * 100,
+    variance_diff = variance_fmv - variance_sale,
+    date = make_date(year, month),
+    variance_ratio = variance_fmv / variance_sale,
+    percent_sales = n / sum(n) * 100,
+    percent_sse = sse / sum(sse) * 100
+  )
+
+training_data_monthly_long <- training_data_monthly %>%
+  pivot_longer(
+    cols = c(variance_sale, variance_fmv, percent_sales, percent_sse, variance_diff),
+    names_to = "Metric",
+    values_to = "Value"
+  )
+
+```
+
+### Variance Ratio
+
+```{r}
+ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Date",
+    y = "Variance Ratio"
+  ) +
+  theme_minimal()
+
+```
+### Total $ Variance of Sale Price and FMV
+```{r}
+ggplot(training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "variance_fmv")),
+       aes(x = date, y = Value, color = Metric)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    x = "Month",
+    y = "Variance",
+    color = "Metric"
+  ) +
+  scale_color_discrete(
+    labels = c("variance_sale" = "Variance of Sale Price", 
+               "variance_fmv" = "Variance of FMV")
+  ) +
+  scale_y_continuous(labels = function(x) {
+    scales::label_scientific()(x) %>% 
+      paste0("$", .)
+  }) +
+  theme_minimal()
+```
+### Difference Between Variance of FMV and Sale Price
+
+```{r}
+ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  labs(
+    x = "Month",
+    y = "Difference in Variance ($)"
+  ) +
+  scale_y_continuous(labels = function(x) {
+    scales::label_scientific()(x) %>% 
+      paste0("$", .)
+  }) +
+  theme_minimal()
+
+
+```
+### Distribution of Sales and SSE
+
+```{r}
+ggplot(training_data_monthly, aes(x = date)) +
+  geom_bar(aes(y = percent_sales, fill = "Sales"), 
+           stat = "identity", position = "identity", alpha = 0.5) +
+  geom_bar(aes(y = percent_sse, fill = "Sum of Square Errors"), 
+           stat = "identity", position = "identity", alpha = 0.5)  +
+  labs(
+    x = "Month",
+    y = "Normalized Scale"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+:::
