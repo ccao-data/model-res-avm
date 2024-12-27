@@ -224,24 +224,30 @@ if (comp_enable) {
       stop("Encountered error in python/comps.py")
     }
   )
-  # Correct for the fact that Python is 0-indexed by incrementing the
-  # comp indexes by 1
-  comps[[1]] <- comps[[1]] + 1
 
   # Translate comp indexes to PINs and document numbers
   comps[[1]] <- comps[[1]] %>%
     mutate(
+      # Correct for the fact that Python is 0-indexed by incrementing the
+      # comp indexes by 1, and cast null indicators (-1) to null
+      across(everything(), ~ ifelse(. == -1, NA, . + 1)),
+      # Map comp index to PIN
       across(
         starts_with("comp_idx_"),
         \(idx_row) {
-          training_data[idx_row, ]$meta_pin
+          ifelse(is.na(idx_row), NA, training_data[idx_row, ]$meta_pin)
         },
         .names = "comp_pin_{str_remove(col, 'comp_idx_')}"
       ),
+      # Map comp index to sale doc number
       across(
         starts_with("comp_idx_"),
         \(idx_row) {
-          training_data[idx_row, ]$meta_sale_document_num
+          ifelse(
+            is.na(idx_row),
+            NA,
+            training_data[idx_row, ]$meta_sale_document_num
+          )
         },
         .names = "comp_document_num_{str_remove(col, 'comp_idx_')}"
       )
