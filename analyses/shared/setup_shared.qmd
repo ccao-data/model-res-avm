@@ -4,8 +4,8 @@ params:
   run_id_year: "2025"
   comparison_run_id: "2024-12-20-quizzical-tristan"
   comparison_run_id_year: "2025"
-  added_feature: "sq_ft_variance" 
-  added_feature_shap: "sq_ft_variance_shap"
+  added_feature: "age_variance" 
+  added_feature_shap: "age_variance_shap"
   description: "Test with a variance features"
 ---
 ```{r, include = FALSE}
