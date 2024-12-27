@@ -1344,13 +1344,13 @@ ggplot(
 ```
 
 
-### $ Difference abs(FMV - Sale Price)
+### Variance Difference (Sale Price - FMV)
 
 ```{r _variance_diff_chart}
-ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
+ggplot(training_data_monthly, aes(x = date, y = variance_sale - variance_fmv)) +
   geom_line() +
   geom_point() +
-  geom_smooth(se = FALSE) +
+  geom_smooth(method = "loess", se = FALSE) +
   labs(
     x = "Month",
     y = "Difference in Variance"
