@@ -1353,7 +1353,7 @@ ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
   geom_smooth(se = FALSE) +
   labs(
     x = "Month",
-    y = "Difference in Variance ($)"
+    y = "Difference in Variance"
   ) +
   scale_y_continuous(labels = function(x) {
     scales::label_scientific()(x) %>%
