@@ -206,6 +206,14 @@ model:
       - "prox_nearest_vacant_land_dist_ft"
       - "prox_nearest_water_dist_ft"
       - "prox_nearest_golf_course_dist_ft"
+      - "prox_nearest_road_highway_dist_ft"
+      - "prox_nearest_road_arterial_dist_ft"
+      - "prox_nearest_road_collector_dist_ft"
+      - "prox_nearest_road_highway_daily_traffic"
+      - "prox_nearest_road_arterial_daily_traffic"
+      - "prox_nearest_road_collector_daily_traffic"
+      - "prox_nearest_new_construction_dist_ft"
+      - "prox_nearest_stadium_dist_ft"
       - "acs5_percent_age_children"
       - "acs5_percent_age_senior"
       - "acs5_median_age_total"
@@ -236,24 +244,12 @@ model:
       - "time_sale_day_of_month"
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
-
       - "shp_parcel_centroid_dist_ft_sd"
       - "shp_parcel_edge_len_ft_sd"
       - "shp_parcel_interior_angle_sd"
       - "shp_parcel_mrr_area_ratio"
       - "shp_parcel_mrr_side_ratio"
       - "shp_parcel_num_vertices"
-
-      - "prox_nearest_road_highway_dist_ft"
-      - "prox_nearest_road_arterial_dist_ft"
-      - "prox_nearest_road_collector_dist_ft"
-
-      - "prox_nearest_road_highway_daily_traffic"
-      - "prox_nearest_road_arterial_daily_traffic"
-      - "prox_nearest_road_collector_daily_traffic"
-
-      - "prox_nearest_new_construction_dist_ft"
-      - "prox_nearest_stadium_dist_ft"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
