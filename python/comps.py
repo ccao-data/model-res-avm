@@ -32,7 +32,7 @@ def get_comps(
     total_num_observations = len(observation_df)
     total_num_possible_comps = len(comparison_df)
     chunked_ids, chunked_scores = [], []
-    for chunk_num in range(num_chunks):
+    for chunk_num in set(observation_df["chunk"]):
         observations = observation_df[observation_df["chunk"] == chunk_num]
         # Drop chunk column to produce a matrix that we can accelerate
         # with numba
