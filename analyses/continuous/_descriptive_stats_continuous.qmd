@@ -1,17 +1,16 @@
-{{< include ../shared/setup_shared.qmd >}}
 
 # Descriptive Statistics
 
 ::: {.panel-tabset}
 
 ```{r}
-# Continuous summary function
+# Continuous summary function with NA count
 create_summary_table <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
-
+  
   if (!is.null(group_by_column)) {
     formatted_group_by_column <- str_to_title(str_replace_all(group_by_column, "_", " "))
-
+    
     summary_data <- data %>%
       group_by(!!sym(group_by_column)) %>%
       summarize(
@@ -20,7 +19,8 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
         Median = round(median(!!target_feature, na.rm = TRUE), 2),
         `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
         `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
-        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2),
+        `NA Count` = sum(is.na(!!target_feature))
       ) %>%
       select(-!!sym(group_by_column))
   } else {
@@ -30,10 +30,11 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
         Median = round(median(!!target_feature, na.rm = TRUE), 2),
         `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
         `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
-        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2),
+        `NA Count` = sum(is.na(!!target_feature))
       )
   }
-
+  
   # Display the summary in a datatable
   datatable(
     summary_data,
@@ -46,6 +47,7 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
     rownames = FALSE
   )
 }
+
 ```
 
 ## Overall
@@ -112,7 +114,7 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
 ```
 
 
-## Feature Histogram`
+## Feature Histogram
 
 ```{r feature_histogram}
 create_histogram_with_statistics(

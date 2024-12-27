@@ -1,20 +1,38 @@
 
 # Ratio Stats
 ```{r, ratio_stats_function}
-ratio_stats <- performance_test_new %>%
-  filter(
-    by_class == FALSE,
-    geography_type %in% c("nbhd_code", "township_code", "triad_code")
-  ) %>%
-  inner_join(
-    performance_test_comparison %>%
-      filter(
-        by_class == FALSE,
-        geography_type %in% c("nbhd_code", "township_code", "triad_code")
-      ),
-    by = c("geography_type", "geography_id", "triad_code"),
-    suffix = c("_new", "_comparison")
-  ) %>%
+ratio_stats <- bind_rows(
+  # Join for "triad_code" without geography_id
+  performance_test_new %>%
+    filter(
+      by_class == FALSE,
+      geography_type == "triad_code"
+    ) %>%
+    inner_join(
+      performance_test_comparison %>%
+        filter(
+          by_class == FALSE,
+          geography_type == "triad_code"
+        ),
+      by = c("geography_type", "triad_code"),
+      suffix = c("_new", "_comparison")
+    ),
+  # Join for other geography_types with geography_id
+  performance_test_new %>%
+    filter(
+      by_class == FALSE,
+      geography_type %in% c("nbhd_code", "township_code")
+    ) %>%
+    inner_join(
+      performance_test_comparison %>%
+        filter(
+          by_class == FALSE,
+          geography_type %in% c("nbhd_code", "township_code")
+        ),
+      by = c("geography_type", "geography_id", "triad_code"),
+      suffix = c("_new", "_comparison")
+    )
+) %>%
   mutate(
     cod_diff = cod_new - cod_comparison,
     prd_diff = prd_new - prd_comparison,

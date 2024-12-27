@@ -4,6 +4,8 @@ subtitle: "Run ID: `r params$added_feature`: `r params$description`"
 date: "`r Sys.Date()`"
 author: "Cook County Assessor's Office Data Department"
 execute:
+  message: false
+  error: false
   echo: false
   warning: false
   asis: true
@@ -15,14 +17,13 @@ format:
     fig-align: center
     fontsize: 12pt
 params:
-  run_id: "2024-12-21-youthful-nicole"
+  run_id: "2024-12-21-cool-antonia"
   run_id_year: "2025"
   comparison_run_id: "2024-12-20-quizzical-tristan"
   comparison_run_id_year: "2025"
-  added_feature: "random" 
-  added_feature_shap: "random_shap"
-  description: "Test with a random variable"
-  type: "continuous"
+  added_feature: "sq_ft_variance" 
+  added_feature_shap: "sq_ft_variance_shap"
+  description: "Test with a variance features"
 ---
 
 {{< include ../shared/setup_shared.qmd >}}
@@ -36,3 +37,5 @@ params:
 {{< include _shaps_continuous.qmd >}}
 
 {{< include _spatial_analysis_continuous.qmd >}}
+
+

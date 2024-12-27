@@ -1,4 +1,3 @@
-{{< include ../shared/setup_shared.qmd >}}
 
 # Spatial Analysis
 
@@ -159,7 +158,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 
 ### Largest 100 Values
 
-Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation"`
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
 ```{r largest_values}
 highest_100 <- leaflet_data %>%
@@ -171,15 +170,16 @@ create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values"
 
 ### Lowest 100 Values
 
-Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation."`
+Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
 
 ```{r, 100_lowest}
-highest_100 <- leaflet_data %>%
-  arrange(desc(!!sym(target_feature_value))) %>%
+lowest_100 <- leaflet_data %>%
+  arrange(!!sym(target_feature_value)) %>%
   dplyr::slice(1:100)
 
-create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values")
+create_leaflet_map(lowest_100, {{ target_feature_value }}, "Lowest 100 Values", order_scheme = "low")
+
 ```
 
 ### Highest 100 SHAP Values
