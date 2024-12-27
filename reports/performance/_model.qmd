@@ -1266,7 +1266,7 @@ These charts look at the variance of the sale price and estimated FMV over time.
 ::: {.panel-tabset}
 
 
-```{r, include = FALSE}
+```{r _organize_variance_data}
 training_data_monthly <- training_data_pred %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   mutate(
@@ -1305,7 +1305,7 @@ training_data_monthly_long <- training_data_monthly %>%
 
 ### Variance Ratio (FMV / Sale Price)
 
-```{r}
+```{r _variance_ratio_chart}
 ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
   geom_line() +
   geom_point() +
@@ -1317,7 +1317,7 @@ ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
 ```
 
 ### Total FMV and Sale Price Variance
-```{r}
+```{r _overall_variance_chart}
 ggplot(
   training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "variance_fmv")),
   aes(x = date, y = Value, color = Metric)
@@ -1346,7 +1346,7 @@ ggplot(
 
 ### $ Difference abs(FMV - Sale Price)
 
-```{r}
+```{r _variance_diff_chart}
 ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
   geom_line() +
   geom_point() +
@@ -1364,7 +1364,7 @@ ggplot(training_data_monthly, aes(x = date, y = abs(variance_diff))) +
 
 ### Distribution of Sales and SSE
 
-```{r}
+```{r _distribution_sales_sse_chart}
 ggplot(training_data_monthly, aes(x = date)) +
   geom_bar(aes(y = percent_sales, fill = "Sales"),
     stat = "identity", position = "identity", alpha = 0.5
