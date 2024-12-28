@@ -1261,7 +1261,7 @@ model_big_misses_assessment %>%
 
 ## Variance Over Time
 
-These charts look at the variance of the sale price and estimated FMV over time. Ideally, these should remain stable. One should be aware that while ratios may demonstrate consistent trends, because housing values tend to increase over time, the aggregate difference may increase.
+These plot shows show trends in the variance of sale price and estimated FMV. Ideally, the model's estimates should have the same variance as the true values (sales) with respect to time.
 
 ::: {.panel-tabset}
 
