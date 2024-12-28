@@ -1265,7 +1265,7 @@ These plot shows show trends in the variance of sale price and estimated FMV. Id
 
 ::: {.panel-tabset}
 
-```{r _organize_variance_data}
+```{r _model_organize_variance_data}
 training_data_monthly <- training_data_pred %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   mutate(
