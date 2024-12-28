@@ -1265,7 +1265,6 @@ These charts look at the variance of the sale price and estimated FMV over time.
 
 ::: {.panel-tabset}
 
-
 ```{r _organize_variance_data}
 training_data_monthly <- training_data_pred %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
