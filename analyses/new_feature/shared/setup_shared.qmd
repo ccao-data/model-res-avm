@@ -41,9 +41,9 @@ cpp11::cpp_source(code = "
 ")
 
 ignore_sigpipes()
-```
 
-```{r, include = FALSE}
+if (!exists("base_paths")) {
+
 base_paths <- model_file_dict(params$run_id, params$run_id_year)
 comparison_paths <- model_file_dict(
   params$comparison_run_id,
@@ -133,4 +133,5 @@ target_feature_value <- params$added_feature
 target_feature_shap <- params$added_feature_shap
 type <- params$type
 nbhd <- ccao::nbhd_shp
+}
 ```

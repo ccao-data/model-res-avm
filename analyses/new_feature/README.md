@@ -38,7 +38,7 @@ The New Feature Analysis aim to answer the following:
 
 -   Do SHAP values demonstrate that the added value is an important added feature?
 
--   Are their spatial disparities to the added feature and the changes in assessed values?
+-   Are their spatial disparities for the feature and are there spatial changes in assessed values?
 
 ### New Feature Workflow
 

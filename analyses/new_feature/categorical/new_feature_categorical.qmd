@@ -18,16 +18,13 @@ format:
     fontsize: 12pt
     code-fold: true
 params:
-  run_id: "2024-12-02-determined-sam"
-  run_id_year: "2024"
-  comparison_run_id: "2024-07-13-great-eric"
-  comparison_run_id_year: "2024"
+  run_id: "2024-12-26-ecstatic-matt"
+  run_id_year: "2025"
+  comparison_run_id: "2024-12-20-quizzical-tristan"
+  comparison_run_id_year: "2025"
   added_feature: "prox_nearest_road_arterial_surface_type" 
   added_feature_shap: "prox_nearest_road_arterial_surface_type_shap"
-  description: "Surface type of the nearest arterial road"
-  min_range: 5
-  max_range: 95
-  type: "categorical"
+  description: "Surface Type is a categorical variable that describes the type of surface of the nearest arterial road to the property."
 ---
 
 {{< include ../shared/setup_shared.qmd >}}
