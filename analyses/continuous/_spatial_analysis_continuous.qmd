@@ -109,10 +109,15 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
   leaflet(dataset) %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
     addCircleMarkers(
-      lng = ~ get(longitude),
-      lat = ~ get(latitude),
+      lng = ~get(longitude),
+      lat = ~get(latitude),
       radius = 5,
-      color = ~ pal(dataset[[legend_value]]),
+      color = ~pal(dataset[[legend_value]]), # Fill color
+      stroke = TRUE,        # Enable the outline (stroke)
+      weight = 1,           # Set the stroke thickness
+      opacity = 1,          # Stroke opacity
+      fillOpacity = 0.8,    # Marker fill opacity
+      fill = TRUE,          # Fill the marker
       popup = ~ {
         shap_values <- dataset %>%
           select(starts_with("target_feature_shap_")) %>%

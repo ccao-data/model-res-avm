@@ -154,12 +154,16 @@ quantiles <- card_individual %>%
   pull({{ target_feature_shap }}) %>%
   quantile(c(0.025, 0.975), na.rm = TRUE)
 
+# Calculate the number of bins dynamically
+num_bins <- min(5, n_distinct(card_individual %>% pull(!!sym(target_feature_value))))
+
+# Add bins to the dataset
 card_individual <- card_individual %>%
   mutate(
     bin = if (n_distinct(!!sym(target_feature_value)) <= 5) {
       as.character(!!sym(target_feature_value))
     } else {
-      cut_number(!!sym(target_feature_value), n = 5, dig.lab = 2)
+      cut_number(!!sym(target_feature_value), n = num_bins, dig.lab = 2)
     }
   )
 
@@ -176,6 +180,7 @@ card_individual %>%
     plot.title = element_text(hjust = 0.5)
   ) +
   ggtitle("Violin Plot of SHAP Values for Top 5 Largest Feature Ranges")
+
 ```
 :::
 
