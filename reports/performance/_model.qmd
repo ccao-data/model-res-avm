@@ -1296,7 +1296,10 @@ training_data_monthly <- training_data_pred %>%
 
 training_data_monthly_long <- training_data_monthly %>%
   pivot_longer(
-    cols = c(variance_sale, variance_fmv, percent_sales, percent_sse, variance_diff),
+    cols = c(
+      variance_sale, variance_fmv, percent_sales,
+      percent_sse, variance_diff
+    ),
     names_to = "Metric",
     values_to = "Value"
   )
@@ -1304,7 +1307,7 @@ training_data_monthly_long <- training_data_monthly %>%
 
 ### Variance Ratio (FMV / Sale Price)
 
-```{r _variance_ratio_chart}
+```{r _model_variance_ratio_chart}
 ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
   geom_line() +
   geom_point() +
@@ -1317,9 +1320,10 @@ ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
 
 ### Total FMV and Sale Price Variance
 
-```{r _overall_variance_chart}
+```{r _model_overall_variance_chart}
 ggplot(
-  training_data_monthly_long %>% filter(Metric %in% c("variance_sale", "variance_fmv")),
+  training_data_monthly_long %>% filter(Metric %in%
+    c("variance_sale", "variance_fmv")),
   aes(x = date, y = Value, color = Metric)
 ) +
   geom_line() +
@@ -1346,13 +1350,13 @@ ggplot(
 
 ### Variance Difference (Sale Price - FMV)
 
-```{r _variance_diff_chart}
+```{r _model_variance_diff_chart}
 ggplot(training_data_monthly, aes(x = date, y = variance_sale - variance_fmv)) +
   geom_line() +
   geom_point() +
   geom_smooth(method = "loess", se = FALSE) +
   labs(
-    x = "Month",
+    x = "Date",
     y = "Difference in Variance"
   ) +
   scale_y_continuous(labels = function(x) {
@@ -1364,7 +1368,7 @@ ggplot(training_data_monthly, aes(x = date, y = variance_sale - variance_fmv)) +
 
 ### Distribution of Sales and SSE
 
-```{r _distribution_sales_sse_chart}
+```{r _model_distribution_sales_sse_chart}
 ggplot(training_data_monthly, aes(x = date)) +
   geom_bar(aes(y = percent_sales, fill = "Sales"),
     stat = "identity", position = "identity", alpha = 0.5
@@ -1372,8 +1376,11 @@ ggplot(training_data_monthly, aes(x = date)) +
   geom_bar(aes(y = percent_sse, fill = "Sum of Square Errors"),
     stat = "identity", position = "identity", alpha = 0.5
   ) +
+  scale_fill_manual(
+    values = c("Sales" = "#00BFC4", "Sum of Square Errors" = "#F8766D")
+  ) +
   labs(
-    x = "Month",
+    x = "Date",
     y = "Normalized Scale",
     fill = "",
   ) +
