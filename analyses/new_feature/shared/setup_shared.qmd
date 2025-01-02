@@ -4,9 +4,9 @@ params:
   run_id_year: "2025"
   comparison_run_id: "2024-12-20-quizzical-tristan"
   comparison_run_id_year: "2025"
-  added_feature: "prox_nearest_road_arterial_dist_ft" 
-  added_feature_shap: "prox_nearest_road_arterial_dist_ft_shap"
-  description: "Feature test with arterial road distance"
+  added_feature: "other_affordability_risk_index" 
+  added_feature_shap: "other_affordability_risk_index_shap"
+  description: "Affordability Risk Index demonstrates neighborhood level housing affordability"
 ---
 ```{r, include = FALSE}
 library(purrr)
