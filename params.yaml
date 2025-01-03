@@ -46,7 +46,7 @@ assessment:
 
   # Added context for model artifacts stored in S3. Also updates the triad
   # displayed in email notifications on model completion
-  triad: "city"
+  triad: "north"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
