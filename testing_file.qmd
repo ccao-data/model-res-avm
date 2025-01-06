@@ -1,0 +1,96 @@
+---
+title: "testing_file"
+format: html
+---
+
+```{r}
+library(arrow)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+
+training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet")
+
+training_data %>%
+  filter(meta_township_name == "Barrington") %>%
+  arrange(desc(meta_sale_price)) %>%
+  slice(1:10) %>%
+  select(meta_sale_price, meta_sale_document_num, meta_pin)
+```
+
+
+```{r}
+training_data %>%
+  filter(meta_township_name == "Barrington") %>%
+  ggplot(aes(x = meta_sale_price)) +
+  geom_histogram(binwidth = 100000, color = "black", fill = "skyblue") +
+  labs(
+    title = "Histogram of Sale Prices in Barrington",
+    x = "Sale Price",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+numeric <- training_data %>%
+  select(where(is.numeric))
+```
+
+```{r}
+
+# Select numeric columns
+numeric <- training_data %>%
+  select(where(is.numeric))
+
+# Create histograms for all numeric variables
+plots <- map(numeric, ~ ggplot(training_data, aes(x = .x)) +
+  geom_histogram(bins = 30) +
+  labs(title = paste("Histogram of", deparse(substitute(.x))),
+       x = deparse(substitute(.x)),
+       y = "Frequency") +
+  theme_minimal())
+
+
+```
+
+::: {.panel-tabset}
+
+```{r _comp_neighborhood_level_means, results='asis'}
+iwalk(plots, ~ {
+  cat("##", .y, "\n\n")
+  print(.x)
+  cat("\n\n")
+})
+```
+
+```{r}
+test <- training_data %>%
+  arrange(desc(char_bldg_sf)) %>%
+  slice(1:100) %>%
+  select(meta_pin, char_bldg_sf)
+
+test_2 <- training_data %>%
+  arrange(desc(meta_certified_tot)) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  slice(1:100) %>%
+  select(meta_pin, meta_certified_tot, meta_township_name, meta_year, char_bldg_sf, char_land_sf)
+```
+
+
+```{r}
+test_3 <- training_data %>%
+  filter(meta_township_name == "Barrington") %>%
+  scatterplot(meta_sale_price, meta_certified_tot)
+```
+```{r}
+test_4 <- training_data %>%
+  filter(meta_pin %in% c("11181100020000", "12133010680000", "14322140240000", "05211000140000", "20142150160000")) %>%
+  arrange(meta_pin, meta_year)
+
+
+```
+
+
