@@ -1,26 +1,45 @@
 ---
 title: "testing_file"
-format: html
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
 ---
 
 ```{r}
 library(arrow)
+library(ccao)
 library(dplyr)
-library(purrr)
+library(DT)
 library(ggplot2)
+library(purrr)
+library(tidyr)
+```
 
+
+```{r}
 training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet") %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
+
+assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") 
 
 training_data %>%
   filter(meta_township_name == "Barrington") %>%
   arrange(desc(meta_sale_price)) %>%
   slice(1:10) %>%
-  select(meta_sale_price, meta_sale_document_num, meta_pin)
+  select(meta_sale_price, meta_sale_document_num, meta_pin) %>%
+  datatable(options = list(scrollY = '400px', paging = FALSE))
+  
 ```
 
-
+### Sales in Barrington
 ```{r}
 training_data %>%
   filter(meta_township_name == "Barrington") %>%
@@ -35,27 +54,18 @@ training_data %>%
 
 ```
 
-
 ```{r}
-numeric <- training_data %>%
-  select(where(is.numeric))
-```
-
-```{r}
-
 # Select numeric columns
 numeric <- training_data %>%
   select(where(is.numeric))
 
 # Create histograms for all numeric variables
-plots <- map(numeric, ~ ggplot(training_data, aes(x = .x)) +
+plots <- imap(numeric, ~ ggplot(training_data, aes(x = .data[[.y]])) +
   geom_histogram(bins = 30) +
-  labs(title = paste("Histogram of", deparse(substitute(.x))),
-       x = deparse(substitute(.x)),
+  labs(title = paste("Histogram of", .y),
+       x = .y,
        y = "Frequency") +
   theme_minimal())
-
-
 ```
 
 ::: {.panel-tabset}
@@ -67,42 +77,46 @@ iwalk(plots, ~ {
   cat("\n\n")
 })
 ```
+:::
 
+
+##  100 Largest SF Properties
 ```{r}
-test <- training_data %>%
+training_data %>%
   arrange(desc(char_bldg_sf)) %>%
   slice(1:100) %>%
-  select(meta_pin, char_bldg_sf)
+  select(meta_pin, char_bldg_sf) %>%
+  datatable(options = list(scrollY = '400px', paging = FALSE))
+```
+## 100 largest FMVs
 
-test_2 <- training_data %>%
+```{r}
+training_data %>%
   arrange(desc(meta_certified_tot)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:100) %>%
-  select(meta_pin, meta_certified_tot, meta_township_name, meta_year, char_bldg_sf, char_land_sf)
+  select(meta_pin, meta_certified_tot, meta_township_name, meta_year, char_bldg_sf, char_land_sf) %>%
+  datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 
-
+### Pin Tests
 ```{r}
-test_3 <- training_data %>%
-  filter(meta_township_name == "Barrington") %>%
-  scatterplot(meta_sale_price, meta_certified_tot)
+assessment_pin %>%
+  filter(meta_pin %in% c("17102060351010", "16143120330000", "11312110190000", "24072010490000",
+                         "17062000841001", "17062000841002", "11181100020000", "12133010680000",
+                         "14322140240000", "05211000140000", "20142150160000")) %>%
+  arrange(meta_pin, meta_year) %>%
+  datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
+### Barrington Scatterplot
 ```{r}
-test_4 <- training_data %>%
-  filter(meta_pin %in% c("11181100020000", "12133010680000", "14322140240000", "05211000140000", "20142150160000")) %>%
-  arrange(meta_pin, meta_year)
-
-
-```
-
-```{r}
-library(ggplot2)
-library(dplyr)
-
 # Filter the data
 test_3 <- training_data %>%
   filter(meta_township_name == "Barrington")
+```
 
+
+```{r}
 # Create the scatterplot
 ggplot(test_3, aes(x = meta_sale_price, y = meta_certified_tot)) +
   geom_point() +
@@ -114,11 +128,13 @@ ggplot(test_3, aes(x = meta_sale_price, y = meta_certified_tot)) +
   theme_minimal()
 
 ```
+
+### 100 Largest Differences Between FMV and any Sale Price
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(
-    meta_triad_code == run_triad_code,
+    meta_triad_code == '2',
     !is.na(sale_recent_1_price),
     !is.na(pred_pin_final_fmv_round)) %>%
   select(
@@ -169,7 +185,38 @@ model_big_misses_assessment %>%
       )
     )
   )
-
-View(table)
 ```
+### 
+
+```{r}
+# Create a list of plots, one per township
+plots <- assessment_pin %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_triad_code == '2') %>%
+  group_by(township_name) %>%
+  group_split() %>%
+  set_names(map_chr(., ~ unique(.x$township_name))) %>%  # Assign names to the list based on township
+  map(~ ggplot(.x, aes(x = pred_pin_initial_fmv)) +
+        geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
+        labs(
+          title = paste("Distribution of Initial FMV for", unique(.x$township_name)),
+          x = "Initial FMV",
+          y = "Frequency"
+        ) +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5))
+      )
+```
+
+::: {.panel-tabset}
+
+```{r _fmv_plots, results='asis'}
+iwalk(plots, ~ {
+  cat("##", .y, "\n\n")
+  print(.x)
+  cat("\n\n")
+})
+
+```
+:::
 
