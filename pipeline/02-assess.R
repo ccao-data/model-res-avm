@@ -41,19 +41,7 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # Load the data for assessment. This is the universe of CARDs (not
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
 # fair-market value for each card
-
-
-
-
 assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
-  group_by(meta_pin) %>%
-  mutate(
-    total_bldg_sf        = sum(char_bldg_sf, na.rm = TRUE),
-    char_card_pct_bldg   = char_bldg_sf / total_bldg_sf,
-    # Flag as key card if it’s the maximum SF (ties will create multiple key cards)
-    char_key_card        = if_else(char_bldg_sf == max(char_bldg_sf, na.rm = TRUE), 1, 0)
-  ) %>%
-  ungroup() %>%
   as_tibble() %>%
   mutate(
     pred_card_initial_fmv = predict(

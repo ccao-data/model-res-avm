@@ -592,7 +592,15 @@ assessment_data_clean <- assessment_data_w_hie %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
   relocate(starts_with("meta_sale_"), .after = hie_num_expired) %>%
-  as_tibble() %>%
+  group_by(meta_pin) %>%
+  mutate(
+    total_bldg_sf        = sum(char_bldg_sf, na.rm = TRUE),
+    char_card_pct_bldg   = char_bldg_sf / total_bldg_sf,
+    # Flag as key card if it’s the maximum SF (ties will create multiple key cards)
+    char_key_card        = if_else(char_bldg_sf == max(char_bldg_sf, na.rm = TRUE), 1, 0)
+  ) %>%
+  ungroup() %>%
+  select(-total_bldg_sf) %>%
   write_parquet(paths$input$assessment$local)
 
 
