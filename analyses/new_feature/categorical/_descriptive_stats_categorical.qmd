@@ -6,8 +6,7 @@
 
 ::: {.panel-tabset}
 
-```{r}
-# Categorical summary function
+```{r _descriptive_stats_categorical_descriptive_setup}
 create_category_percentages <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
   group_vars <- if (!is.null(group_by_column)) {
@@ -51,25 +50,25 @@ create_category_percentages <- function(data, target_feature, group_by_column = 
 
 ### Overall
 
-```{r mean_median}
+```{r _descriptive_stats_categorical_mean_median}
 create_category_percentages(pin_individual, target_feature = {{ target_feature_value }})
 ```
 
 ### Township
-```{r mean_median_township}
+```{r _descriptive_stats_categorical_mean_median_township}
 create_category_percentages(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
 ```
 
 ### Neighborhood
 
-```{r mean_median_neighborhood}
+```{r _descriptive_stats_categorical_mean_median_neighborhood}
 create_category_percentages(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
 ```
 :::
 
 
 
-```{r, histogram_function}
+```{r, _descriptive_stats_categorical_histogram_function}
 create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
   # Conditionally filter outliers if requested
   if (filter_outliers && !is.null(filter_column)) {
@@ -142,13 +141,13 @@ shap_histogram <- create_histogram_with_statistics(
 ### FMV Change Histogram
 
 This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
-```{r fmv_change_histogram, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+```{r _descriptive_stats_categorical_fmv_change_histogram, results='asis',fig.keep='all'}
 fmv_histogram
 ```
 
 ### SHAP Histogram
 
-```{r shap_histogram, echo=FALSE, warning=FALSE, message=FALSE, error=FALSE, results='asis', fig.keep='all'}
+```{r _descriptive_stats_categorical_shap_histogram, results='asis', fig.keep='all'}
 shap_histogram
 ```
 :::

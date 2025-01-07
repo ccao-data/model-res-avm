@@ -4,8 +4,7 @@
 
 ::: {.panel-tabset}
 
-```{r}
-# Continuous summary function with NA count
+```{r _descriptive_stats_continuous_descriptive_setup}
 create_summary_table <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
   
@@ -53,18 +52,18 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
 
 ## Overall
 
-```{r mean_median}
+```{r _descriptive_stats_continuous_mean_median}
 create_summary_table(pin_individual, target_feature = {{ target_feature_value }})
 ```
 
 ## Township
-```{r mean_median_township}
+```{r _descriptive_stats_continuous_mean_median_township}
 create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
 ```
 
 ## Neighborhood
 
-```{r mean_median_neighborhood}
+```{r __descriptive_stats_continuous_mean_median_neighborhood}
 create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
 ```
 
@@ -75,7 +74,7 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 ::: {.panel-tabset}
 
 
-```{r histogram_function}
+```{r _descriptive_stats_continuous_histogram_function}
 create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
   # Conditionally filter outliers if requested
   if (filter_outliers && !is.null(filter_column)) {
@@ -117,7 +116,7 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
 
 ## Feature Histogram
 
-```{r feature_histogram}
+```{r _descriptive_stats_continuous_feature_histogram}
 create_histogram_with_statistics(
   data = pin_individual,
   target_feature = target_feature_value,
@@ -128,7 +127,7 @@ create_histogram_with_statistics(
 ## FMV Change Histogram
 
 This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
-```{r fmv_change_histogram, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+```{r _descriptive_stats_continuous_fmv_change_histogram, results='asis',fig.keep='all'}
 create_histogram_with_statistics(
   data = pin_individual,
   target_feature = "diff_pred_pin_initial_fmv",
@@ -140,7 +139,7 @@ create_histogram_with_statistics(
 
 ## SHAP Histogram
 
-```{r shap_change_histogram, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+```{r _descriptive_stats_continuous_shap_change_histogram, results='asis',fig.keep='all'}
 create_histogram_with_statistics(
   data = shap_new,
   target_feature = target_feature_value,
@@ -161,7 +160,7 @@ create_histogram_with_statistics(
 Here, the goal is to see if the added feature *very* neatly aligns with other existing features. Columns are produced with both the absolute value of the correlation (for easy sorting), as well as the raw value to help decipher the direction of the relationship.
 
 
-```{r correlation_between_features}
+```{r _descriptive_stats_continuous_correlation_between_features}
 columns_to_remove <- c(
   "Sale Year",
   "Sale Month of Year",
@@ -221,7 +220,7 @@ datatable(correlation_results_clean, options = list(scrollX = TRUE, scrollY = TR
 
 ## Correlation Plot of 10 Features (absolute value)
 
-```{r top_10_correlation_plot}
+```{r _descriptive_stats_continuous_top_10_correlation_plot}
 # Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
 assessment_data_new %>%
   rename(

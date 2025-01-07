@@ -1,7 +1,7 @@
 {{< include ../shared/setup_shared.qmd >}}
 
 # Ratio Stats
-```{r, ratio_stats_function}
+```{r, _ratio_stats_shared_function}
 ratio_stats <- bind_rows(
   # Join for "triad_code" without geography_id
   performance_test_new %>%
@@ -79,7 +79,7 @@ ratio_stats <- bind_rows(
 
 ## Triad
 
-```{r, ratio_stats_triad}
+```{r, _ratio_stats_shared_triad}
 if ("triad_code" %in% names(ratio_stats)) {
   ratio_stats$triad_code %>%
     select(-c("Geography Id", "Geography Type")) %>%
@@ -97,7 +97,7 @@ if ("triad_code" %in% names(ratio_stats)) {
 
 ## Township
 
-```{r, ratio_stats_township}
+```{r, _ratio_stats_shared_township}
 if ("township_code" %in% names(ratio_stats)) {
   ratio_stats$township_code %>%
     select(-c("Geography Type")) %>%
@@ -115,7 +115,7 @@ if ("township_code" %in% names(ratio_stats)) {
 
 ## Neighborhood
 
-```{r, ratio_stats_neighborhood}
+```{r, _ratio_stats_shared_neighborhood}
 if ("nbhd_code" %in% names(ratio_stats)) {
   ratio_stats$nbhd_code %>%
     select(-c("Geography Type")) %>%

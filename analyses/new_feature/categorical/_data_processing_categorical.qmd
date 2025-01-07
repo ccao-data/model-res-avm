@@ -1,7 +1,6 @@
 {{< include ../shared/setup_shared.qmd >}}
 
-```{r data_processing_categorical}
-# Create a individual card level dataset
+```{r _data_processing_categorical}
 card_individual <- shap_new %>%
   select(
     meta_pin, meta_card_num, pred_card_shap_baseline_fmv,

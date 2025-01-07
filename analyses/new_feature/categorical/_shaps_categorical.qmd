@@ -5,11 +5,11 @@ The primary metric that the CCAO Data team uses to assess the importance of a fe
 
 ::: {.panel-tabset}
 
-```{r, shap_count}
+```{r, _shaps_categorical_shap_count}
 shap_predictors <- unlist(metadata_new$model_predictor_all_name)
 ```
 
-```{r shap_processing}
+```{r _shaps_categorical_processing}
 # Combine data
 shap_df_filtered_long <- shap_new %>%
   inner_join(
@@ -29,7 +29,7 @@ shap_df_filtered_long <- shap_new %>%
 ## SHAP Median Absolute Value
 The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
-```{r shap_full_importance}
+```{r _shaps_categorical_full_importance}
 shap_df_filtered_long %>%
   group_by(feature) %>%
   mutate(
@@ -72,7 +72,7 @@ shap_df_filtered_long %>%
 ## SHAP Median Absolute Value by Township
 
 This is the same table, except ranked by township. To identify the rank of an indicator within a township, simply search for that township in the search bar.
-```{r shap_township_importance, include = FALSE}
+```{r _shaps_categorical_township_importance, include = FALSE}
 shaps_township <- shap_df_filtered_long %>%
   group_by(township_code, feature) %>%
   mutate(
@@ -122,7 +122,7 @@ shaps_township
 
 ## Violin Plots of SHAP Values by Feature Value
 
-```{r violin_plots_shap_to_feature, echo=FALSE, warning=FALSE ,message=FALSE, error=FALSE, results='asis', fig.keep='all'}
+```{r _shaps_categorical_violin_plots, results='asis', fig.keep='all'}
 # Calculate quantiles
 quantiles <- card_individual %>%
   pull({{ target_feature_shap }}) %>%
@@ -144,7 +144,7 @@ card_individual %>%
 
 ## Scatterplot Demonstrating the Relationship between SHAP and Feature Value
 
-```{r SHAP_scatterplot, fig.keep='all'}
+```{r _shaps_categorical_scatterplot, fig.keep='all'}
 shapviz::shapviz(
   object = shap_new %>%
     select(all_of(shap_predictors)) %>%

@@ -8,7 +8,7 @@
 
 ### Mean Value of the Feature
 
-```{r mean_feature_neighborhood}
+```{r _spatial_analysis_continuous_mean_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean")))) +
@@ -19,7 +19,7 @@ pin_nbhd %>%
 
 ### Median Value of the Feature
 
-```{r median_feature_neighborhood}
+```{r _spatial_analysis_continuous_median_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median")))) +
@@ -31,7 +31,7 @@ pin_nbhd %>%
 
 ### Mode Value of the Feature
 
-```{r mode_feature_neighborhood}
+```{r _spatial_analysis_continuous_mode_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mode")))) +
@@ -42,7 +42,7 @@ pin_nbhd %>%
 
 ### Mean Absolute SHAP Value
 
-```{r mean_shap_neighborhood}
+```{r _spatial_analysis_continuous_mean_shap_neighborhood}
 card_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_mean_abs")))) +
@@ -53,7 +53,7 @@ card_nbhd %>%
 
 ### 90th Percentile of Absolute SHAP
 
-```{r 90th_percentile_shap}
+```{r _spatial_analysis_continuous_90th_percentile_shap}
 card_nbhd %>%
   ggplot() +
   geom_sf(aes(fill = !!sym(paste0({{ target_feature_shap }}, "_90th")))) +
@@ -65,7 +65,7 @@ card_nbhd %>%
 ### Median change in Neighborhood FMV
 This value is defined as the neighborhood level median increase in value when adding the new feature to the model. For example, a value of 1% would mean that adding the feature increased properties within a neighborhood by 1%.
 
-```{r neighborhood_change}
+```{r _spatial_analysis_continuous_neighborhood_change}
 assessment_pin_new %>%
   select(meta_pin, loc_longitude, loc_latitude, pred_pin_final_fmv) %>%
   rename(pred_pin_final_fmv_new = pred_pin_final_fmv) %>%
@@ -88,7 +88,7 @@ assessment_pin_new %>%
 :::
 # Leaflet Maps
 
-```{r, leaflet_function}
+```{r, _spatial_analysis_continuous_leaflet_function}
 create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
                                longitude = "loc_longitude", latitude = "loc_latitude",
                                display_as_percent = FALSE) {
@@ -166,7 +166,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 
 Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
-```{r largest_values}
+```{r _spatial_analysis_continuous_largest_values}
 highest_100 <- leaflet_data %>%
   arrange(desc(!!sym(target_feature_value))) %>%
   dplyr::slice(1:100)
@@ -179,7 +179,7 @@ create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values"
 Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
 
-```{r, 100_lowest}
+```{r, _spatial_analysis_continuous_100_lowest}
 lowest_100 <- leaflet_data %>%
   arrange(!!sym(target_feature_value)) %>%
   dplyr::slice(1:100)
@@ -190,7 +190,7 @@ create_leaflet_map(lowest_100, {{ target_feature_value }}, "Lowest 100 Values", 
 
 ### Highest 100 SHAP Values
 
-```{r, 100_highest_shap}
+```{r, _spatial_analysis_continuous_100_highest_shap}
 highest_100 <- leaflet_data %>%
   arrange(desc(shap_total)) %>%
   slice(1:100)
@@ -200,7 +200,7 @@ create_leaflet_map(highest_100, "shap_total", "Highest 100 SHAPs")
 
 ### Lowest 100 SHAP Values
 
-```{r, 100_lowest_shap}
+```{r, _spatial_analysis_continuous_100_lowest_shap}
 lowest_100 <- leaflet_data %>%
   arrange(shap_total) %>%
   slice(1:100)
@@ -216,7 +216,7 @@ Multicard parcels have heuristic which limits their change. The added feature ma
 ::: panel-tabset
 ### 100 Largest FMV Increases
 
-```{r, 100_largest_fmv_increases}
+```{r, _spatial_analysis_continuous_100_largest_fmv_increases}
 largest_fmv_increases <- leaflet_data %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
@@ -227,7 +227,7 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 
 ### 100 Largest FMV Decreases
 
-```{r, 100_largest_fmv_decreases}}
+```{r, _spatial_analysis_continuous_100_largest_fmv_decreases}}
 largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
@@ -237,7 +237,7 @@ create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FM
 
 ### 100 Largest FMV Initial Increases
 
-```{r, 100_largest_fmv_initial_increases}
+```{r, _spatial_analysis_continuous_100_largest_fmv_initial_increases}
 largest_fmv_increases <- leaflet_data %>%
   arrange(desc(diff_pred_pin_initial_fmv)) %>%
   slice(1:100)
@@ -248,7 +248,7 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest 
 
 ### 100 Largest Initial FMV Decreases
 
-```{r, 100_largest_fmv_initial_decreases}}
+```{r, _spatial_analysis_continuous_100_largest_fmv_initial_decreases}}
 largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
@@ -258,7 +258,7 @@ create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest 
 
 ### Largest FMV (Final) Increases no Multicards
 
-```{r, 100_largest_fmv_increases_no_multicards}}
+```{r, _spatial_analysis_continuous_100_largest_fmv_increases_no_multicards}}
 largest_fmv_increases <- leaflet_data %>%
   group_by(meta_pin) %>%
   filter(n() == 1) %>%
@@ -271,7 +271,7 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 
 ### Largest FMV (Final) Decreases no Multicards
 
-```{r, 100_largest_fmv_decreases_no_multicards}}}
+```{r, _spatial_analysis_continuous_100_largest_fmv_decreases_no_multicards}}}
 largest_fmv_decreases <- leaflet_data %>%
   group_by(meta_pin) %>%
   filter(n() == 1) %>%
@@ -288,7 +288,7 @@ create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FM
 These maps identify neighborhoods where the added feature is having the largest impact on SHAP values. By selecting neighborhoods with the highest mean(absolute value), you can take a closer look at how individual parcels in these neighborhoods are affected.
 
 ::: panel-tabset
-```{r processing_SHAP_values}
+```{r _spatial_analysis_continuous_processing_SHAP_values}
 selected_data <- leaflet_data %>%
   group_by(meta_nbhd_code) %>%
   mutate(mean_value = mean(abs(shap_total)), na.rm = TRUE) %>%
@@ -313,13 +313,13 @@ low_mean_data <- filtered_data %>%
 
 ### 2 Highest SHAP Neighborhoods
 
-```{r, 2_highest_shap_nbhd}
+```{r, _spatial_analysis_continuous_2_highest_shap_nbhd}
 create_leaflet_map(high_mean_data, "shap_total", "SHAP Values")
 ```
 
 ### 2 Lowest SHAP Neighborhoods
 
-```{r, 2_lowest_shap_nbhd}
+```{r, _spatial_analysis_continuous_2_lowest_shap_nbhd}
 create_leaflet_map(low_mean_data, "shap_total", "SHAP Values")
 ```
 :::
