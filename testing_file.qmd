@@ -30,6 +30,8 @@ training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.p
 
 assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") 
 
+assessment_card <- read_parquet("/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet") 
+
 training_data %>%
   filter(meta_township_name == "Barrington") %>%
   arrange(desc(meta_sale_price)) %>%
@@ -101,11 +103,10 @@ training_data %>%
 
 ### Pin Tests
 ```{r}
-assessment_pin %>%
+assessment_card %>%
   filter(meta_pin %in% c("17102060351010", "16143120330000", "11312110190000", "24072010490000",
                          "17062000841001", "17062000841002", "11181100020000", "12133010680000",
                          "14322140240000", "05211000140000", "20142150160000")) %>%
-  arrange(meta_pin, meta_year) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 ### Barrington Scatterplot
