@@ -9,7 +9,9 @@ library(dplyr)
 library(purrr)
 library(ggplot2)
 
-training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet")
+training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet") %>%
+  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+  arrange(meta_sale_date)
 
 training_data %>%
   filter(meta_township_name == "Barrington") %>%
@@ -93,4 +95,81 @@ test_4 <- training_data %>%
 
 ```
 
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Filter the data
+test_3 <- training_data %>%
+  filter(meta_township_name == "Barrington")
+
+# Create the scatterplot
+ggplot(test_3, aes(x = meta_sale_price, y = meta_certified_tot)) +
+  geom_point() +
+  labs(
+    title = "Scatterplot of Sale Price vs Certified Total",
+    x = "Sale Price",
+    y = "Certified Total"
+  ) +
+  theme_minimal()
+
+```
+```{r}
+model_big_misses_assessment <- assessment_pin %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(
+    meta_triad_code == run_triad_code,
+    !is.na(sale_recent_1_price),
+    !is.na(pred_pin_final_fmv_round)) %>%
+  select(
+    Town = township_name, PIN = meta_pin, Class = meta_class,
+    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
+    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
+    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
+    `Est. FMV` = pred_pin_final_fmv_round) %>%
+ mutate(
+    Difference = (`Est. FMV` - `Sale 1 Price`),
+    .by = Town
+  ) %>%
+  group_by(Town) %>%
+  summarise(
+    max_min_rows = list(bind_rows(
+      slice_max(cur_data(), Difference, n = 4),
+      slice_min(cur_data(), Difference, n = 4)
+    ))
+  ) %>%
+  unnest(max_min_rows) %>% 
+  arrange(Town, -Difference) %>%
+  mutate(
+    across(
+      c(ends_with("Price"), ends_with("FMV"), Difference),
+      ~ scales::dollar(.x, prefix = "$")
+    ),
+    `Bldg Sqft` = scales::comma(`Bldg Sqft`)
+  ) %>%
+  arrange(Town)
+
+model_big_misses_assessment %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Bldg Sqft", "Sale 1 Price", "Sale 1 Date",
+            "Sale 2 Price", "Sale 2 Date",
+            "Est. FMV", "Difference"
+          )
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = c("Sale 1 Date", "Sale 2 Date")
+        )
+      )
+    )
+  )
+
+View(table)
+```
 
