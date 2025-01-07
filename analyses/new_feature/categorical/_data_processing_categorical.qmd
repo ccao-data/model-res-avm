@@ -1,3 +1,5 @@
+{{< include ../_setup.qmd >}}
+
 ```{r data_processing_categorical}
 # Create a individual card level dataset
 card_individual <- shap_new %>%

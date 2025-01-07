@@ -1,3 +1,4 @@
+{{< include ../_setup.qmd >}}
 
 # Ratio Stats
 ```{r, ratio_stats_function}

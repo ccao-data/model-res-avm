@@ -1,3 +1,4 @@
+{{< include ../_setup.qmd >}}
 # SHAP
 
 The primary metric that the CCAO Data team uses to assess the importance of a feature is its SHAP value. SHAP values provide the amount of value each feature contributes to a parcel's predicted value. The SHAP value is calculated for each observation in the dataset, and the median SHAP value for a feature is used to determine the relative influence of that feature. The higher the median SHAP value, the more influential the feature is in the model.

@@ -1,11 +1,4 @@
----
-execute:
-  echo: false
-  warning: false
-  asis: true
-  message: false
-  tabset: true
----
+{{< include ../_setup.qmd >}}
 
 # Descriptive Statistics 
 

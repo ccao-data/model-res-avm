@@ -1,6 +1,6 @@
+{{< include ../_setup.qmd >}}
+
 # Spatial Analysis
-
-
 
 ## GGPLOT Maps
 
