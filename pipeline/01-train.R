@@ -7,6 +7,7 @@
 
 # Start the stage timer and clear logs from prior stage
 tictoc::tic.clearlog()
+
 tictoc::tic("Train")
 
 # Load libraries, helpers, and recipes from files
@@ -24,15 +25,21 @@ message("Run type: ", run_type)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Preparing model training data")
 
+training_data_full <- read_parquet(paths$input$training$local) %>%
+  filter(!sv_is_outlier) %>%
+  arrange(meta_sale_date) %>%
+  sample_frac(size = 0.20)
+
+
 # Load the full set of training data, then arrange by sale date in order to
 # facilitate out-of-time sampling/validation
 
 # NOTE: It is critical to trim "multicard" sales when training. Multicard means
 # there is multiple buildings on a PIN. Since these sales include multiple
 # buildings, they are typically higher than a "normal" sale and must be removed
-training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date)
+# training_data_full <- read_parquet(paths$input$training$local) %>%
+#   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+#   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -46,6 +53,8 @@ train <- training(split_data)
 
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
+
+#TODO: Add two card like features here
 train_recipe <- model_main_recipe(
   data = training_data_full,
   pred_vars = params$model$predictor$all,
@@ -63,28 +72,28 @@ message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
 # and feature interactions
-lin_recipe <- model_lin_recipe(
-  data = training_data_full %>%
-    mutate(meta_sale_price = log(meta_sale_price)),
-  pred_vars = params$model$predictor$all,
-  cat_vars = params$model$predictor$categorical,
-  id_vars = params$model$predictor$id
-)
-
-# Create a linear model specification and workflow
-lin_model <- parsnip::linear_reg() %>%
-  set_mode("regression") %>%
-  set_engine("lm")
-lin_wflow <- workflow() %>%
-  add_model(lin_model) %>%
-  add_recipe(
-    recipe = lin_recipe,
-    blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
-  )
-
-# Fit the linear model on the training data
-lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
+# lin_recipe <- model_lin_recipe(
+#   data = training_data_full %>%
+#     mutate(meta_sale_price = log(meta_sale_price)),
+#   pred_vars = params$model$predictor$all,
+#   cat_vars = params$model$predictor$categorical,
+#   id_vars = params$model$predictor$id
+# )
+#
+# # Create a linear model specification and workflow
+# lin_model <- parsnip::linear_reg() %>%
+#   set_mode("regression") %>%
+#   set_engine("lm")
+# lin_wflow <- workflow() %>%
+#   add_model(lin_model) %>%
+#   add_recipe(
+#     recipe = lin_recipe,
+#     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
+#   )
+#
+# # Fit the linear model on the training data
+# lin_wflow_final_fit <- lin_wflow %>%
+#   fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
 
 
 
@@ -388,10 +397,10 @@ message("Finalizing and saving trained model")
 test %>%
   mutate(
     pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
-    pred_card_initial_fmv_lin = exp(predict(
-      lin_wflow_final_fit,
-      test %>% mutate(meta_sale_price = log(meta_sale_price))
-    )$.pred)
+    # pred_card_initial_fmv_lin = exp(predict(
+    #   lin_wflow_final_fit,
+    #   test %>% mutate(meta_sale_price = log(meta_sale_price))
+    # )$.pred)
   ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
@@ -400,7 +409,7 @@ test %>%
       "prior_far_tot" = params$ratio_study$far_column,
       "prior_near_tot" = params$ratio_study$near_column
     )),
-    pred_card_initial_fmv, pred_card_initial_fmv_lin,
+    pred_card_initial_fmv, #pred_card_initial_fmv_lin,
     meta_sale_price, meta_sale_date, meta_sale_document_num
   ) %>%
   # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential

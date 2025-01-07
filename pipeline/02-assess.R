@@ -41,7 +41,19 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # Load the data for assessment. This is the universe of CARDs (not
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
 # fair-market value for each card
+
+
+
+
 assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
+  group_by(meta_pin) %>%
+  mutate(
+    total_bldg_sf        = sum(char_bldg_sf, na.rm = TRUE),
+    char_card_pct_bldg   = char_bldg_sf / total_bldg_sf,
+    # Flag as key card if it’s the maximum SF (ties will create multiple key cards)
+    char_key_card        = if_else(char_bldg_sf == max(char_bldg_sf, na.rm = TRUE), 1, 0)
+  ) %>%
+  ungroup() %>%
   as_tibble() %>%
   mutate(
     pred_card_initial_fmv = predict(
@@ -91,14 +103,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # blowing up the PIN-level AV
   group_by(meta_pin) %>%
   mutate(
-    pred_pin_card_sum = ifelse(
-      sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
-        params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
-        is.na(meta_1yr_pri_board_tot) |
-        n() != 2,
-      sum(pred_card_intermediate_fmv),
-      max(pred_card_intermediate_fmv)
-    )
+    pred_pin_card_sum = sum(pred_card_intermediate_fmv)
   ) %>%
   ungroup()
 
@@ -175,11 +180,20 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
         pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
     )),
+    # If the land $/sqft is missing, just use the max capped land value as a
+    # default (usually 50% of the predicted value). Data doesn't usually get
+    # land $/sqft until the beginning of the year we're modeling for, but a
+    # predicted land value is required to calculate the final estimated FMV. As
+    # such, setting this default lets us start modeling before we receive the
+    # finalized land $/sqft rates
+    pred_pin_final_fmv_land = ifelse(
+      is.na(pred_pin_final_fmv_land),
+      pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
+      pred_pin_final_fmv_land
+    ),
     # Keep the uncapped value for display in desk review
     pred_pin_uncapped_fmv_land = ceiling(char_land_sf * land_rate_per_sqft)
   )
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -313,7 +327,7 @@ assessment_card_data_merged %>%
   ) %>%
   ccao::vars_recode(
     cols = any_of(char_vars),
-    code_type = "long",
+    #code_type = "long",
     as_factor = FALSE
   ) %>%
   write_parquet(paths$output$assessment_card$local)
@@ -540,7 +554,7 @@ message("Saving final PIN-level data")
 assessment_pin_data_final %>%
   ccao::vars_recode(
     cols = starts_with("char_"),
-    code_type = "short",
+    #code_type = "short",
     as_factor = FALSE
   ) %>%
   # Coerce columns to their expected Athena output type
