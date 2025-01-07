@@ -30,16 +30,9 @@ training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.p
 
 assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") 
 
-assessment_card <- read_parquet("/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet") 
-
-training_data %>%
-  filter(meta_township_name == "Barrington") %>%
-  arrange(desc(meta_sale_price)) %>%
-  slice(1:10) %>%
-  select(meta_sale_price, meta_sale_document_num, meta_pin) %>%
-  datatable(options = list(scrollY = '400px', paging = FALSE))
-  
+assessment_card <- read_parquet("/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet")
 ```
+
 
 ### Sales in Barrington
 ```{r}
@@ -54,6 +47,16 @@ training_data %>%
   ) +
   theme_minimal()
 
+```
+### 10 Largest Barrington Sales
+```{r}
+training_data %>%
+  filter(meta_township_name == "Barrington") %>%
+  arrange(desc(meta_sale_price)) %>%
+  slice(1:10) %>%
+  select(meta_sale_price, meta_sale_document_num, meta_pin) %>%
+  datatable(options = list(scrollY = '400px', paging = FALSE))
+  
 ```
 
 ```{r}
@@ -87,7 +90,7 @@ iwalk(plots, ~ {
 training_data %>%
   arrange(desc(char_bldg_sf)) %>%
   slice(1:100) %>%
-  select(meta_pin, char_bldg_sf) %>%
+  select(meta_pin, meta_class, char_bldg_sf) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 ## 100 largest FMVs
@@ -130,7 +133,7 @@ ggplot(test_3, aes(x = meta_sale_price, y = meta_certified_tot)) +
 
 ```
 
-### 100 Largest Differences Between FMV and any Sale Price
+### Largest and Smallest Differences Between FMV and any Sale Price
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
