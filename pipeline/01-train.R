@@ -27,8 +27,7 @@ message("Preparing model training data")
 
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!sv_is_outlier) %>%
-  arrange(meta_sale_date) %>%
-  sample_frac(size = 0.20)
+  arrange(meta_sale_date)
 
 
 # Load the full set of training data, then arrange by sale date in order to
