@@ -48,18 +48,16 @@ To complete this report, execute the following steps:
 
 2.  If there is no comparable runs:
 
-    -   Update `params.yaml` and the parms of with the added variable for the new feature.
+    -   Update `params.yaml` and the params of with the added variable for the new feature.
 
     -   Run `dvc ingest unfreeze` in terminal.
 
     -   Run the ingest stage with `dvc repro -f ingest` in terminal.
 
-3.  If you push the commit to github, you can run the model through github actions with SHAP values and upload to S3 enabled. COMPs and cross-validation are not required. Otherwise, modify `params.yml` to make sure SHAP values and Upload are enabled and run `dvc repro train -f` in a `tmux` terminal.
+3.  If you push the commit to github, you can run the model through github actions with SHAP values and upload to S3 enabled. COMPs and cross-validation are not required. Otherwise, modify `params.yml` to make sure SHAP values and Upload are enabled and run `dvc repro upload -f` in a `tmux` terminal.
 
 4.  Create a new folder with the new feature and an ascending numeric value (`feature_name_000x)`.
 
-5.  Update the `params` of `new-feature-template` with the correct run_ids for the comparison run and the new run as well as the .
+5.  Update the `params` of `new-feature-template` with the correct run_ids for the comparison run and the new run.
 
-6.  Run the report, review the results, and move the html file into the corresponding folder .
-
-7.  Write a summary of the results in the README.md file of the new feature folder.
+6.  Run the report, review the results, and move the html file into the corresponding folder.

@@ -47,7 +47,7 @@ shap_df_filtered_long %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
+    output_type = "inplace",
     dict = ccao::vars_dict
   ) %>%
   clean_column_values("feature") %>%
@@ -92,7 +92,7 @@ shaps_township <- shap_df_filtered_long %>%
   ccao::vars_rename(
     names_from = "model",
     names_to = "pretty",
-    type = "inplace",
+    output_type = "inplace",
     dict = ccao::vars_dict
   ) %>%
   clean_column_values("feature") %>%
@@ -127,7 +127,6 @@ quantiles <- card_individual %>%
   pull({{ target_feature_shap }}) %>%
   quantile(c(0.025, 0.975), na.rm = TRUE)
 
-# Filter data and limit categorical variable values to 30 characters
 card_individual %>%
   filter(!!sym(target_feature_shap) >= quantiles[1] & !!sym(target_feature_shap) <= quantiles[2]) %>%
   mutate(!!sym(target_feature_value) := substr(!!sym(target_feature_value), 1, 25)) %>%

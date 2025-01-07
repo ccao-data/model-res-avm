@@ -31,10 +31,11 @@ create_category_percentages <- function(data, target_feature, group_by_column = 
     select(!!!group_vars, percentage) %>%
     pivot_wider(names_from = !!target_feature, values_from = percentage, values_fill = list(percentage = scales::percent(0)))
 
-  # Calculate mode for each group (if group_by_column is present) and add it as a new column
   mode_column <- data %>%
     group_by(!!!if (!is.null(group_by_column)) list(sym(group_by_column)) else list()) %>%
-    summarize(mode_value = mode_function(!!target_feature)) %>%
+    summarize(mode_value = !!target_feature %>%
+                as.character() %>%  # Ensures compatibility for factor levels
+                .[which.max(tabulate(match(., unique(.))))]) %>%
     ungroup()
 
   # Join the mode column to the category_percentages data
