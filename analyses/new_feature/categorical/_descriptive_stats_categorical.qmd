@@ -27,8 +27,8 @@ create_category_percentages <- function(data, target_feature, group_by_column = 
   mode_column <- data %>%
     group_by(!!!if (!is.null(group_by_column)) list(sym(group_by_column)) else list()) %>%
     summarize(mode_value = !!target_feature %>%
-                as.character() %>%  # Ensures compatibility for factor levels
-                .[which.max(tabulate(match(., unique(.))))]) %>%
+      as.character() %>% # Ensures compatibility for factor levels
+      .[which.max(tabulate(match(., unique(.))))]) %>%
     ungroup()
 
   # Join the mode column to the category_percentages data
