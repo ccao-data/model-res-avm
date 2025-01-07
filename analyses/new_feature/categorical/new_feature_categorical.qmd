@@ -38,3 +38,4 @@ params:
 {{< include _shaps_categorical.qmd >}}
 
 {{< include _spatial_analysis_categorical.qmd >}}
+

@@ -1,4 +1,4 @@
-{{< include ../_setup.qmd >}}
+{{< include ../shared/setup_shared.qmd >}}
 
 ```{r data_processing_categorical}
 # Create a individual card level dataset

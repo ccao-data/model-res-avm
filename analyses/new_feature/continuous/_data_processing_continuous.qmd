@@ -1,3 +1,4 @@
+{{< include ../shared/setup_shared.qmd >}}
 
 ```{r}
 # Create a individual card level dataset

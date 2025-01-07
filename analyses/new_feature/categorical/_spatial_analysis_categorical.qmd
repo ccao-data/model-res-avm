@@ -1,4 +1,4 @@
-{{< include ../_setup.qmd >}}
+{{< include ../shared/setup_shared.qmd >}}
 
 # Spatial Analysis
 
