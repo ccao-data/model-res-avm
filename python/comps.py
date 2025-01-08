@@ -1,5 +1,5 @@
-import numpy as np
 import numba as nb
+import numpy as np
 import pandas as pd
 
 
@@ -24,9 +24,7 @@ def get_comps(
     # Chunk the observations so that the script can periodically report progress
     num_chunks = 10
     observation_df["chunk"] = pd.cut(
-      observation_df.index,
-      bins=num_chunks,
-      labels=False
+        observation_df.index, bins=num_chunks, labels=False
     )
 
     total_num_observations = len(observation_df)
@@ -50,7 +48,7 @@ def get_comps(
             ),
             # Flush so that we can print to the console in realtime when
             # reticulate runs this function in an R context
-            flush=True
+            flush=True,
         )
 
         # Compute comps for each observation
@@ -71,11 +69,11 @@ def get_comps(
         # We don't need the observation ID, since the output should be in the
         # same order as the input
         np.asarray([chunked_id[1] for chunked_id in chunked_ids]),
-        columns=[f"comp_idx_{idx}" for idx in range(1, num_comps + 1)]
+        columns=[f"comp_idx_{idx}" for idx in range(1, num_comps + 1)],
     )
     scores_df = pd.DataFrame(
         np.asarray([chunked_score[1] for chunked_score in chunked_scores]),
-        columns=[f"comp_score_{idx}" for idx in range(1, num_comps + 1)]
+        columns=[f"comp_score_{idx}" for idx in range(1, num_comps + 1)],
     )
 
     return indexes_df, scores_df
@@ -103,50 +101,41 @@ def _get_top_n_comps(
     all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
 
     for x_i in nb.prange(num_observations):
-        top_n_idxs = np.full(num_comps, -1, dtype=idx_dtype)
-        top_n_scores = np.zeros(num_comps, dtype=score_dtype)
-
         # TODO: We could probably speed this up by skipping comparisons we've
         # already made; we just need to do it in a way that will have a
         # low memory footprint
         for y_i in range(num_possible_comparisons):
             similarity_score = 0.0
             for tree_idx in range(len(leaf_node_matrix[x_i])):
-                similarity_score += (
-                    weights_matrix[x_i][tree_idx] * (
-                        leaf_node_matrix[x_i][tree_idx] ==
-                        comparison_leaf_node_matrix[y_i][tree_idx]
-                    )
-                )
+                if (
+                    leaf_node_matrix[x_i][tree_idx]
+                    == comparison_leaf_node_matrix[y_i][tree_idx]
+                ):
+                    similarity_score += weights_matrix[x_i][tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
             # First check if the score is higher than the lowest score,
             # since otherwise we don't need to bother iterating the scores
-            if similarity_score > top_n_scores[-1]:
-              for idx, score in enumerate(top_n_scores):
-                if similarity_score > score:
-                  top_n_idxs = _insert_at_idx_and_shift(
-                    top_n_idxs, y_i, idx
-                  )
-                  top_n_scores = _insert_at_idx_and_shift(
-                    top_n_scores, similarity_score, idx
-                  )
-                  break
-
-        all_top_n_idxs[x_i] = top_n_idxs
-        all_top_n_scores[x_i] = top_n_scores
+            if similarity_score > all_top_n_scores[x_i][-1]:
+                for idx, score in enumerate(all_top_n_scores[x_i]):
+                    if similarity_score > score:
+                        _insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
+                        _insert_at_idx_and_shift(
+                            all_top_n_scores[x_i], similarity_score, idx
+                        )
+                        break
 
     return all_top_n_idxs, all_top_n_scores
 
 
 @nb.njit(fastmath=True)
 def _insert_at_idx_and_shift(arr, elem, idx):
-  """Helper function to insert an element `elem` into a sorted numpy array `arr`
-  at a given index `idx` and shift the subsequent elements down one index."""
-  return np.concatenate((
-    arr[:idx], np.array([(elem)], dtype=arr.dtype), arr[idx:-1]
-  ))
+    """Helper function to insert an element `elem` into a sorted numpy array `arr`
+    at a given index `idx` and shift the subsequent elements down one index."""
+    arr[idx + 1 :] = arr[idx:-1]
+    arr[idx] = elem
+    return arr
 
 
 if __name__ == "__main__":
@@ -160,16 +149,13 @@ if __name__ == "__main__":
     mean_sale_price = 350000
     std_deviation = 110000
 
-    leaf_nodes = pd.DataFrame(
-        np.random.randint(0, num_obs, size=[num_obs, num_trees])
-    )
+    leaf_nodes = pd.DataFrame(np.random.randint(0, num_obs, size=[num_obs, num_trees]))
     training_leaf_nodes = pd.DataFrame(
         np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
     )
-    tree_weights = np.asarray([
-      np.random.dirichlet(np.ones(num_trees))
-      for _ in range(num_comparisons)
-    ])
+    tree_weights = np.asarray(
+        [np.random.dirichlet(np.ones(num_trees)) for _ in range(num_comparisons)]
+    )
 
     start = time.time()
     get_comps(leaf_nodes, training_leaf_nodes, tree_weights)
