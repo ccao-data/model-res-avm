@@ -48,7 +48,9 @@ training_data %>%
   theme_minimal()
 
 ```
+
 ### 10 Largest Barrington Sales
+
 ```{r}
 training_data %>%
   filter(meta_township_name == "Barrington") %>%
@@ -84,8 +86,8 @@ iwalk(plots, ~ {
 ```
 :::
 
-
 ##  100 Largest SF Properties
+
 ```{r}
 training_data %>%
   arrange(desc(char_bldg_sf)) %>%
@@ -93,6 +95,7 @@ training_data %>%
   select(meta_pin, meta_class, char_bldg_sf) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
+
 ## 100 largest FMVs
 
 ```{r}
@@ -105,6 +108,7 @@ training_data %>%
 ```
 
 ### Pin Tests
+
 ```{r}
 assessment_card %>%
   filter(meta_pin %in% c("17102060351010", "16143120330000", "11312110190000", "24072010490000",
@@ -112,7 +116,9 @@ assessment_card %>%
                          "14322140240000", "05211000140000", "20142150160000")) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
+
 ### Barrington Scatterplot
+
 ```{r}
 # Filter the data
 test_3 <- training_data %>%
@@ -139,8 +145,7 @@ model_big_misses_assessment <- assessment_pin %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(
     meta_triad_code == '2',
-    !is.na(sale_recent_1_price),
-    !is.na(pred_pin_final_fmv_round)) %>%
+    !is.na(sale_recent_1_price),    !is.na(pred_pin_final_fmv_round)) %>%
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
@@ -190,7 +195,6 @@ model_big_misses_assessment %>%
     )
   )
 ```
-### 
 
 ```{r}
 # Create a list of plots, one per township
@@ -223,4 +227,70 @@ iwalk(plots, ~ {
 
 ```
 :::
+
+
+```{r}
+
+test <- assessment_pin %>%
+  filter(flag_pin_is_multicard == 'FALSE') %>%
+  left_join(training_data %>% select(meta_pin, char_bldg_sf), by = "meta_pin") %>%
+  mutate(township_name = ccao::town_convert(meta_township_code))
+
+
+subset_top_sales <- test %>%
+  mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
+  group_by(township_name) %>%
+  slice_max(sale_recent_1_price, n = 20) %>%
+  mutate(type = "top_sales")
+
+subset_highest_ratios <- test %>%
+  filter(!is.na(char_bldg_sf)) %>%
+  mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
+  group_by(township_name) %>%
+  slice_max(price_per_sq_ft, n = 20) %>%
+  mutate(type = "highest_ratios")
+
+subset_lowest_ratios <- test %>%
+  mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
+  group_by(township_name) %>%
+  slice_min(price_per_sq_ft, n = 20) %>%
+  mutate(type = "lowest_ratios")
+
+# Combine the subsets into one data frame
+subset <- bind_rows(subset_top_sales, subset_highest_ratios, subset_lowest_ratios) %>%
+  select(township_name, meta_pin, sale_recent_1_price, char_bldg_sf, price_per_sq_ft, type, pred_pin_final_fmv_round)
+
+scatterplot <- subset %>%
+  ggplot(aes(x = sale_recent_1_price, y = pred_pin_final_fmv_round, color = type, text = paste(
+    "Township: ", township_name,
+    "<br>Meta PIN: ", meta_pin,
+    "<br>Sale Price: $", scales::comma(sale_recent_1_price),
+    "<br>Predicted Final FMV: $", scales::comma(pred_pin_final_fmv_round),
+    "<br>Difference: $", scales::comma(pred_pin_final_fmv_round - sale_recent_1_price),
+    "<br>Building SF: ", scales::comma(char_bldg_sf),
+    "<br>Price/Sq Ft: $", scales::comma(price_per_sq_ft)
+  ))) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(
+    title = "Interactive Scatterplot of Price per Sq Ft vs Building SF",
+    x = "Sale Price",
+    y = "Predicted Final FMV (Rounded)",
+    color = "Type"
+  ) +
+  theme_minimal() +
+  xlim(0, 10000000) +  # Set max x limit
+  ylim(0, 10000000)    # Set max y limit
+
+# Convert to interactive plotly object with adjusted axis limits
+interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text") %>%
+  layout(
+    xaxis = list(range = c(0, 10000000)),
+    yaxis = list(range = c(0, 10000000))
+  )
+
+# Display the interactive plot
+interactive_scatterplot
+
+
+```
 
