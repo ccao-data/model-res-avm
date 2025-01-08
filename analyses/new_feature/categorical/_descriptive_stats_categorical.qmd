@@ -87,7 +87,7 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
   # Create the plot
   # Calculate dynamic binwidth based on data range
   range_value <- range(data[[target_feature]], na.rm = TRUE)
-  dynamic_binwidth <- (range_value[2] - range_value[1]) / 30 # Adjust '30' as needed for more or fewer bins
+  dynamic_binwidth <- (range_value[2] - range_value[1]) / 30
 
   htmltools::tagList(
     plot <- data %>%

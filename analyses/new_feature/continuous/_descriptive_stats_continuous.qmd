@@ -7,10 +7,10 @@
 ```{r _descriptive_stats_continuous_descriptive_setup}
 create_summary_table <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
-  
+
   if (!is.null(group_by_column)) {
     formatted_group_by_column <- str_to_title(str_replace_all(group_by_column, "_", " "))
-    
+
     summary_data <- data %>%
       group_by(!!sym(group_by_column)) %>%
       summarize(
@@ -34,7 +34,7 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
         `NA Count` = sum(is.na(!!target_feature))
       )
   }
-  
+
   # Display the summary in a datatable
   datatable(
     summary_data,
@@ -47,7 +47,6 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
     rownames = FALSE
   )
 }
-
 ```
 
 ## Overall

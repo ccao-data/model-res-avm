@@ -182,8 +182,6 @@ card_individual %>%
     plot.title = element_text(hjust = 0.5)
   ) +
   ggtitle("Violin Plot of SHAP Values for Feature Ranges")
-
-
 ```
 :::
 

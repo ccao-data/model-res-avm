@@ -88,76 +88,6 @@ assessment_pin_new %>%
 :::
 # Leaflet Maps
 
-```{r, _spatial_analysis_continuous_leaflet_function}
-create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
-                               longitude = "loc_longitude", latitude = "loc_latitude",
-                               display_as_percent = FALSE) {
-  # Filter neighborhoods that have at least one observation
-  nbhd_borders <- nbhd %>%
-    right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
-
-  # Create the color palette based on order_scheme
-  if (order_scheme == "low") {
-    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]], reverse = TRUE)
-  } else {
-    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
-  }
-
-  # Calculate the bounding box of the filtered neighborhoods
-  bbox <- st_bbox(nbhd_borders)
-
-  # Create the leaflet map
-  leaflet(dataset) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addCircleMarkers(
-      lng = ~get(longitude),
-      lat = ~get(latitude),
-      radius = 5,
-      color = ~pal(dataset[[legend_value]]), # Fill color
-      stroke = TRUE,        # Enable the outline (stroke)
-      weight = 1,           # Set the stroke thickness
-      opacity = 1,          # Stroke opacity
-      fillOpacity = 0.8,    # Marker fill opacity
-      fill = TRUE,          # Fill the marker
-      popup = ~ {
-        shap_values <- dataset %>%
-          select(starts_with("target_feature_shap_")) %>%
-          summarise_all(~ ifelse(!is.na(.), sprintf("SHAP: %s", scales::dollar(.)), NA)) %>%
-          apply(1, function(row) {
-            paste(na.omit(row), collapse = "<br>")
-          })
-        paste(
-          "Pin: ", meta_pin,
-          ifelse(shap_values == "", "", paste0("<br>", shap_values)),
-          "<br>", "Relative SHAP: ", scales::percent(relative_shap, accuracy = 0.01),
-          "<br>", "Feature: ", sprintf("%.2f", get(params$added_feature)),
-          "<br>", "New FMV: ", pred_pin_final_fmv_new,
-          "<br>", "Comparison FMV: ", pred_pin_final_fmv_comp,
-          "<br>", "FMV Difference: ", scales::percent(diff_pred_pin_final_fmv)
-        )
-      }
-    ) %>%
-    addPolygons(
-      data = nbhd_borders,
-      color = "black",
-      weight = 2,
-      fill = FALSE
-    ) %>%
-    addLegend(
-      "bottomright",
-      pal = pal,
-      values = dataset[[legend_value]],
-      title = legend_title,
-      labFormat = if (display_as_percent) {
-        function(type, cuts, p) scales::percent(cuts)
-      } else {
-        labelFormat()
-      }
-    )
-}
-
-```
-
 ## Highest and Lowest 100 Values
 
 ::: panel-tabset
@@ -167,6 +97,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
 
 ```{r _spatial_analysis_continuous_largest_values}
+# Map functions are in the helpers.R file
 highest_100 <- leaflet_data %>%
   arrange(desc(!!sym(target_feature_value))) %>%
   dplyr::slice(1:100)
@@ -185,7 +116,6 @@ lowest_100 <- leaflet_data %>%
   dplyr::slice(1:100)
 
 create_leaflet_map(lowest_100, {{ target_feature_value }}, "Lowest 100 Values", order_scheme = "low")
-
 ```
 
 ### Highest 100 SHAP Values
