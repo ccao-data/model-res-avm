@@ -291,20 +291,6 @@ message("Adding time features and cleaning")
 # Testing. Multi-card munging --------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Calculate total square footage per PIN and proportion per card
-training_data_w_proportions <- training_data_w_hie %>%
-  # Group by PIN and sale to get total square footage
-  group_by(meta_pin, meta_sale_document_num) %>%
-  mutate(
-    # Total building square footage for the PIN
-    pin_total_bldg_sf = sum(char_bldg_sf),
-    # This card's proportion of total square footage
-    card_sqft_proportion = char_bldg_sf / pin_total_bldg_sf,
-    # Allocate sale price based on square footage proportion
-    meta_sale_price_allocated = meta_sale_price * card_sqft_proportion
-  ) %>%
-  ungroup()
-
 # Clean up the training data. Goal is to get it into a publishable format.
 # Final featurization, missingness, etc. is handled via Tidymodels recipes
 training_data_clean <- training_data_w_hie %>%
