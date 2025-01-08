@@ -122,14 +122,30 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 if (comp_enable) {
   message("Finding comparables")
 
+  # Filter target properties for only the current triad, to speed up the comps
+  # algorithm
+  comp_assessment_data <- assessment_data %>%
+    filter(
+      meta_township_code %in% (
+        ccao::town_dict %>%
+          filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
+          pull(township_code)
+      )
+    )
+  comp_assessment_data_prepped <- recipes::bake(
+    object = lgbm_final_full_recipe,
+    new_data = comp_assessment_data,
+    all_predictors()
+  )
+
   # Calculate the leaf node assignments for every predicted value.
   # Due to integer overflow problems with leaf node assignment, we need to
   # chunk our data such that they are strictly less than the limit of 1073742
   # rows. More detail here: https://github.com/microsoft/LightGBM/issues/1884
   chunk_size <- 500000
   chunks <- split(
-    assessment_data_prepped,
-    ceiling(seq_along(assessment_data_prepped[[1]]) / chunk_size)
+    comp_assessment_data_prepped,
+    ceiling(seq_along(comp_assessment_data_prepped[[1]]) / chunk_size)
   )
   chunked_leaf_nodes <- chunks %>%
     map(\(chunk) {
@@ -184,20 +200,6 @@ if (comp_enable) {
     type = "leaf"
   ) %>%
     as_tibble()
-  training_leaf_nodes$predicted_value <- predict(
-    object = lgbm_final_full_fit$fit,
-    newdata = as.matrix(training_data_prepped)
-  ) %>%
-    # Round predicted values down for binning
-    floor()
-
-  # Get predicted values for the assessment set, which we already have in
-  # the assessment card set
-  leaf_nodes$predicted_value <- assessment_data %>%
-    left_join(assessment_card, by = c("meta_pin", "meta_card_num")) %>%
-    # Round predicted values down for binning
-    mutate(pred_card_initial_fmv = floor(pred_card_initial_fmv)) %>%
-    dplyr::pull(pred_card_initial_fmv)
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects
@@ -213,8 +215,7 @@ if (comp_enable) {
     {
       comps <- comps_module$get_comps(
         leaf_nodes, training_leaf_nodes, tree_weights,
-        num_comps = as.integer(params$comp$num_comps),
-        num_price_bins = as.integer(params$comp$num_price_bins)
+        num_comps = as.integer(params$comp$num_comps)
       )
     },
     error = function(e) {
@@ -223,32 +224,38 @@ if (comp_enable) {
       stop("Encountered error in python/comps.py")
     }
   )
-  # Correct for the fact that Python is 0-indexed by incrementing the
-  # comp indexes by 1
-  comps[[1]] <- comps[[1]] + 1
 
   # Translate comp indexes to PINs and document numbers
   comps[[1]] <- comps[[1]] %>%
     mutate(
+      # Correct for the fact that Python is 0-indexed by incrementing the
+      # comp indexes by 1, and cast null indicators (-1) to null
+      across(everything(), ~ ifelse(. == -1, NA, . + 1)),
+      # Map comp index to PIN
       across(
         starts_with("comp_idx_"),
         \(idx_row) {
-          training_data[idx_row, ]$meta_pin
+          ifelse(is.na(idx_row), NA, training_data[idx_row, ]$meta_pin)
         },
         .names = "comp_pin_{str_remove(col, 'comp_idx_')}"
       ),
+      # Map comp index to sale doc number
       across(
         starts_with("comp_idx_"),
         \(idx_row) {
-          training_data[idx_row, ]$meta_sale_document_num
+          ifelse(
+            is.na(idx_row),
+            NA,
+            training_data[idx_row, ]$meta_sale_document_num
+          )
         },
         .names = "comp_document_num_{str_remove(col, 'comp_idx_')}"
       )
     ) %>%
     select(-starts_with("comp_idx_")) %>%
     cbind(
-      pin = assessment_data$meta_pin,
-      card = assessment_data$meta_card_num
+      pin = comp_assessment_data$meta_pin,
+      card = comp_assessment_data$meta_card_num
     ) %>%
     relocate(pin, card)
 
