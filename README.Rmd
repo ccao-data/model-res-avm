@@ -316,18 +316,20 @@ param_notes <- param_tbl$value %>%
   )) %>%
   unlist()
 
-ccao::vars_dict %>%
-  inner_join(
-    param_tbl %>% mutate(description = param_notes),
-    by = c("var_name_model" = "value")
+param_tbl %>%
+  mutate(description = param_notes) %>%
+  left_join(
+    ccao::vars_dict,
+    by = c("value" = "var_name_model")
   ) %>%
   group_by(var_name_pretty) %>%
   mutate(row = paste0("X", row_number())) %>%
   distinct(
     `Feature Name` = var_name_pretty,
+    `Variable Name` = value,
+    Description = description,
     Category = var_type,
     Type = var_data_type,
-    Notes = description,
     var_value, row
   ) %>%
   mutate(Category = recode(
@@ -337,14 +339,13 @@ ccao::vars_dict %>%
     meta = "Meta", other = "Other", ccao = "Other"
   )) %>%
   pivot_wider(
-    id_cols = `Feature Name`:`Notes`,
+    id_cols = `Feature Name`:`Category`,
     names_from = row,
     values_from = var_value
   ) %>%
   unite("Possible Values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
-  mutate(Notes = replace_na(Notes, "")) %>%
+  mutate(Description = replace_na(Description, "")) %>%
   arrange(Category) %>%
-  relocate(Notes, .after = everything()) %>%
   knitr::kable(format = "markdown")
 ```
 
