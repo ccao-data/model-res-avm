@@ -81,7 +81,7 @@ def get_comps(
     return indexes_df, scores_df
 
 
-@nb.njit(fastmath=True, parallel=True)
+@nb.njit(fastmath=True, parallel=True, nogil=True)
 def _get_top_n_comps(
     leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps
 ):
@@ -103,50 +103,36 @@ def _get_top_n_comps(
     all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
 
     for x_i in nb.prange(num_observations):
-        top_n_idxs = np.full(num_comps, -1, dtype=idx_dtype)
-        top_n_scores = np.zeros(num_comps, dtype=score_dtype)
-
         # TODO: We could probably speed this up by skipping comparisons we've
         # already made; we just need to do it in a way that will have a
         # low memory footprint
         for y_i in range(num_possible_comparisons):
             similarity_score = 0.0
             for tree_idx in range(len(leaf_node_matrix[x_i])):
-                similarity_score += (
-                    weights_matrix[x_i][tree_idx] * (
-                        leaf_node_matrix[x_i][tree_idx] ==
-                        comparison_leaf_node_matrix[y_i][tree_idx]
-                    )
-                )
+                if leaf_node_matrix[x_i][tree_idx] == comparison_leaf_node_matrix[y_i][tree_idx]:
+                    similarity_score += weights_matrix[x_i][tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
             # First check if the score is higher than the lowest score,
             # since otherwise we don't need to bother iterating the scores
-            if similarity_score > top_n_scores[-1]:
-              for idx, score in enumerate(top_n_scores):
-                if similarity_score > score:
-                  top_n_idxs = _insert_at_idx_and_shift(
-                    top_n_idxs, y_i, idx
-                  )
-                  top_n_scores = _insert_at_idx_and_shift(
-                    top_n_scores, similarity_score, idx
-                  )
-                  break
-
-        all_top_n_idxs[x_i] = top_n_idxs
-        all_top_n_scores[x_i] = top_n_scores
+            if similarity_score > all_top_n_scores[x_i][-1]:
+                for idx, score in enumerate(all_top_n_scores[x_i]):
+                    if similarity_score > score:
+                        _insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
+                        _insert_at_idx_and_shift(all_top_n_scores[x_i], similarity_score, idx)
+                        break
 
     return all_top_n_idxs, all_top_n_scores
 
 
 @nb.njit(fastmath=True)
 def _insert_at_idx_and_shift(arr, elem, idx):
-  """Helper function to insert an element `elem` into a sorted numpy array `arr`
-  at a given index `idx` and shift the subsequent elements down one index."""
-  return np.concatenate((
-    arr[:idx], np.array([(elem)], dtype=arr.dtype), arr[idx:-1]
-  ))
+    """Helper function to insert an element `elem` into a sorted numpy array `arr`
+    at a given index `idx` and shift the subsequent elements down one index."""
+    arr[idx+1:] = arr[idx:-1]
+    arr[idx] = elem
+    return arr
 
 
 if __name__ == "__main__":
