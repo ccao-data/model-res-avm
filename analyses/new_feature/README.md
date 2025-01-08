@@ -8,7 +8,7 @@ This directory contains Quarto analysis documents for the residential model. The
 
 The documents in this directory are **modularized** and separated by topic area. Documents prefixed with an underscore are considered **modules** and can be interpolated into other documents using the Quarto [include shortcode](https://quarto.org/docs/authoring/includes.html).
 
-For example, `categorical/categorial_shaps.qmd` produces charts and tables relating to the SHAP values of the newly added features. It uses the shortcode `{``{{< include ../shared/setup_shared.qmd >}}` on the first line to run `setup_shared.qmd`, which loads all necessary libraries and data dependencies.
+For example, `categorical/categorial_shaps.qmd` produces charts and tables relating to the SHAP values of the newly added features. It uses the shortcode ``` {``{{< include ../shared/setup_shared.qmd >}} ``` on the first line to run `setup_shared.qmd`, which loads all necessary libraries and data dependencies.
 
 Main documents do not have an underscore prefix. They combine metadata with multiple modules to generate a single, large report. For example, `categorical/categorical_new_feature.qmd` combines modules and renders to a single HTML document with a table of contents.
 
