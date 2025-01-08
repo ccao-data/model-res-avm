@@ -231,10 +231,13 @@ Model accuracy for each parameter combination is measured on a validation set us
 
 ### Features Used
 
-The residential model uses a variety of individual and aggregate features to determine a property's assessed value. We've tested a long list of possible features over time, including [walk score](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_walkscore.html), [crime rate](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/chicago_crimerate.html), [school districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_school_boundaries_mean_encoded.html), and many others. The features in the table below are the ones that made the cut. They're the right combination of easy to understand and impute, powerfully predictive, and well-behaved. Most of them are in use in the model as of `r Sys.Date()`.
+The residential model uses a variety of individual and aggregate features to determine a property's assessed value. We've tested a long list of possible features over time, including [walk score](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_walkscore.html), [crime rate](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/chicago_crimerate.html), [school districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_school_boundaries_mean_encoded.html), and many others. The features in the table below are the ones that made the cut. They're the right combination of easy to understand and impute, powerfully predictive, and well-behaved.
+
+For a machine-readable version of this data dictionary, see [`docs/data-dict.csv`](./docs/data-dict.csv).
 
 ```{r feature_guide, message=FALSE, results='asis', echo=FALSE}
 library(dplyr)
+library(readr)
 library(tidyr)
 library(yaml)
 library(jsonlite)
@@ -316,7 +319,7 @@ param_notes <- param_tbl$value %>%
   )) %>%
   unlist()
 
-param_tbl %>%
+param_tbl_fmt <- param_tbl %>%
   mutate(description = param_notes) %>%
   left_join(
     ccao::vars_dict,
@@ -325,27 +328,41 @@ param_tbl %>%
   group_by(var_name_pretty) %>%
   mutate(row = paste0("X", row_number())) %>%
   distinct(
-    `Feature Name` = var_name_pretty,
-    `Variable Name` = value,
-    Description = description,
-    Category = var_type,
-    Type = var_data_type,
+    feature_name = var_name_pretty,
+    variable_name = value,
+    description,
+    category = var_type,
+    type = var_data_type,
     var_value, row
   ) %>%
-  mutate(Category = recode(
-    Category,
+  mutate(category = recode(
+    category,
     char = "Characteristic", acs5 = "ACS5", loc = "Location",
     prox = "Proximity", ind = "Indicator", time = "Time",
     meta = "Meta", other = "Other", ccao = "Other"
   )) %>%
   pivot_wider(
-    id_cols = `Feature Name`:`Category`,
+    id_cols = `feature_name`:`category`,
     names_from = row,
     values_from = var_value
   ) %>%
-  unite("Possible Values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
-  mutate(Description = replace_na(Description, "")) %>%
-  arrange(Category) %>%
+  unite("possible_values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
+  mutate(description = replace_na(description, "")) %>%
+  arrange(category)
+
+# Write machine-readable version of the table to file
+param_tbl_fmt %>%
+  write_csv("docs/data-dict.csv")
+
+# Render human-readable version of the table to the doc
+param_tbl_fmt %>%
+  rename(
+    "Feature Name" = "feature_name",
+    "Variable Name" = "variable_name",
+    "Description" = "description",
+    "Category" = "category",
+    "Possible Values" = "possible_values"
+  ) %>%
   knitr::kable(format = "markdown")
 ```
 

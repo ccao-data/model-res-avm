@@ -367,8 +367,10 @@ rate](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob
 districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_school_boundaries_mean_encoded.html),
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
-powerfully predictive, and well-behaved. Most of them are in use in the
-model as of 2025-01-08.
+powerfully predictive, and well-behaved.
+
+For a machine-readable version of this data dictionary, see
+[`docs/data-dict.csv`](./docs/data-dict.csv).
 
 | Feature Name                                                            | Variable Name                                         | Description                                                                                                                                           | Category       | Possible Values                                                      |
 |:------------------------------------------------------------------------|:------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------|:---------------------------------------------------------------------|
