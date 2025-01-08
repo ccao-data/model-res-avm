@@ -57,6 +57,13 @@ if (knitr::is_html_output() || knitr::is_latex_output()) {
 }
 assign(params_obj_name, read_yaml(here("params.yaml")))
 
+# Set the random seed for reproducibility. This is currently used in two places:
+# 1. Within Tidymodels workflows whenever sampling is used e.g. for KNN impute
+# 2. Within the CV loop to make random folds that are consistent across runs
+# Note that LightGBM uses its own set of seeds i.e. this seed doesn't affect
+# whether the model itself is deterministic
+set.seed(get(params_obj_name)$model$seed)
+
 # Get the number of available physical cores to use for multi-threading
 # Lightgbm docs recommend using only real cores, not logical
 # https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_threads
