@@ -241,13 +241,17 @@ create_neighborhood_map <- function(data,
   return(map)
 }
 
-create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
+create_histogram <- function(data, target_feature, x_label, y_label =
+                               "Frequency", filter_outliers = FALSE,
+                             filter_column = NULL) {
   # Conditionally filter outliers if requested
   if (filter_outliers && !is.null(filter_column)) {
     data <- data %>%
       filter(
-        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
-          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
+        !!sym(filter_column) >=
+          quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
+          !!sym(filter_column) <=
+            quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
       )
   }
 
@@ -269,8 +273,12 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
         alpha = 0.7,
         binwidth = dynamic_binwidth
       ) +
-      geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-      geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+      geom_vline(aes(xintercept = mean_value, color = "Mean"),
+        linetype = "dashed", linewidth = 1, show.legend = TRUE
+      ) +
+      geom_vline(aes(xintercept = median_value, color = "Median"),
+        linetype = "dashed", linewidth = 1, show.legend = TRUE
+      ) +
       scale_color_manual(
         name = "Statistics",
         values = c(Mean = "red", Median = "green"),

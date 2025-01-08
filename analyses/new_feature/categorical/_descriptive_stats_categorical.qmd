@@ -71,7 +71,7 @@ create_category_percentages(pin_individual, target_feature = {{ target_feature_v
 ```{r, _descriptive_stats_categorical_histogram_function}
 # Histogram function in Helpers.R
 
-fmv_histogram <- create_histogram_with_statistics(
+fmv_histogram <- create_histogram(
   data = pin_individual,
   target_feature = "diff_pred_pin_initial_fmv",
   x_label = "Change in FMV",
@@ -79,7 +79,7 @@ fmv_histogram <- create_histogram_with_statistics(
   filter_column = "diff_pred_pin_initial_fmv"
 )
 
-shap_histogram <- create_histogram_with_statistics(
+shap_histogram <- create_histogram(
   data = shap_new,
   target_feature = target_feature_value,
   x_label = "SHAP Value",

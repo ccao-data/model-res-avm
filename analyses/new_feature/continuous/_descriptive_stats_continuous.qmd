@@ -76,7 +76,7 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 
 ```{r _descriptive_stats_continuous_feature_histogram}
 # Histogram function in Helpers.R
-create_histogram_with_statistics(
+create_histogram(
   data = pin_individual,
   target_feature = target_feature_value,
   x_label = target_feature_value
@@ -87,7 +87,7 @@ create_histogram_with_statistics(
 
 This chart shows the distribution of the difference between 'pred_pin_initial_fmv' in the model with the added feature minus the model without the added feature. Outliers outside of 95% are removed to make the chart more readable. 
 ```{r _descriptive_stats_continuous_fmv_change_histogram, results='asis',fig.keep='all'}
-create_histogram_with_statistics(
+create_histogram(
   data = pin_individual,
   target_feature = "diff_pred_pin_initial_fmv",
   x_label = "Change in FMV",
@@ -99,7 +99,7 @@ create_histogram_with_statistics(
 ## SHAP Histogram
 
 ```{r _descriptive_stats_continuous_shap_change_histogram, results='asis',fig.keep='all'}
-create_histogram_with_statistics(
+create_histogram(
   data = shap_new,
   target_feature = target_feature_value,
   x_label = "SHAP Value",
