@@ -72,50 +72,10 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 
 ::: {.panel-tabset}
 
-
-```{r _descriptive_stats_continuous_histogram_function}
-create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
-  # Conditionally filter outliers if requested
-  if (filter_outliers && !is.null(filter_column)) {
-    data <- data %>%
-      filter(
-        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
-          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
-      )
-  }
-
-  # Calculate mean and median
-  data <- data %>%
-    mutate(
-      mean_value = mean(!!sym(target_feature), na.rm = TRUE),
-      median_value = median(!!sym(target_feature), na.rm = TRUE)
-    )
-
-  # Create the plot
-  plot <- data %>%
-    ggplot(aes(x = !!sym(target_feature))) +
-    geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    scale_color_manual(
-      name = "Statistics",
-      values = c(Mean = "red", Median = "green"),
-      labels = c("Mean", "Median")
-    ) +
-    labs(
-      x = x_label,
-      y = y_label
-    ) +
-    theme_minimal()
-
-  return(plot)
-}
-```
-
-
 ## Feature Histogram
 
 ```{r _descriptive_stats_continuous_feature_histogram}
+# Histogram function in Helpers.R
 create_histogram_with_statistics(
   data = pin_individual,
   target_feature = target_feature_value,

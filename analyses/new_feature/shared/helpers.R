@@ -240,3 +240,50 @@ create_neighborhood_map <- function(data,
 
   return(map)
 }
+
+create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
+  # Conditionally filter outliers if requested
+  if (filter_outliers && !is.null(filter_column)) {
+    data <- data %>%
+      filter(
+        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
+          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
+      )
+  }
+
+  # Calculate mean and median
+  mean_value <- mean(data[[target_feature]], na.rm = TRUE)
+  median_value <- median(data[[target_feature]], na.rm = TRUE)
+
+
+  # Calculate dynamic binwidth based on data range
+  range_value <- range(data[[target_feature]], na.rm = TRUE)
+  dynamic_binwidth <- (range_value[2] - range_value[1]) / 30
+
+  htmltools::tagList(
+    plot <- data %>%
+      ggplot(aes(x = !!sym(target_feature))) +
+      geom_histogram(
+        fill = "blue",
+        color = "black",
+        alpha = 0.7,
+        binwidth = dynamic_binwidth
+      ) +
+      geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+      geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+      scale_color_manual(
+        name = "Statistics",
+        values = c(Mean = "red", Median = "green"),
+        labels = c("Mean", "Median")
+      ) +
+      labs(
+        x = x_label,
+        y = y_label
+      ) +
+      theme_minimal()
+  )
+
+
+
+  return(plot)
+}
