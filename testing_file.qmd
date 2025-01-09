@@ -28,9 +28,11 @@ library(tidyr)
 ```{r}
 training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet") %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   arrange(meta_sale_date)
 
-assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet")
+assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") %>%
+  mutate(township_name = ccao::town_convert(meta_township_code))
 
 assessment_card <- read_parquet("/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet")
 ```
@@ -70,7 +72,6 @@ training_data %>%
 ```{r}
 # Filter the data
 test_3 <- assessment_pin %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(township_name == "Barrington")
 ```
 
@@ -120,13 +121,15 @@ iwalk(plots, ~ {
 ##  10 Largest char_bldg_sf Properties Per Township
 
 ```{r}
-training_data %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+assessment_pin %>%
   filter(meta_triad_code == '2') %>%
+  group_by(meta_township_code) %>%
   arrange(desc(char_bldg_sf)) %>%
-  slice(1:100) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  slice(1:10) %>%
   ungroup() %>%
-  select(meta_pin, meta_class, char_bldg_sf) %>%
+  mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
+  select(meta_pin, class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 
@@ -134,7 +137,6 @@ training_data %>%
 
 ```{r}
 assessment_pin %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(meta_triad_code == '2') %>%
   group_by(meta_township_code) %>%
   arrange(desc(pred_pin_final_fmv)) %>%
@@ -142,7 +144,7 @@ assessment_pin %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  select(meta_pin, class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 
@@ -160,7 +162,6 @@ assessment_card %>%
 # Largest and Smallest Differences Between FMV and any Sale Price (Assessment Pin)
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(
     meta_triad_code == '2',
     !is.na(sale_recent_1_price),    !is.na(pred_pin_final_fmv_round)) %>%
@@ -217,7 +218,6 @@ model_big_misses_assessment %>%
 ```{r}
 # Create a list of plots, one per township
 plots <- assessment_pin %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(meta_triad_code == '2') %>%
   group_by(township_name) %>%
   group_split() %>%
@@ -245,15 +245,13 @@ iwalk(plots, ~ {
 
 ```
 :::
-# Scatterplot of 
+# Scatterplot of FMV vs Sale Price
+
 
 ```{r}
-
 test <- assessment_pin %>%
   filter(flag_pin_is_multicard == 'FALSE') %>%
-  left_join(training_data %>% select(meta_pin, char_bldg_sf), by = "meta_pin") %>%
-  mutate(township_name = ccao::town_convert(meta_township_code))
-
+  left_join(training_data %>% select(meta_pin, char_bldg_sf), by = "meta_pin")
 
 subset_top_sales <- test %>%
   mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
