@@ -339,7 +339,7 @@ param_tbl_fmt <- param_tbl %>%
     category,
     char = "Characteristic", acs5 = "ACS5", loc = "Location",
     prox = "Proximity", ind = "Indicator", time = "Time",
-    meta = "Meta", other = "Other", ccao = "Other"
+    meta = "Meta", other = "Other", ccao = "Other", shp = "Parcel Shape"
   )) %>%
   pivot_wider(
     id_cols = `feature_name`:`category`,
