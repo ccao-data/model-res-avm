@@ -410,7 +410,7 @@ training_data_clean <- training_data_w_hie %>%
       c(char_beds, char_rooms, char_fbath),
       \(x) replace(x, which(x == 0), NA)
     )
-  )
+  ) %>%
   as_tibble() %>%
   write_parquet(paths$input$training$local)
 
