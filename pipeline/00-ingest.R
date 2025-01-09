@@ -396,7 +396,7 @@ training_data_clean <- training_data_w_hie %>%
       make_date(params$input$min_sale_year, 1, 1),
       make_date(params$input$max_sale_year, 12, 31)
     ),
-    char_bldg_sf > 0,
+    between(char_bldg_sf, 0, 60000),
     between(char_beds, 0, 40),
     between(char_rooms, 0, 50),
     between(char_fbath, 0, 15),
