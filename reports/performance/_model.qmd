@@ -723,7 +723,7 @@ est_v_actual_plotly_town <- function(data, x) {
         suffix = "K"
       ),
       n.breaks = 5,
-      limits = c(1e4, 1e7)
+      limits = c(1e4, 3e6)
     ) +
     scale_x_continuous(
       name = "Actual FMV (Sale Price)",
@@ -733,7 +733,7 @@ est_v_actual_plotly_town <- function(data, x) {
         suffix = "K"
       ),
       n.breaks = 5,
-      limits = c(1e4, 1e7)
+      limits = c(1e4, 3e6)
     ) +
     theme_minimal()
 
@@ -751,7 +751,7 @@ est_v_actual_plotly_town <- function(data, x) {
   prependContent(gplt, onStaticRenderComplete(click_handler_javascript))
 }
 
-est_v_actual_plotly_town(assessment_data, pred_card_initial_fmv)
+est_v_actual_plotly_town(test_card, pred_card_initial_fmv)
 ```
 
 #### Linear Baseline
@@ -1194,7 +1194,7 @@ model_big_misses_test %>%
   )
 ```
 
-### Assessment Set (1 year)
+### Assessment Set
 
 ```{r _model_big_misses_assessment}
 model_big_misses_assessment <- assessment_pin %>%
@@ -1202,7 +1202,9 @@ model_big_misses_assessment <- assessment_pin %>%
   filter(
     meta_triad_code == run_triad_code,
     !is.na(sale_recent_1_price),
-    !is.na(pred_pin_final_fmv_round)) %>%
+    !is.na(pred_pin_final_fmv_round),
+    year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
+  ) %>%
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
@@ -1211,7 +1213,7 @@ model_big_misses_assessment <- assessment_pin %>%
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    Difference = (`Sale 1 Price` - `Est. FMV`)),
+    Difference = abs(`Sale 1 Price` - `Est. FMV`),
     `Qnt.` = cut(
       `Sale 1 Price`,
       breaks = quantile(`Sale 1 Price`, probs = c(0, 0.25, 0.5, 0.75, 1)),
@@ -1254,65 +1256,7 @@ model_big_misses_assessment %>%
     )
   )
 ```
-### Assessment Set (All Years)
 
-```{r _model_big_misses_assessment_all}
-model_big_misses_assessment_all <- assessment_pin %>%
-  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
-  filter(
-    meta_triad_code == run_triad_code,
-    !is.na(sale_recent_1_price),
-    !is.na(pred_pin_final_fmv_round)) %>%
-  select(
-    Town = township_name, PIN = meta_pin, Class = meta_class,
-    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
-    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
-    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
-    `Est. FMV` = pred_pin_final_fmv_round) %>%
- mutate(
-    Difference = (`Est. FMV` - `Sale 1 Price`),
-    .by = Town
-  ) %>%
-  group_by(Town) %>%
-  summarise(
-    max_min_rows = list(bind_rows(
-      slice_max(cur_data(), Difference, n = 4),
-      slice_min(cur_data(), Difference, n = 4)
-    ))
-  ) %>%
-  unnest(max_min_rows) %>% 
-  arrange(Town, -Difference) %>%
-  mutate(
-    across(
-      c(ends_with("Price"), ends_with("FMV"), Difference),
-      ~ scales::dollar(.x, prefix = "$")
-    ),
-    `Bldg Sqft` = scales::comma(`Bldg Sqft`)
-  ) %>%
-  arrange(Town)
-
-model_big_misses_assessment_all %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-right",
-          targets = c(
-            "Bldg Sqft", "Sale 1 Price", "Sale 1 Date",
-            "Sale 2 Price", "Sale 2 Date",
-            "Est. FMV", "Difference"
-          )
-        ),
-        list(
-          className = "dt-nowrap",
-          targets = c("Sale 1 Date", "Sale 2 Date")
-        )
-      )
-    )
-  )
-
-```
 :::
 
 ## Variance Over Time

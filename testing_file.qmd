@@ -50,7 +50,6 @@ training_data %>%
     y = "Frequency"
   ) +
   theme_minimal()
-
 ```
 
 ## 10 Largest Barrington Sales
@@ -61,8 +60,7 @@ training_data %>%
   arrange(desc(meta_sale_price)) %>%
   slice(1:10) %>%
   select(meta_sale_price, meta_sale_document_num, meta_pin) %>%
-  datatable(options = list(scrollY = '400px', paging = FALSE))
-  
+  datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
 
@@ -86,7 +84,6 @@ ggplot(test_3, aes(x = sale_recent_1_price, y = pred_pin_final_fmv)) +
     y = "Certified Total"
   ) +
   theme_minimal()
-
 ```
 
 # Distribution of Characteristics
@@ -99,9 +96,11 @@ numeric <- training_data %>%
 # Create histograms for all numeric variables
 plots <- imap(numeric, ~ ggplot(training_data, aes(x = .data[[.y]])) +
   geom_histogram(bins = 30) +
-  labs(title = paste("Histogram of", .y),
-       x = .y,
-       y = "Frequency") +
+  labs(
+    title = paste("Histogram of", .y),
+    x = .y,
+    y = "Frequency"
+  ) +
   theme_minimal())
 ```
 
@@ -122,7 +121,7 @@ iwalk(plots, ~ {
 
 ```{r}
 assessment_pin %>%
-  filter(meta_triad_code == '2') %>%
+  filter(meta_triad_code == "2") %>%
   group_by(meta_township_code) %>%
   arrange(desc(char_bldg_sf)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
@@ -130,14 +129,14 @@ assessment_pin %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
   select(meta_pin, class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
-  datatable(options = list(scrollY = '400px', paging = FALSE))
+  datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
 ## Largest pred_pin_final_fmv Properties Per Township
 
 ```{r}
 assessment_pin %>%
-  filter(meta_triad_code == '2') %>%
+  filter(meta_triad_code == "2") %>%
   group_by(meta_township_code) %>%
   arrange(desc(pred_pin_final_fmv)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
@@ -145,17 +144,19 @@ assessment_pin %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
   select(meta_pin, class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
-  datatable(options = list(scrollY = '400px', paging = FALSE))
+  datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
 # Pin Tests
 
 ```{r}
 assessment_card %>%
-  filter(meta_pin %in% c("17102060351010", "16143120330000", "11312110190000", "24072010490000",
-                         "17062000841001", "17062000841002", "11181100020000", "12133010680000",
-                         "14322140240000", "05211000140000", "20142150160000")) %>%
-  datatable(options = list(scrollY = '400px', paging = FALSE))
+  filter(meta_pin %in% c(
+    "17102060351010", "16143120330000", "11312110190000", "24072010490000",
+    "17062000841001", "17062000841002", "11181100020000", "12133010680000",
+    "14322140240000", "05211000140000", "20142150160000"
+  )) %>%
+  datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
 
@@ -163,15 +164,17 @@ assessment_card %>%
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
   filter(
-    meta_triad_code == '2',
-    !is.na(sale_recent_1_price),    !is.na(pred_pin_final_fmv_round)) %>%
+    meta_triad_code == "2",
+    !is.na(sale_recent_1_price), !is.na(pred_pin_final_fmv_round)
+  ) %>%
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
     `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
     `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
-    `Est. FMV` = pred_pin_final_fmv_round) %>%
- mutate(
+    `Est. FMV` = pred_pin_final_fmv_round
+  ) %>%
+  mutate(
     Difference = (`Est. FMV` - `Sale 1 Price`),
     .by = Town
   ) %>%
@@ -182,7 +185,7 @@ model_big_misses_assessment <- assessment_pin %>%
       slice_min(cur_data(), Difference, n = 4)
     ))
   ) %>%
-  unnest(max_min_rows) %>% 
+  unnest(max_min_rows) %>%
   arrange(Town, -Difference) %>%
   mutate(
     across(
@@ -218,20 +221,19 @@ model_big_misses_assessment %>%
 ```{r}
 # Create a list of plots, one per township
 plots <- assessment_pin %>%
-  filter(meta_triad_code == '2') %>%
+  filter(meta_triad_code == "2") %>%
   group_by(township_name) %>%
   group_split() %>%
-  set_names(map_chr(., ~ unique(.x$township_name))) %>%  # Assign names to the list based on township
+  set_names(map_chr(., ~ unique(.x$township_name))) %>% # Assign names to the list based on township
   map(~ ggplot(.x, aes(x = pred_pin_initial_fmv)) +
-        geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
-        labs(
-          title = paste("Distribution of Initial FMV for", unique(.x$township_name)),
-          x = "Initial FMV",
-          y = "Frequency"
-        ) +
-        theme_minimal() +
-        theme(plot.title = element_text(hjust = 0.5))
-      )
+    geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
+    labs(
+      title = paste("Distribution of Initial FMV for", unique(.x$township_name)),
+      x = "Initial FMV",
+      y = "Frequency"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5)))
 ```
 
 ::: {.panel-tabset}
@@ -242,7 +244,6 @@ iwalk(plots, ~ {
   print(.x)
   cat("\n\n")
 })
-
 ```
 :::
 # Scatterplot of FMV vs Sale Price
@@ -250,7 +251,7 @@ iwalk(plots, ~ {
 
 ```{r}
 test <- assessment_pin %>%
-  filter(flag_pin_is_multicard == 'FALSE') %>%
+  filter(flag_pin_is_multicard == "FALSE") %>%
   left_join(training_data %>% select(meta_pin, char_bldg_sf), by = "meta_pin")
 
 subset_top_sales <- test %>%
@@ -275,10 +276,12 @@ subset_lowest_ratios <- test %>%
 
 # Combine the subsets into one data frame
 subset <- bind_rows(subset_top_sales, subset_highest_ratios, subset_lowest_ratios) %>%
-  select(township_name, meta_pin, sale_recent_1_price, char_bldg_sf, price_per_sq_ft, type, pred_pin_final_fmv_round)
+  select(township_name, meta_pin, sale_recent_1_price, char_bldg_sf,
+         price_per_sq_ft, type, pred_pin_final_fmv_round)
 
 scatterplot <- subset %>%
-  ggplot(aes(x = sale_recent_1_price, y = pred_pin_final_fmv_round, color = type, text = paste(
+  ggplot(aes(x = sale_recent_1_price, y = pred_pin_final_fmv_round,
+             color = type, text = paste(
     "Township: ", township_name,
     "<br>Meta PIN: ", meta_pin,
     "<br>Sale Price: $", scales::comma(sale_recent_1_price),
@@ -295,14 +298,13 @@ scatterplot <- subset %>%
     color = "Type"
   ) +
   theme_minimal() +
-  xlim(0, 10000000) +  # Set max x limit
-  ylim(0, 10000000)    # Set max y limit
+  xlim(0, 10000000) + # Set max x limit
+  ylim(0, 10000000) # Set max y limit
 
 # Convert to interactive plotly object with adjusted axis limits
 interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text")
 
 # Display the interactive plot
 interactive_scatterplot
-
 ```
 
