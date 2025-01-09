@@ -408,7 +408,7 @@ test %>%
       "prior_far_tot" = params$ratio_study$far_column,
       "prior_near_tot" = params$ratio_study$near_column
     )),
-    pred_card_initial_fmv, #pred_card_initial_fmv_lin,
+    pred_card_initial_fmv, pred_card_initial_fmv_lin,
     meta_sale_price, meta_sale_date, meta_sale_document_num
   ) %>%
   # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential
