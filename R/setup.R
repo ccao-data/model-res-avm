@@ -39,6 +39,8 @@ conflicts_prefer(
   .quiet = TRUE
 )
 
+conflicted::conflict_prefer_all("tidytable", quiet = TRUE)
+
 # Load helpers for model dictionary, data loading, and other misc functions
 source(here::here("R", "helpers.R"))
 

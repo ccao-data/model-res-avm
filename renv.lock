@@ -1578,6 +1578,23 @@
       ],
       "Hash": "829f27b9c4919c16b593794a6344d6c0"
     },
+    "tidytable": {
+      "Package": "tidytable",
+      "Version": "0.11.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "data.table",
+        "glue",
+        "lifecycle",
+        "magrittr",
+        "pillar",
+        "rlang",
+        "tidyselect",
+        "vctrs"
+      ],
+      "Hash": "a79a7d6075b2f072c308702045f06dd1"
+    },
     "timeDate": {
       "Package": "timeDate",
       "Version": "4041.110",

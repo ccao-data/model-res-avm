@@ -77,13 +77,10 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # For prorated PINs with multiple cards, take the average of the card
   # (building) across PINs. This is because the same prorated building spread
   # across multiple PINs sometimes receives different values from the model
-  group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
-  mutate(
-    pred_card_intermediate_fmv = ifelse(
-      is.na(meta_tieback_key_pin),
-      pred_card_initial_fmv,
-      mean(pred_card_initial_fmv)
-    )
+  dt(
+    is.na(meta_tieback_key_pin),
+    .(pred_card_intermediate_fmv = mean(pred_card_initial_fmv)),
+    by = c(meta_tieback_key_pin, meta_card_num, char_land_sf)
   ) %>%
   # Aggregate multi-cards to the PIN-level by summing the predictions
   # of all cards. We use a heuristic here to limit the PIN-level total
