@@ -12,13 +12,15 @@ format:
     fontsize: 12pt
 ---
 
-```{r}
+```{r, include = FALSE}
+renv::install("plotly")
 library(arrow)
 library(ccao)
 library(dplyr)
 library(DT)
 library(ggplot2)
 library(purrr)
+library(plotly)
 library(tidyr)
 ```
 
@@ -28,13 +30,13 @@ training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.p
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
-assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") 
+assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet")
 
 assessment_card <- read_parquet("/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet")
 ```
 
-
-### Sales in Barrington
+# Barrington Test
+## Sales in Barrington
 ```{r}
 training_data %>%
   filter(meta_township_name == "Barrington") %>%
@@ -49,7 +51,7 @@ training_data %>%
 
 ```
 
-### 10 Largest Barrington Sales
+## 10 Largest Barrington Sales
 
 ```{r}
 training_data %>%
@@ -60,6 +62,33 @@ training_data %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
   
 ```
+
+
+
+## Barrington Scatterplot
+
+```{r}
+# Filter the data
+test_3 <- assessment_pin %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(township_name == "Barrington")
+```
+
+
+```{r}
+# Create the scatterplot
+ggplot(test_3, aes(x = sale_recent_1_price, y = pred_pin_final_fmv)) +
+  geom_point() +
+  labs(
+    title = "Scatterplot of Sale Price vs Certified Total",
+    x = "Sale Price",
+    y = "Certified Total"
+  ) +
+  theme_minimal()
+
+```
+
+# Distribution of Characteristics
 
 ```{r}
 # Select numeric columns
@@ -86,28 +115,38 @@ iwalk(plots, ~ {
 ```
 :::
 
-##  100 Largest SF Properties
+# Outliers in Training Data
+
+##  10 Largest char_bldg_sf Properties Per Township
 
 ```{r}
 training_data %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_triad_code == '2') %>%
   arrange(desc(char_bldg_sf)) %>%
   slice(1:100) %>%
+  ungroup() %>%
   select(meta_pin, meta_class, char_bldg_sf) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 
-## 100 largest FMVs
+## Largest pred_pin_final_fmv Properties Per Township
 
 ```{r}
-training_data %>%
-  arrange(desc(meta_certified_tot)) %>%
+assessment_pin %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_triad_code == '2') %>%
+  group_by(meta_township_code) %>%
+  arrange(desc(pred_pin_final_fmv)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
-  slice(1:100) %>%
-  select(meta_pin, meta_certified_tot, meta_township_name, meta_year, char_bldg_sf, char_land_sf) %>%
+  slice(1:10) %>%
+  ungroup() %>%
+  mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
+  select(meta_pin, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 
-### Pin Tests
+# Pin Tests
 
 ```{r}
 assessment_card %>%
@@ -117,29 +156,8 @@ assessment_card %>%
   datatable(options = list(scrollY = '400px', paging = FALSE))
 ```
 
-### Barrington Scatterplot
 
-```{r}
-# Filter the data
-test_3 <- training_data %>%
-  filter(meta_township_name == "Barrington")
-```
-
-
-```{r}
-# Create the scatterplot
-ggplot(test_3, aes(x = meta_sale_price, y = meta_certified_tot)) +
-  geom_point() +
-  labs(
-    title = "Scatterplot of Sale Price vs Certified Total",
-    x = "Sale Price",
-    y = "Certified Total"
-  ) +
-  theme_minimal()
-
-```
-
-### Largest and Smallest Differences Between FMV and any Sale Price
+# Largest and Smallest Differences Between FMV and any Sale Price (Assessment Pin)
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
@@ -227,7 +245,7 @@ iwalk(plots, ~ {
 
 ```
 :::
-
+# Scatterplot of 
 
 ```{r}
 
@@ -251,6 +269,7 @@ subset_highest_ratios <- test %>%
   mutate(type = "highest_ratios")
 
 subset_lowest_ratios <- test %>%
+  filter(!is.na(char_bldg_sf)) %>%
   mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
   group_by(township_name) %>%
   slice_min(price_per_sq_ft, n = 20) %>%
@@ -270,7 +289,7 @@ scatterplot <- subset %>%
     "<br>Building SF: ", scales::comma(char_bldg_sf),
     "<br>Price/Sq Ft: $", scales::comma(price_per_sq_ft)
   ))) +
-  geom_point(size = 3, alpha = 0.7) +
+  geom_point(size = 1, alpha = 0.7) +
   labs(
     title = "Interactive Scatterplot of Price per Sq Ft vs Building SF",
     x = "Sale Price",
@@ -282,15 +301,10 @@ scatterplot <- subset %>%
   ylim(0, 10000000)    # Set max y limit
 
 # Convert to interactive plotly object with adjusted axis limits
-interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text") %>%
-  layout(
-    xaxis = list(range = c(0, 10000000)),
-    yaxis = list(range = c(0, 10000000))
-  )
+interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text")
 
 # Display the interactive plot
 interactive_scatterplot
-
 
 ```
 
