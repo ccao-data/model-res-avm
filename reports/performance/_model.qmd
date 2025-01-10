@@ -1137,7 +1137,7 @@ iwalk(model_lorenz_curve_plots, ~ {
 
 ## Big Misses
 
-Tables of the largest misses (in absolute terms) from the both the **test set** and **assessment set**. They show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price.
+Tables of the largest misses (in absolute terms) from the **test set**, **assessment set**, and **training data**. **Test** and **assessment** sets show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price. **Training** data show the five largest increases and decreases in `fmv` - `sale price`, identifying possible data integrity issues.
 
 ::: {.panel-tabset}
 
@@ -1256,6 +1256,69 @@ model_big_misses_assessment %>%
     )
   )
 ```
+
+### Training Data
+
+These sales are not separated by quarter, but rather the 5 largest and lowest differences in aggregate. Note that these sales are over a longer period of time, so prices are not directly comparable. Rather, the largest changes can reflect incorrectly recorded sales, or sales that could be re-checked with sales val.
+
+```{r}
+model_big_misses_full <- assessment_pin %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(
+    meta_triad_code == run_triad_code,
+    !is.na(sale_recent_1_price),
+    !is.na(pred_pin_final_fmv_round),
+  ) %>%
+  select(
+    Town = township_name, PIN = meta_pin, Class = meta_class,
+    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
+    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
+    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
+    `Est. FMV` = pred_pin_final_fmv_round
+  ) %>%
+  mutate(
+    Difference = (`Est. FMV` - `Sale 1 Price`),
+    .by = Town
+  ) %>%
+  group_by(Town) %>%
+  summarise(
+    max_min_rows = list(bind_rows(
+      slice_max(cur_data(), Difference, n = 4),
+      slice_min(cur_data(), Difference, n = 4)
+    ))
+  ) %>%
+  unnest(max_min_rows) %>% 
+  arrange(Town, -Difference) %>%
+  mutate(
+    across(
+      c(ends_with("Price"), ends_with("FMV"), Difference),
+      ~ scales::dollar(.x, prefix = "$")
+    ),
+    `Bldg Sqft` = scales::comma(`Bldg Sqft`)
+  )
+
+model_big_misses_full %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Bldg Sqft", "Sale 1 Price", "Sale 1 Date",
+            "Sale 2 Price", "Sale 2 Date",
+            "Est. FMV", "Difference"
+          )
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = c("Sale 1 Date", "Sale 2 Date")
+        )
+      )
+    )
+  )
+```
+
 
 :::
 
