@@ -51,7 +51,7 @@ datasets_full <- list(
     filter(get(x)) %>%
     select(
       meta_pin, pred_pin_final_fmv_round, sale_ratio_study_price, loc_latitude,
-      loc_longitude, prior_near_tot, meta_township_code
+      loc_longitude, prior_near_tot, meta_township_code, meta_class
     )
 })
 
@@ -236,17 +236,76 @@ plots$Multicard
 
 ## Multifamily
 
-```{r}
+```{r, results = 'asis'}
 plots$Multifamily
 ```
 
 ## Top Decile
 
-```{r}
+```{r, results = 'asis'}
 plots$"Top Decile"
 ```
 
 :::
+
+# Top and Bottom 10 (FMV / Sale Price) Ratios
+
+```{r}
+outliers <- datasets_sold %>%
+  map(\(x) {
+    x %>%
+      mutate(
+        Ratio = pred_pin_final_fmv_round / sale_ratio_study_price,
+        Township = ccao::town_convert(meta_township_code),
+        `Final Fmv` = dollar(pred_pin_final_fmv_round),
+        `Sale Price` = dollar(sale_ratio_study_price),
+        `Prior Value` = dollar(prior_near_tot)
+      ) %>%
+      filter(
+        rank(-Ratio) <= 10 | rank(Ratio) <= 10
+      ) %>%
+      mutate(Type = if_else(rank(-Ratio) <= 10, "Top 10", "Bottom 10")) %>%
+      arrange(Type, Ratio) %>%
+      select(
+        Pin = meta_pin,
+        `Final Fmv`,
+        `Sale Price`,
+        Ratio,
+        Type,
+        Township,
+        `Prior Value`,
+        Class = meta_class
+      )
+  })
+```
+
+
+```{r _challenge_groups_outliers, results = 'asis'}
+generate_tabset <- function(outliers) {
+  cat("::: panel-tabset\n\n")
+
+  iwalk(outliers, ~ {
+    cat("## ", .y, "\n\n")
+
+    print(
+      kable(
+        .x,
+        format = "html",
+        digits = 2,
+        row.names = FALSE,
+        format.args = list(big.mark = ",")
+      ) %>% kable_styling()
+    )
+
+    cat("\n\n")
+  })
+
+  cat(":::\n")
+}
+
+generate_tabset(outliers)
+```
+
 
 ```{r _challenge_groups_map_function}
 plots <- datasets_full %>%
