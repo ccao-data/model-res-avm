@@ -14,6 +14,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
+  library(data.table)
   library(DBI)
   library(igraph)
   library(noctua)
@@ -68,7 +69,8 @@ training_data <- dbGetQuery(
   AND NOT sale.sale_filter_same_sale_within_365
   AND NOT sale.sale_filter_less_than_10k
   AND NOT sale.sale_filter_deed_type
-  AND Year(sale.sale_date) >= {params$input$min_sale_year}
+  AND Year(sale.sale_date) >=
+      {as.numeric(params$input$min_sale_year) - as.numeric(params$input$n_years_prior)}
   ")
 )
 tictoc::toc()
@@ -381,10 +383,203 @@ training_data_clean <- training_data_w_hie %>%
     time_sale_day_of_year = as.integer(yday(meta_sale_date)),
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
-    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
+    time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15),
+    date = ymd(meta_sale_date)
   ) %>%
+  arrange(meta_sale_date) %>%
+  setDT(key = "meta_sale_date")
+
+
+training_data_dt <- training_data_clean[
+  !sv_is_outlier & !ind_pin_is_multicard,
+  `:=`(
+    lag_town_t0_price = data.table::shift(meta_sale_price, 1, type = "lag"),
+    lag_town_t1_shift = (1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date)) * 2 - 1,
+    lag_town_t2_shift = (1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date)) * 2 - 1
+  ),
+  by = .(meta_township_code)
+][
+  !sv_is_outlier & !ind_pin_is_multicard,
+  `:=`(
+    lag_town_t1_price = meta_sale_price[replace(seq(.N) - lag_town_t1_shift, seq(.N) <= lag_town_t1_shift, NA)],
+    lag_town_t2_price = meta_sale_price[replace(seq(.N) - lag_town_t2_shift, seq(.N) <= lag_town_t2_shift, NA)]
+  ),
+  by = .(meta_township_code)
+][
+  !sv_is_outlier & !ind_pin_is_multicard,
+  `:=`(
+    lag_nbhd_t0_price = data.table::shift(meta_sale_price, 1, type = "lag"),
+    lag_nbhd_t1_shift = (1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date)) * 2 - 1,
+    lag_nbhd_t2_shift = (1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date)) * 2 - 1
+  ),
+  by = .(meta_nbhd_code)
+][
+  !sv_is_outlier & !ind_pin_is_multicard,
+  `:=`(
+    lag_nbhd_t1_price = meta_sale_price[replace(seq(.N) - lag_nbhd_t1_shift, seq(.N) <= lag_nbhd_t1_shift, NA)],
+    lag_nbhd_t2_price = meta_sale_price[replace(seq(.N) - lag_nbhd_t2_shift, seq(.N) <= lag_nbhd_t2_shift, NA)]
+  ),
+  by = .(meta_nbhd_code)
+][
+  !sv_is_outlier & !ind_pin_is_multicard,
+  `:=`(
+    time_sale_roll_mean_town_t0_w1 = data.table::frollmean(
+      lag_town_t0_price,
+      1:.N - findInterval(meta_sale_date %m-% months(1), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t0_w2 = data.table::frollmean(
+      lag_town_t0_price,
+      1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t0_w3 = data.table::frollmean(
+      lag_town_t0_price,
+      1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t1_w1 = data.table::frollmean(
+      lag_town_t1_price,
+      1:.N - findInterval(meta_sale_date %m-% months(1), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t1_w2 = data.table::frollmean(
+      lag_town_t1_price,
+      1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t1_w3 = data.table::frollmean(
+      lag_town_t1_price,
+      1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t2_w1 = data.table::frollmean(
+      lag_town_t2_price,
+      1:.N - findInterval(meta_sale_date %m-% months(1), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t2_w2 = data.table::frollmean(
+      lag_town_t2_price,
+      1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_town_t2_w3 = data.table::frollmean(
+      lag_town_t2_price,
+      1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    )
+  ),
+  by = .(meta_township_code)
+][
+  !sv_is_outlier & !ind_pin_is_multicard,
+  `:=`(
+    time_sale_roll_mean_nbhd_t0_w1 = data.table::frollmean(
+      lag_nbhd_t0_price,
+      1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t0_w2 = data.table::frollmean(
+      lag_nbhd_t0_price,
+      1:.N - findInterval(meta_sale_date %m-% months(6), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t0_w3 = data.table::frollmean(
+      lag_nbhd_t0_price,
+      1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t1_w1 = data.table::frollmean(
+      lag_nbhd_t1_price,
+      1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t1_w2 = data.table::frollmean(
+      lag_nbhd_t1_price,
+      1:.N - findInterval(meta_sale_date %m-% months(6), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t1_w3 = data.table::frollmean(
+      lag_nbhd_t1_price,
+      1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t2_w1 = data.table::frollmean(
+      lag_nbhd_t2_price,
+      1:.N - findInterval(meta_sale_date %m-% months(3), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t2_w2 = data.table::frollmean(
+      lag_nbhd_t2_price,
+      1:.N - findInterval(meta_sale_date %m-% months(6), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    ),
+    time_sale_roll_mean_nbhd_t2_w3 = data.table::frollmean(
+      lag_nbhd_t2_price,
+      1:.N - findInterval(meta_sale_date %m-% months(12), meta_sale_date),
+      align = "right",
+      adaptive = TRUE,
+      na.rm = TRUE,
+      hasNA = TRUE
+    )
+  ),
+  by = .(meta_nbhd_code)
+]
+
+training_data_final <- training_data_dt %>%
   # Reorder resulting columns
-  select(-any_of(c("time_interval"))) %>%
+  select(-any_of(c("date", "time_interval"))) %>%
+  select(-starts_with("lag_")) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
   relocate("meta_sale_count_past_n_years", .after = meta_sale_buyer_name) %>%
@@ -510,6 +705,30 @@ assessment_data_clean <- assessment_data_w_hie %>%
     time_sale_day_of_month = as.integer(day(meta_sale_date)),
     time_sale_day_of_week = as.integer(wday(meta_sale_date)),
     time_sale_post_covid = meta_sale_date >= make_date(2020, 3, 15)
+  ) %>%
+  left_join(
+    training_data_final %>%
+      inner_join(
+        training_data_final %>%
+          group_by(meta_township_code) %>%
+          summarize(max_date = max(ymd(meta_sale_date))),
+        by = c("meta_township_code", "meta_sale_date" = "max_date")
+      ) %>%
+      distinct(meta_township_code, meta_sale_date, .keep_all = TRUE) %>%
+      select(meta_township_code, starts_with("time_sale_roll_mean_town")),
+    by = "meta_township_code"
+  ) %>%
+  left_join(
+    training_data_final %>%
+      inner_join(
+        training_data_final %>%
+          group_by(meta_nbhd_code) %>%
+          summarize(max_date = max(ymd(meta_sale_date))),
+        by = c("meta_nbhd_code", "meta_sale_date" = "max_date")
+      ) %>%
+      distinct(meta_nbhd_code, meta_sale_date, .keep_all = TRUE) %>%
+      select(meta_nbhd_code, starts_with("time_sale_roll_mean_nbhd")),
+    by = "meta_nbhd_code"
   ) %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
