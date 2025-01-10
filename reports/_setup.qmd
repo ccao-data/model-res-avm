@@ -1,4 +1,6 @@
 ---
+execute:
+  echo: false
 params:
   run_id: "2024-03-17-stupefied-maya"
   year: "2024"
