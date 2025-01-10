@@ -1287,7 +1287,7 @@ model_big_misses_full <- assessment_pin %>%
       slice_min(pick(everything()), Difference, n = 4)
     ))
   ) %>%
-  unnest(max_min_rows) %>% 
+  unnest(max_min_rows) %>%
   arrange(Town, -Difference) %>%
   mutate(
     across(
@@ -1318,7 +1318,6 @@ model_big_misses_full %>%
       )
     )
   )
-
 ```
 
 :::
