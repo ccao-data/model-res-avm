@@ -14,7 +14,3 @@ jobs:
 
       - name: Run pre-commit checks
         uses: ccao-data/actions/pre-commit@main
-
-      - name: Setup tmate session
-        if: always()
-        uses: mxschmitt/action-tmate@v3
