@@ -13,4 +13,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run pre-commit checks
-        uses: ccao-data/actions/pre-commit@jeancochrane/cache-additional-renv-dependencies-in-pre-commit
+        uses: ccao-data/actions/pre-commit@main
