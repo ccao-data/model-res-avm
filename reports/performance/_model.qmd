@@ -1137,7 +1137,7 @@ iwalk(model_lorenz_curve_plots, ~ {
 
 ## Big Misses
 
-Tables of the largest misses (in absolute terms) from the **test set**, **assessment set**, and **training data**. **Test** and **assessment** sets show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price. **Training** data show the five largest increases and decreases in `fmv` - `sale price`, identifying possible data integrity issues.
+Tables of the largest misses (in absolute terms) from the **test set**, **assessment set**, and **training data**. **Test** and **assessment** sets show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price. **Training** data show the four largest increases and decreases in `fmv` - `sale price`, identifying possible data integrity issues.
 
 ::: {.panel-tabset}
 
@@ -1259,7 +1259,7 @@ model_big_misses_assessment %>%
 
 ### Training Data
 
-These sales are not separated by quarter, but rather the 5 largest and lowest differences in aggregate. Note that these sales are over a longer period of time, so prices are not directly comparable. Rather, the largest changes can reflect incorrectly recorded sales, or sales that could be re-checked with sales val.
+These sales are not separated by quarter, but rather the 4 largest and lowest dollar differences. Note that these sales are over a longer period of time, so prices are not directly comparable. Rather, the largest changes can reflect incorrectly recorded sales, or sales that could be re-checked with sales val.
 
 ```{r}
 model_big_misses_full <- assessment_pin %>%
@@ -1283,8 +1283,8 @@ model_big_misses_full <- assessment_pin %>%
   group_by(Town) %>%
   summarise(
     max_min_rows = list(bind_rows(
-      slice_max(cur_data(), Difference, n = 4),
-      slice_min(cur_data(), Difference, n = 4)
+      slice_max(pick(everything()), Difference, n = 4),
+      slice_min(pick(everything()), Difference, n = 4)
     ))
   ) %>%
   unnest(max_min_rows) %>% 
@@ -1296,6 +1296,7 @@ model_big_misses_full <- assessment_pin %>%
     ),
     `Bldg Sqft` = scales::comma(`Bldg Sqft`)
   )
+
 
 model_big_misses_full %>%
   datatable(
