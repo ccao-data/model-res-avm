@@ -389,15 +389,27 @@ training_data_clean <- training_data_w_hie %>%
   relocate("year", .after = everything()) %>%
   relocate("meta_sale_count_past_n_years", .after = meta_sale_buyer_name) %>%
   # Drop invalid sales outside the sample date range or with obvious incorrect
-  # square footage values
+  # characteristic values
   filter(
     between(
       meta_sale_date,
       make_date(params$input$min_sale_year, 1, 1),
       make_date(params$input$max_sale_year, 12, 31)
     ),
-    !(char_bldg_sf < 300 & !ind_pin_is_multicard),
-    !(char_land_sf < 300 & !ind_pin_is_multicard)
+    between(char_bldg_sf, 0, 60000),
+    between(char_beds, 0, 40),
+    between(char_rooms, 0, 50),
+    between(char_fbath, 0, 15),
+    between(char_hbath, 0, 10),
+  ) %>%
+  mutate(
+    # Recode unexpectedly low values to NA
+    char_bldg_sf = replace(char_bldg_sf, which(char_bldg_sf < 300), NA),
+    char_land_sf = replace(char_land_sf, which(char_land_sf < 300), NA),
+    across(
+      c(char_beds, char_rooms, char_fbath),
+      \(x) replace(x, which(x == 0), NA)
+    )
   ) %>%
   as_tibble() %>%
   write_parquet(paths$input$training$local)
