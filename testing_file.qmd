@@ -1,5 +1,5 @@
 ---
-title: "testing_file"
+title: "Quality Control"
 execute:
   echo: false
   warning: false
@@ -26,18 +26,26 @@ library(tidyr)
 
 
 ```{r}
-training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet") %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet") 
+
+training_data <- training_data %>%
+  filter(ind_pin_is_multicard == 'FALSE') %>%
+  filter(sv_is_outlier == 'FALSE') %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   arrange(meta_sale_date)
 
-assessment_pin <- read_parquet("/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") %>%
+assessment_pin <- read_parquet(
+  "/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") %>%
   mutate(township_name = ccao::town_convert(meta_township_code))
 
-assessment_card <- read_parquet("/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet")
+assessment_card <- read_parquet(
+  "/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet")
 ```
 
 # Barrington Test
+
+Due to a low R2 and high RMSE in the linear model, there were suspected bad sales in Barrington. A closer look finds some sales which are on the high-end, but looking at individual PINs and the estimated FMV does not provide evidence of sales errors.
+
 ## Sales in Barrington
 ```{r}
 training_data %>%
@@ -74,7 +82,7 @@ test_3 <- assessment_pin %>%
 ```
 
 
-```{r}
+```{r, warning = FALSE}
 # Create the scatterplot
 ggplot(test_3, aes(x = sale_recent_1_price, y = pred_pin_final_fmv)) +
   geom_point() +
@@ -87,6 +95,8 @@ ggplot(test_3, aes(x = sale_recent_1_price, y = pred_pin_final_fmv)) +
 ```
 
 # Distribution of Characteristics
+
+Previous iterations of this test demonstrated that the `training data` has implausible (60 bedrooms) or impossible values (-2 bathrooms). Because of this, we implemented filtering in the ingest stage. The rendered result reflects these changes.
 
 ```{r}
 # Select numeric columns
@@ -246,7 +256,9 @@ iwalk(plots, ~ {
 })
 ```
 :::
-# Scatterplot of FMV vs Sale Price
+# Scatterplot of FMV & Sale Price
+
+Here we look at three types of sales which may be outliers. The first is the most expensive 20 sales in each township. The second is the most expensive 20 sales in each township based on price per square foot. The third is the least expensive 20 sales in each township based on price per square foot.
 
 
 ```{r}
@@ -292,14 +304,13 @@ scatterplot <- subset %>%
   ))) +
   geom_point(size = 1, alpha = 0.7) +
   labs(
-    title = "Interactive Scatterplot of Price per Sq Ft vs Building SF",
     x = "Sale Price",
     y = "Predicted Final FMV (Rounded)",
     color = "Type"
   ) +
   theme_minimal() +
-  xlim(0, 10000000) + # Set max x limit
-  ylim(0, 10000000) # Set max y limit
+  xlim(0, 10000000) +
+  ylim(0, 10000000)
 
 # Convert to interactive plotly object with adjusted axis limits
 interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text")
