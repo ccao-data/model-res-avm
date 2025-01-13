@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.4.1",
+    "Version": "4.4.2",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -295,11 +295,11 @@
       "Version": "1.3.0",
       "Source": "GitHub",
       "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "6445f79e6b4207a174c22d7a139511cf8e2516b6",
-      "RemoteHost": "api.github.com",
+      "RemoteSha": "8b6f53e14c1732fcec5f6982fbc4bfb32f45f194",
       "Requirements": [
         "R",
         "assessr",
@@ -308,11 +308,11 @@
         "rlang",
         "tidyr"
       ],
-      "Hash": "d452fba08dff15c8379f18aa03af084e"
+      "Hash": "1663306aa228ded9892f07d65ec20db3"
     },
     "class": {
       "Package": "class",
-      "Version": "7.3-22",
+      "Version": "7.3-23",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -321,7 +321,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "f91f6b29f38b8c280f2b9477787d4bb2"
+      "Hash": "d0cb9cc838c3b43560bd958fc4317fdc"
     },
     "cli": {
       "Package": "cli",
@@ -1060,7 +1060,7 @@
     },
     "nnet": {
       "Package": "nnet",
-      "Version": "7.3-19",
+      "Version": "7.3-20",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1068,7 +1068,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "2c797b46eea7fb58ede195bc0b1f1138"
+      "Hash": "c955edf99ff24a32e96bd0a22645af60"
     },
     "numDeriv": {
       "Package": "numDeriv",

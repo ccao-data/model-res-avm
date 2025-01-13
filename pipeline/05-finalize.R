@@ -12,6 +12,8 @@ tictoc::tic("Finalize")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
+# Unset the seed from setup.R to ensure a random run ID
+set.seed(NULL)
 
 
 
@@ -91,7 +93,6 @@ metadata <- tibble::tibble(
   shap_enable = shap_enable,
   comp_enable = comp_enable,
   comp_num_comps = params$comp$num_comps,
-  comp_num_price_bins = params$comp$num_price_bins,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,
