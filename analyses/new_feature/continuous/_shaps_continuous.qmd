@@ -7,11 +7,11 @@ The primary metric that the CCAO Data team uses to assess the importance of a fe
 ## Tables
 ::: {.panel-tabset}
 
-```{r, _shaps_categorical_count}
+```{r, _shaps_continuous_count}
 shap_predictors <- unlist(metadata_new$model_predictor_all_name)
 ```
 
-```{r _shaps_categorical_processing}
+```{r _shaps_continuous_processing}
 # Combine data
 shap_df_filtered_long <- shap_new %>%
   inner_join(
@@ -31,7 +31,7 @@ shap_df_filtered_long <- shap_new %>%
 ### SHAP Median Absolute Value
 The following table produces the median absolute SHAP value by township, and creates a grouped table. In total, there are `r length(shap_predictors)` indicators in the model. Thus, if the median SHAP is ranked 1, it is the most important feature, while if it is ranked `r length(shap_predictors)`, it is the least important feature in a township. The median value (without absolute) is also included to better contextualize the impact.
 
-```{r _shaps_categorical_full_importance}
+```{r _shaps_continuous_full_importance}
 shap_df_filtered_long %>%
   group_by(feature) %>%
   mutate(
@@ -74,7 +74,7 @@ shap_df_filtered_long %>%
 ### SHAP Median Absolute Value by Township
 
 This is the same table, except ranked by township. To identify the rank of an indicator within a township, simply search for that township in the search bar.
-```{r _shaps_categorical_township_importance, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+```{r _shaps_continuous_township_importance, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
 shap_df_filtered_long %>%
   group_by(township_code, feature) %>%
   mutate(
@@ -125,7 +125,7 @@ shap_df_filtered_long %>%
 
 ### Scatterplot
 
-```{r _shaps_categorical_scatterplot, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+```{r _shaps_continuous_scatterplot, warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
 shapviz::shapviz(
   object = shap_new %>%
     select(all_of(shap_predictors)) %>%
@@ -144,7 +144,7 @@ shapviz::shapviz(
 
 Y limit is set to the 2.5th and 97.5th percentiles of the SHAP values for readibility.
 
-```{r _shaps_categorical_violin_plot, results='asis', fig.keep='all'}
+```{r _shaps_continuous_violin_plot, results='asis', fig.keep='all'}
 # Calculate the number of digits
 num_digits <- card_individual %>%
   pull({{ target_feature_shap }}) %>%
