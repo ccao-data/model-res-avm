@@ -24,7 +24,11 @@ if (symmetric_diff_len > 0) {
     " and ",
     data_dict_filename,
     ": ",
-    paste(symmetric_diff, collapse = ", ")
+    paste(symmetric_diff, collapse = ", "),
+    ". ",
+    "Did you forget to reknit README.Rmd after updating ",
+    params_filename,
+    "?"
   )
   stop(err_msg)
 }
