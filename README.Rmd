@@ -331,7 +331,7 @@ param_tbl_fmt <- param_tbl %>%
     description,
     category = var_type,
     type = var_data_type,
-    var_value, row
+    var_code, var_value, row
   ) %>%
   mutate(category = recode(
     category,
@@ -342,9 +342,20 @@ param_tbl_fmt <- param_tbl %>%
   pivot_wider(
     id_cols = `feature_name`:`category`,
     names_from = row,
-    values_from = var_value
+    values_from = c(var_code, var_value)
   ) %>%
-  unite("possible_values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
+  unite(
+    "possible_codes",
+    starts_with("var_code_X"),
+    sep = ", ",
+    na.rm = TRUE
+  ) %>%
+  unite(
+    "possible_values",
+    starts_with("var_value_X"),
+    sep = ", ",
+    na.rm = TRUE
+  ) %>%
   mutate(description = replace_na(description, "")) %>%
   arrange(category)
 
@@ -359,7 +370,8 @@ param_tbl_fmt %>%
     "Variable Name" = "variable_name",
     "Description" = "description",
     "Category" = "category",
-    "Possible Values" = "possible_values"
+    "Possible Values (Encoded)" = "possible_codes",
+    "Possible Values (Semantic)" = "possible_values",
   ) %>%
   knitr::kable(format = "markdown")
 ```
