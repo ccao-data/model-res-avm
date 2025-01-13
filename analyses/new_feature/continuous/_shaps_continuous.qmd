@@ -141,7 +141,10 @@ shapviz::shapviz(
 
 
 ### Violin Plot
-```{r _shaps_categorical_violin_plot, echo=FALSE,warning=FALSE,message=FALSE,error=FALSE, results='asis',fig.keep='all'}
+
+Y limit is set to the 2.5th and 97.5th percentiles of the SHAP values for readibility.
+
+```{r _shaps_categorical_violin_plot, results='asis', fig.keep='all'}
 # Calculate the number of digits
 num_digits <- card_individual %>%
   pull({{ target_feature_shap }}) %>%
@@ -165,11 +168,10 @@ card_individual <- card_individual %>%
     bin = if (num_unique_values <= 9) {
       as.character(!!sym(target_feature_value))
     } else {
-      cut_number(!!sym(target_feature_value), n = 5, dig.lab = 2)
+      cut_interval(!!sym(target_feature_value), n = 5, dig.lab = 2)
     }
   )
 
-# Create the violin plot
 card_individual %>%
   ggplot(aes(x = bin, y = !!sym(target_feature_shap))) +
   geom_violin(fill = "#69b3a2", alpha = 0.7) +

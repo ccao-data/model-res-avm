@@ -122,6 +122,8 @@ shaps_township
 
 ## Violin Plots of SHAP Values by Feature Value
 
+Y limit is set to the 2.5th and 97.5th percentiles of the SHAP values for readibility.
+
 ```{r _shaps_categorical_violin_plots, results='asis', fig.keep='all'}
 # Calculate quantiles
 quantiles <- card_individual %>%

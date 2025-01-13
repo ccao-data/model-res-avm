@@ -2,11 +2,11 @@
 params:
   run_id: "2025-01-10-serene-boni"
   run_id_year: "2025"
-  comparison_run_id: "2025-01-10-youthful-nicole"
+  comparison_run_id: "2025-01-13-eloquent-michael"
   comparison_run_id_year: "2025"
-  added_feature: "ccao_is_active_exe_homeowner" 
-  added_feature_shap: "ccao_is_active_exe_homeowner_shap"
-  description: "Test removing ccao_is_active_exe_homeowner"
+  added_feature: "ccao_n_years_exe_homeowner" 
+  added_feature_shap: "ccao_n_years_exe_homeowner_shap"
+  description: "Test removing ccao_n_years_exe_homeowner"
 ---
 ```{r, include = FALSE}
 library(purrr)
