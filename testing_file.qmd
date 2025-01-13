@@ -123,12 +123,12 @@ iwalk(plots, ~ {
 assessment_pin %>%
   filter(meta_triad_code == "2") %>%
   group_by(meta_township_code) %>%
-  arrange(desc(char_bldg_sf)) %>%
+  arrange(desc(char_total_bldg_sf)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  select(meta_pin, meta_class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
@@ -143,7 +143,7 @@ assessment_pin %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  select(meta_pin, meta_class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
