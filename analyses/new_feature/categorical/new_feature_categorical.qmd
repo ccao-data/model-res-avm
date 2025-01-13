@@ -18,13 +18,13 @@ format:
     fontsize: 12pt
     code-fold: true
 params:
-  run_id: "2024-12-26-ecstatic-matt"
+  run_id: "2025-01-10-serene-boni"
   run_id_year: "2025"
-  comparison_run_id: "2024-12-20-quizzical-tristan"
+  comparison_run_id: "2025-01-10-youthful-nicole"
   comparison_run_id_year: "2025"
-  added_feature: "prox_nearest_road_arterial_surface_type" 
-  added_feature_shap: "prox_nearest_road_arterial_surface_type_shap"
-  description: "Surface Type is a categorical variable that describes the type of surface of the nearest arterial road to the property."
+  added_feature: "ccao_is_active_exe_homeowner" 
+  added_feature_shap: "ccao_is_active_exe_homeowner_shap"
+  description: "Test removing ccao_is_active_exe_homeowner"
 ---
 
 {{< include ../shared/setup_shared.qmd >}}

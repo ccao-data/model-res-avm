@@ -14,28 +14,34 @@ create_category_percentages <- function(data, target_feature, group_by_column = 
   } else {
     list(target_feature)
   }
-
+  
+  # Calculate percentages
   category_percentages <- data %>%
     group_by(!!!group_vars) %>%
     count() %>%
     group_by(!!!if (!is.null(group_by_column)) list(sym(group_by_column)) else list()) %>%
-    mutate(percentage = scales::percent(n / sum(n), accuracy = 0.01)) %>%
+    mutate(percentage = percent(n / sum(n), accuracy = 0.01)) %>%
     select(!!!group_vars, percentage) %>%
-    pivot_wider(names_from = !!target_feature, values_from = percentage, values_fill = list(percentage = scales::percent(0)))
-
+    pivot_wider(names_from = !!target_feature, values_from = percentage, values_fill = list(percentage = percent(0)))
+  
   mode_column <- data %>%
     group_by(!!!if (!is.null(group_by_column)) list(sym(group_by_column)) else list()) %>%
-    summarize(mode_value = !!target_feature %>%
-      as.character() %>% # Ensures compatibility for factor levels
-      .[which.max(tabulate(match(., unique(.))))]) %>%
-    ungroup()
-
+    summarize(
+      mode_value = !!target_feature %>%
+        as.character() %>% # Ensure compatibility for factor levels
+        {
+          unique(.)[which.max(tabulate(match(., unique(.))))]
+        },
+      .groups = "drop"
+    )
+  
   # Join the mode column to the category_percentages data
   category_percentages <- category_percentages %>%
     left_join(mode_column, by = if (!is.null(group_by_column)) group_by_column else character(0)) %>%
     mutate(mode = as.character(mode_value)) %>%
     select(-mode_value)
-
+  
+  # Render the result as a datatable
   datatable(category_percentages,
     options = list(
       scrollY = "300px",
@@ -46,6 +52,7 @@ create_category_percentages <- function(data, target_feature, group_by_column = 
     rownames = FALSE
   )
 }
+
 ```
 
 ### Overall

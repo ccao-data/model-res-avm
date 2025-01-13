@@ -95,66 +95,48 @@ s3_data_download <- function(dvc_md5_assessment_data) {
 }
 
 
-create_leaflet_map <- function(dataset, legend_value, legend_title,
-                               order_scheme = "high",
-                               longitude = "loc_longitude",
-                               latitude = "loc_latitude",
+create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
+                               longitude = "loc_longitude", latitude = "loc_latitude",
                                display_as_percent = FALSE) {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
     right_join(dataset, by = c("town_nbhd" = "meta_nbhd_code"))
-
-  # Adjust the dataset values if display_as_percent is TRUE
-  if (display_as_percent) {
-    dataset[[legend_value]] <- dataset[[legend_value]] * 100
-  }
-
   # Create the color palette based on order_scheme
   if (order_scheme == "low") {
-    pal <- colorNumeric(
-      palette = "Reds",
-      domain = dataset[[legend_value]], reverse = TRUE
-    )
+    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]], reverse = TRUE)
   } else {
-    pal <- colorNumeric(
-      palette = "Reds",
-      domain = dataset[[legend_value]]
-    )
+    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
   }
-
   # Calculate the bounding box of the filtered neighborhoods
   bbox <- st_bbox(nbhd_borders)
-
   # Create the leaflet map
   leaflet(dataset) %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
     addCircleMarkers(
-      lng = ~ get(longitude),
-      lat = ~ get(latitude),
+      lng = ~get(longitude),
+      lat = ~get(latitude),
       radius = 5,
-      color = ~ pal(dataset[[legend_value]]),
+      color = ~pal(dataset[[legend_value]]), # Fill color
+      stroke = TRUE,        # Enable the outline (stroke)
+      weight = 1,           # Set the stroke thickness
+      opacity = 1,          # Stroke opacity
+      fillOpacity = 0.8,    # Marker fill opacity
+      fill = TRUE,          # Fill the marker
       popup = ~ {
         shap_values <- dataset %>%
           select(starts_with("target_feature_shap_")) %>%
-          summarise_all(~ ifelse(!is.na(.), sprintf(
-            "SHAP: %s",
-            scales::dollar(.)
-          ), NA)) %>%
+          summarise_all(~ ifelse(!is.na(.), sprintf("SHAP: %s", scales::dollar(.)), NA)) %>%
           apply(1, function(row) {
             paste(na.omit(row), collapse = "<br>")
           })
         paste(
           "Pin: ", meta_pin,
-          ifelse(shap_values == "",
-            "", paste0("<br>", shap_values)
-          ),
-          "<br>", "Relative SHAP: ",
-          scales::percent(relative_shap, accuracy = 0.01),
-          "<br>", "Feature: ", get(params$added_feature),
+          ifelse(shap_values == "", "", paste0("<br>", shap_values)),
+          "<br>", "Relative SHAP: ", scales::percent(relative_shap, accuracy = 0.01),
+          "<br>", "Feature: ", sprintf("%.2f", get(params$added_feature)),
           "<br>", "New FMV: ", pred_pin_final_fmv_new,
           "<br>", "Comparison FMV: ", pred_pin_final_fmv_comp,
-          "<br>", "FMV Difference: ",
-          scales::percent(diff_pred_pin_final_fmv, accuracy = 0.01)
+          "<br>", "FMV Difference: ", scales::percent(diff_pred_pin_final_fmv)
         )
       }
     ) %>%
@@ -170,7 +152,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title,
       values = dataset[[legend_value]],
       title = legend_title,
       labFormat = if (display_as_percent) {
-        labelFormat(suffix = "%")
+        function(type, cuts, p) scales::percent(cuts)
       } else {
         labelFormat()
       }
