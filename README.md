@@ -369,9 +369,6 @@ and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved.
 
-For a machine-readable version of this data dictionary, see
-[`docs/data-dict.csv`](./docs/data-dict.csv).
-
 | Feature Name                                                                | Variable Name                                         | Description                                                                                                                                           | Category       | Possible Values                                                      |
 |:----------------------------------------------------------------------------|:------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------|:---------------------------------------------------------------------|
 | Percent Population Age, Under 19 Years Old                                  | acs5_percent_age_children                             | Percent of the people 17 years or younger                                                                                                             | ACS5           |                                                                      |
@@ -474,6 +471,30 @@ For a machine-readable version of this data dictionary, see
 | Sale Day of Month                                                           | time_sale_day_of_month                                | Numeric encoding of day of month (1 - 31)                                                                                                             | Time           |                                                                      |
 | Sale Day of Week                                                            | time_sale_day_of_week                                 | Numeric encoding of day of week (1 - 7)                                                                                                               | Time           |                                                                      |
 | Sale After COVID-19                                                         | time_sale_post_covid                                  | Indicator for whether sale occurred after COVID-19 was widely publicized (around March 15, 2020)                                                      | Time           |                                                                      |
+
+We maintain a few useful resources for working with these features:
+
+- Once you’ve [pulled the input data](#getting-data), you can inner join
+  the data to the CSV version of the data dictionary
+  ([`docs/data-dict.csv`](./docs/data-dict.csv)) to filter for only the
+  features that we use in the model.
+- You can browse our [data
+  catalog](https://ccao-data.github.io/data-architecture/#!/overview) to
+  see more details about these features, in particular the [residential
+  model input
+  view](https://ccao-data.github.io/data-architecture/#!/model/model.ccao_data_athena.model.vw_card_res_input)
+  which is the source of our training data.
+- You can use the [`ccao` R package](https://ccao-data.github.io/ccao/)
+  or its [Python equivalent](https://ccao-data.github.io/ccao/python/)
+  to programmatically convert variable names to their human-readable
+  versions
+  ([`ccao::vars_rename()`](https://ccao-data.github.io/ccao/reference/vars_rename.html))
+  or convert numerically-encoded variables to human-readable values
+  ([`ccao::vars_recode()`](https://ccao-data.github.io/ccao/reference/vars_recode.html).
+  The [`ccao::vars_dict`
+  object](https://ccao-data.github.io/ccao/reference/vars_dict.html) is
+  also useful for inspecting the raw crosswalk that powers the rename
+  and recode functions.
 
 #### Data Sources
 
