@@ -1,12 +1,3 @@
----
-execute:
-  echo: false
-params:
-  run_id: "2024-03-17-stupefied-maya"
-  year: "2024"
----
-
-```{r}
 # This setup script is run at the top of each Quarto report subsection to load
 # libraries, data, and other objects needed for the report. It only loads
 # objects if they don't already exist in the environment, so it can be run
@@ -187,9 +178,7 @@ plot_colors <- list(
 shorten_number <- function(x) {
   scales::dollar(x, accuracy = 1, scale = 1 / 1000, suffix = "K")
 }
-```
 
-```{r}
 # Chunk to populate the metadata / dataset summaries in the text of each module
 # Anything prefixed with m_ is a variable that will be used directly in the text
 m_test_min_date <- min(test_card$meta_sale_date)
@@ -248,4 +237,3 @@ m_assess_stage_near <- paste(
   metadata$ratio_study_near_year,
   metadata$ratio_study_near_stage
 )
-```
