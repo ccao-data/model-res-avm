@@ -140,7 +140,6 @@ training_data %>%
     char_yrblt
   ) %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
-
 ```
 
 ## Largest `pred_pin_final_fmv` Properties Per Township
