@@ -79,9 +79,13 @@ iwalk(plots, ~ {
 
 # Possible Outliers in Training Data
 
-Below are properties which may be outliers in each township. Square footage is one of our key indicators, so erroneous values will squew results. Buildings with large estimated FMVs were spot checked to ensure that they represented houses which are of higher than average quality. 
+Below are properties which may be outliers in each township. Square footage is one of our key indicators, so erroneous values would skew our `FMVs.`
 
-##  10 Largest char_bldg_sf Properties Per Township
+Buildings with large estimated `FMVs` were spot checked to ensure that they represented houses which are of higher than average quality. 
+
+::: {.panel-tabset}
+
+##  10 Largest `char_bldg_sf` Properties Per Township
 
 ```{r}
 assessment_pin %>%
@@ -105,7 +109,7 @@ assessment_pin %>%
 
 ```
 
-## Largest pred_pin_final_fmv Properties Per Township
+## Largest `pred_pin_final_fmv` Properties Per Township
 
 ```{r}
 assessment_pin %>%
@@ -126,6 +130,8 @@ assessment_pin %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
+:::
+
 # Pin Tests
 
 Below are pins which are flagged for review from previous QC work. 
@@ -143,6 +149,10 @@ assessment_card %>%
 # Largest and Smallest Differences Between FMV and any Sale Price
 
 Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be outliers or have characteristic errors in the training data.
+
+::: {.panel-tabset}
+
+## Table
 
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
@@ -202,7 +212,8 @@ model_big_misses_assessment %>%
     )
   )
 ```
-## Leaflet map of Potential Misses
+
+## Leaflet Map
 
 This helps to see if any of the misses are spatially concentrated. There are high absolute value differences in Winnetka, and a cluster of misses near Park Ridge.
 
