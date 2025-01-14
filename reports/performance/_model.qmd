@@ -1264,6 +1264,12 @@ These sales are not separated by quarter, but rather the 4 largest and lowest do
 ```{r}
 model_big_misses_full <- assessment_pin %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  left_join(
+    training_data %>%
+      filter(sv_is_outlier == FALSE) %>%
+      select(meta_pin, meta_sale_price, meta_sale_date),
+    by = "meta_pin"
+  ) %>%
   filter(
     meta_triad_code == run_triad_code,
     !is.na(sale_recent_1_price),
@@ -1272,12 +1278,12 @@ model_big_misses_full <- assessment_pin %>%
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
     NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
-    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
-    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
+    `Sale Date` = meta_sale_date,
+    `Sale Price` = meta_sale_price,
     `Est. FMV` = pred_pin_final_fmv_round
   ) %>%
   mutate(
-    Difference = (`Est. FMV` - `Sale 1 Price`),
+    Difference = (`Est. FMV` - `Sale Price`),
     .by = Town
   ) %>%
   group_by(Town) %>%
@@ -1306,14 +1312,16 @@ model_big_misses_full %>%
         list(
           className = "dt-right",
           targets = c(
-            "Bldg Sqft", "Sale 1 Price", "Sale 1 Date",
-            "Sale 2 Price", "Sale 2 Date",
-            "Est. FMV", "Difference"
+            "Bldg Sqft",
+            "Sale Price",
+            "Sale Date",
+            "Est. FMV",
+            "Difference"
           )
         ),
         list(
           className = "dt-nowrap",
-          targets = c("Sale 1 Date", "Sale 2 Date")
+          targets = c("Sale Date")
         )
       )
     )
