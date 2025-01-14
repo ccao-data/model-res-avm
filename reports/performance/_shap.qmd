@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _shap_setup_script}
+source("../_setup.R")
+```
 
 # SHAP Values
 
