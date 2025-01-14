@@ -24,7 +24,7 @@ params:
   year: "2025"
 ---
 
-```{r _setup}
+```{r _setup_script}
 source("../_setup.R")
 ```
 

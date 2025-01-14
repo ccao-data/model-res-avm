@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _outcomes_setup_script}
+source("../_setup.R")
+```
 
 # Outcomes
 
