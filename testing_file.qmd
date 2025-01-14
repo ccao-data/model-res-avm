@@ -55,7 +55,6 @@ Previous iterations of this test demonstrated that the `training data` has impla
 numeric <- training_data %>%
   select(where(is.numeric))
 
-# Create histograms for all numeric variables with light blue fill
 plots <- imap(numeric, ~ ggplot(training_data, aes(x = .data[[.y]])) +
   geom_histogram(bins = 30, fill = "lightblue") +
   labs(
@@ -64,7 +63,6 @@ plots <- imap(numeric, ~ ggplot(training_data, aes(x = .data[[.y]])) +
     y = "Frequency"
   ) +
   theme_minimal())
-
 ```
 
 ::: {.panel-tabset}
@@ -128,7 +126,7 @@ assessment_card %>%
 
 # Largest and Smallest Differences Between FMV and any Sale Price
 
-Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be 
+Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be outliers or have issues in the training data.
 
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
@@ -206,7 +204,7 @@ model_big_misses_assessment %>%
       bins = c(-Inf, 0, Inf), # Break at 0
       domain = model_big_misses_assessment$Difference,
       na.color = "transparent"
-    )(Difference), # Apply inline palette to Difference
+    )(Difference),
     popup = ~ paste0(
       "<strong>Town:</strong> ", Town, "<br>",
       "<strong>PIN:</strong> ", PIN, "<br>",
@@ -221,8 +219,8 @@ model_big_misses_assessment %>%
     )
   ) %>%
   addLegend(
-    colors = c("red", "green"), # Colors for legend
-    labels = c("Negative", "Positive"), # Labels for bins
+    colors = c("red", "green"),
+    labels = c("Negative", "Positive"),
     opacity = 0.7,
     title = "Difference",
     position = "bottomright"
