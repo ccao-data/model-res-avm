@@ -85,7 +85,7 @@ Buildings with large estimated `FMVs` were spot checked to ensure that they repr
 
 ::: {.panel-tabset}
 
-##  10 Largest `char_bldg_sf` Properties Per Township
+##  Largest `char_bldg_sf` Properties Per Township
 
 ```{r}
 assessment_pin %>%
@@ -143,7 +143,7 @@ assessment_card %>%
     "17062000841001", "17062000841002", "11181100020000", "12133010680000",
     "14322140240000", "05211000140000", "20142150160000"
   )) %>%
-  datatable(options = list(scrollY = "400px", paging = FALSE))
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
 # Largest and Smallest Differences Between FMV and any Sale Price
@@ -255,6 +255,9 @@ model_big_misses_assessment %>%
   )
 ```
 
+:::
+
+# Distribution of `pred_pin_initial_fmv`
 ```{r}
 plots <- assessment_pin %>%
   filter(meta_triad_code == "2") %>%
@@ -277,7 +280,38 @@ plots <- assessment_pin %>%
 
 ```{r _fmv_plots, results='asis'}
 iwalk(plots, ~ {
-  cat("##", .y, "\n\n")
+  cat("###", .y, "\n\n")
+  print(.x)
+  cat("\n\n")
+})
+```
+
+:::
+
+# Distribution of `meta_sale_price`
+```{r}
+plots <- training_data %>%
+  filter(meta_triad_code == "2") %>%
+  group_by(township_name) %>%
+  group_split() %>%
+  set_names(map_chr(., ~ unique(.x$township_name))) %>%
+  map(~ ggplot(.x, aes(x = meta_sale_price)) +
+    geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
+    labs(
+      title = paste("Distribution of Sale Price for",
+                    unique(.x$township_name)),
+      x = "meta_sale_price",
+      y = "Frequency"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5)))
+```
+
+::: {.panel-tabset}
+
+```{r _sale_plots, results='asis'}
+iwalk(plots, ~ {
+  cat("###", .y, "\n\n")
   print(.x)
   cat("\n\n")
 })
