@@ -91,7 +91,7 @@ assessment_pin %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, scales::dollar(pred_pin_final_fmv), township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
@@ -106,7 +106,7 @@ assessment_pin %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, scales::dollar(pred_pin_final_fmv), township_name, char_total_bldg_sf, char_yrblt) %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
@@ -165,6 +165,7 @@ model_big_misses_assessment <- assessment_pin %>%
 
 model_big_misses_assessment %>%
   select(-c("loc_longitude", "loc_latitude")) %>%
+  mutate(Difference = scales::dollar(Difference)) %>%
   datatable(
     rownames = FALSE,
     options = list(
