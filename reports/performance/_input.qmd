@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _input_setup_script}
+source("../_setup.R")
+```
 
 # Data and Processing
 

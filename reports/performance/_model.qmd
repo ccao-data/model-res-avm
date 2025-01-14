@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _model_setup_script}
+source("../_setup.R")
+```
 
 # Model
 
