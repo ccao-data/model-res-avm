@@ -20,11 +20,13 @@ knitr:
     out.width: "100%"
 editor: source
 params:
-  run_id: "2024-03-17-stupefied-maya"
-  year: "2024"
+  run_id: "2025-01-10-serene-boni"
+  year: "2025"
 ---
 
-{{< include ../_setup.qmd >}}
+```{r _setup}
+source("../_setup.R")
+```
 
 {{< include _model.qmd >}}
 
@@ -36,7 +38,7 @@ params:
 
 {{< include _input.qmd >}}
 
-```{r, results='asis', echo=FALSE}
+```{r _shap, results='asis'}
 # Dynamically render shap code based on whether they are enabled for model run
 # https://www.harveyl888.com/post/2022-05-12-knit_child_quarto/
 if (shap_exists) {
@@ -45,7 +47,7 @@ if (shap_exists) {
 }
 ```
 
-```{r, results='asis', echo=FALSE}
+```{r _comp, results='asis'}
 if (comp_exists) {
   comp_qmd <- knitr::knit_child("_comp.qmd", quiet = TRUE)
   cat(comp_qmd, sep = "\n")
