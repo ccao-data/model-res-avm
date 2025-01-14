@@ -320,7 +320,7 @@ iwalk(plots, ~ {
 
 # Scatterplot of FMV & Sale Price
 
-Here we look at three types of sales which may be outliers. The first are the most expensive 20 sales in each township. The second are the most expensive 20 sales in each township based on price per square foot. The third are the least expensive 20 sales in each township based on price per square foot.
+Here we look at three types of sales which may be outliers. `Top sales` are the most expensive 20 sales in each township. `Highest ratios` are the most expensive 20 sales in each township based on price per square foot. `Lowest Ratios` are the least expensive 20 sales in each township based on price per square foot.
 
 ```{r}
 test <- assessment_pin %>%
