@@ -29,6 +29,7 @@ library(tidyr)
 
 ```{r}
 # model_fetch_run("2025-01-10-serene-boni", "2025")
+setwd("~/model-res-avm")
 training_data <- read_parquet("input/training_data.parquet")
 
 training_data <- training_data %>%
@@ -90,9 +91,18 @@ assessment_pin %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:10) %>%
   ungroup() %>%
-  mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, scales::dollar(pred_pin_final_fmv), township_name, char_total_bldg_sf, char_yrblt) %>%
+  mutate(fmv = scales::dollar(pred_pin_final_fmv)) %>%
+  select(
+    meta_pin,
+    meta_class,
+    meta_cards = meta_pin_num_cards,
+    fmv,
+    township_name,
+    char_total_bldg_sf,
+    char_yrblt
+  ) %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
+
 ```
 
 ## Largest pred_pin_final_fmv Properties Per Township
@@ -104,9 +114,15 @@ assessment_pin %>%
   arrange(desc(pred_pin_final_fmv)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:10) %>%
+  mutate(fmv = scales::dollar(pred_pin_final_fmv)) %>%
   ungroup() %>%
-  mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, scales::dollar(pred_pin_final_fmv), township_name, char_total_bldg_sf, char_yrblt) %>%
+  select(meta_pin,
+         meta_class,
+         meta_cards = meta_pin_num_cards,
+         fmv,
+         township_name,
+         char_total_bldg_sf,
+         char_yrblt) %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
@@ -126,7 +142,7 @@ assessment_card %>%
 
 # Largest and Smallest Differences Between FMV and any Sale Price
 
-Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be outliers or have issues in the training data.
+Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be outliers or have characteristic errors in the training data.
 
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
@@ -188,7 +204,7 @@ model_big_misses_assessment %>%
 ```
 ## Leaflet map of Potential Misses
 
-This helps to see if any of the misses are spatially concentrated. There are a lot of absolute value differences in Winnetka, and a cluster of misses near Park Ridge.
+This helps to see if any of the misses are spatially concentrated. There are high absolute value differences in Winnetka, and a cluster of misses near Park Ridge.
 
 ```{r}
 model_big_misses_assessment %>%
@@ -233,11 +249,12 @@ plots <- assessment_pin %>%
   filter(meta_triad_code == "2") %>%
   group_by(township_name) %>%
   group_split() %>%
-  set_names(map_chr(., ~ unique(.x$township_name))) %>% # Assign names to the list based on township
+  set_names(map_chr(., ~ unique(.x$township_name))) %>%
   map(~ ggplot(.x, aes(x = pred_pin_initial_fmv)) +
     geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
     labs(
-      title = paste("Distribution of Initial FMV for", unique(.x$township_name)),
+      title = paste("Distribution of Initial FMV for",
+                    unique(.x$township_name)),
       x = "Initial FMV",
       y = "Frequency"
     ) +
@@ -286,7 +303,8 @@ subset_lowest_ratios <- test %>%
   mutate(type = "lowest_ratios")
 
 # Combine the subsets into one data frame
-subset <- bind_rows(subset_top_sales, subset_highest_ratios, subset_lowest_ratios) %>%
+subset <- bind_rows(subset_top_sales,
+                    subset_highest_ratios, subset_lowest_ratios) %>%
   select(
     township_name, meta_pin, sale_recent_1_price, char_bldg_sf,
     price_per_sq_ft, type, pred_pin_final_fmv_round
@@ -300,7 +318,8 @@ scatterplot <- subset %>%
       "<br>Meta PIN: ", meta_pin,
       "<br>Sale Price: $", scales::comma(sale_recent_1_price),
       "<br>Predicted Final FMV: $", scales::comma(pred_pin_final_fmv_round),
-      "<br>Difference: $", scales::comma(pred_pin_final_fmv_round - sale_recent_1_price),
+      "<br>Difference: $",
+      scales::comma(pred_pin_final_fmv_round - sale_recent_1_price),
       "<br>Building SF: ", scales::comma(char_bldg_sf),
       "<br>Price/Sq Ft: $", scales::comma(price_per_sq_ft)
     )
