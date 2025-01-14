@@ -456,7 +456,7 @@ training_data_with_alloc <- training_data_full %>%
       meta_sale_price_allocated,
       meta_sale_price
     )
-  )
+  ) %>% filter(meta_sale_price != 0)
 
 training_data <- training_data_with_alloc %>%
   select(-meta_sale_price_allocated, -meta_card_id)
