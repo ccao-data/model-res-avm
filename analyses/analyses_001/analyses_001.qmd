@@ -132,20 +132,6 @@ assessment_pin %>%
 
 :::
 
-# Pin Tests
-
-Below are pins which are flagged for review from previous QC work. 
-
-```{r}
-assessment_card %>%
-  filter(meta_pin %in% c(
-    "17102060351010", "16143120330000", "11312110190000", "24072010490000",
-    "17062000841001", "17062000841002", "11181100020000", "12133010680000",
-    "14322140240000", "05211000140000", "20142150160000"
-  )) %>%
-  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
-```
-
 # Largest and Smallest Differences Between FMV and any Sale Price
 
 Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be outliers or have characteristic errors in the training data.
@@ -461,3 +447,17 @@ interactive_scatterplot
 ```
 
 :::
+
+# Pin Tests
+
+Below are pins which are flagged for review from previous QC work. 
+
+```{r}
+assessment_card %>%
+  filter(meta_pin %in% c(
+    "17102060351010", "16143120330000", "11312110190000", "24072010490000",
+    "17062000841001", "17062000841002", "11181100020000", "12133010680000",
+    "14322140240000", "05211000140000", "20142150160000"
+  )) %>%
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
+```
