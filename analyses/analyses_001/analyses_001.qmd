@@ -117,6 +117,32 @@ training_data %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
+## Largest `meta_sale_price` in Training Data
+
+```{r}
+training_data %>%
+  filter(meta_triad_code == "2") %>%
+  group_by(meta_township_code) %>%
+  arrange(desc(meta_sale_price)) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  slice(1:10) %>%
+  ungroup() %>%
+  mutate(
+    meta_sale_price = scales::dollar(meta_sale_price)
+  ) %>%
+  select(
+    meta_pin,
+    meta_class,
+    meta_cards = meta_pin_num_cards,
+    meta_sale_price,
+    township_name,
+    char_bldg_sf,
+    char_yrblt
+  ) %>%
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
+
+```
+
 ## Largest `pred_pin_final_fmv` Properties Per Township
 
 ```{r}
