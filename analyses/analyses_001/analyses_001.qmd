@@ -142,7 +142,7 @@ assessment_pin %>%
 
 :::
 
-# Largest and Smallest Differences Between FMV and any Sale Price
+# Largest Absolute Value Differences Between FMV and any Sale Price
 
 Here we look at the largest misses across all sales in the training data grouped by township. These are sales which may be outliers or have characteristic errors in the training data.
 
@@ -438,14 +438,14 @@ training_data %>%
 scatterplot <- assessment_pin %>%
   filter(township_name == "Win") %>%
   ggplot(aes(
-    x = sale_recent_1_price,
+    x = meta_sale_price,
     y = pred_pin_final_fmv,
     text = paste(
       "Township: ", township_name,
       "<br>Meta PIN: ", meta_pin,
-      "<br>Sale Price: $", comma(sale_recent_1_price),
+      "<br>Sale Price: $", comma(meta_sale_price),
       "<br>Predicted Final FMV: $", comma(pred_pin_final_fmv_round),
-      "<br>Difference: $", comma(pred_pin_final_fmv_round - sale_recent_1_price)
+      "<br>Difference: $", comma(pred_pin_final_fmv_round - meta_sale_price)
     )
   )) +
   geom_point(size = 1, alpha = 0.7) +
