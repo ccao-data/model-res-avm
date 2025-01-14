@@ -436,7 +436,7 @@ training_data %>%
 
 ```{r}
 scatterplot <- assessment_pin %>%
-  filter(township_name == "Win") %>%
+  filter(township_name == "Barrington") %>%
   ggplot(aes(
     x = meta_sale_price,
     y = pred_pin_final_fmv,
