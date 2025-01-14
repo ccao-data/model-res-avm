@@ -340,7 +340,7 @@ param_tbl_fmt <- param_tbl %>%
     meta = "Meta", other = "Other", ccao = "Other", shp = "Parcel Shape"
   )) %>%
   pivot_wider(
-    id_cols = `feature_name`:`category`,
+    id_cols = feature_name:type,
     names_from = row,
     values_from = c(var_code, var_value)
   ) %>%
@@ -370,6 +370,7 @@ param_tbl_fmt %>%
     "Variable Name" = "variable_name",
     "Description" = "description",
     "Category" = "category",
+    "Type" = "type",
     "Possible Values (Encoded)" = "possible_codes",
     "Possible Values (Semantic)" = "possible_values",
   ) %>%
