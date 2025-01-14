@@ -5,13 +5,11 @@
 This directory contains Quarto diagnostic documents for the residential model. These documents are built and saved automatically for each model run. They are intended to help refine, examine, and diagnose *individual models*. Cross-model comparison is performed via separate Tableau dashboards. The two document types currently available are:
 
 1. `performance.qmd` - Overall look at model performance containing ratio statistics, diagnostic visualizations, debugging/quality control tables, etc.
-2. `pin.qmd` - Detailed diagnostic document for a *single* PIN
+2. `challenge_groups.qmd` - Report on specific, hard-to-model properties such as prorated PINs, multi-card properties, etc.
 
 ## Structure
 
-The documents in this directory are **modularized** and separated by topic area. Documents prefixed with an underscore are considered **modules** and can be interpolated into other documents using the Quarto [include shortcode](https://quarto.org/docs/authoring/includes.html).
-
-For example, `performance/_sales.qmd` builds only plots and tables related to the input sales data. It uses the shortcode `{{< include ../_setup.qmd >}}` on the first line to run `_setup.qmd`, which loads all necessary libraries and data dependencies.
+The documents in this directory are **modularized** and separated by topic area. Documents prefixed with an underscore are considered **modules** and can be interpolated into other documents using the Quarto [include shortcode](https://quarto.org/docs/authoring/includes.html). For example, `performance/_sales.qmd` builds only plots and tables related to the input sales data.
 
 Main documents do not have an underscore prefix. They combine metadata with multiple modules to generate a single, large report. For example, `performance/performance.qmd` combines modules and renders to a single HTML document with a table of contents.
 
@@ -26,6 +24,6 @@ Be sure to load any new data you used in the module in `_setup.qmd`, and add any
 
 ### Adding a New Module
 
-To add a new module, create a new Quarto document and prefix its filename with an underscore. Be sure to include the setup shortcode (`{{< include ../_setup.qmd >}}`) on the first line of the new file.
+To add a new module, create a new Quarto document and prefix its filename with an underscore. Be sure to call the setup script in a chunk at the beginning of the file. This script loads all data, initializes some useful objects, and generally sets up the document environment.
 
 Once your module is finalized, check that it renders independently using the **Render** button at the top of the document. If it succeeds, include it in a main document using an [include shortcode](https://quarto.org/docs/authoring/includes.html).
