@@ -33,6 +33,7 @@ setwd("~/model-res-avm")
 training_data <- read_parquet("input/training_data.parquet")
 
 training_data <- training_data %>%
+  # Remove sales from training data which we don't use
   filter(ind_pin_is_multicard == "FALSE") %>%
   filter(sv_is_outlier == "FALSE") %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
@@ -41,7 +42,8 @@ training_data <- training_data %>%
 assessment_pin <- read_parquet(
   "output/assessment_pin/model_assessment_pin.parquet"
 ) %>%
-  mutate(township_name = ccao::town_convert(meta_township_code))
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  left_join(training_data %>% select(meta_pin, meta_sale_price, meta_sale_date, char_bldg_sf), by = "meta_pin")
 
 assessment_card <- read_parquet(
   "output/assessment_card/model_assessment_card.parquet"
@@ -95,12 +97,16 @@ assessment_pin %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:10) %>%
   ungroup() %>%
-  mutate(fmv = scales::dollar(pred_pin_final_fmv)) %>%
+  mutate(
+    fmv = scales::dollar(pred_pin_final_fmv),
+    meta_sale_price = scales::dollar(meta_sale_price)
+  ) %>%
   select(
     meta_pin,
     meta_class,
     meta_cards = meta_pin_num_cards,
     fmv,
+    meta_sale_price,
     township_name,
     char_total_bldg_sf,
     char_yrblt
@@ -117,12 +123,16 @@ assessment_pin %>%
   arrange(desc(pred_pin_final_fmv)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:10) %>%
-  mutate(fmv = scales::dollar(pred_pin_final_fmv)) %>%
+  mutate(
+    fmv = scales::dollar(pred_pin_final_fmv),
+    meta_sale_price = scales::dollar(meta_sale_price)
+  ) %>%
   ungroup() %>%
   select(meta_pin,
     meta_class,
     meta_cards = meta_pin_num_cards,
     fmv,
+    meta_sale_price,
     township_name,
     char_total_bldg_sf,
     char_yrblt
@@ -144,25 +154,32 @@ Here we look at the largest misses across all sales in the training data grouped
 model_big_misses_assessment <- assessment_pin %>%
   filter(
     meta_triad_code == "2",
-    !is.na(sale_recent_1_price), !is.na(pred_pin_final_fmv_round)
+    !is.na(pred_pin_final_fmv_round),
+    flag_pin_is_multicard == FALSE
   ) %>%
   select(
-    Town = township_name, PIN = meta_pin, Class = meta_class,
-    NBHD = meta_nbhd_code, `Bldg Sqft` = char_total_bldg_sf, Yrblt = char_yrblt,
-    `Sale 2 Date` = sale_recent_2_date, `Sale 2 Price` = sale_recent_2_price,
-    `Sale 1 Date` = sale_recent_1_date, `Sale 1 Price` = sale_recent_1_price,
-    `Est. FMV` = pred_pin_final_fmv_round, loc_longitude, loc_latitude
+    Town = township_name,
+    PIN = meta_pin,
+    Class = meta_class,
+    NBHD = meta_nbhd_code,
+    `Bldg Sqft` = char_total_bldg_sf,
+    Yrblt = char_yrblt,
+    `Sale Date` = meta_sale_date,
+    `Sale Price` = meta_sale_price,
+    `Est. FMV` = pred_pin_final_fmv_round,
+    loc_longitude,
+    loc_latitude
   ) %>%
   mutate(
-    Difference = (`Est. FMV` - `Sale 1 Price`),
-    .by = Town
+    Difference = (`Est. FMV` - `Sale Price`)
   ) %>%
   group_by(Town) %>%
   summarise(
     max_min_rows = list(bind_rows(
       slice_max(cur_data(), Difference, n = 4),
       slice_min(cur_data(), Difference, n = 4)
-    ))
+    )),
+    .groups = "drop"
   ) %>%
   unnest(max_min_rows) %>%
   arrange(Town, -Difference) %>%
@@ -185,14 +202,9 @@ model_big_misses_assessment %>%
         list(
           className = "dt-right",
           targets = c(
-            "Bldg Sqft", "Sale 1 Price", "Sale 1 Date",
-            "Sale 2 Price", "Sale 2 Date",
-            "Est. FMV", "Difference"
+            "Bldg Sqft", "Sale Price",
+            "Sale Date", "Est. FMV", "Difference"
           )
-        ),
-        list(
-          className = "dt-nowrap",
-          targets = c("Sale 1 Date", "Sale 2 Date")
         )
       )
     )
@@ -226,8 +238,8 @@ model_big_misses_assessment %>%
       "<strong>Neighborhood:</strong> ", NBHD, "<br>",
       "<strong>Building Sqft:</strong> ", `Bldg Sqft`, "<br>",
       "<strong>Year Built:</strong> ", Yrblt, "<br>",
-      "<strong>Sale 1 Date:</strong> ", `Sale 1 Date`, "<br>",
-      "<strong>Sale 1 Price:</strong> ", `Sale 1 Price`, "<br>",
+      "<strong>Sale Date:</strong> ", `Sale Date`, "<br>",
+      "<strong>Sale Price:</strong> ", `Sale Price`, "<br>",
       "<strong>Estimated FMV:</strong> ", `Est. FMV`, "<br>",
       "<strong>Difference:</strong> ", scales::dollar(Difference)
     )
@@ -315,25 +327,24 @@ Here we look at three types of sales which may be outliers. `Top sales` are the 
 
 ```{r}
 test <- assessment_pin %>%
-  filter(flag_pin_is_multicard == "FALSE") %>%
-  left_join(training_data %>% select(meta_pin, char_bldg_sf), by = "meta_pin")
+  filter(flag_pin_is_multicard == "FALSE")
 
 subset_top_sales <- test %>%
-  mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
+  mutate(price_per_sq_ft = meta_sale_price / char_bldg_sf) %>%
   group_by(township_name) %>%
-  slice_max(sale_recent_1_price, n = 20) %>%
+  slice_max(meta_sale_price, n = 20) %>%
   mutate(type = "top_sales")
 
 subset_highest_ratios <- test %>%
   filter(!is.na(char_bldg_sf)) %>%
-  mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
+  mutate(price_per_sq_ft = meta_sale_price / char_bldg_sf) %>%
   group_by(township_name) %>%
   slice_max(price_per_sq_ft, n = 20) %>%
   mutate(type = "highest_ratios")
 
 subset_lowest_ratios <- test %>%
   filter(!is.na(char_bldg_sf)) %>%
-  mutate(price_per_sq_ft = sale_recent_1_price / char_bldg_sf) %>%
+  mutate(price_per_sq_ft = meta_sale_price / char_bldg_sf) %>%
   group_by(township_name) %>%
   slice_min(price_per_sq_ft, n = 20) %>%
   mutate(type = "lowest_ratios")
@@ -344,20 +355,20 @@ subset <- bind_rows(
   subset_highest_ratios, subset_lowest_ratios
 ) %>%
   select(
-    township_name, meta_pin, sale_recent_1_price, char_bldg_sf,
+    township_name, meta_pin, meta_sale_price, char_bldg_sf,
     price_per_sq_ft, type, pred_pin_final_fmv_round
   )
 
 scatterplot <- subset %>%
   ggplot(aes(
-    x = sale_recent_1_price, y = pred_pin_final_fmv_round,
+    x = meta_sale_price, y = pred_pin_final_fmv_round,
     color = type, text = paste(
       "Township: ", township_name,
       "<br>Meta PIN: ", meta_pin,
-      "<br>Sale Price: $", scales::comma(sale_recent_1_price),
+      "<br>Sale Price: $", scales::comma(meta_sale_price),
       "<br>Predicted Final FMV: $", scales::comma(pred_pin_final_fmv_round),
       "<br>Difference: $",
-      scales::comma(pred_pin_final_fmv_round - sale_recent_1_price),
+      scales::comma(pred_pin_final_fmv_round - meta_sale_price),
       "<br>Building SF: ", scales::comma(char_bldg_sf),
       "<br>Price/Sq Ft: $", scales::comma(price_per_sq_ft)
     )
