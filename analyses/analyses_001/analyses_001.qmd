@@ -43,6 +43,11 @@ assessment_pin <- read_parquet(
   "output/assessment_pin/model_assessment_pin.parquet"
 ) %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  # The assessment pin join is 1:many (1 assessment pin to many sales)
+  # But the QC is mostly comparing the relationship between the two files
+  # so in my opinion that makes sense (for example distribution of FMVs to sale prices).
+  # We can choose to filter to distinct pins in the training data, but that would
+  # mean we may not identify earlier sales of the same property.
   left_join(training_data %>% select(meta_pin, meta_sale_price, meta_sale_date, char_bldg_sf), by = "meta_pin")
 
 assessment_card <- read_parquet(
@@ -79,7 +84,7 @@ iwalk(plots, ~ {
 ```
 :::
 
-# Possible Outliers in Training Data
+# Possible Outliers
 
 Below are properties which may be outliers in each township. Square footage is one of our key indicators, so erroneous values would skew our `FMVs.`
 
@@ -87,28 +92,26 @@ Buildings with large estimated `FMVs` were spot checked to ensure that they repr
 
 ::: {.panel-tabset}
 
-##  Largest `char_bldg_sf` Properties Per Township
+##  Largest `char_bldg_sf` Properties Per Township in Training Data
 
 ```{r}
-assessment_pin %>%
+training_data %>%
   filter(meta_triad_code == "2") %>%
   group_by(meta_township_code) %>%
-  arrange(desc(char_total_bldg_sf)) %>%
+  arrange(desc(char_bldg_sf)) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(
-    fmv = scales::dollar(pred_pin_final_fmv),
     meta_sale_price = scales::dollar(meta_sale_price)
   ) %>%
   select(
     meta_pin,
     meta_class,
     meta_cards = meta_pin_num_cards,
-    fmv,
     meta_sale_price,
     township_name,
-    char_total_bldg_sf,
+    char_bldg_sf,
     char_yrblt
   ) %>%
   datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
@@ -255,7 +258,11 @@ model_big_misses_assessment %>%
 
 :::
 
-# Distribution of `pred_pin_initial_fmv`
+# Distribution of `pred_pin_initial_fmv` and `meta_sale_price`
+
+These should be skewed since the predicted FMV is for 2025, while sale prices are over an extended period of time.
+
+::: {.panel-tabset}
 
 ```{r}
 plots <- assessment_pin %>%
@@ -263,58 +270,31 @@ plots <- assessment_pin %>%
   group_by(township_name) %>%
   group_split() %>%
   set_names(map_chr(., ~ unique(.x$township_name))) %>%
-  map(~ ggplot(.x, aes(x = pred_pin_initial_fmv)) +
-    geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
-    labs(
-      title = paste(
-        "Distribution of Initial FMV for",
-        unique(.x$township_name)
-      ),
-      x = "Initial FMV",
-      y = "Frequency"
-    ) +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5)))
+  map(~ {
+    # Calculate binwidth for 30 bins
+    binwidth_fmv <- (max(.x$pred_pin_initial_fmv, na.rm = TRUE) - min(.x$pred_pin_initial_fmv, na.rm = TRUE)) / 30
+    binwidth_sale <- (max(.x$meta_sale_price, na.rm = TRUE) - min(.x$meta_sale_price, na.rm = TRUE)) / 30
+
+    ggplot(.x) +
+      geom_histogram(aes(x = pred_pin_initial_fmv, y = ..density.., fill = "Initial FMV"),
+        binwidth = binwidth_fmv, alpha = 0.2, color = "black"
+      ) +
+      geom_histogram(aes(x = meta_sale_price, y = ..density.., fill = "Sale Price"),
+        binwidth = binwidth_sale, alpha = 0.2, color = "black"
+      ) +
+      labs(
+        x = "Value",
+        y = "Density"
+      ) +
+      scale_fill_manual(values = c("Initial FMV" = "red", "Sale Price" = "yellow")) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5))
+  })
 ```
 
-::: {.panel-tabset}
-
-```{r _fmv_plots, results='asis'}
+```{r _fmv_plots, results='asis', warning=FALSE}
 iwalk(plots, ~ {
-  cat("###", .y, "\n\n")
-  print(.x)
-  cat("\n\n")
-})
-```
-
-:::
-
-# Distribution of `meta_sale_price`
-```{r}
-plots <- training_data %>%
-  filter(meta_triad_code == "2") %>%
-  group_by(township_name) %>%
-  group_split() %>%
-  set_names(map_chr(., ~ unique(.x$township_name))) %>%
-  map(~ ggplot(.x, aes(x = meta_sale_price)) +
-    geom_histogram(binwidth = 50000, fill = "skyblue", color = "black") +
-    labs(
-      title = paste(
-        "Distribution of Sale Price for",
-        unique(.x$township_name)
-      ),
-      x = "meta_sale_price",
-      y = "Frequency"
-    ) +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5)))
-```
-
-::: {.panel-tabset}
-
-```{r _sale_plots, results='asis'}
-iwalk(plots, ~ {
-  cat("###", .y, "\n\n")
+  cat("##", .y, "\n\n")
   print(.x)
   cat("\n\n")
 })
