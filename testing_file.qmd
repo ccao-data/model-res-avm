@@ -1,5 +1,5 @@
 ---
-title: "Quality Control"
+title: "Quality Control for 2025-01-10-serene-boni"
 execute:
   echo: false
   warning: false
@@ -26,77 +26,28 @@ library(tidyr)
 
 
 ```{r}
-training_data <- read_parquet("/home/damajor/model-res-avm/input/training_data.parquet") 
+# model_fetch_run("2025-01-10-serene-boni", "2025")
+training_data <- read_parquet("input/training_data.parquet")
 
 training_data <- training_data %>%
-  filter(ind_pin_is_multicard == 'FALSE') %>%
-  filter(sv_is_outlier == 'FALSE') %>%
+  filter(ind_pin_is_multicard == "FALSE") %>%
+  filter(sv_is_outlier == "FALSE") %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   arrange(meta_sale_date)
 
 assessment_pin <- read_parquet(
-  "/home/damajor/model-res-avm/output/assessment_pin/model_assessment_pin.parquet") %>%
+  "output/assessment_pin/model_assessment_pin.parquet"
+) %>%
   mutate(township_name = ccao::town_convert(meta_township_code))
 
 assessment_card <- read_parquet(
-  "/home/damajor/model-res-avm/output/assessment_card/model_assessment_card.parquet")
-```
-
-# Barrington Test
-
-Due to a low R2 and high RMSE in the linear model, there were suspected bad sales in Barrington. A closer look finds some sales which are on the high-end, but looking at individual PINs and the estimated FMV does not provide evidence of sales errors.
-
-## Sales in Barrington
-```{r}
-training_data %>%
-  filter(meta_township_name == "Barrington") %>%
-  ggplot(aes(x = meta_sale_price)) +
-  geom_histogram(binwidth = 100000, color = "black", fill = "skyblue") +
-  labs(
-    title = "Histogram of Sale Prices in Barrington",
-    x = "Sale Price",
-    y = "Frequency"
-  ) +
-  theme_minimal()
-```
-
-## 10 Largest Barrington Sales
-
-```{r}
-training_data %>%
-  filter(meta_township_name == "Barrington") %>%
-  arrange(desc(meta_sale_price)) %>%
-  slice(1:10) %>%
-  select(meta_sale_price, meta_sale_document_num, meta_pin) %>%
-  datatable(options = list(scrollY = "400px", paging = FALSE))
-```
-
-
-
-## Barrington Scatterplot
-
-```{r}
-# Filter the data
-test_3 <- assessment_pin %>%
-  filter(township_name == "Barrington")
-```
-
-
-```{r, warning = FALSE}
-# Create the scatterplot
-ggplot(test_3, aes(x = sale_recent_1_price, y = pred_pin_final_fmv)) +
-  geom_point() +
-  labs(
-    title = "Scatterplot of Sale Price vs Certified Total",
-    x = "Sale Price",
-    y = "Certified Total"
-  ) +
-  theme_minimal()
+  "output/assessment_card/model_assessment_card.parquet"
+)
 ```
 
 # Distribution of Characteristics
 
-Previous iterations of this test demonstrated that the `training data` has implausible (60 bedrooms) or impossible values (-2 bathrooms). Because of this, we implemented filtering in the ingest stage. The rendered result reflects these changes.
+Previous iterations of this test demonstrated that the `training data` has implausible (60 bedrooms) or impossible values (-2 bathrooms). Because of this, we implemented filtering in the ingest stage. The rendered result reflect the filtered data, as that is completed in the ingest stage before the initial dvc push. 
 
 ```{r}
 # Select numeric columns
@@ -125,7 +76,7 @@ iwalk(plots, ~ {
 ```
 :::
 
-# Outliers in Training Data
+# Possible Outliers in Training Data
 
 ##  10 Largest char_bldg_sf Properties Per Township
 
@@ -138,8 +89,9 @@ assessment_pin %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, meta_class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
-  datatable(options = list(scrollY = "400px", paging = FALSE))
+  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
+
 ```
 
 ## Largest pred_pin_final_fmv Properties Per Township
@@ -153,8 +105,8 @@ assessment_pin %>%
   slice(1:10) %>%
   ungroup() %>%
   mutate(pred_pin_final_fmv = floor(pred_pin_final_fmv)) %>%
-  select(meta_pin, meta_class, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
-  datatable(options = list(scrollY = "400px", paging = FALSE))
+  select(meta_pin, meta_class, meta_cards = meta_pin_num_cards, pred_pin_final_fmv, township_name, char_total_bldg_sf, char_yrblt) %>%
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
 # Pin Tests
@@ -169,8 +121,10 @@ assessment_card %>%
   datatable(options = list(scrollY = "400px", paging = FALSE))
 ```
 
+# Largest and Smallest Differences Between FMV and any Sale Price
 
-# Largest and Smallest Differences Between FMV and any Sale Price (Assessment Pin)
+Here we look at the largest misses across all sales in the training data grouped by township.
+
 ```{r}
 model_big_misses_assessment <- assessment_pin %>%
   filter(
@@ -256,10 +210,10 @@ iwalk(plots, ~ {
 })
 ```
 :::
+
 # Scatterplot of FMV & Sale Price
 
-Here we look at three types of sales which may be outliers. The first is the most expensive 20 sales in each township. The second is the most expensive 20 sales in each township based on price per square foot. The third is the least expensive 20 sales in each township based on price per square foot.
-
+Here we look at three types of sales which may be outliers. The first are the most expensive 20 sales in each township. The second are the most expensive 20 sales in each township based on price per square foot. The third are the least expensive 20 sales in each township based on price per square foot.
 
 ```{r}
 test <- assessment_pin %>%
@@ -288,20 +242,24 @@ subset_lowest_ratios <- test %>%
 
 # Combine the subsets into one data frame
 subset <- bind_rows(subset_top_sales, subset_highest_ratios, subset_lowest_ratios) %>%
-  select(township_name, meta_pin, sale_recent_1_price, char_bldg_sf,
-         price_per_sq_ft, type, pred_pin_final_fmv_round)
+  select(
+    township_name, meta_pin, sale_recent_1_price, char_bldg_sf,
+    price_per_sq_ft, type, pred_pin_final_fmv_round
+  )
 
 scatterplot <- subset %>%
-  ggplot(aes(x = sale_recent_1_price, y = pred_pin_final_fmv_round,
-             color = type, text = paste(
-    "Township: ", township_name,
-    "<br>Meta PIN: ", meta_pin,
-    "<br>Sale Price: $", scales::comma(sale_recent_1_price),
-    "<br>Predicted Final FMV: $", scales::comma(pred_pin_final_fmv_round),
-    "<br>Difference: $", scales::comma(pred_pin_final_fmv_round - sale_recent_1_price),
-    "<br>Building SF: ", scales::comma(char_bldg_sf),
-    "<br>Price/Sq Ft: $", scales::comma(price_per_sq_ft)
-  ))) +
+  ggplot(aes(
+    x = sale_recent_1_price, y = pred_pin_final_fmv_round,
+    color = type, text = paste(
+      "Township: ", township_name,
+      "<br>Meta PIN: ", meta_pin,
+      "<br>Sale Price: $", scales::comma(sale_recent_1_price),
+      "<br>Predicted Final FMV: $", scales::comma(pred_pin_final_fmv_round),
+      "<br>Difference: $", scales::comma(pred_pin_final_fmv_round - sale_recent_1_price),
+      "<br>Building SF: ", scales::comma(char_bldg_sf),
+      "<br>Price/Sq Ft: $", scales::comma(price_per_sq_ft)
+    )
+  )) +
   geom_point(size = 1, alpha = 0.7) +
   labs(
     x = "Sale Price",
@@ -317,5 +275,69 @@ interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text")
 
 # Display the interactive plot
 interactive_scatterplot
+```
+
+# Barrington Test
+
+Due to a low R2 and high RMSE in the linear model, there were suspected bad sales in Barrington. A closer look finds some sales which are on the high-end, but looking at individual PINs and the estimated FMV does not provide evidence of sales errors.
+
+## Sales in Barrington
+
+```{r}
+training_data %>%
+  filter(meta_township_name == "Barrington") %>%
+  ggplot(aes(x = meta_sale_price)) +
+  geom_histogram(binwidth = 100000, color = "black", fill = "skyblue") +
+  labs(
+    title = "Histogram of Sale Prices in Barrington",
+    x = "Sale Price",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+
+## 10 Largest Barrington Sales
+
+```{r}
+training_data %>%
+  filter(meta_township_name == "Barrington") %>%
+  arrange(desc(meta_sale_price)) %>%
+  slice(1:10) %>%
+  select(meta_sale_price, meta_sale_document_num, meta_pin) %>%
+  datatable(options = list(scrollY = "400px", paging = FALSE))
+```
+
+## Barrington Scatterplot
+
+```{r}
+scatterplot <- assessment_pin %>%
+  filter(township_name == "Win") %>%
+  ggplot(aes(
+    x = sale_recent_1_price, 
+    y = pred_pin_final_fmv,
+    text = paste(
+      "Township: ", township_name,
+      "<br>Meta PIN: ", meta_pin,
+      "<br>Sale Price: $", comma(sale_recent_1_price),
+      "<br>Predicted Final FMV: $", comma(pred_pin_final_fmv_round),
+      "<br>Difference: $", comma(pred_pin_final_fmv_round - sale_recent_1_price)
+    )
+  )) +
+  geom_point(size = 1, alpha = 0.7) +
+  labs(
+    title = "Scatterplot of Sale Price vs Certified Total",
+    x = "Sale Price",
+    y = "Predicted Final FMV (Rounded)"
+  ) +
+  theme_minimal() +
+  xlim(0, 10000000) +
+  ylim(0, 10000000)
+
+# Convert to interactive plotly object with tooltips
+interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text")
+
+# Display the interactive plot
+interactive_scatterplot
+
 ```
 
