@@ -295,11 +295,11 @@
       "Version": "1.3.0",
       "Source": "GitHub",
       "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "a5449b9717323de3c51ee1948e4431175d6ccda0",
-      "RemoteHost": "api.github.com",
+      "RemoteSha": "8b6f53e14c1732fcec5f6982fbc4bfb32f45f194",
       "Requirements": [
         "R",
         "assessr",
@@ -308,7 +308,7 @@
         "rlang",
         "tidyr"
       ],
-      "Hash": "c29ff9f60bde4f122b8fe0bb75f02e8c"
+      "Hash": "1663306aa228ded9892f07d65ec20db3"
     },
     "class": {
       "Package": "class",
@@ -914,11 +914,11 @@
       "Version": "0.0.6",
       "Source": "GitHub",
       "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "master",
-      "RemoteSha": "2720ad973c990ad64ac7e6bb632389ff9f2a2675",
-      "RemoteHost": "api.github.com",
+      "RemoteRef": "a4da9b371e6969fed0819e093182f8e144f1aecf",
+      "RemoteSha": "a4da9b371e6969fed0819e093182f8e144f1aecf",
       "Requirements": [
         "butcher",
         "dials",
@@ -931,7 +931,7 @@
         "tibble",
         "zip"
       ],
-      "Hash": "c3e596514cefa9e44744f6ae355d249d"
+      "Hash": "48fbac82c3680e978ded2c685e373016"
     },
     "listenv": {
       "Package": "listenv",
