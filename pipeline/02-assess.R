@@ -42,46 +42,36 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
 # fair-market value for each card
 
+
 # - - - - - - - - - - - - - - - - - - -
 # Combine sqft on multi card into one pin
 # - - - - - - - - - - - - - - - - - - -
 
-# df_assessment_data_test <- read_parquet(paths$input$assessment$local)
-#
-#
-# df_cleaned_multi_card <- df_assessment_data_test %>%
-#   filter(ind_pin_is_multicard) %>%
-#   group_by(meta_pin) %>%
-#   # Calculate total char_bldg_sqft per meta_pin
-#   mutate(total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)) %>%
-#   # Keep only the row with the maximum char_bldg_sqft
-#   slice_max(char_bldg_sf, with_ties = FALSE) %>%
-#   # Replace original char_bldg_sqft with the total
-#   mutate(char_bldg_sf = total_bldg_sf) %>%
-#   # Remove the intermediate column
-#   select(-total_bldg_sf) %>%
-#   ungroup()
-#
-# df_assessment_data_test <- df_assessment_data_test %>%
-#   filter(!ind_pin_is_multicard) %>%
-#   rbind(df_cleaned_multi_card)
-
-# - - - - - - - - - - - - - - - - - - -
-# Only take main (highest sqft) pin
-# - - - - - - - - - - - - - - - - - - -
 df_assessment_data_test <- read_parquet(paths$input$assessment$local)
 
-# Isolate multi-card rows, keeping only the one with the maximum sqft
+# - - - - - - - - - - - - - - - - - - -
+# Combine sqft on multi card into one pin
+# - - - - - - - - - - - - - - - - - - -
+
+df_assessment_data_test <- read_parquet(paths$input$assessment$local)
+
+
 df_cleaned_multi_card <- df_assessment_data_test %>%
   filter(ind_pin_is_multicard) %>%
   group_by(meta_pin) %>%
+  # Calculate total char_bldg_sqft per meta_pin
+  mutate(total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)) %>%
+  # Keep only the row with the maximum char_bldg_sqft
   slice_max(char_bldg_sf, with_ties = FALSE) %>%
+  # Replace original char_bldg_sqft with the total
+  mutate(char_bldg_sf = total_bldg_sf) %>%
+  # Remove the intermediate column
+  select(-total_bldg_sf) %>%
   ungroup()
 
-# Combine single-card rows with the filtered multi-card rows
 df_assessment_data_test <- df_assessment_data_test %>%
   filter(!ind_pin_is_multicard) %>%
-  bind_rows(df_cleaned_multi_card)
+  rbind(df_cleaned_multi_card)
 
 
 assessment_card_data_pred <- df_assessment_data_test %>%
@@ -374,7 +364,7 @@ assessment_card_data_merged %>%
     code_type = "long",
     as_factor = FALSE
   ) %>%
-  write_parquet("/home/miwagne/repos/model-res-avm2/model-res-avm/output/assessment_card/model_assessment_card_testing_single_card_nosf.parquet")
+  write_parquet("/home/miwagne/repos/model-res-avm2/model-res-avm/output/assessment_card/model_assessment_card_testing_rooms_baths.parquet")
 
 
 
@@ -619,7 +609,7 @@ assessment_pin_data_final %>%
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
   as_tibble() %>%
-  write_parquet("/home/miwagne/repos/model-res-avm2/model-res-avm/output/assessment_pin/model_assessment_pin_testing_single_card_no_sf.parquet")
+  write_parquet("/home/miwagne/repos/model-res-avm2/model-res-avm/output/assessment_pin/model_assessment_pin_testing_rooms_bath.parquet")
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
