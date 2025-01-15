@@ -17,8 +17,8 @@ stages:
           data_year: '2023'
           working_year: '2025'
         input:
-          min_sale_year: '2015'
-          max_sale_year: '2023'
+          min_sale_year: '2016'
+          max_sale_year: '2024'
           n_years_prior: 4
           complex:
             match_exact:
@@ -38,28 +38,28 @@ stages:
     outs:
     - path: input/assessment_data.parquet
       hash: md5
-      md5: cecaf4aee89d2269bd059f536e611101
-      size: 425453415
+      md5: b9a82b9cf86625651707aa6ad18acfbe
+      size: 425205046
     - path: input/char_data.parquet
       hash: md5
-      md5: 121f3017e46d8acd1f19ba689dca9726
-      size: 848066404
+      md5: caff210ac0bdf286b89ffcfefe60bc3b
+      size: 847798959
     - path: input/complex_id_data.parquet
       hash: md5
-      md5: 835be789fc9ef09f3bfa1d5c8465f6e6
-      size: 704175
+      md5: 8e4941f3b2e326529cf3745ab788d4ed
+      size: 702412
     - path: input/hie_data.parquet
       hash: md5
-      md5: ec600ed3e19b5b48059ce1d270b114b5
-      size: 1911086
+      md5: 50029e74ffd0068fdfc11e6e9e56a0f8
+      size: 1925673
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
-      md5: f3ec9627322bd271bf2957b7388aaa34
+      md5: 4b3c72021c15daf8309d0029987da9f2
       size: 3873
     - path: input/training_data.parquet
       hash: md5
-      md5: 3156fd30394ae3fb9eda7e0d0176ab2f
-      size: 208501951
+      md5: 404396c5a3b488e63281d421f2ae6f24
+      size: 194133081
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
