@@ -315,7 +315,7 @@ assessment_card_data_merged %>%
   ) %>%
   ccao::vars_recode(
     cols = any_of(char_vars),
-    #code_type = "long",
+    code_type = "long",
     as_factor = FALSE
   ) %>%
   write_parquet(paths$output$assessment_card$local)
@@ -542,7 +542,7 @@ message("Saving final PIN-level data")
 assessment_pin_data_final %>%
   ccao::vars_recode(
     cols = starts_with("char_"),
-    #code_type = "short",
+    code_type = "short",
     as_factor = FALSE
   ) %>%
   # Coerce columns to their expected Athena output type
