@@ -1,15 +1,3 @@
-<<<<<<< HEAD:reports/_setup.qmd
----
-execute:
-  echo: false
-params:
-  run_id: "2025-01-10-serene-boni"
-  year: "2025"
----
-
-```{r}
-=======
->>>>>>> 764848263c062d160be9ddc17eaaeb98e740d3b4:reports/_setup.R
 # This setup script is run at the top of each Quarto report subsection to load
 # libraries, data, and other objects needed for the report. It only loads
 # objects if they don't already exist in the environment, so it can be run
