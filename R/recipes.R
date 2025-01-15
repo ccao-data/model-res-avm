@@ -12,20 +12,28 @@
 #'   integer-encoded (base 0).
 #' @param id_vars Character vector of ID variables. These can be kept in "baked"
 #'   data without being treated as predictors.
+#' @param weight_var Column of weights to keep after bake. Passed to LightGBM
+#'   as an engine argument.
 #'
 #' @return A recipe object that can be used to clean model input data.
 #'
-model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
+model_main_recipe <- function(data, pred_vars, cat_vars, id_vars, weight_var) {
   recipe(data) %>%
     # Set the role of each variable in the input data
     update_role(meta_sale_price, new_role = "outcome") %>%
     update_role(all_of(pred_vars), new_role = "predictor") %>%
     update_role(all_of(id_vars), new_role = "ID") %>%
+    update_role(all_of(weight_var), new_role = "weight") %>%
     update_role_requirements("ID", bake = FALSE) %>%
     update_role_requirements("NA", bake = FALSE) %>%
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
-    step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
+    step_rm(
+      -all_outcomes(),
+      -all_predictors(),
+      -has_role("ID"),
+      -has_role("weight")
+    ) %>%
     # Replace novel levels with "new"
     step_novel(all_of(cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"

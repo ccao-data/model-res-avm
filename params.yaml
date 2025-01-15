@@ -100,7 +100,7 @@ cv:
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
   # time, with each chunk/period calculated automatically
-  num_folds: 10
+  num_folds: 7
 
   # The number of months time-based folds should overlap each other. Only
   # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
@@ -144,6 +144,10 @@ model:
 
   # Model verbosity: < 0: Fatal, = 0: Error (Warning), = 1: Info, > 1: Debug
   verbose: -1
+
+  # Name of column in the baked (i.e. input data) to use as weights. Set to
+  # NULL to disable weighting
+  weight_col: "meta_weight"
 
   predictor:
     # Vector of predictors from the training data included in the model. Edit
@@ -292,7 +296,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
-    validation_type: "random"
+    validation_type: "recent"
     validation_metric: "rmse"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting

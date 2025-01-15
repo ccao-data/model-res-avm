@@ -32,15 +32,20 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-  arrange(meta_sale_date)
+  arrange(meta_sale_date) %>%
+  mutate(
+    # Define a logistic function to weight post-COVID sales more heavily
+    !!params$model$weight_col := 1 / (
+      1 + exp(-0.003 * as.integer(meta_sale_date - make_date(2021)))
+    )
+  )
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
 split_data <- initial_time_split(
-  data = training_data_full %>%
-    filter(meta_sale_date >= make_date(2020, 03, 01)),
-  prop = 0.76669
+  data = training_data_full,
+  prop = params$cv$split_prop
 )
 test <- testing(split_data)
 train <- training(split_data)
@@ -51,7 +56,8 @@ train_recipe <- model_main_recipe(
   data = training_data_full,
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
-  id_vars = params$model$predictor$id
+  id_vars = params$model$predictor$id,
+  weight_var = params$model$weight_col
 )
 
 
@@ -142,13 +148,19 @@ lgbm_model <- parsnip::boost_tree(
     sample_type = params$model$parameter$validation_type,
     metric = params$model$parameter$validation_metric,
 
+    # Custom weight column of X matrix to use for weights. Note that this is
+    # passed as part of the training data!
+    weight_col = params$model$weight_col,
+
     # Lightsnip custom parameter. Links the value of max_depth to num_leaves
     # using floor(log2(num_leaves)) + add_to_linked_depth. Useful since
     # otherwise Bayesian opt spends time exploring irrelevant parameter space
     link_max_depth = params$model$parameter$link_max_depth,
+
     # Always initialize save_tree_error to false until we're ready to train
     # the final model, since it's incompatible with CV
     save_tree_error = FALSE,
+
 
     ### 4.1.2. Tuned Parameters ------------------------------------------------
 
