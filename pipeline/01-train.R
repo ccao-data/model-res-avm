@@ -38,8 +38,9 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
 split_data <- initial_time_split(
-  data = training_data_full,
-  prop = params$cv$split_prop
+  data = training_data_full %>%
+    filter(meta_sale_date >= make_date(2020, 03, 01)),
+  prop = 0.76669
 )
 test <- testing(split_data)
 train <- training(split_data)
@@ -227,7 +228,7 @@ if (cv_enable) {
       date_col = meta_sale_date,
       val_prop = params$model$parameter$validation_prop,
       train_includes_val = params$model$parameter$validation_prop > 0,
-      cumulative = FALSE
+      cumulative = TRUE
     )
   }
 
