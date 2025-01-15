@@ -161,6 +161,35 @@ assessment_pin %>%
     meta_cards = meta_pin_num_cards,
     fmv,
     meta_sale_price,
+    meta_sale_date,
+    township_name,
+    char_total_bldg_sf,
+    char_yrblt
+  ) %>%
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
+```
+
+## Largest Non-Multicard `pred_pin_final_fmv` Properties Per Township
+
+```{r}
+assessment_pin %>%
+  filter(meta_triad_code == "2") %>%
+  filter(flag_pin_is_multicard == FALSE) %>%
+  group_by(meta_township_code) %>%
+  arrange(desc(pred_pin_final_fmv)) %>%
+  distinct(meta_pin, .keep_all = TRUE) %>%
+  slice(1:10) %>%
+  mutate(
+    fmv = scales::dollar(pred_pin_final_fmv),
+    meta_sale_price = scales::dollar(meta_sale_price)
+  ) %>%
+  ungroup() %>%
+  select(meta_pin,
+    meta_class,
+    meta_cards = meta_pin_num_cards,
+    fmv,
+    meta_sale_price,
+    meta_sale_date,
     township_name,
     char_total_bldg_sf,
     char_yrblt
