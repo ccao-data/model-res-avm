@@ -24,7 +24,9 @@ params:
   year: "2025"
 ---
 
-{{< include ../_setup.qmd >}}
+```{r _setup_script}
+source("../_setup.R")
+```
 
 ---
 
