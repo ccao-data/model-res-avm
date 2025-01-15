@@ -15,7 +15,7 @@ run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Preparing for 2025 model with 2024 data
+run_note: Preparing for 2025 model
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -39,10 +39,10 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to pull land rates, HIEs, and other information
-  year: "2024"
+  year: "2025"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2024-01-01"
+  date: "2025-01-01"
 
   # Added context for model artifacts stored in S3. Also updates the triad
   # displayed in email notifications on model completion
@@ -51,7 +51,7 @@ assessment:
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2023"
+  data_year: "2024"
 
   # Year used to partition data on S3. Working year in this case means
   # the year the Data Department is currently creating models for
@@ -60,8 +60,8 @@ assessment:
 # Parameters used to define the input/training data
 input:
   # The min and max year of sales to use for the training data sample
-  min_sale_year: "2015"
-  max_sale_year: "2023"
+  min_sale_year: "2016"
+  max_sale_year: "2025"
 
   # Number of years back to look for count_past_n_years feature
   n_years_prior: 4
@@ -138,7 +138,7 @@ model:
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
-  seed: 2024
+  seed: 2025
   deterministic: true
   force_row_wise: true
 
