@@ -1,10 +1,3 @@
----
-params:
-  run_id: "2024-03-17-stupefied-maya"
-  year: "2024"
----
-
-```{r}
 # This setup script is run at the top of each Quarto report subsection to load
 # libraries, data, and other objects needed for the report. It only loads
 # objects if they don't already exist in the environment, so it can be run
@@ -137,12 +130,14 @@ if (!exists("model_performance_test_linear")) {
     arrow::read_parquet(paths$output$performance_test_linear$local)
 }
 if (!exists("model_performance_quantile_test")) {
+  # nolint start: object_length_linter
   model_performance_quantile_test <-
     arrow::read_parquet(paths$output$performance_quantile_test$local)
 }
 if (!exists("model_performance_quantile_test_linear")) {
   model_performance_quantile_test_linear <-
     arrow::read_parquet(paths$output$performance_quantile_test_linear$local)
+  # nolint end
 }
 if (!exists("model_performance_assessment")) {
   model_performance_assessment <-
@@ -157,7 +152,7 @@ if (!exists("feat_imp_df")) {
 }
 
 # Load SHAP data if it exists (only exists for important runs)
-if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
+if (file.exists(paths$output$shap$local) && metadata$shap_enable) {
   shap_df <- read_parquet(paths$output$shap$local)
   shap_exists <- nrow(shap_df) > 0
 } else {
@@ -165,7 +160,7 @@ if (file.exists(paths$output$shap$local) & metadata$shap_enable) {
 }
 
 # Load comp data if it exists
-if (file.exists(paths$output$comp$local) & metadata$comp_enable) {
+if (file.exists(paths$output$comp$local) && metadata$comp_enable) {
   comp_df <- read_parquet(paths$output$comp$local)
   comp_exists <- nrow(comp_df) > 0
 } else {
@@ -185,9 +180,7 @@ plot_colors <- list(
 shorten_number <- function(x) {
   scales::dollar(x, accuracy = 1, scale = 1 / 1000, suffix = "K")
 }
-```
 
-```{r}
 # Chunk to populate the metadata / dataset summaries in the text of each module
 # Anything prefixed with m_ is a variable that will be used directly in the text
 m_test_min_date <- min(test_card$meta_sale_date)
@@ -199,14 +192,18 @@ m_test_n_sales_triad <- test_card %>%
   filter(meta_triad_code == run_triad_code) %>%
   nrow() %>%
   scales::comma()
-m_test_n_sales_prop <-
-  (nrow(filter(test_card, meta_triad_code == run_triad_code)) /
-    nrow(test_card)) %>%
+m_test_n_sales_prop <- (
+  nrow(filter(test_card, meta_triad_code == run_triad_code)) /
+    nrow(test_card)
+) %>%
   scales::percent(accuracy = 0.01)
 m_test_med_sp <- test_card$meta_sale_price %>%
   median() %>%
   scales::dollar()
-m_test_split_prop <- scales::percent(1 - metadata$cv_split_prop, accuracy = 0.01)
+m_test_split_prop <- scales::percent(
+  1 - metadata$cv_split_prop,
+  accuracy = 0.01
+)
 
 m_train_min_date <- min(training_data$meta_sale_date)
 m_train_max_date <- max(training_data$meta_sale_date)
@@ -217,9 +214,10 @@ m_train_n_sales_triad <- training_data %>%
   filter(meta_triad_code == run_triad_code) %>%
   nrow() %>%
   scales::comma()
-m_train_n_sales_prop <-
-  (nrow(filter(training_data, meta_triad_code == run_triad_code)) /
-    nrow(training_data)) %>%
+m_train_n_sales_prop <- (
+  nrow(filter(training_data, meta_triad_code == run_triad_code)) /
+    nrow(training_data)
+) %>%
   scales::percent(accuracy = 0.01)
 m_train_med_sp <- training_data$meta_sale_price %>%
   median() %>%
@@ -246,4 +244,3 @@ m_assess_stage_near <- paste(
   metadata$ratio_study_near_year,
   metadata$ratio_study_near_stage
 )
-```
