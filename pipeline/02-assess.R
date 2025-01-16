@@ -60,10 +60,10 @@ df_multi_card_kept <- df_assessment_data %>%
 df_single_card <- df_assessment_data %>%
   filter(!ind_pin_is_multicard)
 
-assessment_adjusted_for_multi_card <- df_single_card %>%
+assessment_adjusted_multi_card <- df_single_card %>%
   bind_rows(df_multi_card_kept)
 
-assessment_card_data_pred <- assessment_adjusted_for_multi_card %>%
+assessment_card_data_pred <- assessment_adjusted_multi_card %>%
   as_tibble() %>%
   mutate(
     pred_card_initial_fmv = predict(
