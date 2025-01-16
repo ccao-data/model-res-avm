@@ -36,7 +36,7 @@ if (shap_enable || comp_enable) {
   assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
     new_data = assessment_data,
-    all_predictors()
+    all_predictors(), -all_of("meta_weight")
   )
 }
 
