@@ -110,8 +110,6 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   )
 
 
-
-
 ## 3.2. Townhomes --------------------------------------------------------------
 message("Averaging townhome complex predictions")
 
