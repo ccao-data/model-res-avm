@@ -41,40 +41,30 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # Load the data for assessment. This is the universe of CARDs (not
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
 # fair-market value for each card
+df_assessment_data <- read_parquet(paths$input$assessment$local)
 
-
-# - - - - - - - - - - - - - - - - - - -
-# Combine sqft on multi card into one pin
-# - - - - - - - - - - - - - - - - - - -
-
-df_assessment_data_test <- read_parquet(paths$input$assessment$local)
-
-# - - - - - - - - - - - - - - - - - - -
-# Combine sqft on multi card into one pin
-# - - - - - - - - - - - - - - - - - - -
-
-df_assessment_data_test <- read_parquet(paths$input$assessment$local)
-
-
-df_cleaned_multi_card <- df_assessment_data_test %>%
+# To calculate a value for multi-card properties, keep the largest card
+# and drop the others. The building square footage from the dropped card(s) is
+# added to the kept card to make a more robust prediction.
+df_multi_card_kept <- df_assessment_data %>%
   filter(ind_pin_is_multicard) %>%
   group_by(meta_pin) %>%
-  # Calculate total char_bldg_sqft per meta_pin
-  mutate(total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)) %>%
-  # Keep only the row with the maximum char_bldg_sqft
+  mutate(
+    total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)
+  ) %>%
   slice_max(char_bldg_sf, with_ties = FALSE) %>%
-  # Replace original char_bldg_sqft with the total
   mutate(char_bldg_sf = total_bldg_sf) %>%
-  # Remove the intermediate column
   select(-total_bldg_sf) %>%
   ungroup()
 
-df_assessment_data_test <- df_assessment_data_test %>%
-  filter(!ind_pin_is_multicard) %>%
-  rbind(df_cleaned_multi_card)
+df_single_card <- df_assessment_data %>%
+  filter(!ind_pin_is_multicard)
+
+df_assessment_data_adjusted_for_multi_card <- df_single_card %>%
+  bind_rows(df_multi_card_kept)
 
 
-assessment_card_data_pred <- df_assessment_data_test %>%
+assessment_card_data_pred <- df_assessment_data_adjusted_for_multi_card %>%
   as_tibble() %>%
   mutate(
     pred_card_initial_fmv = predict(
@@ -112,32 +102,14 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # across multiple PINs sometimes receives different values from the model
   group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
-    pred_card_intermediate_fmv = ifelse(
+    pred_pin_card_sum = ifelse(
       is.na(meta_tieback_key_pin),
       pred_card_initial_fmv,
       mean(pred_card_initial_fmv)
     )
-  ) %>%
-  # Aggregate multi-cards to the PIN-level by summing the predictions
-  # of all cards. We use a heuristic here to limit the PIN-level total
-  # value, this is to prevent super-high-value back-buildings/ADUs from
-  # blowing up the PIN-level AV
-  mutate(
-    pred_pin_card_sum = pred_card_intermediate_fmv
-  ) %>%
-  ungroup()
+  )
 
-  # mutate(
-  #   pred_pin_card_sum = ifelse(
-  #     sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
-  #       params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
-  #       is.na(meta_1yr_pri_board_tot) |
-  #       n() != 2,
-  #     sum(pred_card_intermediate_fmv),
-  #     max(pred_card_intermediate_fmv)
-  #   )
-  # ) %>%
-  # ungroup()
+
 
 
 ## 3.2. Townhomes --------------------------------------------------------------
@@ -364,7 +336,7 @@ assessment_card_data_merged %>%
     code_type = "long",
     as_factor = FALSE
   ) %>%
-  write_parquet("/home/miwagne/repos/model-res-avm2/model-res-avm/output/assessment_card/model_assessment_card_testing_rooms_baths.parquet")
+  write_parquet("paths$output$assessment_card$local")
 
 
 
@@ -609,7 +581,7 @@ assessment_pin_data_final %>%
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
   as_tibble() %>%
-  write_parquet("/home/miwagne/repos/model-res-avm2/model-res-avm/output/assessment_pin/model_assessment_pin_testing_rooms_bath.parquet")
+  write_parquet("paths$output$assessment_pin$local")
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
