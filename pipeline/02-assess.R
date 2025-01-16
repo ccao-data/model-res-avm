@@ -90,7 +90,7 @@ message("Fixing multicard PINs")
 # Re-add dropped multicard rows, distributing total predicted FMV
 # across each original card by share of bldg sqft
 
-#Identify the dropped multi-card rows
+# Identify the dropped multi-card rows
 df_multi_card_dropped <- df_assessment_data %>%
   filter(ind_pin_is_multicard) %>%
   anti_join(
@@ -109,9 +109,9 @@ df_multi_card_combined <- assessment_card_data_pred %>%
 df_multi_card_final <- df_multi_card_combined %>%
   group_by(meta_pin) %>%
   mutate(
-    total_fmv          = sum(pred_card_initial_fmv, na.rm = TRUE),
-    total_bldg_sf_pin  = sum(char_bldg_sf, na.rm = TRUE),
-    share_bldg_sf      = char_bldg_sf / total_bldg_sf_pin,
+    total_fmv = sum(pred_card_initial_fmv, na.rm = TRUE),
+    total_bldg_sf_pin = sum(char_bldg_sf, na.rm = TRUE),
+    share_bldg_sf = char_bldg_sf / total_bldg_sf_pin,
     pred_card_initial_fmv = total_fmv * share_bldg_sf
   ) %>%
   ungroup() %>%
