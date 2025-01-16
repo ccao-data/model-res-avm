@@ -455,6 +455,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
   # Apply the helper function to process array columns
   process_array_columns(starts_with("loc_tax_")) %>%
   mutate(
+    loc_tax_municipality_name = as.character(loc_tax_municipality_name),
     loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
   ) %>%
