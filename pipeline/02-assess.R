@@ -159,7 +159,6 @@ assessment_card_data_mc <- deaggregated_card_preds %>%
   ungroup()
 
 
-
 ## 3.2. Townhomes --------------------------------------------------------------
 message("Averaging townhome complex predictions")
 
