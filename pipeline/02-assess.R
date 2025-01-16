@@ -383,7 +383,7 @@ assessment_card_data_merged %>%
     code_type = "long",
     as_factor = FALSE
   ) %>%
-  write_parquet("paths$output$assessment_card$local")
+  write_parquet(paths$output$assessment_card$local)
 
 
 
@@ -628,7 +628,7 @@ assessment_pin_data_final %>%
     pred_pin_land_pct_total, starts_with(c("sale_", "flag_")), township_code
   ) %>%
   as_tibble() %>%
-  write_parquet("paths$output$assessment_pin$local")
+  write_parquet(paths$output$assessment_pin$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)
