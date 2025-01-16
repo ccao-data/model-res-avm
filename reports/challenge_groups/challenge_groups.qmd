@@ -39,6 +39,8 @@ This report inspects properties that are difficult to assess. All outputs below 
 | **Multifamily** | Class 211 parcels                                                                               |
 | **Top Decile**  | The top 10% of assessed values by township from the prior year                                  |
 
+<br><br>
+
 ## Topline Stats for All Properties
 
 ```{r _challenge_groups_topline_stats_all}
@@ -224,25 +226,25 @@ plots <- datasets_sold %>%
 
 ::: panel-tabset
 
-## Large Lots
+### Large Lots
 
 ```{r, results = 'asis'}
 plots$"Large Lots"
 ```
 
-## Multicard
+### Multicard
 
 ```{r, results = 'asis'}
 plots$Multicard
 ```
 
-## Multifamily
+### Multifamily
 
 ```{r, results = 'asis'}
 plots$Multifamily
 ```
 
-## Top Decile
+### Top Decile
 
 ```{r, results = 'asis'}
 plots$"Top Decile"
@@ -250,7 +252,7 @@ plots$"Top Decile"
 
 :::
 
-# Top and Bottom 10 (FMV / Sale Price) Ratios
+## Top and Bottom 10 (FMV / Sale Price) Ratios
 
 ```{r}
 outliers <- datasets_sold %>%
@@ -281,7 +283,6 @@ outliers <- datasets_sold %>%
   })
 ```
 
-
 ```{r _challenge_groups_outliers, results = 'asis'}
 generate_tabset <- function(outliers) {
   cat("::: panel-tabset\n\n")
@@ -308,7 +309,6 @@ generate_tabset <- function(outliers) {
 generate_tabset(outliers)
 ```
 
-
 ```{r _challenge_groups_map_function}
 plots <- datasets_full %>%
   map(\(x) {
@@ -319,7 +319,7 @@ plots <- datasets_full %>%
     ) %>%
       mutate(
         Change = pmin(
-          100 * (pred_pin_final_fmv_round / prior_near_tot) - 100,
+          100 * (pred_pin_final_fmv_round - prior_near_tot) / prior_near_tot,
           300
         )
       )
@@ -327,7 +327,7 @@ plots <- datasets_full %>%
     town_shp <- st_transform(ccao::town_shp, crs = st_crs(spatial_data))
 
     ggplot() +
-      geom_sf(data = spatial_data, aes(color = Change)) +
+      geom_sf(data = spatial_data, aes(color = Change), alpha = 0.5) +
       geom_sf(data = town_shp, fill = NA, color = "black") +
       theme_minimal() +
       labs(color = "Change (%)") +
