@@ -153,6 +153,7 @@ assessment_card_data_mc <- deaggregated_card_preds %>%
     )
   ) %>%
   # Re-aggregate the the pin-level prediction
+  group_by(meta_pin) %>%
   mutate(
     pred_pin_card_sum = pred_card_intermediate_fmv
   ) %>%
