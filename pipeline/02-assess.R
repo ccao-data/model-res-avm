@@ -63,7 +63,6 @@ df_single_card <- df_assessment_data %>%
 df_assessment_data_adjusted_for_multi_card <- df_single_card %>%
   bind_rows(df_multi_card_kept)
 
-
 assessment_card_data_pred <- df_assessment_data_adjusted_for_multi_card %>%
   as_tibble() %>%
   mutate(
@@ -88,9 +87,54 @@ message("Performing post-modeling adjustments")
 ## 3.1. Multicards -------------------------------------------------------------
 message("Fixing multicard PINs")
 
+# Re-add dropped multicard rows, distributing total predicted FMV
+# across each original card by share of bldg sqft
+
+#Identify the dropped multi-card rows
+df_multi_card_dropped <- df_assessment_data %>%
+  filter(ind_pin_is_multicard) %>%
+  anti_join(
+    df_multi_card_kept %>% select(meta_pin, meta_card_num),
+    by = c("meta_pin", "meta_card_num")
+  )
+
+# Combine kept predicted rows with 'dropped' rows
+df_multi_card_combined <- assessment_card_data_pred %>%
+  filter(ind_pin_is_multicard) %>%
+  bind_rows(
+    df_multi_card_dropped %>% mutate(pred_card_initial_fmv = NA_real_)
+  )
+
+# For each PIN, distribute total predicted FMV proportionally
+df_multi_card_final <- df_multi_card_combined %>%
+  group_by(meta_pin) %>%
+  mutate(
+    total_fmv          = sum(pred_card_initial_fmv, na.rm = TRUE),
+    total_bldg_sf_pin  = sum(char_bldg_sf, na.rm = TRUE),
+    share_bldg_sf      = char_bldg_sf / total_bldg_sf_pin,
+    pred_card_initial_fmv = total_fmv * share_bldg_sf
+  ) %>%
+  ungroup() %>%
+  # Drop intermediate columns
+  select(
+    -total_fmv,
+    -share_bldg_sf,
+    -total_bldg_sf_pin
+  )
+
+# Pull single-card PINs
+df_single_card_final <- assessment_card_data_pred %>%
+  filter(!ind_pin_is_multicard)
+
+# Combine single + multi-card rows, keeping only columns of interest
+asessment_deaggregated_card_preds <- bind_rows(
+  df_single_card_final,
+  df_multi_card_final
+)
+
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is (usually) the sum of all cards
-assessment_card_data_mc <- assessment_card_data_pred %>%
+assessment_card_data_mc <- asessment_deaggregated_card_preds %>%
   select(
     meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
     char_bldg_sf, char_land_sf,
@@ -102,12 +146,18 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # across multiple PINs sometimes receives different values from the model
   group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
-    pred_pin_card_sum = ifelse(
+    pred_card_intermediate_fmv = ifelse(
       is.na(meta_tieback_key_pin),
       pred_card_initial_fmv,
       mean(pred_card_initial_fmv)
     )
-  )
+  ) %>%
+  # Re-aggregate the the pin-level prediction
+  mutate(
+    pred_pin_card_sum = pred_card_intermediate_fmv
+  ) %>%
+  ungroup()
+
 
 
 ## 3.2. Townhomes --------------------------------------------------------------
