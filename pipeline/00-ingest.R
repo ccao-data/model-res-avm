@@ -100,6 +100,31 @@ assessment_data <- dbGetQuery(
     AND '{params$assessment$data_year}'
   ")
 )
+
+tictoc::toc()
+
+tictoc::tic("test_1")
+
+assessment_data_1 <- assessment_data %>%
+  group_by(meta_pin, meta_card_num) %>%
+  arrange(year) %>%
+  mutate(across(
+    starts_with("loc_"),
+    ~ ifelse(is.na(.), lag(., order_by = year), .)
+  )) %>%
+  ungroup()
+
+tictoc::toc()
+
+tictoc::tic("test_2")
+
+assessment_data <- assessment_data %>%
+  group_by(meta_pin, meta_card_num) %>%
+  mutate(across(
+    starts_with("loc_"),
+    ~ ifelse(is.na(.), .[year == 2023], .)
+    ))
+
 tictoc::toc()
 
 # Save both years for report generation using the characteristics

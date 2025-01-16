@@ -39,10 +39,10 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to pull land rates, HIEs, and other information
-  year: "2024"
+  year: "2025"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2024-01-01"
+  date: "2025-01-01"
 
   # Added context for model artifacts stored in S3. Also updates the triad
   # displayed in email notifications on model completion
@@ -51,7 +51,7 @@ assessment:
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2023"
+  data_year: "2024"
 
   # Year used to partition data on S3. Working year in this case means
   # the year the Data Department is currently creating models for
@@ -138,7 +138,7 @@ model:
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
-  seed: 2024
+  seed: 2025
   deterministic: true
   force_row_wise: true
 
@@ -386,10 +386,10 @@ pv:
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
 ratio_study:
-  far_year: "2021"
+  far_year: "2022"
   far_stage: "board"
   far_column: "meta_2yr_pri_board_tot"
-  near_year: "2023"
+  near_year: "2024"
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
