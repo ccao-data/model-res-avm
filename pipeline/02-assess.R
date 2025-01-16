@@ -127,14 +127,14 @@ df_single_card_final <- assessment_card_data_pred %>%
   filter(!ind_pin_is_multicard)
 
 # Combine single + multi-card rows, keeping only columns of interest
-asessment_deaggregated_card_preds <- bind_rows(
+deaggregated_card_preds <- bind_rows(
   df_single_card_final,
   df_multi_card_final
 )
 
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is (usually) the sum of all cards
-assessment_card_data_mc <- asessment_deaggregated_card_preds %>%
+assessment_card_data_mc <- deaggregated_card_preds %>%
   select(
     meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
     char_bldg_sf, char_land_sf,
