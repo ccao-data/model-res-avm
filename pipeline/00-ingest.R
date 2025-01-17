@@ -193,30 +193,6 @@ recode_column_type <- function(col, col_name, dictionary = col_type_dict) {
 }
 
 
-# Mini function to deal with arrays
-# Some Athena columns are stored as arrays but are converted to string on
-# ingest. In such cases, we either keep the contents of the cell (if 1 unit),
-# collapse the array into a comma-separated string (if more than 1 unit),
-# or replace with NA if the array is empty
-process_array_columns <- function(data, selector) {
-  data %>%
-    mutate(
-      across(
-        !!enquo(selector),
-        ~ sapply(.x, function(cell) {
-          if (length(cell) > 1) {
-            paste(cell, collapse = ", ")
-          } else if (length(cell) == 1) {
-            as.character(cell) # Convert the single element to character
-          } else {
-            NA # Handle cases where the array is empty
-          }
-        })
-      )
-    )
-}
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
