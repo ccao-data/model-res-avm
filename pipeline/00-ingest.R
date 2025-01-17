@@ -103,29 +103,44 @@ assessment_data <- dbGetQuery(
 
 tictoc::toc()
 
-tictoc::tic("test_1")
+# MOVED THIS FUNCTION UP TO HELP PROCESS COLUMNS - CURRENTLY DUPLICATED IN CODE
+# We have to process the arrays before the NA handling.
 
-assessment_data_1 <- assessment_data %>%
-  group_by(meta_pin, meta_card_num) %>%
-  arrange(year) %>%
-  mutate(across(
-    starts_with("loc_"),
-    ~ ifelse(is.na(.), lag(., order_by = year), .)
-  )) %>%
-  ungroup()
+# Mini function to deal with arrays
+# Some Athena columns are stored as arrays but are converted to string on
+# ingest. In such cases, we either keep the contents of the cell (if 1 unit),
+# collapse the array into a comma-separated string (if more than 1 unit),
+# or replace with NA if the array is empty
+process_array_columns <- function(data, selector) {
+  data %>%
+    mutate(
+      across(
+        !!enquo(selector),
+        ~ sapply(.x, function(cell) {
+          if (length(cell) > 1) {
+            paste(cell, collapse = ", ")
+          } else if (length(cell) == 1) {
+            as.character(cell) # Convert the single element to character
+          } else {
+            NA # Handle cases where the array is empty
+          }
+        })
+      )
+    )
+}
 
-tictoc::toc()
-
-tictoc::tic("test_2")
+# Process arrays and then replace values for NA values with the values
+# from 2023. Training data appears to have all columns filled for 2024.
+# This is a temp fix, delete after 2024 data is available.
 
 assessment_data <- assessment_data %>%
+  process_array_columns(starts_with("loc_tax_")) %>%
   group_by(meta_pin, meta_card_num) %>%
   mutate(across(
     starts_with("loc_"),
     ~ ifelse(is.na(.), .[year == 2023], .)
-    ))
-
-tictoc::toc()
+    )) %>%
+  ungroup()
 
 # Save both years for report generation using the characteristics
 assessment_data %>%
