@@ -314,11 +314,12 @@ pin if there was one after 2020.
 assessment_pin <- assessment_pin %>%
   left_join(
     assessment_data %>%
-      select(meta_pin, ind_pin_is_multicard), by = "meta_pin"
+      select(meta_pin, ind_pin_is_multicard),
+    by = "meta_pin"
   )
 
 df_filtered <- assessment_pin %>%
-  filter(ind_pin_is_multicard) %>% 
+  filter(ind_pin_is_multicard) %>%
   mutate(
     ratio = pred_pin_final_fmv / sale_recent_1_price
   ) %>%
@@ -361,7 +362,7 @@ p_scatter_base <- plot_ly(
   type = "scatter",
   mode = "markers",
   hoverinfo = "text",
-  text = ~paste(
+  text = ~ paste(
     "<b>PIN:</b>", meta_pin,
     "<br><b>Sale Price:</b>", sale_recent_1_price,
     "<br><b>Predicted (Base):</b>", round(pred_pin_final_fmv, 2),
