@@ -309,7 +309,7 @@ iwalk(plots, ~ {
 The sales data we use to measure accuracy is the most recent sale per multi-card
 pin if there was one after 2020.
 
-```{r _}
+```{r _decile_ratio_graph}
 # Grab multi-card indicator
 assessment_pin <- assessment_pin %>%
   left_join(
@@ -349,7 +349,6 @@ p_deciles
 ```
 
 ```{r _scatterplot_pred_vs_sale}
-
 max_val <- max(
   c(df_filtered$sale_recent_1_price, df_filtered$pred_pin_final_fmv),
   na.rm = TRUE
