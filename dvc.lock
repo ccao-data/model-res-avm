@@ -5,13 +5,13 @@ stages:
     deps:
     - path: pipeline/00-ingest.R
       hash: md5
-      md5: 3fcf8cbce89340948f394825b1c78187
-      size: 23441
+      md5: 1d0fa9628d84226fe4d914ee894ad45e
+      size: 24021
     params:
       params.yaml:
         assessment:
-          year: '2024'
-          date: '2024-01-01'
+          year: '2025'
+          date: '2025-01-01'
           triad: north
           group: residential
           data_year: '2024'
@@ -38,28 +38,28 @@ stages:
     outs:
     - path: input/assessment_data.parquet
       hash: md5
-      md5: b9a82b9cf86625651707aa6ad18acfbe
-      size: 425205046
+      md5: a3406d493652cb9d58af8b44b53bfeb3
+      size: 129264108
     - path: input/char_data.parquet
       hash: md5
-      md5: caff210ac0bdf286b89ffcfefe60bc3b
-      size: 847798959
+      md5: 15a48317dd7678bd640b65feceee451f
+      size: 559807161
     - path: input/complex_id_data.parquet
       hash: md5
-      md5: 8e4941f3b2e326529cf3745ab788d4ed
-      size: 702412
+      md5: c2ef40c5a148f344b6a394a7ca994e35
+      size: 700867
     - path: input/hie_data.parquet
       hash: md5
-      md5: 50029e74ffd0068fdfc11e6e9e56a0f8
-      size: 1925673
+      md5: 91b764b906217a5f346413c1bfdf33c1
+      size: 1922736
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
-      md5: 4b3c72021c15daf8309d0029987da9f2
-      size: 3873
+      md5: 5fe80edfabdfac91efe888a25ee4051c
+      size: 6019
     - path: input/training_data.parquet
       hash: md5
-      md5: 404396c5a3b488e63281d421f2ae6f24
-      size: 194133081
+      md5: fcdf204f8e4280a6820e5145c38dde50
+      size: 194137073
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
