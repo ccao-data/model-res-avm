@@ -28,7 +28,16 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   rstudio_conn_tab = FALSE
 )
 
-
+permits <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("SELECT
+    assessment_year,
+    pin,
+    SUM(amount) AS amount
+FROM default.vw_pin_permit
+WHERE assessment_year BETWEEN '2022' AND '2024'
+GROUP BY assessment_year, pin
+ORDER BY assessment_year")
+)
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -73,6 +82,11 @@ training_data <- dbGetQuery(
 )
 tictoc::toc()
 
+training_data <- training_data %>%
+  left_join(permits, by = c("meta_pin" = "pin", "year" = "assessment_year")) %>%
+  mutate(permit_binary = ifelse(is.na(amount), 0, 1)) %>%
+  rename(permit_amount = amount)
+
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
 tictoc::tic("HIE data pulled")
@@ -101,6 +115,11 @@ assessment_data <- dbGetQuery(
   ")
 )
 tictoc::toc()
+
+assessment_data <- assessment_data %>%
+  left_join(permits, by = c("meta_pin" = "pin", "year" = "assessment_year")) %>%
+  mutate(permit_binary = ifelse(is.na(amount), 0, 1)) %>%
+  rename(permit_amount = amount)
 
 # Save both years for report generation using the characteristics
 assessment_data %>%
