@@ -140,23 +140,40 @@ assessment_data <- assessment_data %>%
   )) %>%
   ungroup()
 
+training_data <- training_data %>%
+  process_array_columns(starts_with("loc_tax_"))
+
+# Subset assessment_data for 2024 data in order to update the training_data
 columns_to_update <- assessment_data %>%
   filter(year == 2024) %>%
-  select(meta_pin, meta_card_num,
-         starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"), starts_with("other_"), starts_with("shp_"))
-
-# Update `training_data` with values from `columns_to_update`
-training_data <- training_data %>%
-  left_join(columns_to_update, by = c("meta_pin", "meta_card_num")) %>%
-  mutate(across(
-    c(starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"), starts_with("other_"), starts_with("shp_")),
-    ~ coalesce(., get(cur_column()))
-  )) %>%
-  select(-ends_with(".y")) %>%
-  rename_with(
-    ~ gsub("\\.x$", "", .),
-    ends_with(".x")
+  select(
+    meta_pin, meta_card_num, year,
+    starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"),
+    starts_with("other_"), starts_with("shp_")
   )
+
+training_data <- training_data %>%
+  # 1) Join: left_join on the key columns, creating .x / .y suffixes
+  left_join(columns_to_update, by = c("meta_pin", "meta_card_num", "year")) %>%
+
+  # 2) Coalesce each .x / .y pair for the columns of interest
+  mutate(across(
+    matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.x$"),
+    ~ coalesce(
+      .x,
+      # "turn" the .x into the matching .y column name, then use get() to reference it
+      get(str_replace(cur_column(), "\\.x$", ".y"))
+    )
+  )) %>%
+
+  # 3) Rename .x columns back to original
+  rename_with(
+    ~ str_remove(., "\\.x$"),
+    matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.x$")
+  ) %>%
+
+  # 4) Drop all the .y columns
+  select(-matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.y$"))
 
 
 # Save both years for report generation using the characteristics
