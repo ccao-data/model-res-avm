@@ -362,8 +362,6 @@ training_data_clean <- training_data_w_hie %>%
     ),
     char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
   ) %>%
-  # Apply the helper function to process array columns
-  process_array_columns(starts_with("loc_tax_")) %>%
   mutate(
     loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
