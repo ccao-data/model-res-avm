@@ -141,7 +141,7 @@ assessment_data <- assessment_data %>%
       starts_with("acs5_"),
       starts_with("other_"),
       starts_with("shp_")
-      ),
+    ),
     ~ ifelse(is.na(.), .[year == 2023], .)
   )) %>%
   ungroup()
@@ -161,7 +161,6 @@ columns_to_update <- assessment_data %>%
 training_data <- training_data %>%
   # 1) Join: left_join on the key columns, creating .x / .y suffixes
   left_join(columns_to_update, by = c("meta_pin", "meta_card_num", "year")) %>%
-
   # 2) Coalesce each .x / .y pair for the columns of interest
   mutate(across(
     matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.x$"),
@@ -172,13 +171,11 @@ training_data <- training_data %>%
       get(str_replace(cur_column(), "\\.x$", ".y"))
     )
   )) %>%
-
   # 3) Rename .x columns back to original
   rename_with(
     ~ str_remove(., "\\.x$"),
     matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.x$")
   ) %>%
-
   # 4) Drop all the .y columns
   select(-matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.y$"))
 
