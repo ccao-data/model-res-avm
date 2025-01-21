@@ -1324,8 +1324,9 @@ ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
 
 ```{r _model_overall_variance_chart}
 ggplot(
-  training_data_monthly_long %>% filter(Metric %in%
-    c("variance_sale", "variance_fmv")),
+  training_data_monthly_long %>% filter(
+    Metric %in% c("variance_sale", "variance_fmv")
+  ),
   aes(x = date, y = Value, color = Metric)
 ) +
   geom_line() +
