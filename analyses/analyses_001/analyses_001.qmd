@@ -1,5 +1,5 @@
 ---
-title: "Quality Control for 2025-01-10-serene-boni"
+title: "Quality Control for 2025-01-20-busy-irene"
 execute:
   echo: false
   warning: false
@@ -135,6 +135,7 @@ training_data %>%
     meta_class,
     meta_cards = meta_pin_num_cards,
     meta_sale_price,
+    meta_sale_date,
     township_name,
     char_bldg_sf,
     char_yrblt
@@ -252,20 +253,7 @@ model_big_misses_assessment <- assessment_pin %>%
 model_big_misses_assessment %>%
   select(-c("loc_longitude", "loc_latitude")) %>%
   mutate(Difference = scales::dollar(Difference)) %>%
-  datatable(
-    rownames = FALSE,
-    options = list(
-      columnDefs = list(
-        list(
-          className = "dt-right",
-          targets = c(
-            "Bldg Sqft", "Sale Price",
-            "Sale Date", "Est. FMV", "Difference"
-          )
-        )
-      )
-    )
-  )
+    datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
 ## Leaflet Map
@@ -325,7 +313,6 @@ plots <- assessment_pin %>%
   group_split() %>%
   set_names(map_chr(., ~ unique(.x$township_name))) %>%
   map(~ {
-    # Calculate binwidth for 30 bins
     binwidth_fmv <- (max(.x$pred_pin_initial_fmv, na.rm = TRUE) - min(.x$pred_pin_initial_fmv, na.rm = TRUE)) / 30
     binwidth_sale <- (max(.x$meta_sale_price, na.rm = TRUE) - min(.x$meta_sale_price, na.rm = TRUE)) / 30
 
@@ -340,10 +327,14 @@ plots <- assessment_pin %>%
         x = "Value",
         y = "Density"
       ) +
-      scale_fill_manual(values = c("Initial FMV" = "red", "Sale Price" = "yellow")) +
+      scale_fill_manual(
+        values = c("Initial FMV" = "red", "Sale Price" = "yellow"),
+        name = NULL
+      ) +
       theme_minimal() +
       theme(plot.title = element_text(hjust = 0.5))
   })
+
 ```
 
 ```{r _fmv_plots, results='asis', warning=FALSE}
@@ -390,7 +381,7 @@ subset <- bind_rows(
 ) %>%
   select(
     township_name, meta_pin, meta_sale_price, char_bldg_sf,
-    price_per_sq_ft, type, pred_pin_final_fmv_round
+    price_per_sq_ft, type, pred_pin_final_fmv_round, meta_sale_date
   )
 
 scatterplot <- subset %>%
@@ -400,6 +391,7 @@ scatterplot <- subset %>%
       "Township: ", township_name,
       "<br>Meta PIN: ", meta_pin,
       "<br>Sale Price: $", scales::comma(meta_sale_price),
+      "<br>Sale Date: ", meta_sale_date,
       "<br>Predicted Final FMV: $", scales::comma(pred_pin_final_fmv_round),
       "<br>Difference: $",
       scales::comma(pred_pin_final_fmv_round - meta_sale_price),
@@ -494,7 +486,6 @@ scatterplot <- assessment_pin %>%
 
 interactive_scatterplot <- ggplotly(scatterplot, tooltip = "text")
 
-# Display the interactive plot
 interactive_scatterplot
 ```
 
