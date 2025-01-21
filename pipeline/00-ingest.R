@@ -102,7 +102,7 @@ assessment_data <- dbGetQuery(
 )
 tictoc::toc()
 
-# MOVED THIS FUNCTION UP TO HELP PROCESS COLUMNS - CURRENTLY DUPLICATED IN CODE
+# MOVED THIS FUNCTION UP TO HELP PROCESS COLUMNS
 # We have to process the arrays before the NA handling.
 
 # Mini function to deal with arrays
@@ -128,18 +128,36 @@ process_array_columns <- function(data, selector) {
     )
 }
 
-# Process arrays and then replace values for NA values with the values
-# from 2023. Training data appears to have all columns filled for 2024.
+# Process arrays and then replace values for NA values with the values from 2023.
 # This is a temp fix, delete after 2024 data is available.
 
 assessment_data <- assessment_data %>%
   process_array_columns(starts_with("loc_tax_")) %>%
   group_by(meta_pin, meta_card_num) %>%
   mutate(across(
-    starts_with("loc_"),
+    c(starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"),, starts_with("other_"), starts_with("shp_")),
     ~ ifelse(is.na(.), .[year == 2023], .)
-    )) %>%
+  )) %>%
   ungroup()
+
+columns_to_update <- assessment_data %>%
+  filter(year == 2024) %>%
+  select(meta_pin, meta_card_num,
+         starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"), starts_with("other_"), starts_with("shp_"))
+
+# Update `training_data` with values from `columns_to_update`
+training_data <- training_data %>%
+  left_join(columns_to_update, by = c("meta_pin", "meta_card_num")) %>%
+  mutate(across(
+    c(starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"), starts_with("other_"), starts_with("shp_")),
+    ~ coalesce(., get(cur_column()))
+  )) %>%
+  select(-ends_with(".y")) %>%
+  rename_with(
+    ~ gsub("\\.x$", "", .),
+    ends_with(".x")
+  )
+
 
 # Save both years for report generation using the characteristics
 assessment_data %>%
