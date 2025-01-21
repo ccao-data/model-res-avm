@@ -126,7 +126,7 @@ df_multi_card_final <- df_multi_card_combined %>%
 df_single_card_final <- assessment_card_data_pred %>%
   filter(!ind_pin_is_multicard)
 
-# Combine single + multi-card rows, keeping only columns of interest
+# Combine single + multi-card rows
 deaggregated_card_preds <- bind_rows(
   df_single_card_final,
   df_multi_card_final
