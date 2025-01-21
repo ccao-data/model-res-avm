@@ -128,18 +128,20 @@ process_array_columns <- function(data, selector) {
     )
 }
 
-# Process arrays and then replace values for NA values with the values from 2023.
+# Process arrays and then replace NA values with the values from 2023.
 # This is a temp fix, delete after 2024 data is available.
 
 assessment_data <- assessment_data %>%
   process_array_columns(starts_with("loc_tax_")) %>%
   group_by(meta_pin, meta_card_num) %>%
   mutate(across(
-    c(starts_with("loc_"),
+    c(
+      starts_with("loc_"),
       starts_with("prox_"),
       starts_with("acs5_"),
       starts_with("other_"),
-      starts_with("shp_")),
+      starts_with("shp_")
+      ),
     ~ ifelse(is.na(.), .[year == 2023], .)
   )) %>%
   ungroup()
@@ -165,7 +167,8 @@ training_data <- training_data %>%
     matches("(^loc_|^prox_|^acs5_|^other_|^shp_).*\\.x$"),
     ~ coalesce(
       .x,
-      # "turn" the .x into the matching .y column name, then use get() to reference it
+      # Turn the .x into the matching .y column name.
+      # Use get() to reference it
       get(str_replace(cur_column(), "\\.x$", ".y"))
     )
   )) %>%
