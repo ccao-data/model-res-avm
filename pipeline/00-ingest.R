@@ -135,7 +135,11 @@ assessment_data <- assessment_data %>%
   process_array_columns(starts_with("loc_tax_")) %>%
   group_by(meta_pin, meta_card_num) %>%
   mutate(across(
-    c(starts_with("loc_"), starts_with("prox_"), starts_with("acs5_"),, starts_with("other_"), starts_with("shp_")),
+    c(starts_with("loc_"),
+      starts_with("prox_"),
+      starts_with("acs5_"),
+      starts_with("other_"),
+      starts_with("shp_")),
     ~ ifelse(is.na(.), .[year == 2023], .)
   )) %>%
   ungroup()
