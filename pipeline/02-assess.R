@@ -79,28 +79,28 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # across multiple PINs sometimes receives different values from the model
   group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
-    pred_card_intermediate_fmv = ifelse(
+    pred_pin_card_sum = ifelse(
       is.na(meta_tieback_key_pin),
       pred_card_initial_fmv,
       mean(pred_card_initial_fmv)
     )
-  ) %>%
-  # Aggregate multi-cards to the PIN-level by summing the predictions
-  # of all cards. We use a heuristic here to limit the PIN-level total
-  # value, this is to prevent super-high-value back-buildings/ADUs from
-  # blowing up the PIN-level AV
-  group_by(meta_pin) %>%
-  mutate(
-    pred_pin_card_sum = ifelse(
-      sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
-        params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
-        is.na(meta_1yr_pri_board_tot) |
-        n() != 2,
-      sum(pred_card_intermediate_fmv),
-      max(pred_card_intermediate_fmv)
-    )
-  ) %>%
-  ungroup()
+  ) #%>%
+  # # Aggregate multi-cards to the PIN-level by summing the predictions
+  # # of all cards. We use a heuristic here to limit the PIN-level total
+  # # value, this is to prevent super-high-value back-buildings/ADUs from
+  # # blowing up the PIN-level AV
+  # group_by(meta_pin) %>%
+  # mutate(
+  #   pred_pin_card_sum = ifelse(
+  #     sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
+  #       params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
+  #       is.na(meta_1yr_pri_board_tot) |
+  #       n() != 2,
+  #     sum(pred_card_intermediate_fmv),
+  #     max(pred_card_intermediate_fmv)
+  #   )
+  # ) %>%
+  # ungroup()
 
 
 ## 3.2. Townhomes --------------------------------------------------------------

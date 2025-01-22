@@ -30,9 +30,61 @@ message("Preparing model training data")
 # NOTE: It is critical to trim "multicard" sales when training. Multicard means
 # there is multiple buildings on a PIN. Since these sales include multiple
 # buildings, they are typically higher than a "normal" sale and must be removed
-training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+
+# - - - - - -
+# TESTING - multi-card training strategy
+# - - - - - -
+
+training_data_w_multi_card <- read_parquet(paths$input$training$local) %>%
+  filter(!sv_is_outlier) %>%
   arrange(meta_sale_date)
+
+
+
+# Process the data as per the requirements
+training_data_full <- training_data_w_multi_card %>%
+  # Group by both meta_pin and meta_sale_document_num
+  group_by(meta_pin, meta_sale_document_num) %>%
+  arrange(desc(char_bldg_sf), desc(char_bldg_sf), .by_group = TRUE) %>%
+  # Flag the first row in each group to preserve
+  mutate(
+    preserve = row_number() == 1,
+    # Calculate the total char_bldg_sf for each group
+    total_char_bldg_sf = sum(char_bldg_sf)
+  ) %>%
+  # Update char_bldg_sf: if preserved, set to total; else, set to NA
+  mutate(char_bldg_sf = if_else(preserve, total_char_bldg_sf, NA_real_)) %>%
+  # Keep only the preserved rows
+  filter(preserve) %>%
+  # Remove temporary columns used for processing
+  select(-preserve, -total_char_bldg_sf) %>%
+  # Ungroup the data for further operations
+  ungroup()
+
+
+
+# * * * *
+# some eda stuff
+# * * * *
+# training_data_w_multi_card_processed %>%
+#   mutate(temp_price_per_sqft = meta_sale_price/char_bldg_sf) %>%
+#   select(meta_pin, meta_sale_document_num, ind_pin_is_multicard,
+#          meta_sale_price, temp_price_per_sqft,
+#          sv_is_outlier, char_bldg_sf,
+#          meta_sale_date) %>% View()
+#
+#
+# training_data_w_multi_card_processed %>%
+#   mutate(temp_price_per_sqft = meta_sale_price/char_bldg_sf) %>%
+#   mutate(meta_sale_price_sf_decile = ntile(temp_price_per_sqft, 10)) %>%
+#   group_by(meta_sale_price_sf_decile, ind_pin_is_multicard) %>%
+#   summarise(count = n(), .groups = "drop") %>%
+#   group_by(meta_sale_price_sf_decile) %>%
+#   mutate(percentage = count / sum(count) * 100)
+
+# training_data_full <- read_parquet(paths$input$training$local) %>%
+#   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+#   arrange(meta_sale_date)
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
