@@ -39,6 +39,8 @@ This report inspects properties that are difficult to assess. All outputs below 
 | **Multifamily** | Class 211 parcels                                                                               |
 | **Top Decile**  | The top 10% of assessed values by township from the prior year                                  |
 
+<br><br>
+
 ## Topline Stats for All Properties
 
 ```{r _challenge_groups_topline_stats_all}
@@ -53,7 +55,7 @@ datasets_full <- list(
     filter(get(x)) %>%
     select(
       meta_pin, pred_pin_final_fmv_round, sale_ratio_study_price, loc_latitude,
-      loc_longitude, prior_near_tot, meta_township_code
+      loc_longitude, prior_near_tot, meta_township_code, meta_class
     )
 })
 
@@ -94,7 +96,7 @@ map2(datasets_full, names(datasets_full), \(.x, .y) {
 
 ```{r _challenge_groups_topline_stats_sold}
 datasets_sold <- datasets_full %>%
-  map(\(x){
+  map(\(x) {
     x %>% filter(!is.na(sale_ratio_study_price))
   })
 
@@ -141,7 +143,10 @@ apply_functions <- function(dataset, dataset_name) {
 
   results_df <- as.data.frame(results_rs)
   results_df$count <- nrow(dataset)
-  results_df$median_prior_near_tot <- median(dataset$prior_near_tot, na.rm = TRUE)
+  results_df$median_prior_near_tot <- median(
+    dataset$prior_near_tot,
+    na.rm = TRUE
+  )
   results_df$dataset <- dataset_name
 
   return(results_df)
@@ -224,31 +229,88 @@ plots <- datasets_sold %>%
 
 ::: panel-tabset
 
-## Large Lots
+### Large Lots
 
 ```{r, results = 'asis'}
 plots$"Large Lots"
 ```
 
-## Multicard
+### Multicard
 
 ```{r, results = 'asis'}
 plots$Multicard
 ```
 
-## Multifamily
+### Multifamily
 
-```{r}
+```{r, results = 'asis'}
 plots$Multifamily
 ```
 
-## Top Decile
+### Top Decile
 
-```{r}
+```{r, results = 'asis'}
 plots$"Top Decile"
 ```
 
 :::
+
+## Top and Bottom 10 (FMV / Sale Price) Ratios
+
+```{r}
+outliers <- datasets_sold %>%
+  map(\(x) {
+    x %>%
+      mutate(
+        Ratio = pred_pin_final_fmv_round / sale_ratio_study_price,
+        Township = ccao::town_convert(meta_township_code),
+        `Final Fmv` = dollar(pred_pin_final_fmv_round),
+        `Sale Price` = dollar(sale_ratio_study_price),
+        `Prior Value` = dollar(prior_near_tot)
+      ) %>%
+      filter(
+        rank(-Ratio) <= 10 | rank(Ratio) <= 10
+      ) %>%
+      mutate(Type = if_else(rank(-Ratio) <= 10, "Top 10", "Bottom 10")) %>%
+      arrange(Type, Ratio) %>%
+      select(
+        Pin = meta_pin,
+        `Final Fmv`,
+        `Sale Price`,
+        Ratio,
+        Type,
+        Township,
+        `Prior Value`,
+        Class = meta_class
+      )
+  })
+```
+
+```{r _challenge_groups_outliers, results = 'asis'}
+generate_tabset <- function(outliers) {
+  cat("::: panel-tabset\n\n")
+
+  iwalk(outliers, ~ {
+    cat("## ", .y, "\n\n")
+
+    print(
+      kable(
+        .x,
+        format = "html",
+        digits = 2,
+        row.names = FALSE,
+        format.args = list(big.mark = ",")
+      ) %>% kable_styling()
+    )
+
+    cat("\n\n")
+  })
+
+  cat(":::\n")
+}
+
+generate_tabset(outliers)
+```
 
 ```{r _challenge_groups_map_function}
 plots <- datasets_full %>%
@@ -260,7 +322,7 @@ plots <- datasets_full %>%
     ) %>%
       mutate(
         Change = pmin(
-          100 * (pred_pin_final_fmv_round / prior_near_tot) - 100,
+          100 * (pred_pin_final_fmv_round - prior_near_tot) / prior_near_tot,
           300
         )
       )
@@ -268,7 +330,7 @@ plots <- datasets_full %>%
     town_shp <- st_transform(ccao::town_shp, crs = st_crs(spatial_data))
 
     ggplot() +
-      geom_sf(data = spatial_data, aes(color = Change)) +
+      geom_sf(data = spatial_data, aes(color = Change), alpha = 0.5) +
       geom_sf(data = town_shp, fill = NA, color = "black") +
       theme_minimal() +
       labs(color = "Change (%)") +

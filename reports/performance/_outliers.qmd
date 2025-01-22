@@ -65,7 +65,11 @@ training_data %>%
   group_by(meta_year, outlier_reasons_to_graph) %>%
   summarise(n = n()) %>%
   rename(Year = meta_year) %>%
-  pivot_wider(id_cols = Year, names_from = outlier_reasons_to_graph, values_from = n) %>%
+  pivot_wider(
+    id_cols = Year,
+    names_from = outlier_reasons_to_graph,
+    values_from = n
+  ) %>%
   kable() %>%
   kable_styling("striped")
 
@@ -74,7 +78,11 @@ training_data %>%
   group_by(meta_year, outlier_reasons_to_graph) %>%
   summarise(n = n(), .groups = "drop") %>%
   rename(Year = meta_year) %>%
-  pivot_wider(id_cols = Year, names_from = outlier_reasons_to_graph, values_from = n) %>%
+  pivot_wider(
+    id_cols = Year,
+    names_from = outlier_reasons_to_graph,
+    values_from = n
+  ) %>%
   kable() %>%
   kable_styling("striped")
 ```
@@ -517,6 +525,43 @@ outlier_decile_breakout(training_data, 10)
 
 ```{r _outliers_decile_bottom}
 outlier_decile_breakout(training_data, 1)
+```
+
+:::
+
+## Potential Output Issues
+
+::: panel-tabset
+
+### Card Values
+
+```{r _outliers_card_values}
+assessment_card %>%
+  summarize(
+    "NA Initial FMV" = sum(is.na(pred_card_initial_fmv)),
+    "Negative Initial FMV" = sum(pred_card_initial_fmv < 0, na.rm = TRUE),
+    "NA Final FMV" = sum(is.na(pred_card_final_fmv)),
+    "Negative Final FMV" = sum(pred_card_final_fmv < 0, na.rm = TRUE)
+  )
+```
+
+### Pin Values
+
+```{r _outliers_pin_values}
+assessment_pin %>%
+  summarize(
+    "NA Initial FMV" = sum(is.na(pred_pin_initial_fmv)),
+    "Negative Initial FMV" = sum(pred_pin_initial_fmv < 0, na.rm = TRUE),
+    "NA Final FMV" = sum(is.na(pred_pin_final_fmv)),
+    "Negative Final FMV" = sum(pred_pin_final_fmv < 0, na.rm = TRUE),
+    "NA Final Land FMV" = sum(is.na(pred_pin_final_fmv_land)),
+    "Negative Final Land FMV" = sum(pred_pin_final_fmv_land < 0, na.rm = TRUE),
+    "NA Final Building FMV" = sum(is.na(pred_pin_final_fmv_bldg)),
+    "Negative Final Building FMV" = sum(
+      pred_pin_final_fmv_bldg < 0,
+      na.rm = TRUE
+    )
+  )
 ```
 
 :::

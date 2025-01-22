@@ -1139,7 +1139,7 @@ iwalk(model_lorenz_curve_plots, ~ {
 
 ## Big Misses
 
-Tables of the largest misses (in absolute terms) from the both the **test set** and **assessment set**. They show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price.
+Tables of the largest misses (in absolute terms) from the **test set**, **assessment set**, and **training data**. The **Test Set** and **Assessment Set** tabs show the four sales (one per quartile of sale price) from each township where the model's estimate was furthest from the actual sale price. The **Training Data** tab shows the largest prediction misses by town across the entire time spanned by the training data, with the goal of identifying possible data integrity issues.
 
 ::: {.panel-tabset}
 
@@ -1259,6 +1259,66 @@ model_big_misses_assessment %>%
   )
 ```
 
+### Training Data
+
+```{r _model_big_misses_training}
+model_big_misses_training <- training_data_pred %>%
+  filter(!sv_is_outlier) %>%
+  mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(meta_triad_code == run_triad_code, !is.na(meta_sale_price)) %>%
+  select(
+    Town = township_name, PIN = meta_pin, Card = meta_card_num,
+    Class = meta_class, NBHD = meta_nbhd_code, `Bldg Sqft` = char_bldg_sf,
+    Yrblt = char_yrblt,
+    `Sale Date` = meta_sale_date,
+    `Sale Price` = meta_sale_price,
+    `Est. FMV` = pred_card_initial_fmv
+  ) %>%
+  mutate(
+    Difference = (`Est. FMV` - `Sale Price`),
+    .by = Town
+  ) %>%
+  group_by(Town) %>%
+  summarise(
+    max_min_rows = list(bind_rows(
+      slice_max(pick(everything()), Difference, n = 4),
+      slice_min(pick(everything()), Difference, n = 4)
+    ))
+  ) %>%
+  unnest(max_min_rows) %>%
+  arrange(Town, -Difference) %>%
+  mutate(
+    across(
+      c(ends_with("Price"), ends_with("FMV"), Difference),
+      ~ scales::dollar(.x, prefix = "$")
+    ),
+    `Bldg Sqft` = scales::comma(`Bldg Sqft`)
+  )
+
+model_big_misses_training %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      columnDefs = list(
+        list(
+          className = "dt-right",
+          targets = c(
+            "Bldg Sqft",
+            "Sale Price",
+            "Sale Date",
+            "Est. FMV",
+            "Difference"
+          )
+        ),
+        list(
+          className = "dt-nowrap",
+          targets = c("Sale Date")
+        )
+      )
+    )
+  )
+```
+
 :::
 
 ## Variance Over Time
@@ -1324,8 +1384,9 @@ ggplot(training_data_monthly, aes(x = date, y = variance_ratio)) +
 
 ```{r _model_overall_variance_chart}
 ggplot(
-  training_data_monthly_long %>% filter(Metric %in%
-    c("variance_sale", "variance_fmv")),
+  training_data_monthly_long %>% filter(
+    Metric %in% c("variance_sale", "variance_fmv")
+  ),
   aes(x = date, y = Value, color = Metric)
 ) +
   geom_line() +
