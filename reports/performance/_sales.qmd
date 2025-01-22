@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _sales_setup_script}
+source("../_setup.R")
+```
 
 # Sales
 
