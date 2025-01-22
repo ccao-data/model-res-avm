@@ -231,10 +231,11 @@ Model accuracy for each parameter combination is measured on a validation set us
 
 ### Features Used
 
-The residential model uses a variety of individual and aggregate features to determine a property's assessed value. We've tested a long list of possible features over time, including [walk score](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_walkscore.html), [crime rate](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/chicago_crimerate.html), [school districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_school_boundaries_mean_encoded.html), and many others. The features in the table below are the ones that made the cut. They're the right combination of easy to understand and impute, powerfully predictive, and well-behaved. Most of them are in use in the model as of `r Sys.Date()`.
+The residential model uses a variety of individual and aggregate features to determine a property's assessed value. We've tested a long list of possible features over time, including [walk score](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_walkscore.html), [crime rate](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/chicago_crimerate.html), [school districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-/blob/9407d1fae1986c5ce1f5434aa91d3f8cf06c8ea1/output/test_new_variables/county_school_boundaries_mean_encoded.html), and many others. The features in the table below are the ones that made the cut. They're the right combination of easy to understand and impute, powerfully predictive, and well-behaved.
 
 ```{r feature_guide, message=FALSE, results='asis', echo=FALSE}
 library(dplyr)
+library(readr)
 library(tidyr)
 library(yaml)
 library(jsonlite)
@@ -316,37 +317,71 @@ param_notes <- param_tbl$value %>%
   )) %>%
   unlist()
 
-ccao::vars_dict %>%
-  inner_join(
-    param_tbl %>% mutate(description = param_notes),
-    by = c("var_name_model" = "value")
+param_tbl_fmt <- param_tbl %>%
+  mutate(description = param_notes) %>%
+  left_join(
+    ccao::vars_dict,
+    by = c("value" = "var_name_model")
   ) %>%
   group_by(var_name_pretty) %>%
   mutate(row = paste0("X", row_number())) %>%
   distinct(
-    `Feature Name` = var_name_pretty,
-    Category = var_type,
-    Type = var_data_type,
-    Notes = description,
-    var_value, row
+    feature_name = var_name_pretty,
+    variable_name = value,
+    description,
+    category = var_type,
+    type = var_data_type,
+    var_code, var_value, row
   ) %>%
-  mutate(Category = recode(
-    Category,
+  mutate(category = recode(
+    category,
     char = "Characteristic", acs5 = "ACS5", loc = "Location",
     prox = "Proximity", ind = "Indicator", time = "Time",
-    meta = "Meta", other = "Other", ccao = "Other"
+    meta = "Meta", other = "Other", ccao = "Other", shp = "Parcel Shape"
   )) %>%
   pivot_wider(
-    id_cols = `Feature Name`:`Notes`,
+    id_cols = feature_name:type,
     names_from = row,
-    values_from = var_value
+    values_from = c(var_code, var_value)
   ) %>%
-  unite("Possible Values", starts_with("X"), sep = ", ", na.rm = TRUE) %>%
-  mutate(Notes = replace_na(Notes, "")) %>%
-  arrange(Category) %>%
-  relocate(Notes, .after = everything()) %>%
+  unite(
+    "possible_codes",
+    starts_with("var_code_X"),
+    sep = ", ",
+    na.rm = TRUE
+  ) %>%
+  unite(
+    "possible_values",
+    starts_with("var_value_X"),
+    sep = ", ",
+    na.rm = TRUE
+  ) %>%
+  mutate(description = replace_na(description, "")) %>%
+  arrange(category)
+
+# Write machine-readable version of the table to file
+param_tbl_fmt %>%
+  write_csv("docs/data-dict.csv")
+
+# Render human-readable version of the table to the doc
+param_tbl_fmt %>%
+  rename(
+    "Feature Name" = "feature_name",
+    "Variable Name" = "variable_name",
+    "Description" = "description",
+    "Category" = "category",
+    "Type" = "type",
+    "Possible Values (Encoded)" = "possible_codes",
+    "Possible Values (Semantic)" = "possible_values",
+  ) %>%
   knitr::kable(format = "markdown")
 ```
+
+We maintain a few useful resources for working with these features:
+
+- Once you've [pulled the input data](#getting-data), you can inner join the data to the CSV version of the data dictionary ([`docs/data-dict.csv`](./docs/data-dict.csv)) to filter for only the features that we use in the model.
+- You can browse our [data catalog](https://ccao-data.github.io/data-architecture/#!/overview) to see more details about these features, in particular the [residential model input view](https://ccao-data.github.io/data-architecture/#!/model/model.ccao_data_athena.model.vw_card_res_input) which is the source of our training data.
+- You can use the [`ccao` R package](https://ccao-data.github.io/ccao/) or its [Python equivalent](https://ccao-data.github.io/ccao/python/) to programmatically convert variable names to their human-readable versions ([`ccao::vars_rename()`](https://ccao-data.github.io/ccao/reference/vars_rename.html)) or convert numerically-encoded variables to human-readable values ([`ccao::vars_recode()`](https://ccao-data.github.io/ccao/reference/vars_recode.html). The [`ccao::vars_dict` object](https://ccao-data.github.io/ccao/reference/vars_dict.html) is also useful for inspecting the raw crosswalk that powers the rename and recode functions.
 
 #### Data Sources
 
