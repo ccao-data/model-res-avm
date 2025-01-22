@@ -22,9 +22,14 @@ create_category_percentages <- function(data, group_var, feature_var) {
     group_by(!!!if (!is.null(group_var)) list(sym(group_var)) else list()) %>%
     mutate(percentage = scales::percent(n / sum(n), accuracy = 0.01)) %>%
     select(!!!group_vars, percentage) %>%
-    pivot_wider(names_from = !!sym(feature_var), values_from = percentage, values_fill = list(percentage = scales::percent(0)))
+    pivot_wider(
+      names_from = !!sym(feature_var),
+      values_from = percentage,
+      values_fill = list(percentage = scales::percent(0))
+    )
 
-  # Calculate mode for each group (if group_var is present) and add it as a new column
+  # Calculate mode for each group (if group_var is present) and add it
+  # as a new column
   mode_column <- data %>%
     group_by(!!!if (!is.null(group_var)) list(sym(group_var)) else list()) %>%
     summarize(mode_value = mode_function(!!sym(feature_var))) %>%
@@ -32,7 +37,10 @@ create_category_percentages <- function(data, group_var, feature_var) {
 
   # Join the mode column to the category_percentages data
   category_percentages <- category_percentages %>%
-    left_join(mode_column, by = if (!is.null(group_var)) group_var else character(0)) %>%
+    left_join(
+      mode_column,
+      by = if (!is.null(group_var)) group_var else character(0)
+    ) %>%
     mutate(mode = as.character(mode_value)) %>%
     select(-mode_value)
 
@@ -59,12 +67,16 @@ create_category_percentages(pin_individual, NULL, params$added_feature)
 
 ### Descriptive Stats for the Township
 ```{r}
-create_category_percentages(pin_individual, "meta_township_name", params$added_feature)
+create_category_percentages(
+  pin_individual, "meta_township_name", params$added_feature
+)
 ```
 
 ### Descriptive Stats for the Neighborhood
 ```{r}
-create_category_percentages(pin_individual, "meta_nbhd_code", params$added_feature)
+create_category_percentages(
+  pin_individual, "meta_nbhd_code", params$added_feature
+)
 ```
 
 ### Historgram of the Target Feature
