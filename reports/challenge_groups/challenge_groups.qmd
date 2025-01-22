@@ -96,7 +96,7 @@ map2(datasets_full, names(datasets_full), \(.x, .y) {
 
 ```{r _challenge_groups_topline_stats_sold}
 datasets_sold <- datasets_full %>%
-  map(\(x){
+  map(\(x) {
     x %>% filter(!is.na(sale_ratio_study_price))
   })
 
@@ -143,7 +143,10 @@ apply_functions <- function(dataset, dataset_name) {
 
   results_df <- as.data.frame(results_rs)
   results_df$count <- nrow(dataset)
-  results_df$median_prior_near_tot <- median(dataset$prior_near_tot, na.rm = TRUE)
+  results_df$median_prior_near_tot <- median(
+    dataset$prior_near_tot,
+    na.rm = TRUE
+  )
   results_df$dataset <- dataset_name
 
   return(results_df)

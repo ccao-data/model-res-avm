@@ -48,11 +48,8 @@ stats_sf_parcels <- chars_data %>%
       TRUE ~ "Yes"
     ),
     across(
-      (starts_with("char_") &
-        where(is.character)) | c(
-        char_recent_renovation,
-        char_type_resd
-      ),
+      (starts_with("char_") & where(is.character)) |
+        c(char_recent_renovation, char_type_resd),
       as.factor
     )
   ) %>%
@@ -80,9 +77,10 @@ stats_logit_vars <- names(stats_sf_parcels) %>%
 All covariates regressed on sale status - significance indicates a non-random effect on the likelihood of a sale, ceterus paribus. Sample is universe of single-family parcels from the two years prior to assessment, excluding some parcels with incomplete characteristics.
 
 ```{r _stats_logit}
-stats_logit_remove <-
-  names(stats_sf_parcels %>% rename_with(~ gsub(" |-", "_", .x)) %>%
-    select(where(is.factor))) %>%
+stats_logit_remove <- stats_sf_parcels %>%
+  rename_with(~ gsub(" |-", "_", .x)) %>%
+  select(where(is.factor)) %>%
+  names() %>%
   grep(
     "Sale|Township|Apartments|Single|Commercial",
     .,
@@ -106,7 +104,11 @@ stats_county_logit <- stats_logit_fit %>%
   broom::tidy() %>%
   mutate(
     p.value = paste0(scales::pvalue(p.value), (stars.pval(p.value))),
-    term = gsub("_", " ", gsub(paste(stats_logit_remove, collapse = "|"), "", term))
+    term = gsub(
+      "_",
+      " ",
+      gsub(paste(stats_logit_remove, collapse = "|"), "", term)
+    )
   ) %>%
   kable(
     caption = paste0(
@@ -120,7 +122,10 @@ stats_county_logit <- stats_logit_fit %>%
     padding = 5L
   ) %>%
   add_footnote(
-    "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, 0.01-0.05 = *, 0.05-0.1 = .", # noqa
+    paste0(
+      "p-value notation: 0-0.001 = ***, 0.001-0.01 = **, ",
+      "0.01-0.05 = *, 0.05-0.1 = ."
+    ),
     notation = "none"
   ) %>%
   kable_styling("striped",
@@ -187,8 +192,8 @@ stats_ecdfs_plots_num <- stats_sf_parcels %>%
   select(where(is.numeric)) %>%
   length()
 
-stats_ecdfs_grobs_num <- lapply(seq_len(stats_ecdfs_plots_num), function(index) {
-  x <- names(stats_sf_parcels %>% select(where(is.numeric)))[index]
+stats_ecdfs_grobs_num <- lapply(seq_len(stats_ecdfs_plots_num), function(i) {
+  x <- names(stats_sf_parcels %>% select(where(is.numeric)))[i]
   data <- stats_sf_parcels %>% select(Sale, any_of(x))
   ggplot(data, aes(scale(stats_sf_parcels %>% pull(x)), color = Sale)) +
     stat_ecdf(geom = "step") +
@@ -200,7 +205,7 @@ stats_ecdfs_grobs_num <- lapply(seq_len(stats_ecdfs_plots_num), function(index) 
       axis.ticks.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks.y = element_blank(),
-      legend.position = if (index == stats_ecdfs_plots_num) "bottom" else "none"
+      legend.position = if (i == stats_ecdfs_plots_num) "bottom" else "none"
     )
 })
 
@@ -242,11 +247,12 @@ stats_ecdfs_plots_fct <- stats_sf_parcels %>%
   select(where(is.factor), -contains("class")) %>%
   length()
 
-stats_ecdfs_grobs_fct <- lapply(seq_len(stats_ecdfs_plots_fct), function(index) {
+stats_ecdfs_grobs_fct <- lapply(seq_len(stats_ecdfs_plots_fct), function(i) {
   x <- names(
     stats_sf_parcels %>%
       select(where(is.factor) & any_of(stats_logit_vars))
-  )[index]
+  )[i]
+
   ggplot(
     data = stats_sf_parcels,
     mapping = aes(as.numeric(stats_sf_parcels %>% pull(x)), color = Sale)
@@ -260,7 +266,7 @@ stats_ecdfs_grobs_fct <- lapply(seq_len(stats_ecdfs_plots_fct), function(index) 
       axis.ticks.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks.y = element_blank(),
-      legend.position = if (index == stats_ecdfs_plots_fct) "bottom" else "none"
+      legend.position = if (i == stats_ecdfs_plots_fct) "bottom" else "none"
     )
 })
 
@@ -370,9 +376,9 @@ stats_median_yoy_delta %>%
   ) %>%
   kable(
     "html",
-    escape = F, col.names = rep("", 7), align = c("l", rep("c", 6))
+    escape = FALSE, col.names = rep("", 7), align = c("l", rep("c", 6))
   ) %>%
-  kable_styling(full_width = F) %>%
+  kable_styling(full_width = FALSE) %>%
   add_header_above(c(
     "Township" = 1,
     "Ratio" = 1,
