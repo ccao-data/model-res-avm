@@ -13,7 +13,6 @@ format:
 ---
 
 ```{r, include = FALSE}
-renv::install("plotly")
 library(arrow)
 library(ccao)
 library(dplyr)
@@ -26,10 +25,7 @@ library(scales)
 library(tidyr)
 ```
 
-
 ```{r}
-# model_fetch_run("2025-01-10-serene-boni", "2025")
-setwd("~/model-res-avm")
 training_data <- read_parquet("input/training_data.parquet")
 
 training_data <- training_data %>%
@@ -45,10 +41,15 @@ assessment_pin <- read_parquet(
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   # The assessment pin join is 1:many (1 assessment pin to many sales)
   # But the QC is mostly comparing the relationship between the two files
-  # so in my opinion that makes sense (for example distribution of FMVs to sale prices).
-  # We can choose to filter to distinct pins in the training data, but that would
-  # mean we may not identify earlier sales of the same property.
-  left_join(training_data %>% select(meta_pin, meta_sale_price, meta_sale_date, char_bldg_sf), by = "meta_pin")
+  # so in my opinion that makes sense (for example distribution of FMVs
+  # to sale prices). We can choose to filter to distinct pins in the training
+  # data, but that would mean we may not identify earlier sales of the same
+  # property.
+  left_join(
+    training_data %>%
+      select(meta_pin, meta_sale_price, meta_sale_date, char_bldg_sf),
+    by = "meta_pin"
+  )
 
 assessment_card <- read_parquet(
   "output/assessment_card/model_assessment_card.parquet"
@@ -253,7 +254,7 @@ model_big_misses_assessment <- assessment_pin %>%
 model_big_misses_assessment %>%
   select(-c("loc_longitude", "loc_latitude")) %>%
   mutate(Difference = scales::dollar(Difference)) %>%
-    datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
+  datatable(options = list(scrollY = "400px", scrollX = TRUE, paging = FALSE))
 ```
 
 ## Leaflet Map
@@ -313,15 +314,35 @@ plots <- assessment_pin %>%
   group_split() %>%
   set_names(map_chr(., ~ unique(.x$township_name))) %>%
   map(~ {
-    binwidth_fmv <- (max(.x$pred_pin_initial_fmv, na.rm = TRUE) - min(.x$pred_pin_initial_fmv, na.rm = TRUE)) / 30
-    binwidth_sale <- (max(.x$meta_sale_price, na.rm = TRUE) - min(.x$meta_sale_price, na.rm = TRUE)) / 30
+    binwidth_fmv <- (
+      max(.x$pred_pin_initial_fmv, na.rm = TRUE) -
+        min(.x$pred_pin_initial_fmv, na.rm = TRUE)
+    ) / 30
+    binwidth_sale <- (
+      max(.x$meta_sale_price, na.rm = TRUE) -
+        min(.x$meta_sale_price, na.rm = TRUE)
+    ) / 30
 
     ggplot(.x) +
-      geom_histogram(aes(x = pred_pin_initial_fmv, y = ..density.., fill = "Initial FMV"),
-        binwidth = binwidth_fmv, alpha = 0.2, color = "black"
+      geom_histogram(
+        aes(
+          x = pred_pin_initial_fmv,
+          y = ..density..,
+          fill = "Initial FMV"
+        ),
+        binwidth = binwidth_fmv,
+        alpha = 0.2,
+        color = "black"
       ) +
-      geom_histogram(aes(x = meta_sale_price, y = ..density.., fill = "Sale Price"),
-        binwidth = binwidth_sale, alpha = 0.2, color = "black"
+      geom_histogram(
+        aes(
+          x = meta_sale_price,
+          y = ..density..,
+          fill = "Sale Price"
+        ),
+        binwidth = binwidth_sale,
+        alpha = 0.2,
+        color = "black"
       ) +
       labs(
         x = "Value",
