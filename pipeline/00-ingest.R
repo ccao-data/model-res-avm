@@ -32,7 +32,52 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 2. Pull Data -----------------------------------------------------------------
+# 2. Define Functions ----------------------------------------------------------
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Ingest-specific helper functions for data cleaning, etc.
+
+# Create a dictionary of column types, as specified in ccao::vars_dict
+col_type_dict <- ccao::vars_dict %>%
+  distinct(var_name = var_name_model, var_type = var_data_type) %>%
+  drop_na(var_name)
+
+# Mini-function to ensure that columns are the correct type
+recode_column_type <- function(col, col_name, dictionary = col_type_dict) {
+  col_type <- dictionary %>%
+    filter(var_name == col_name) %>%
+    pull(var_type)
+  switch(col_type,
+    numeric = as.numeric(col),
+    character = as.character(col),
+    logical = as.logical(as.numeric(col)),
+    categorical = as.factor(col),
+    date = lubridate::as_date(col)
+  )
+}
+
+# Mini function to deal with arrays
+# Some Athena columns are stored as arrays but are converted to string on
+# ingest. In such cases, we either keep the contents of the cell (if 1 unit),
+# collapse the array into a comma-separated string (if more than 1 unit),
+# or replace with NA if the array is empty
+process_array_column <- function(x) {
+  purrr::map_chr(x, function(cell) {
+    if (length(cell) > 1) {
+      paste(cell, collapse = ", ")
+    } else if (length(cell) == 1) {
+      as.character(cell) # Convert the single element to character
+    } else {
+      NA # Handle cases where the array is empty
+    }
+  })
+}
+
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 3. Pull Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Pulling data from Athena")
 
@@ -68,7 +113,6 @@ training_data <- dbGetQuery(
   AND NOT sale.sale_filter_same_sale_within_365
   AND NOT sale.sale_filter_less_than_10k
   AND NOT sale.sale_filter_deed_type
-  AND Year(sale.sale_date) >= {params$input$min_sale_year}
   ")
 )
 tictoc::toc()
@@ -102,6 +146,60 @@ assessment_data <- dbGetQuery(
 )
 tictoc::toc()
 
+
+
+
+##### START TEMPORARY FIX FOR MISSING DATA. REMOVE ONCE 2024 DATA IS AVAILABLE
+library(data.table)
+conflict_prefer_all("dplyr", "data.table", quiet = TRUE)
+conflict_prefer_all("lubridate", "data.table", quiet = TRUE)
+fill_cols <- assessment_data %>%
+  select(
+    starts_with("loc_"),
+    starts_with("prox_"),
+    starts_with("acs5_"),
+    starts_with("other_"),
+    starts_with("shp_")
+  ) %>%
+  names()
+assessment_data_temp <- as.data.table(assessment_data) %>%
+  mutate(across(starts_with("loc_tax_"), process_array_column))
+assessment_data_temp_2024 <- assessment_data_temp[
+  meta_year == "2024",
+][
+  assessment_data_temp[meta_year == "2023"],
+  (fill_cols) := mget(paste0("i.", fill_cols)),
+  on = .(meta_pin, meta_card_num)
+]
+assessment_data <- rbind(
+  assessment_data_temp[meta_year != "2024"],
+  assessment_data_temp_2024
+) %>%
+  as_tibble()
+
+training_data_temp <- as.data.table(training_data) %>%
+  mutate(across(starts_with("loc_tax_"), process_array_column))
+training_data_temp_2024 <- training_data_temp[
+  meta_year == "2024",
+][
+  assessment_data_temp[meta_year == "2023"],
+  (fill_cols) := mget(paste0("i.", fill_cols)),
+  on = .(meta_pin, meta_card_num)
+]
+training_data <- rbind(
+  training_data_temp[meta_year != "2024"],
+  training_data_temp_2024
+) %>%
+  as_tibble()
+rm(
+  assessment_data_temp, assessment_data_temp_2024,
+  training_data_temp, training_data_temp_2024
+)
+##### END TEMPORARY FIX
+
+
+
+
 # Save both years for report generation using the characteristics
 assessment_data %>%
   write_parquet(paths$input$char$local)
@@ -124,58 +222,6 @@ tictoc::toc()
 # Close connection to Athena
 dbDisconnect(AWS_ATHENA_CONN_NOCTUA)
 rm(AWS_ATHENA_CONN_NOCTUA)
-
-
-
-
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# 3. Define Functions ----------------------------------------------------------
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# Ingest-specific helper functions for data cleaning, etc.
-
-# Create a dictionary of column types, as specified in ccao::vars_dict
-col_type_dict <- ccao::vars_dict %>%
-  distinct(var_name = var_name_model, var_type = var_data_type) %>%
-  drop_na(var_name)
-
-# Mini-function to ensure that columns are the correct type
-recode_column_type <- function(col, col_name, dictionary = col_type_dict) {
-  col_type <- dictionary %>%
-    filter(var_name == col_name) %>%
-    pull(var_type)
-  switch(col_type,
-    numeric = as.numeric(col),
-    character = as.character(col),
-    logical = as.logical(as.numeric(col)),
-    categorical = as.factor(col),
-    date = lubridate::as_date(col)
-  )
-}
-
-
-# Mini function to deal with arrays
-# Some Athena columns are stored as arrays but are converted to string on
-# ingest. In such cases, we either keep the contents of the cell (if 1 unit),
-# collapse the array into a comma-separated string (if more than 1 unit),
-# or replace with NA if the array is empty
-process_array_columns <- function(data, selector) {
-  data %>%
-    mutate(
-      across(
-        !!enquo(selector),
-        ~ sapply(.x, function(cell) {
-          if (length(cell) > 1) {
-            paste(cell, collapse = ", ")
-          } else if (length(cell) == 1) {
-            as.character(cell) # Convert the single element to character
-          } else {
-            NA # Handle cases where the array is empty
-          }
-        })
-      )
-    )
-}
 
 
 
@@ -312,9 +358,8 @@ training_data_clean <- training_data_w_hie %>%
     ),
     char_ncu = ifelse(char_class == "212" & !is.na(char_ncu), char_ncu, 0)
   ) %>%
-  # Apply the helper function to process array columns
-  process_array_columns(starts_with("loc_tax_")) %>%
   mutate(
+    across(starts_with("loc_tax_"), process_array_column),
     loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
   ) %>%
@@ -428,8 +473,8 @@ assessment_data_clean <- assessment_data_w_hie %>%
     as_factor = FALSE
   ) %>%
   # Apply the helper function to process array columns
-  process_array_columns(starts_with("loc_tax_")) %>%
   mutate(
+    across(starts_with("loc_tax_"), process_array_column),
     loc_tax_municipality_name =
       replace_na(loc_tax_municipality_name, "UNINCORPORATED")
   ) %>%
