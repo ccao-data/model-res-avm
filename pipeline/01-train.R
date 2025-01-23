@@ -31,8 +31,32 @@ message("Preparing model training data")
 # there is multiple buildings on a PIN. Since these sales include multiple
 # buildings, they are typically higher than a "normal" sale and must be removed
 training_data_full <- read_parquet(paths$input$training$local) %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+  filter(
+    meta_pin_num_cards <= 3,
+    !sv_is_outlier
+  ) %>%
   arrange(meta_sale_date)
+
+# To calculate a value for multi-card properties, keep the largest card
+# and drop the others. The building square footage from the dropped card(s) is
+# added to the kept card to make a more robust prediction.
+df_multi_card_kept <- training_data_full %>%
+  filter(ind_pin_is_multicard) %>%
+  group_by(meta_pin, meta_sale_document_num) %>%
+  mutate(
+    total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)
+  ) %>%
+  slice_max(char_bldg_sf, with_ties = FALSE) %>%
+  mutate(char_bldg_sf = total_bldg_sf) %>%
+  select(-total_bldg_sf) %>%
+  ungroup()
+
+df_single_card <- training_data_full %>%
+  filter(!ind_pin_is_multicard)
+
+training_data_full <- df_single_card %>%
+  bind_rows(df_multi_card_kept)
+
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are

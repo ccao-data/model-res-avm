@@ -149,6 +149,7 @@ model:
     # Vector of predictors from the training data included in the model. Edit
     # this list to add or remove variables from the model
     all:
+      - "meta_pin_num_cards"
       - "meta_township_code"
       - "meta_nbhd_code"
       - "meta_sale_count_past_n_years"
