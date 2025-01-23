@@ -29,13 +29,14 @@ if (shap_enable || comp_enable) {
 
   # Load the input data used for assessment. This is the universe of CARDs (not
   # PINs) that need values. Will use the the trained model to calc SHAP values
-  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
+  assessment_data <- as_tibble(read_parquet(paths$input$assessment$local)) %>%
+    mutate(!!params$model$weight_col := 1)
 
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
     new_data = assessment_data,
-    all_predictors()
+    all_predictors(), -all_of("meta_weight")
   )
 }
 
@@ -131,7 +132,8 @@ if (comp_enable) {
           filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
           pull(township_code)
       )
-    )
+    ) %>%
+    mutate(!!params$model$weight_col := 1)
   comp_assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
     new_data = comp_assessment_data,
@@ -167,7 +169,8 @@ if (comp_enable) {
   message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-    as_tibble()
+    as_tibble() %>%
+    mutate(!!params$model$weight_col := 1)
   training_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
     new_data = training_data,

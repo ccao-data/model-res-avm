@@ -100,7 +100,7 @@ cv:
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
   # time, with each chunk/period calculated automatically
-  num_folds: 10
+  num_folds: 7
 
   # The number of months time-based folds should overlap each other. Only
   # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
@@ -144,6 +144,10 @@ model:
 
   # Model verbosity: < 0: Fatal, = 0: Error (Warning), = 1: Info, > 1: Debug
   verbose: -1
+
+  # Name of column in the baked (i.e. input data) to use as weights. Set to
+  # NULL to disable weighting
+  weight_col: "meta_weight"
 
   predictor:
     # Vector of predictors from the training data included in the model. Edit
@@ -243,6 +247,24 @@ model:
       - "time_sale_day_of_month"
       - "time_sale_day_of_week"
       - "time_sale_post_covid"
+      - "time_sale_roll_mean_town_t0_w1"
+      - "time_sale_roll_mean_town_t0_w2"
+      - "time_sale_roll_mean_town_t0_w3"
+      - "time_sale_roll_mean_town_t1_w1"
+      - "time_sale_roll_mean_town_t1_w2"
+      - "time_sale_roll_mean_town_t1_w3"
+      - "time_sale_roll_mean_town_t2_w1"
+      - "time_sale_roll_mean_town_t2_w2"
+      - "time_sale_roll_mean_town_t2_w3"
+      - "time_sale_roll_mean_nbhd_t0_w1"
+      - "time_sale_roll_mean_nbhd_t0_w2"
+      - "time_sale_roll_mean_nbhd_t0_w3"
+      - "time_sale_roll_mean_nbhd_t1_w1"
+      - "time_sale_roll_mean_nbhd_t1_w2"
+      - "time_sale_roll_mean_nbhd_t1_w3"
+      - "time_sale_roll_mean_nbhd_t2_w1"
+      - "time_sale_roll_mean_nbhd_t2_w2"
+      - "time_sale_roll_mean_nbhd_t2_w3"
       - "shp_parcel_centroid_dist_ft_sd"
       - "shp_parcel_edge_len_ft_sd"
       - "shp_parcel_interior_angle_sd"
@@ -292,7 +314,7 @@ model:
     # https://lightgbm.readthedocs.io/en/latest/R/reference/lgb.train.html#arguments
     # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
-    validation_type: "random"
+    validation_type: "recent"
     validation_metric: "rmse"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
@@ -315,26 +337,26 @@ model:
       # for setting this parameter is to discover a good fixed value using CV,
       # then manually set that value for non-CV runs (which don't use
       # early stopping by default)
-      num_iterations: 1575
-      learning_rate: 0.015
+      num_iterations: 1500
+      learning_rate: 0.014
 
       # Maximum number of bins for discretizing continuous features. Lower uses
       # less memory and speeds up training
-      max_bin: 512
+      max_bin: 445
 
       # See docs for details on each of the remaining parameters:
       # https://lightgbm.readthedocs.io/en/latest/Parameters.html
-      num_leaves: 185
-      add_to_linked_depth: 4
-      feature_fraction: 0.61
-      min_gain_to_split: 75.5
-      min_data_in_leaf: 31
-      max_cat_threshold: 165
-      min_data_per_group: 300
-      cat_smooth: 82.0
-      cat_l2: 1.00
-      lambda_l1: 0.022
-      lambda_l2: 0.152
+      num_leaves: 1212
+      add_to_linked_depth: 1
+      feature_fraction: 0.475
+      min_gain_to_split: 0.00121
+      min_data_in_leaf: 123
+      max_cat_threshold: 83
+      min_data_per_group: 19
+      cat_smooth: 120.0
+      cat_l2: 0.0475
+      lambda_l1: 98.6
+      lambda_l2: 0.0686
 
     # Range of possible hyperparameter values for tuning to explore
     range:

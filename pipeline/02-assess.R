@@ -43,6 +43,7 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # fair-market value for each card
 assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
+  mutate(!!params$model$weight_col := 1) %>%
   mutate(
     pred_card_initial_fmv = predict(
       lgbm_final_full_fit,
