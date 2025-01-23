@@ -36,8 +36,8 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   mutate(
     # Define a logistic function to weight post-COVID sales more heavily
     !!params$model$weight_col := 1 / (
-      1 + exp(-(0.01 * as.integer(meta_sale_date - make_date(2021, 2))))
-    ) * 0.5 + 0.5
+      1 + exp(-(0.003 * as.integer(meta_sale_date - make_date(2022, 2))))
+    ) * 0.3 + 0.7
   )
 
 # Create train/test split by time, with most recent observations in the test set
