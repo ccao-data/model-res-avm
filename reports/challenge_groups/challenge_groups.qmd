@@ -327,7 +327,7 @@ df_filtered <- assessment_pin %>%
 
 
 df_filtered <- df_filtered %>%
-  mutate(decile = ntile(pred_pin_final_fmv, 10))
+  mutate(decile = ntile(sale_recent_1_price, 10))
 
 df_deciles <- df_filtered %>%
   group_by(decile) %>%
