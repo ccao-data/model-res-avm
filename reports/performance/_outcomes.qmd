@@ -190,7 +190,6 @@ outcomes_map_nbhd_delta <- model_performance_assessment %>%
     !by_class,
     geography_type == "nbhd_code"
   ) %>%
-  filter(!is.na(loc_latitude) & !is.na(loc_longitude)) %>%
   select(
     meta_nbhd_code = geography_id,
     neighborhood_median_change = prior_near_yoy_pct_chg_median,
@@ -262,7 +261,6 @@ outcomes_map_township_delta <- model_performance_assessment %>%
     !by_class,
     geography_type == "township_code"
   ) %>%
-  filter(!is.na(loc_latitude) & !is.na(loc_longitude)) %>%
   select(
     township_code = geography_id,
     township_median_change = prior_near_yoy_pct_chg_median,
