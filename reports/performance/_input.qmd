@@ -433,3 +433,43 @@ assessment_pin %>%
 ```
 
 :::
+
+
+## Potential Output Issues
+
+::: panel-tabset
+
+### Card Values
+
+```{r _outcomes_card_values}
+assessment_card %>%
+  summarize(
+    "NA Initial FMV" = sum(is.na(pred_card_initial_fmv)),
+    "Negative Initial FMV" = sum(pred_card_initial_fmv < 0, na.rm = TRUE),
+    "NA Final FMV" = sum(is.na(pred_card_final_fmv)),
+    "Negative Final FMV" = sum(pred_card_final_fmv < 0, na.rm = TRUE)
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+### PIN Values
+
+```{r _outcomes_pin_values}
+assessment_pin %>%
+  summarize(
+    "NA Initial FMV" = sum(is.na(pred_pin_initial_fmv)),
+    "Negative Initial FMV" = sum(pred_pin_initial_fmv < 0, na.rm = TRUE),
+    "NA Final FMV" = sum(is.na(pred_pin_final_fmv)),
+    "Negative Final FMV" = sum(pred_pin_final_fmv < 0, na.rm = TRUE),
+    "NA Final Land FMV" = sum(is.na(pred_pin_final_fmv_land)),
+    "Negative Final Land FMV" = sum(pred_pin_final_fmv_land < 0, na.rm = TRUE),
+    "NA Final Building FMV" = sum(is.na(pred_pin_final_fmv_bldg)),
+    "Negative Final Building FMV" = sum(
+      pred_pin_final_fmv_bldg < 0,
+      na.rm = TRUE
+    )
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+:::
