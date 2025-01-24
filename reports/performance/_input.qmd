@@ -163,7 +163,7 @@ input_char_filling_df <- training_data %>%
     ),
     .by = meta_pin
   ) %>%
-  filter(n() > 6, .by = meta_pin) %>%
+  filter(n() > 5, .by = meta_pin) %>%
   select(
     PIN = meta_pin,
     Year = meta_year,
@@ -172,7 +172,7 @@ input_char_filling_df <- training_data %>%
     `Walkability (2017)` = loc_access_cmap_walk_total_score,
     `GS Rating (2021)` = prox_avg_school_rating_in_half_mile
   ) %>%
-  arrange(PIN, Year)
+  arrange(PIN, Year, `Sale Date`)
 
 input_char_filling_df %>%
   datatable(rownames = FALSE)
