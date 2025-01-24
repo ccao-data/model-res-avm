@@ -125,9 +125,9 @@ df_2_3_card_combined <- df_2_3_card_pred_kept %>%
 df_2_3_card_final <- df_2_3_card_combined %>%
   group_by(meta_pin) %>%
   mutate(
-    total_pred_fmv      = sum(pred_card_initial_fmv, na.rm = TRUE),
-    total_bldg_sf_pin   = sum(char_bldg_sf, na.rm = TRUE),
-    share_bldg_sf       = char_bldg_sf / total_bldg_sf_pin,
+    total_pred_fmv = sum(pred_card_initial_fmv, na.rm = TRUE),
+    total_bldg_sf_pin = sum(char_bldg_sf, na.rm = TRUE),
+    share_bldg_sf = char_bldg_sf / total_bldg_sf_pin,
     pred_card_initial_fmv = total_pred_fmv * share_bldg_sf
   ) %>%
   ungroup() %>%
