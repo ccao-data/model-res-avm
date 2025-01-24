@@ -243,7 +243,8 @@ input_complex_id_map <- input_complex_id_targets %>%
         char_yrblt
       ),
     by = "meta_pin"
-  )
+  ) %>%
+  filter(!is.na(loc_latitude) & !is.na(loc_longitude))
 
 input_complex_id_palette <- colorFactor(
   palette = "Set1",
