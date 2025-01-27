@@ -41,54 +41,7 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # Load the data for assessment. This is the universe of CARDs (not
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
 # fair-market value for each card
-df_assessment_data <- read_parquet(paths$input$assessment$local)
-
-## 2.1. Multicards data prep ---------------------------------------------------
-
-# We have a separate strategy for multi-cards with 2-3 cars vs 4 cards.
-#
-# For 2-3 cards we aggregate the total sqft from all cards into a single row to
-# predict for a pin value, and for 4+ cards we predict on each card at the row
-# level and sum them to get a final value. We do this for 4+ card sales
-# because we often don't have good data which can lead to underpredicting the
-# real value
-
-# Partition data out for each strategy
-df_single_card <- df_assessment_data %>%
-  filter(!ind_pin_is_multicard)
-
-df_2_3_card_multicard <- df_assessment_data %>%
-  filter(ind_pin_is_multicard, meta_pin_num_cards %in% c(2, 3))
-
-df_4plus_card_kept <- df_assessment_data %>%
-  filter(ind_pin_is_multicard, meta_pin_num_cards >= 4)
-
-df_2_3_card_kept <- df_2_3_card_multicard %>%
-  group_by(meta_pin) %>%
-  mutate(total_bldg_sf = sum(char_bldg_sf, na.rm = TRUE)) %>%
-  # Keep only the card with the maximum building sqft
-  slice_max(char_bldg_sf, with_ties = FALSE) %>%
-  # Overwrite that largest card’s char_bldg_sf with the sum of all cards
-  mutate(char_bldg_sf = total_bldg_sf) %>%
-  select(-total_bldg_sf) %>%
-  ungroup()
-
-# We'll predict only on this "kept" card for 2–3-card PINs.
-# The rest are "dropped" for now, then re-attached after modeling.
-
-df_2_3_card_dropped <- df_2_3_card_multicard %>%
-  anti_join(
-    df_2_3_card_kept %>% select(meta_pin, meta_card_num),
-    by = c("meta_pin", "meta_card_num")
-  )
-
-df_for_prediction <- bind_rows(
-  df_single_card,
-  df_2_3_card_kept,
-  df_4plus_card_kept
-)
-
-df_pred <- df_for_prediction %>%
+assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
   mutate(
     pred_card_initial_fmv = predict(
@@ -110,50 +63,42 @@ df_pred <- df_for_prediction %>%
 message("Performing post-modeling adjustments")
 
 ## 3.1. Multicards -------------------------------------------------------------
+message("Fixing multicard PINs")
 
-# Identify the predicted rows relevant to 2–3-card PINs we “lumped”
-df_2_3_card_pred_kept <- df_pred %>%
-  semi_join(df_2_3_card_kept, by = c("meta_pin", "meta_card_num"))
-
-# Combine the predicted (kept) card with the dropped ones to proportionally
-# assign pred based on sqft
-df_2_3_card_combined <- df_2_3_card_pred_kept %>%
-  bind_rows(
-    df_2_3_card_dropped %>% mutate(pred_card_initial_fmv = NA_real_)
-  )
-
-df_2_3_card_final <- df_2_3_card_combined %>%
-  group_by(meta_pin) %>%
-  mutate(
-    total_pred_fmv = sum(pred_card_initial_fmv, na.rm = TRUE),
-    total_bldg_sf_pin = sum(char_bldg_sf, na.rm = TRUE),
-    share_bldg_sf = char_bldg_sf / total_bldg_sf_pin,
-    pred_card_initial_fmv = total_pred_fmv * share_bldg_sf
-  ) %>%
-  ungroup() %>%
+# Cards represent buildings/improvements. A PIN can have multiple cards, and
+# the total taxable value of the PIN is (usually) the sum of all cards
+assessment_card_data_mc <- assessment_card_data_pred %>%
   select(
-    everything(),
-    -total_pred_fmv,
-    -total_bldg_sf_pin,
-    -share_bldg_sf
-  )
-
-df_4plus_card_final <- df_pred %>%
-  semi_join(df_4plus_card_multicard, by = c("meta_pin", "meta_card_num"))
-
-df_single_card_final <- df_pred %>%
-  semi_join(df_single_card, by = c("meta_pin", "meta_card_num"))
-
-df_final_all_cards <- bind_rows(
-  df_single_card_final,
-  df_2_3_card_final,
-  df_4plus_card_final
-)
-
-assessment_card_data_mc <- df_final_all_cards %>%
+    meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
+    char_bldg_sf, char_land_sf,
+    meta_tieback_key_pin, meta_tieback_proration_rate,
+    meta_1yr_pri_board_tot, pred_card_initial_fmv
+  ) %>%
+  # For prorated PINs with multiple cards, take the average of the card
+  # (building) across PINs. This is because the same prorated building spread
+  # across multiple PINs sometimes receives different values from the model
+  group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
+  mutate(
+    pred_card_intermediate_fmv = ifelse(
+      is.na(meta_tieback_key_pin),
+      pred_card_initial_fmv,
+      mean(pred_card_initial_fmv)
+    )
+  ) %>%
+  # Aggregate multi-cards to the PIN-level by summing the predictions
+  # of all cards. We use a heuristic here to limit the PIN-level total
+  # value, this is to prevent super-high-value back-buildings/ADUs from
+  # blowing up the PIN-level AV
   group_by(meta_pin) %>%
   mutate(
-    pred_pin_card_sum = sum(pred_card_initial_fmv, na.rm = TRUE)
+    pred_pin_card_sum = ifelse(
+      sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
+        params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
+        is.na(meta_1yr_pri_board_tot) |
+        n() != 2,
+      sum(pred_card_intermediate_fmv),
+      max(pred_card_intermediate_fmv)
+    )
   ) %>%
   ungroup()
 
