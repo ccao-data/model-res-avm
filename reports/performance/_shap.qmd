@@ -210,8 +210,9 @@ The following map shows the impact of 20 key predictors for neighborhood-level h
 
 ```{r _shap_map}
 shap_df_imp_by_nbhd <- shap_df_filtered %>%
-  left_join(
+  inner_join(
     assessment_card %>%
+      filter(!is.na(loc_latitude) & !is.na(loc_longitude)) %>%
       select(meta_year, meta_pin, meta_card_num, nbhd_code = meta_nbhd_code),
     by = c("meta_pin", "meta_card_num", "meta_year")
   ) %>%
