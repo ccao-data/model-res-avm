@@ -371,33 +371,25 @@ iwalk(plots, ~ {
 ## Assessed values for multi-card properties
 
 The sales data we use to measure accuracy is the most recent sale per multi-card
-pin if there was one after 2020.
+PIN (if there was one after 2020).
 
-```{r _decile_ratio_graph}
-# Grab multi-card indicator
-assessment_pin <- assessment_pin %>%
+```{r _challenge_groups_decile_ratio_graph}
+mc_assessment_pin <- assessment_pin %>%
   left_join(
     assessment_data %>%
       select(meta_pin, ind_pin_is_multicard),
     by = "meta_pin"
-  )
-
-df_filtered <- assessment_pin %>%
-  filter(ind_pin_is_multicard) %>%
-  mutate(
-    ratio = pred_pin_final_fmv / sale_recent_1_price
   ) %>%
-  filter(sale_recent_1_date >= as.Date("2020-01-01"))
-
-
-df_filtered <- df_filtered %>%
+  filter(ind_pin_is_multicard) %>%
+  mutate(ratio = pred_pin_final_fmv / sale_recent_1_price) %>%
+  filter(sale_recent_1_date >= as.Date("2020-01-01")) %>%
   mutate(decile = ntile(sale_recent_1_price, 10))
 
-df_deciles <- df_filtered %>%
+mc_df_deciles <- mc_assessment_pin %>%
   group_by(decile) %>%
   summarise(median_ratio = median(ratio, na.rm = TRUE))
 
-p_deciles <- ggplot(df_deciles, aes(x = decile, y = median_ratio)) +
+mc_p_deciles <- ggplot(mc_df_deciles, aes(x = decile, y = median_ratio)) +
   geom_line() +
   geom_point() +
   geom_hline(yintercept = 1, color = "black", linetype = "dashed") +
@@ -409,17 +401,17 @@ p_deciles <- ggplot(df_deciles, aes(x = decile, y = median_ratio)) +
   ) +
   theme_minimal()
 
-p_deciles
+mc_p_deciles
 ```
 
-```{r _scatterplot_pred_vs_sale}
-max_val <- max(
-  c(df_filtered$sale_recent_1_price, df_filtered$pred_pin_final_fmv),
-  na.rm = TRUE
-)
+```{r _challenge_groups_scatterplot_pred_vs_sale}
+mc_max_val <- max(c(
+  mc_assessment_pin$sale_recent_1_price,
+  mc_assessment_pin$pred_pin_final_fmv
+), na.rm = TRUE)
 
-p_scatter_base <- plot_ly(
-  data = df_filtered,
+mc_p_scatter_base <- plot_ly(
+  data = mc_assessment_pin,
   x = ~sale_recent_1_price,
   y = ~pred_pin_final_fmv,
   type = "scatter",
@@ -440,8 +432,8 @@ p_scatter_base <- plot_ly(
         type = "line",
         x0   = 0,
         y0   = 0,
-        x1   = max_val,
-        y1   = max_val,
+        x1   = mc_max_val,
+        y1   = mc_max_val,
         xref = "x",
         yref = "y",
         line = list(color = "red", dash = "dash")
@@ -451,6 +443,5 @@ p_scatter_base <- plot_ly(
     yaxis = list(title = "Predicted FMV (Base)")
   )
 
-p_scatter_base
+mc_p_scatter_base
 ```
-
