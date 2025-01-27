@@ -504,10 +504,14 @@ outlier_decile_breakout <- function(data, dec) {
       x = "Outlier Types"
     ) +
     geom_bar(stat = "identity") +
-    geom_text(aes(label = comma(count)), vjust = -0.1, nudge_x = 50) +
+    geom_text(
+      aes(label = comma(count)),
+      hjust = 0,
+      nudge_y = 20
+    ) +
     scale_y_continuous(
       labels = comma,
-      limits = c(0, 1.05 * outlier_decile_y_axis_lim)
+      limits = c(0, 1.10 * outlier_decile_y_axis_lim)
     ) +
     theme_minimal() +
     theme(
