@@ -16,6 +16,7 @@ Map of the 10 largest year-over-year increases in market value by neighborhood. 
 
 ```{r _outcomes_map_of_largest_change}
 outcomes_map_big_changes <- assessment_pin %>%
+  filter(!is.na(loc_latitude) & !is.na(loc_longitude)) %>%
   group_by(meta_nbhd_code) %>%
   left_join(ccao::nbhd_shp, by = c("meta_nbhd_code" = "town_nbhd")) %>%
   distinct(meta_pin, .keep_all = TRUE) %>%
