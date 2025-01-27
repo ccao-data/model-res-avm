@@ -914,11 +914,11 @@
       "Version": "0.0.6",
       "Source": "GitHub",
       "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "master",
-      "RemoteSha": "2720ad973c990ad64ac7e6bb632389ff9f2a2675",
-      "RemoteHost": "api.github.com",
+      "RemoteRef": "a4da9b371e6969fed0819e093182f8e144f1aecf",
+      "RemoteSha": "a4da9b371e6969fed0819e093182f8e144f1aecf",
       "Requirements": [
         "butcher",
         "dials",
@@ -931,7 +931,7 @@
         "tibble",
         "zip"
       ],
-      "Hash": "c3e596514cefa9e44744f6ae355d249d"
+      "Hash": "48fbac82c3680e978ded2c685e373016"
     },
     "listenv": {
       "Package": "listenv",

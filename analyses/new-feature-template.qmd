@@ -15,13 +15,13 @@ format:
     fig-align: center
     fontsize: 12pt
 params:
-  run_id: "2024-07-03-charming-boni"
-  run_id_year: "2024"
-  comparison_run_id: "2024-07-13-great-eric"
-  comparison_run_id_year: "2024"
-  added_feature: "prox_nearest_new_construction_dist_ft"
-  added_feature_shap: "prox_nearest_new_construction_dist_ft_shap"
-  description: "A distance in feet to the nearest new construction"
+  run_id: "2025-01-13-dazzling-kyra"
+  run_id_year: "2025"
+  comparison_run_id: "2025-01-10-serene-boni"
+  comparison_run_id_year: "2025"
+  added_feature: "time_sale_roll_mean_nbhd_t0_w3"
+  added_feature_shap: "time_sale_roll_mean_nbhd_t0_w3_shap"
+  description: "Added feature to calculate neighborhood rolling averages of sale price"
   min_range: 5
   max_range: 95
   type: "continuous"
@@ -206,14 +206,16 @@ pin_individual <- assessment_pin_new %>%
     pred_pin_initial_fmv_comp = pred_pin_initial_fmv
   ) %>%
   mutate(
-    diff_pred_pin_final_fmv =
-      round(((pred_pin_final_fmv_new - pred_pin_final_fmv_comp) /
-        pred_pin_final_fmv_comp), 4),
+    diff_pred_pin_final_fmv = round((
+      (pred_pin_final_fmv_new - pred_pin_final_fmv_comp) /
+        pred_pin_final_fmv_comp
+    ), 4),
     pred_pin_final_fmv_new = dollar(pred_pin_final_fmv_new),
     pred_pin_final_fmv_comp = dollar(pred_pin_final_fmv_comp),
-    diff_pred_pin_initial_fmv =
-      round(((pred_pin_initial_fmv_new - pred_pin_initial_fmv_comp) /
-        pred_pin_initial_fmv_comp), 4),
+    diff_pred_pin_initial_fmv = round((
+      (pred_pin_initial_fmv_new - pred_pin_initial_fmv_comp) /
+        pred_pin_initial_fmv_comp
+    ), 4),
     pred_pin_initial_fmv_new = dollar(pred_pin_initial_fmv_new),
     pred_pin_initial_fmv_comp = dollar(pred_pin_initial_fmv_comp)
   ) %>%
@@ -255,7 +257,12 @@ if (type == "continuous") {
       plurality_factor = first(!!sym(target_feature_value))
     ) %>%
     ungroup() %>%
-    select(meta_nbhd_code, !!sym(target_feature_value), percentage, plurality_factor) %>%
+    select(
+      meta_nbhd_code,
+      !!sym(target_feature_value),
+      percentage,
+      plurality_factor
+    ) %>%
     pivot_wider(
       names_from = !!sym(target_feature_value),
       values_from = percentage,
@@ -305,7 +312,9 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
   target_feature <- sym(target_feature)
 
   if (!is.null(group_by_column)) {
-    formatted_group_by_column <- str_to_title(str_replace_all(group_by_column, "_", " "))
+    formatted_group_by_column <- str_to_title(
+      str_replace_all(group_by_column, "_", " ")
+    )
 
     summary_data <- data %>%
       group_by(!!sym(group_by_column)) %>%
@@ -313,9 +322,20 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
         !!formatted_group_by_column := first(!!sym(group_by_column)),
         Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
         Median = round(median(!!target_feature, na.rm = TRUE), 2),
-        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
-        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
-        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+        `10th Percentile` = round(
+          quantile(!!target_feature, 0.1, na.rm = TRUE),
+          2
+        ),
+        `90th Percentile` = round(
+          quantile(!!target_feature, 0.9, na.rm = TRUE),
+          2
+        ),
+        Mode = round(
+          as.numeric(
+            names(sort(table(!!target_feature), decreasing = TRUE)[1])
+          ),
+          2
+        )
       ) %>%
       select(-!!sym(group_by_column))
   } else {
@@ -323,9 +343,20 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
       summarize(
         Mean = round(mean(!!target_feature, na.rm = TRUE), 2),
         Median = round(median(!!target_feature, na.rm = TRUE), 2),
-        `10th Percentile` = round(quantile(!!target_feature, 0.1, na.rm = TRUE), 2),
-        `90th Percentile` = round(quantile(!!target_feature, 0.9, na.rm = TRUE), 2),
-        Mode = round(as.numeric(names(sort(table(!!target_feature), decreasing = TRUE)[1])), 2)
+        `10th Percentile` = round(
+          quantile(!!target_feature, 0.1, na.rm = TRUE),
+          2
+        ),
+        `90th Percentile` = round(
+          quantile(!!target_feature, 0.9, na.rm = TRUE),
+          2
+        ),
+        Mode = round(
+          as.numeric(
+            names(sort(table(!!target_feature), decreasing = TRUE)[1])
+          ),
+          2
+        )
       )
   }
 
@@ -346,20 +377,31 @@ create_summary_table <- function(data, target_feature, group_by_column = NULL) {
 ## Overall
 
 ```{r mean_median}
-create_summary_table(pin_individual, target_feature = {{ target_feature_value }})
+create_summary_table(
+  pin_individual,
+  target_feature = {{ target_feature_value }}
+)
 ```
 
 ## Township
 ```{r mean_median_township}
 # For Township
-create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_township_name")
+create_summary_table(
+  pin_individual,
+  target_feature = {{ target_feature_value }},
+  group_by_column = "meta_township_name"
+)
 ```
 
 ## Neighborhood
 
 ```{r mean_median_neighborhood}
 # For Neighborhood
-create_summary_table(pin_individual, target_feature = {{ target_feature_value }}, group_by_column = "meta_nbhd_code")
+create_summary_table(
+  pin_individual,
+  target_feature = {{ target_feature_value }},
+  group_by_column = "meta_nbhd_code"
+)
 ```
 
 :::
@@ -370,13 +412,26 @@ create_summary_table(pin_individual, target_feature = {{ target_feature_value }}
 
 
 ```{r, histogram_function}
-create_histogram_with_statistics <- function(data, target_feature, x_label, y_label = "Frequency", filter_outliers = FALSE, filter_column = NULL) {
+create_histogram_with_statistics <- function(data,
+                                             target_feature,
+                                             x_label,
+                                             y_label = "Frequency",
+                                             filter_outliers = FALSE,
+                                             filter_column = NULL) {
   # Conditionally filter outliers if requested
   if (filter_outliers && !is.null(filter_column)) {
     data <- data %>%
       filter(
-        !!sym(filter_column) >= quantile(!!sym(filter_column), 0.025, na.rm = TRUE) &
-          !!sym(filter_column) <= quantile(!!sym(filter_column), 0.975, na.rm = TRUE)
+        !!sym(filter_column) >= quantile(
+          !!sym(filter_column),
+          0.025,
+          na.rm = TRUE
+        ),
+        !!sym(filter_column) <= quantile(
+          !!sym(filter_column),
+          0.975,
+          na.rm = TRUE
+        )
       )
   }
 
@@ -391,8 +446,18 @@ create_histogram_with_statistics <- function(data, target_feature, x_label, y_la
   plot <- data %>%
     ggplot(aes(x = !!sym(target_feature))) +
     geom_histogram(fill = "blue", color = "black", alpha = 0.7) +
-    geom_vline(aes(xintercept = mean_value, color = "Mean"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
-    geom_vline(aes(xintercept = median_value, color = "Median"), linetype = "dashed", linewidth = 1, show.legend = TRUE) +
+    geom_vline(
+      aes(xintercept = mean_value, color = "Mean"),
+      linetype = "dashed",
+      linewidth = 1,
+      show.legend = TRUE
+    ) +
+    geom_vline(
+      aes(xintercept = median_value, color = "Median"),
+      linetype = "dashed",
+      linewidth = 1,
+      show.legend = TRUE
+    ) +
     scale_color_manual(
       name = "Statistics",
       values = c(Mean = "red", Median = "green"),
@@ -477,18 +542,42 @@ if (params$type == "continuous") {
     select(-all_of(columns_to_remove))
 
   # Initialize a data frame to store correlation results
-  correlation_results <- data.frame(Feature = character(), Correlation = numeric(), Abs_Correlation = numeric(), stringsAsFactors = FALSE)
+  correlation_results <- data.frame(
+    Feature = character(),
+    Correlation = numeric(),
+    Abs_Correlation = numeric(),
+    stringsAsFactors = FALSE
+  )
 
-  # Loop through each numeric column and calculate correlation and absolute correlation
+  # Loop through each numeric column and calculate correlation and
+  # absolute correlation
   for (col_name in names(numeric_cols)) {
     # Filter out rows with missing values in the two columns being compared
-    complete_cases <- complete.cases(numeric_cols[[col_name]], assessment_data_new[[params$added_feature]])
+    complete_cases <- complete.cases(
+      numeric_cols[[col_name]],
+      assessment_data_new[[params$added_feature]]
+    )
 
     # Only compute correlation if there are complete cases
     if (sum(complete_cases) > 0) {
-      correlation_value <- cor(numeric_cols[[col_name]][complete_cases], assessment_data_new[[params$added_feature]][complete_cases], use = "complete.obs")
-      abs_correlation_value <- abs(cor(abs(numeric_cols[[col_name]][complete_cases]), abs(assessment_data_new[[params$added_feature]][complete_cases]), use = "complete.obs"))
-      correlation_results <- rbind(correlation_results, data.frame(Feature = col_name, Correlation = correlation_value, Abs_Correlation = abs_correlation_value))
+      correlation_value <- cor(
+        numeric_cols[[col_name]][complete_cases],
+        assessment_data_new[[params$added_feature]][complete_cases],
+        use = "complete.obs"
+      )
+      abs_correlation_value <- abs(cor(
+        abs(numeric_cols[[col_name]][complete_cases]),
+        abs(assessment_data_new[[params$added_feature]][complete_cases]),
+        use = "complete.obs"
+      ))
+      correlation_results <- rbind(
+        correlation_results,
+        data.frame(
+          Feature = col_name,
+          Correlation = correlation_value,
+          Abs_Correlation = abs_correlation_value
+        )
+      )
     }
   }
 
@@ -507,16 +596,30 @@ if (params$type == "continuous") {
 
 
   # Display the correlation results as a scrollable table
-  datatable(correlation_results_clean, options = list(scrollX = TRUE, scrollY = TRUE, pageLength = 10, order = list(list(1, "desc"))))
+  datatable(
+    correlation_results_clean,
+    options = list(
+      scrollX = TRUE,
+      scrollY = TRUE,
+      pageLength = 10,
+      order = list(list(1, "desc"))
+    )
+  )
 } else {
-  print(paste("assessment_data_new$", params$added_feature, " is not numeric.", sep = ""))
+  print(paste(
+    "assessment_data_new$",
+    params$added_feature,
+    " is not numeric.",
+    sep = ""
+  ))
 }
 ```
 
 ## Correlation Plot of 10 Features (absolute value)
 
 ```{r top_10_correlation_plot}
-# Select the top 10 features, remove rows with NA values, rename columns, calculate the correlation, and plot the correlation matrix
+# Select the top 10 features, remove rows with NA values, rename columns,
+# calculate the correlation, and plot the correlation matrix
 assessment_data_new %>%
   rename(
     "Property Class Meta" = meta_class,
@@ -532,10 +635,18 @@ assessment_data_new %>%
   select(-all_of(columns_to_remove)) %>%
   select(all_of(top_10_features)) %>%
   na.omit() %>%
-  rename_with(~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)) %>%
+  rename_with(
+    ~ gsub("^meta_|^prox_|^other_|^loc_|^char_|^acs5|^acs_|^ccao_", "", .)
+  ) %>%
   rename_with(~ gsub("_", " ", .)) %>%
   cor() %>%
-  corrplot(method = "circle", tl.cex = 0.6, tl.srt = 45, addgrid.col = "grey", mar = c(1, 1, 1, 1))
+  corrplot(
+    method = "circle",
+    tl.cex = 0.6,
+    tl.srt = 45,
+    addgrid.col = "grey",
+    mar = c(1, 1, 1, 1)
+  )
 ```
 :::
 
@@ -591,9 +702,11 @@ ratio_stats <- performance_test_new %>%
     r_squared_comparison,
     r_squared_diff
   ) %>%
-  rename_with(~ str_replace_all(., "_", " ") %>%
-    str_to_title() %>%
-    str_replace_all(., " ", " ")) %>%
+  rename_with(
+    ~ str_replace_all(., "_", " ") %>%
+      str_to_title() %>%
+      str_replace_all(., " ", " ")
+  ) %>%
   split(.$"Geography Type")
 ```
 
@@ -665,7 +778,10 @@ shap_df_filtered_long <- shap_new %>%
   inner_join(
     assessment_data_new %>%
       select(meta_pin, meta_card_num, meta_township_code, meta_nbhd_code) %>%
-      rename(township_code = meta_township_code, neighborhood_code = meta_nbhd_code),
+      rename(
+        township_code = meta_township_code,
+        neighborhood_code = meta_nbhd_code
+      ),
     by = c("meta_pin", "meta_card_num")
   ) %>%
   select(township_code, all_of(shap_predictors)) %>%
@@ -782,8 +898,14 @@ quantiles <- card_individual %>%
 
 # Create the violin plot, excluding outliers only in the display
 card_individual %>%
-  select(meta_card_num, meta_pin, {{ target_feature_shap }}, {{ target_feature_value }}) %>%
-  mutate(bin = cut_number(!!sym(target_feature_value), n = 10, dig.lab = num_digits)) %>%
+  select(
+    meta_card_num, meta_pin,
+    {{ target_feature_shap }},
+    {{ target_feature_value }}
+  ) %>%
+  mutate(
+    bin = cut_number(!!sym(target_feature_value), n = 10, dig.lab = num_digits)
+  ) %>%
   ggplot(aes(x = bin, y = !!sym(target_feature_shap))) +
   geom_violin(fill = "#69b3a2") +
   theme_minimal() +
@@ -794,7 +916,8 @@ card_individual %>%
     x <- gsub("[^0-9,,]", "", x)
     gsub(",", "-", x)
   }) +
-  coord_cartesian(ylim = quantiles) + # Focus only on the range between the 2.5% and 97.5% quantiles
+  # Focus only on the range between the 2.5% and 97.5% quantiles
+  coord_cartesian(ylim = quantiles) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
@@ -826,7 +949,9 @@ shapviz::shapviz(
 ```{r mean_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean")))) +
+  geom_sf(aes(
+    fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_mean"))
+  )) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -837,7 +962,9 @@ pin_nbhd %>%
 ```{r median_feature_neighborhood}
 pin_nbhd %>%
   ggplot() +
-  geom_sf(aes(fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median")))) +
+  geom_sf(aes(
+    fill = !!sym(paste0({{ target_feature_value }}, "_neighborhood_median"))
+  )) +
   scale_fill_viridis_c(option = "viridis", name = "Value") +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
@@ -884,7 +1011,11 @@ assessment_pin_new %>%
   st_as_sf() %>%
   ggplot() +
   geom_sf(aes(fill = fmv_ratio)) +
-  scale_fill_viridis_c(option = "viridis", name = "FMV Ratio", labels = scales::percent_format(accuracy = 0.001)) +
+  scale_fill_viridis_c(
+    option = "viridis",
+    name = "FMV Ratio",
+    labels = scales::percent_format(accuracy = 0.001)
+  ) +
   theme_void() +
   coord_sf(xlim = c(-88.4, -87.52398), ylim = c(41.5, 42.2))
 ```
@@ -892,8 +1023,12 @@ assessment_pin_new %>%
 # Leaflet Maps
 
 ```{r, leaflet_function}
-create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme = "high",
-                               longitude = "loc_longitude", latitude = "loc_latitude",
+create_leaflet_map <- function(dataset,
+                               legend_value,
+                               legend_title,
+                               order_scheme = "high",
+                               longitude = "loc_longitude",
+                               latitude = "loc_latitude",
                                display_as_percent = FALSE) {
   # Filter neighborhoods that have at least one observation
   nbhd_borders <- nbhd %>%
@@ -906,7 +1041,11 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 
   # Create the color palette based on order_scheme
   if (order_scheme == "low") {
-    pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]], reverse = TRUE)
+    pal <- colorNumeric(
+      palette = "Reds",
+      domain = dataset[[legend_value]],
+      reverse = TRUE
+    )
   } else {
     pal <- colorNumeric(palette = "Reds", domain = dataset[[legend_value]])
   }
@@ -925,14 +1064,19 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       popup = ~ {
         shap_values <- dataset %>%
           select(starts_with("target_feature_shap_")) %>%
-          summarise_all(~ ifelse(!is.na(.), sprintf("SHAP: %s", scales::dollar(.)), NA)) %>%
+          summarise_all(
+            ~ ifelse(!is.na(.), sprintf("SHAP: %s", scales::dollar(.)), NA)
+          ) %>%
           apply(1, function(row) {
             paste(na.omit(row), collapse = "<br>")
           })
         paste(
           "Pin: ", meta_pin,
           ifelse(shap_values == "", "", paste0("<br>", shap_values)),
-          "<br>", "Relative SHAP: ", scales::percent(relative_shap, accuracy = 0.01),
+          "<br>", "Relative SHAP: ", scales::percent(
+            relative_shap,
+            accuracy = 0.01
+          ),
           "<br>", "Feature: ", sprintf("%.2f", get(params$added_feature)),
           "<br>", "New FMV: ", pred_pin_final_fmv_new,
           "<br>", "Comparison FMV: ", pred_pin_final_fmv_comp,
@@ -951,7 +1095,11 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
       pal = pal,
       values = dataset[[legend_value]],
       title = legend_title,
-      labFormat = if (display_as_percent) labelFormat(suffix = "%") else labelFormat()
+      labFormat = if (display_as_percent) {
+        labelFormat(suffix = "%")
+      } else {
+        labelFormat()
+      }
     )
 }
 ```
@@ -959,6 +1107,7 @@ create_leaflet_map <- function(dataset, legend_value, legend_title, order_scheme
 ## Highest and Lowest 100 Values
 
 ::: panel-tabset
+
 ### Largest 100 Values
 
 Be careful interpreting values which are the max and min of the raw value, since ties are not accounted for. For example, if there are 10,000 parcels which are 0 feet from a newly constructed building, the map will not be a full representation.
@@ -968,7 +1117,11 @@ highest_100 <- leaflet_data %>%
   arrange(desc(!!sym(target_feature_value))) %>%
   dplyr::slice(1:100)
 
-create_leaflet_map(highest_100, {{ target_feature_value }}, "Largest 100 Values")
+create_leaflet_map(
+  highest_100,
+  {{ target_feature_value }},
+  "Largest 100 Values"
+)
 ```
 
 ### Lowest 100 Values
@@ -981,7 +1134,12 @@ lowest_100 <- leaflet_data %>%
   arrange(!!sym({{ target_feature_value }})) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, {{ target_feature_value }}, "Lowest 100 Values", order_scheme = "low")
+create_leaflet_map(
+  lowest_100,
+  {{ target_feature_value }},
+  "Lowest 100 Values",
+  order_scheme = "low"
+)
 ```
 
 ### Highest 100 SHAP Values
@@ -1001,7 +1159,12 @@ lowest_100 <- leaflet_data %>%
   arrange(shap_total) %>%
   slice(1:100)
 
-create_leaflet_map(lowest_100, "shap_total", "Lowest 100 SHAPs", order_scheme = "low")
+create_leaflet_map(
+  lowest_100,
+  "shap_total",
+  "Lowest 100 SHAPs",
+  order_scheme = "low"
+)
 ```
 :::
 
@@ -1010,6 +1173,7 @@ create_leaflet_map(lowest_100, "shap_total", "Lowest 100 SHAPs", order_scheme = 
 Multicard parcels have heuristic which limits their change. The added feature may trigger (or not trigger it), leading to changes much larger than the added feature's impact.
 
 ::: panel-tabset
+
 ### 100 Largest FMV Increases
 
 ```{r, 100_largest_fmv_increases}
@@ -1018,7 +1182,12 @@ largest_fmv_increases <- leaflet_data %>%
   slice(1:100)
 
 # Call the function with the pre-sliced dataset
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
+create_leaflet_map(
+  largest_fmv_increases,
+  "diff_pred_pin_final_fmv",
+  "Largest FMV Increases",
+  display_as_percent = TRUE
+)
 ```
 
 ### 100 Largest FMV Decreases
@@ -1028,7 +1197,13 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_final_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_final_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
+create_leaflet_map(
+  largest_fmv_decreases,
+  "diff_pred_pin_final_fmv",
+  "Largest FMV Decreases",
+  order_scheme = "low",
+  display_as_percent = TRUE
+)
 ```
 
 ### 100 Largest FMV Initial Increases
@@ -1039,7 +1214,12 @@ largest_fmv_increases <- leaflet_data %>%
   slice(1:100)
 
 # Call the function with the pre-sliced dataset
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_initial_fmv", "Largest FMV Increases", display_as_percent = TRUE)
+create_leaflet_map(
+  largest_fmv_increases,
+  "diff_pred_pin_initial_fmv",
+  "Largest FMV Increases",
+  display_as_percent = TRUE
+)
 ```
 
 ### 100 Largest Initial FMV Decreases
@@ -1049,7 +1229,13 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_decreases, "diff_pred_pin_initial_fmv", "Largest FMV Decreases", order_scheme = "low", display_as_percent = TRUE)
+create_leaflet_map(
+  largest_fmv_decreases,
+  "diff_pred_pin_initial_fmv",
+  "Largest FMV Decreases",
+  order_scheme = "low",
+  display_as_percent = TRUE
+)
 ```
 
 ### Largest FMV (Final) Increases no Multicards
@@ -1062,7 +1248,12 @@ largest_fmv_increases <- leaflet_data %>%
   arrange(desc(diff_pred_pin_final_fmv)) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases", display_as_percent = TRUE)
+create_leaflet_map(
+  largest_fmv_increases,
+  "diff_pred_pin_final_fmv",
+  "Largest FMV Increases",
+  display_as_percent = TRUE
+)
 ```
 
 ### Largest FMV (Final) Decreases no Multicards
@@ -1075,7 +1266,13 @@ largest_fmv_decreases <- leaflet_data %>%
   arrange(diff_pred_pin_initial_fmv) %>%
   slice(1:100)
 
-create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FMV Increases (%)", order_scheme = "low", display_as_percent = TRUE)
+create_leaflet_map(
+  largest_fmv_increases,
+  "diff_pred_pin_final_fmv",
+  "Largest FMV Increases (%)",
+  order_scheme = "low",
+  display_as_percent = TRUE
+)
 ```
 :::
 
@@ -1084,6 +1281,7 @@ create_leaflet_map(largest_fmv_increases, "diff_pred_pin_final_fmv", "Largest FM
 These maps identify neighborhoods where the added feature is having the largest impact on SHAP values. By selecting neighborhoods with the highest mean(absolute value), you can take a closer look at how individual parcels in these neighborhoods are affected.
 
 ::: panel-tabset
+
 ```{r processing_SHAP_values}
 selected_data <- leaflet_data %>%
   group_by(meta_nbhd_code) %>%
@@ -1103,7 +1301,11 @@ filtered_data <- filter(leaflet_data, meta_nbhd_code %in% selected_nbhd_codes)
 
 # Separate high and low mean value neighborhoods
 high_mean_data <- filtered_data %>%
-  filter(meta_nbhd_code %in% selected_nbhd_codes[(length(selected_nbhd_codes) - 1):length(selected_nbhd_codes)])
+  filter(
+    meta_nbhd_code %in% selected_nbhd_codes[
+      (length(selected_nbhd_codes) - 1):length(selected_nbhd_codes)
+    ]
+  )
 
 low_mean_data <- filtered_data %>%
   filter(meta_nbhd_code %in% selected_nbhd_codes[1:2])
@@ -1120,4 +1322,5 @@ create_leaflet_map(high_mean_data, "shap_total", "SHAP Values")
 ```{r, 2_lowest_shap_nbhd}
 create_leaflet_map(low_mean_data, "shap_total", "SHAP Values")
 ```
+
 :::

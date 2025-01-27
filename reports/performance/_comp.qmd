@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _comp_setup_script}
+source("../_setup.R")
+```
 
 # Comparables
 

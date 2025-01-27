@@ -1,4 +1,6 @@
-{{< include ../_setup.qmd >}}
+```{r _input_setup_script}
+source("../_setup.R")
+```
 
 # Data and Processing
 
@@ -153,8 +155,12 @@ years in the records below.
 input_char_filling_df <- training_data %>%
   filter(
     !ind_pin_is_multicard,
-    min(meta_sale_date) < lubridate::make_date(as.numeric(metadata$input_max_sale_year) - 3),
-    max(meta_sale_date) > lubridate::make_date(as.numeric(metadata$input_max_sale_year) - 3),
+    min(meta_sale_date) < lubridate::make_date(
+      as.numeric(metadata$input_max_sale_year) - 3
+    ),
+    max(meta_sale_date) > lubridate::make_date(
+      as.numeric(metadata$input_max_sale_year) - 3
+    ),
     .by = meta_pin
   ) %>%
   filter(n() > 6, .by = meta_pin) %>%
