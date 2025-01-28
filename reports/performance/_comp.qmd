@@ -170,8 +170,9 @@ target_df <- comp_df %>%
     by = c("pin" = "meta_pin", "card" = "meta_card_num"),
     relationship = "many-to-many"
   ) %>%
-  left_join(
+  inner_join(
     assessment_card %>%
+      filter(!is.na(loc_latitude) & !is.na(loc_longitude)) %>%
       select(
         meta_pin, meta_card_num, pred_card_initial_fmv,
         loc_latitude, loc_longitude,

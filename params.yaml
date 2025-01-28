@@ -367,10 +367,6 @@ model:
 
 # Parameters used in the assess stage to finalize the intial model predictions
 pv:
-  # For multi-card PINs (rare), implement a heuristic that caps the potential
-  # change in value. See assess stage code for details
-  multicard_yoy_cap: 2.2
-
   # Cap the proportion of the PIN's total value dedicated to land. This is
   # necessary since sometimes the model provides low predictions relative to the
   # land rates created by Valuations

@@ -45,6 +45,18 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
   mutate(!!params$model$weight_col := 1) %>%
   mutate(
+    # Multi-card PINs with 2-3 cards get a special prediction based on the
+    # combined building square footage of all cards on the PIN. See below
+    # (under assessment_card_data_mc) for more details
+    og_char_bldg_sf = char_bldg_sf,
+    char_bldg_sf = ifelse(
+      ind_pin_is_multicard & meta_pin_num_cards %in% c(2, 3),
+      sum(char_bldg_sf),
+      char_bldg_sf
+    ),
+    .by = meta_pin
+  ) %>%
+  mutate(
     pred_card_initial_fmv = predict(
       lgbm_final_full_fit,
       new_data = bake(
@@ -52,8 +64,10 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
         new_data = .,
         all_predictors()
       )
-    )$.pred
-  )
+    )$.pred,
+    char_bldg_sf = og_char_bldg_sf
+  ) %>%
+  select(-og_char_bldg_sf)
 
 
 
@@ -71,7 +85,7 @@ message("Fixing multicard PINs")
 assessment_card_data_mc <- assessment_card_data_pred %>%
   select(
     meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
-    char_bldg_sf, char_land_sf,
+    meta_pin_num_cards, char_bldg_sf, char_land_sf,
     meta_tieback_key_pin, meta_tieback_proration_rate,
     meta_1yr_pri_board_tot, pred_card_initial_fmv
   ) %>%
@@ -86,21 +100,21 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
       mean(pred_card_initial_fmv)
     )
   ) %>%
-  # Aggregate multi-cards to the PIN-level by summing the predictions
-  # of all cards. We use a heuristic here to limit the PIN-level total
-  # value, this is to prevent super-high-value back-buildings/ADUs from
-  # blowing up the PIN-level AV
+  # For single-card PINs, the card-level predicted value is the PIN value.
+  # For multi-card PINs with 2 or 3 cards, we aggregate the building square
+  # footage of all cards into a single card (the largest), predict, then use
+  # that prediction as the PIN value. For > 3 cards, we predict each card with
+  # its original square footage then sum the predictions to get the PIN value
   group_by(meta_pin) %>%
+  arrange(meta_pin, desc(char_bldg_sf)) %>%
   mutate(
     pred_pin_card_sum = ifelse(
-      sum(pred_card_intermediate_fmv) * meta_tieback_proration_rate <=
-        params$pv$multicard_yoy_cap * first(meta_1yr_pri_board_tot * 10) |
-        is.na(meta_1yr_pri_board_tot) |
-        n() != 2,
+      meta_pin_num_cards > 3,
       sum(pred_card_intermediate_fmv),
-      max(pred_card_intermediate_fmv)
+      first(pred_card_intermediate_fmv)
     )
   ) %>%
+  arrange(meta_pin, meta_card_num) %>%
   ungroup()
 
 

@@ -163,7 +163,7 @@ input_char_filling_df <- training_data %>%
     ),
     .by = meta_pin
   ) %>%
-  filter(n() > 6, .by = meta_pin) %>%
+  filter(n() > 5, .by = meta_pin) %>%
   select(
     PIN = meta_pin,
     Year = meta_year,
@@ -172,7 +172,7 @@ input_char_filling_df <- training_data %>%
     `Walkability (2017)` = loc_access_cmap_walk_total_score,
     `GS Rating (2021)` = prox_avg_school_rating_in_half_mile
   ) %>%
-  arrange(PIN, Year)
+  arrange(PIN, Year, `Sale Date`)
 
 input_char_filling_df %>%
   datatable(rownames = FALSE)
@@ -243,7 +243,8 @@ input_complex_id_map <- input_complex_id_targets %>%
         char_yrblt
       ),
     by = "meta_pin"
-  )
+  ) %>%
+  filter(!is.na(loc_latitude) & !is.na(loc_longitude))
 
 input_complex_id_palette <- colorFactor(
   palette = "Set1",
@@ -429,6 +430,46 @@ assessment_pin %>%
       )
     )
   )
+```
+
+:::
+
+
+## Potential Output Issues
+
+::: panel-tabset
+
+### Card Values
+
+```{r _outcomes_card_values}
+assessment_card %>%
+  summarize(
+    "NA Initial FMV" = sum(is.na(pred_card_initial_fmv)),
+    "Negative Initial FMV" = sum(pred_card_initial_fmv < 0, na.rm = TRUE),
+    "NA Final FMV" = sum(is.na(pred_card_final_fmv)),
+    "Negative Final FMV" = sum(pred_card_final_fmv < 0, na.rm = TRUE)
+  ) %>%
+  datatable(rownames = FALSE)
+```
+
+### PIN Values
+
+```{r _outcomes_pin_values}
+assessment_pin %>%
+  summarize(
+    "NA Initial FMV" = sum(is.na(pred_pin_initial_fmv)),
+    "Negative Initial FMV" = sum(pred_pin_initial_fmv < 0, na.rm = TRUE),
+    "NA Final FMV" = sum(is.na(pred_pin_final_fmv)),
+    "Negative Final FMV" = sum(pred_pin_final_fmv < 0, na.rm = TRUE),
+    "NA Final Land FMV" = sum(is.na(pred_pin_final_fmv_land)),
+    "Negative Final Land FMV" = sum(pred_pin_final_fmv_land < 0, na.rm = TRUE),
+    "NA Final Building FMV" = sum(is.na(pred_pin_final_fmv_bldg)),
+    "Negative Final Building FMV" = sum(
+      pred_pin_final_fmv_bldg < 0,
+      na.rm = TRUE
+    )
+  ) %>%
+  datatable(rownames = FALSE)
 ```
 
 :::

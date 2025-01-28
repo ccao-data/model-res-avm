@@ -1149,6 +1149,7 @@ Tables of the largest misses (in absolute terms) from the **test set**, **assess
 ```{r _model_big_misses_test}
 model_big_misses_test <- test_card %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
+  filter(n_distinct(meta_card_num) == 1, .by = meta_pin) %>%
   filter(meta_triad_code == run_triad_code) %>%
   select(
     Town = township_name, PIN = meta_pin, Class = meta_class,
@@ -1205,6 +1206,7 @@ model_big_misses_assessment <- assessment_pin %>%
   filter(
     meta_triad_code == run_triad_code,
     !is.na(sale_recent_1_price),
+    meta_pin_num_cards == 1,
     !is.na(pred_pin_final_fmv_round),
     year(sale_recent_1_date) == max(year(sale_recent_1_date), na.rm = TRUE)
   ) %>%
@@ -1265,6 +1267,7 @@ model_big_misses_assessment %>%
 ```{r _model_big_misses_training}
 model_big_misses_training <- training_data_pred %>%
   filter(!sv_is_outlier) %>%
+  filter(n_distinct(meta_card_num) == 1, .by = meta_pin) %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(meta_triad_code == run_triad_code, !is.na(meta_sale_price)) %>%
   select(
