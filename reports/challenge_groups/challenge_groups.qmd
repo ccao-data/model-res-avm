@@ -367,3 +367,81 @@ iwalk(plots, ~ {
 ```
 
 :::
+
+## Assessed values for multi-card properties
+
+The sales data we use to measure accuracy is the most recent sale per multi-card
+PIN (if there was one after 2020).
+
+```{r _challenge_groups_decile_ratio_graph}
+mc_assessment_pin <- assessment_pin %>%
+  left_join(
+    assessment_data %>%
+      select(meta_pin, ind_pin_is_multicard),
+    by = "meta_pin"
+  ) %>%
+  filter(ind_pin_is_multicard) %>%
+  mutate(ratio = pred_pin_final_fmv / sale_recent_1_price) %>%
+  filter(sale_recent_1_date >= as.Date("2020-01-01")) %>%
+  mutate(decile = ntile(sale_recent_1_price, 10))
+
+mc_df_deciles <- mc_assessment_pin %>%
+  group_by(decile) %>%
+  summarise(median_ratio = median(ratio, na.rm = TRUE))
+
+mc_p_deciles <- ggplot(mc_df_deciles, aes(x = decile, y = median_ratio)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept = 1, color = "black", linetype = "dashed") +
+  scale_x_continuous(breaks = 1:10) +
+  labs(
+    title = "Median Ratio by Decile (Sales After 2020)",
+    x = "Decile",
+    y = "Median Ratio"
+  ) +
+  theme_minimal()
+
+mc_p_deciles
+```
+
+```{r _challenge_groups_scatterplot_pred_vs_sale}
+mc_max_val <- max(c(
+  mc_assessment_pin$sale_recent_1_price,
+  mc_assessment_pin$pred_pin_final_fmv
+), na.rm = TRUE)
+
+mc_p_scatter_base <- plot_ly(
+  data = mc_assessment_pin,
+  x = ~sale_recent_1_price,
+  y = ~pred_pin_final_fmv,
+  type = "scatter",
+  mode = "markers",
+  hoverinfo = "text",
+  text = ~ paste(
+    "<b>PIN:</b>", meta_pin,
+    "<br><b>Sale Price:</b>", sale_recent_1_price,
+    "<br><b>Predicted (Base):</b>", round(pred_pin_final_fmv, 2),
+    "<br><b>Sale Date:</b>", sale_recent_1_date,
+    "<br><b>Ratio:</b>", round(ratio, 3)
+  )
+) %>%
+  plotly::layout(
+    title = "FMV vs sale price",
+    shapes = list(
+      list(
+        type = "line",
+        x0   = 0,
+        y0   = 0,
+        x1   = mc_max_val,
+        y1   = mc_max_val,
+        xref = "x",
+        yref = "y",
+        line = list(color = "red", dash = "dash")
+      )
+    ),
+    xaxis = list(title = "Sale Price"),
+    yaxis = list(title = "Predicted FMV (Base)")
+  )
+
+mc_p_scatter_base
+```
