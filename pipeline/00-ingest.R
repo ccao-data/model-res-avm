@@ -146,60 +146,6 @@ assessment_data <- dbGetQuery(
 )
 tictoc::toc()
 
-
-
-
-##### START TEMPORARY FIX FOR MISSING DATA. REMOVE ONCE 2024 DATA IS AVAILABLE
-library(data.table)
-conflict_prefer_all("dplyr", "data.table", quiet = TRUE)
-conflict_prefer_all("lubridate", "data.table", quiet = TRUE)
-fill_cols <- assessment_data %>%
-  select(
-    starts_with("loc_"),
-    starts_with("prox_"),
-    starts_with("acs5_"),
-    starts_with("other_"),
-    starts_with("shp_")
-  ) %>%
-  names()
-assessment_data_temp <- as.data.table(assessment_data) %>%
-  mutate(across(starts_with("loc_tax_"), process_array_column))
-assessment_data_temp_2024 <- assessment_data_temp[
-  meta_year == "2024",
-][
-  assessment_data_temp[meta_year == "2023"],
-  (fill_cols) := mget(paste0("i.", fill_cols)),
-  on = .(meta_pin, meta_card_num)
-]
-assessment_data <- rbind(
-  assessment_data_temp[meta_year != "2024"],
-  assessment_data_temp_2024
-) %>%
-  as_tibble()
-
-training_data_temp <- as.data.table(training_data) %>%
-  mutate(across(starts_with("loc_tax_"), process_array_column))
-training_data_temp_2024 <- training_data_temp[
-  meta_year == "2024",
-][
-  assessment_data_temp[meta_year == "2023"],
-  (fill_cols) := mget(paste0("i.", fill_cols)),
-  on = .(meta_pin, meta_card_num)
-]
-training_data <- rbind(
-  training_data_temp[meta_year != "2024"],
-  training_data_temp_2024
-) %>%
-  as_tibble()
-rm(
-  assessment_data_temp, assessment_data_temp_2024,
-  training_data_temp, training_data_temp_2024
-)
-##### END TEMPORARY FIX
-
-
-
-
 # Save both years for report generation using the characteristics
 assessment_data %>%
   write_parquet(paths$input$char$local)
