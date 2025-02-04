@@ -12,15 +12,24 @@ library(ggplot2)
 # Question 1: ACS Features
 
 ```{r}
-acs_data <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT 
-  acs5_median_household_renter_occupied_gross_rent,
-  
-      
-  FROM model.vw_card_res_input res
-  ")
+census <- dbGetQuery(
+  AWS_ATHENA_CONN_NOCTUA, "
+  SELECT median_household_renter_occupied_gross_rent,
+  median_household_total_occupied_year_built, 
+  median_income_household_past_year,
+  year,
+  geoid
+  FROM census.vw_acs5_stat
+  WHERE year >= '2015'
+  and geography = 'tract'
+  "
 )
+
+census %>%
+  group_by(year) %>%
+  summarise(across(everything(), ~ sum(is.na(.))))
+
+
 ```
 
 
@@ -76,16 +85,17 @@ test_sf <- training_data %>%
 
 roads_na <- roads %>%
   filter(is.na(daily_traffic)) %>%
-  filter(road_type == "Freeway and Expressway" | road_type == "Interstate") %>%
-  st_as_sf()
+  filter(road_type == "Freeway and Expressway" | road_type == "Interstate")
 
-# Plot both datasets using ggplot2
-ggplot() +
-  geom_sf(data = test_sf, aes(color = factor(year)), alpha = 0.8) +  # Ensure year is treated as a factor
-  theme_minimal() +
-  labs(title = "Roads and XY Locations by Year", x = "Longitude", y = "Latitude", color = "Year") 
+roads_na <- roads_na %>%
+  group_by(year) %>%
+  summarise(count = n(), .groups = "drop")
+
+print(roads_na)
 
 ```
+
+
 ```{r}
 missing_golf_courses <- training_data %>%
   filter(is.na(prox_nearest_golf_course_dist_ft)) 
@@ -104,10 +114,18 @@ print(paste0("Percent of missing values w/ missing loc_x_3435: ", percent_na, "%
 missing_schools <- training_data %>%
   filter(is.na(loc_school_elementary_district_geoid)) 
 
-ggplot(missing_schools, aes(x = loc_x_3435, y = loc_y_3435)) +
-  geom_point() +
-  theme_minimal() +
-  labs(title = "Missing Schools by Location", x = "Longitude", y = "Latitude")
+print(paste0("Number of missing schools: ", nrow(missing_schools)))
+
+missing_schools <- missing_schools %>%
+    filter(!is.na(loc_latitude))
+
+print(paste0("Number of missing schools with valid latitude: ", nrow(missing_schools)))
+
+missing_schools <- missing_schools %>%
+  filter(!is.na(loc_school_unified_district_geoid))
+
+print(paste0("Number of missing schools with unified district geoid: ", nrow(missing_schools)))
+
 ```
 
 ```{r}
@@ -120,6 +138,60 @@ print(paste0("Minimum number of foreclosures per 1000 PINs in the past 5 years: 
 
 
 ```{r}
-labs(title = "Missing Schools by Location", x = "Longitude", y = "Latitude")
+CMAP <- training_data %>%
+  filter(is.na(loc_access_cmap_walk_total_score)) %>%
+  select(meta_pin, year, loc_access_cmap_walk_total_score) %>%
+  pull(meta_pin) %>%
+  unique()
+
+query <- glue_sql(
+  "SELECT pin, class
+   FROM default.vw_pin_universe
+   WHERE year = '2017'"
+)
+
+walk_scores <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query)
+
+common_walk_scores <- walk_scores %>%
+  filter(pin %in% CMAP)
+
+# Count the number of overlapping pins
+overlap_count <- nrow(common_walk_scores)
+
+# Print the results
+print(common_walk_scores)
+print(overlap_count)
+
+```
+```{r}
+query <- glue_sql(
+"SELECT dwel.parid as pin, 
+    dwel.class,
+    dwel.yrblt AS char_yrblt,
+    dwel.sfla AS char_bldg_sf,
+    dwel.rmbed AS char_beds,
+    dwel.rmtot AS char_rooms,
+    dwel.fixbath AS char_fbath,
+    dwel.fixhalf AS char_hbath,
+    dwel.wbfp_o AS char_frpl,
+    dwel.taxyr as year,
+    dwel.stories AS char_type_resd,
+    dwel.grade AS char_cnst_qlty,
+    dwel.user14 AS char_apts,
+    dwel.user4 AS char_tp_dsgn,
+    dwel.user6 AS char_attic_fnsh,
+    dwel.user31 AS char_gar1_att,
+    dwel.user32 AS char_gar1_area
+FROM iasworld.dweldat as dwel
+where class = '218' or class = '219'"
+)
+
+iasworld <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query)
+
+iasworld %>%
+  group_by(year) %>%
+  summarise(across(everything(), ~ (sum(is.na(.)) / n()) * 100)) %>%
+  filter(year >= 2016)
+
 ```
 
