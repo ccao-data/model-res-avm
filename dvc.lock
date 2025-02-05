@@ -5,8 +5,8 @@ stages:
     deps:
     - path: pipeline/00-ingest.R
       hash: md5
-      md5: 6aa03fd110dcc51b509585c22c7d7ff7
-      size: 24625
+      md5: c4ceb95f9f3886c99bb7517d65208957
+      size: 22881
     params:
       params.yaml:
         assessment:
@@ -38,28 +38,28 @@ stages:
     outs:
     - path: input/assessment_data.parquet
       hash: md5
-      md5: ba6f103742f30bba7da6759728fd8bb1
-      size: 415029836
+      md5: 44aa09583221e9fad24a5029a31f313c
+      size: 418929961
     - path: input/char_data.parquet
       hash: md5
-      md5: f783f4629433bf1b5e8f1ef3033cba0a
-      size: 840256376
+      md5: 1e1be66e343bc6f39e3336ad2aef3047
+      size: 841671619
     - path: input/complex_id_data.parquet
       hash: md5
-      md5: 892c2a64cd5f8f35f9a4c9608fa1464e
-      size: 701036
+      md5: 1adc2e86e933e388d92ef05648c2d5dc
+      size: 708169
     - path: input/hie_data.parquet
       hash: md5
-      md5: fcaa54bf22240ed6fcacd2b7b6a34941
-      size: 1924013
+      md5: 75fb788430787e642cdac8b96721b3a7
+      size: 1910233
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
       md5: 5fe80edfabdfac91efe888a25ee4051c
       size: 6019
     - path: input/training_data.parquet
       hash: md5
-      md5: 18addc910a0ccbf7bb5b2fd9c7923f2d
-      size: 204978802
+      md5: 7fc123b8cf90a351ef24570884ca9185
+      size: 205483474
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
@@ -235,8 +235,6 @@ stages:
           - other_tax_bill_rate
           - other_school_district_elementary_avg_rating
           - other_school_district_secondary_avg_rating
-          - ccao_is_active_exe_homeowner
-          - ccao_n_years_exe_homeowner
           - time_sale_year
           - time_sale_day
           - time_sale_quarter_of_year
@@ -460,8 +458,6 @@ stages:
         - other_tax_bill_rate
         - other_school_district_elementary_avg_rating
         - other_school_district_secondary_avg_rating
-        - ccao_is_active_exe_homeowner
-        - ccao_n_years_exe_homeowner
         - time_sale_year
         - time_sale_day
         - time_sale_quarter_of_year
@@ -705,8 +701,6 @@ stages:
         - other_tax_bill_rate
         - other_school_district_elementary_avg_rating
         - other_school_district_secondary_avg_rating
-        - ccao_is_active_exe_homeowner
-        - ccao_n_years_exe_homeowner
         - time_sale_year
         - time_sale_day
         - time_sale_quarter_of_year
@@ -886,8 +880,6 @@ stages:
             - other_tax_bill_rate
             - other_school_district_elementary_avg_rating
             - other_school_district_secondary_avg_rating
-            - ccao_is_active_exe_homeowner
-            - ccao_n_years_exe_homeowner
             - time_sale_year
             - time_sale_day
             - time_sale_quarter_of_year

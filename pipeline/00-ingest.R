@@ -324,8 +324,6 @@ training_data_clean <- training_data_w_hie %>%
   mutate(
     # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
-    ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
-    ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
     across(where(is.character), \(x) na_if(x, "")),
     across(where(bit64::is.integer64), \(x) as.numeric(x))
   ) %>%
@@ -443,8 +441,6 @@ assessment_data_clean <- assessment_data_w_hie %>%
   # Same feature cleanup as the training data
   mutate(
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),
-    ccao_is_active_exe_homeowner = replace_na(ccao_is_active_exe_homeowner, 0L),
-    ccao_n_years_exe_homeowner = replace_na(ccao_n_years_exe_homeowner, 0L),
     across(where(is.character), \(x) na_if(x, "")),
     across(where(bit64::is.integer64), \(x) as.numeric(x))
   ) %>%
