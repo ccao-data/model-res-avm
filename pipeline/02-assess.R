@@ -333,7 +333,6 @@ assessment_card_data_merged %>%
   ) %>%
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
-    ccao_n_years_exe_homeowner = as.integer(ccao_n_years_exe_homeowner),
     char_apts = as.character(char_apts)
   ) %>%
   ccao::vars_recode(
