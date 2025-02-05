@@ -233,8 +233,6 @@ model:
       - "other_tax_bill_rate"
       - "other_school_district_elementary_avg_rating"
       - "other_school_district_secondary_avg_rating"
-      - "ccao_is_active_exe_homeowner"
-      - "ccao_n_years_exe_homeowner"
       - "time_sale_year"
       - "time_sale_day"
       - "time_sale_quarter_of_year"

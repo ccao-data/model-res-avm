@@ -86,8 +86,7 @@ for (town in towns) {
       starts_with("prox_"),
       starts_with("acs5_"),
       starts_with("other_"),
-      meta_sale_count_past_n_years, ccao_is_active_exe_homeowner,
-      ccao_n_years_exe_homeowner,
+      meta_sale_count_past_n_years
     ) %>%
     arrange(meta_pin, meta_card_num) %>%
     mutate(
