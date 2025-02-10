@@ -917,8 +917,21 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "master",
-      "RemoteSha": "2720ad973c990ad64ac7e6bb632389ff9f2a2675"
+      "RemoteRef": "a4da9b371e6969fed0819e093182f8e144f1aecf",
+      "RemoteSha": "a4da9b371e6969fed0819e093182f8e144f1aecf",
+      "Requirements": [
+        "butcher",
+        "dials",
+        "dplyr",
+        "lightgbm",
+        "parsnip",
+        "purrr",
+        "rlang",
+        "stats",
+        "tibble",
+        "zip"
+      ],
+      "Hash": "48fbac82c3680e978ded2c685e373016"
     },
     "listenv": {
       "Package": "listenv",
