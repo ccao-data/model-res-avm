@@ -209,7 +209,6 @@ model:
       - "prox_nearest_road_highway_dist_ft"
       - "prox_nearest_road_arterial_dist_ft"
       - "prox_nearest_road_collector_dist_ft"
-      - "prox_nearest_road_highway_daily_traffic"
       - "prox_nearest_road_arterial_daily_traffic"
       - "prox_nearest_road_collector_daily_traffic"
       - "prox_nearest_new_construction_dist_ft"
