@@ -231,8 +231,6 @@ model:
       - "acs5_median_household_renter_occupied_gross_rent"
       - "acs5_percent_household_owner_occupied"
       - "other_tax_bill_rate"
-      - "other_school_district_elementary_avg_rating"
-      - "other_school_district_secondary_avg_rating"
       - "time_sale_year"
       - "time_sale_day"
       - "time_sale_quarter_of_year"
