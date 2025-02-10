@@ -19,8 +19,6 @@ suppressPackageStartupMessages({
 # Resolve package namespace conflicts, preferring the library::function pair
 # shown over other functions with the same name from different libraries
 conflicts_prefer(
-  data.table::`:=`,
-  dplyr::between,
   dplyr::filter,
   dplyr::first,
   dplyr::lag,
@@ -28,11 +26,6 @@ conflicts_prefer(
   dplyr::slice,
   glue::glue,
   lubridate::duration,
-  lubridate::month,
-  lubridate::quarter,
-  lubridate::wday,
-  lubridate::yday,
-  lubridate::year,
   purrr::discard,
   purrr::flatten,
   purrr::is_empty,
