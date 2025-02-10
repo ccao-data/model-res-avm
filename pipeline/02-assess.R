@@ -43,6 +43,7 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 # fair-market value for each card
 assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   as_tibble() %>%
+  mutate(!!params$model$weight_col := 1) %>%
   mutate(
     # Multi-card PINs with 2-3 cards get a special prediction based on the
     # combined building square footage of all cards on the PIN. See below
