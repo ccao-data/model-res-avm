@@ -70,7 +70,6 @@ vacant_land <- dbGetQuery(
   SELECT
       uni.township_code,
       uni.pin AS meta_pin,
-      uni.year AS meta_year,
       uni.class AS meta_class,
       uni.nbhd_code AS meta_nbhd_code,
       uni.tax_municipality_name AS loc_cook_municipality_name,
@@ -267,10 +266,7 @@ assessment_card <- dbGetQuery(
 # Pull assessable permit flag
 flag_assessable_permits <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT
-      pin,
-      year,
-      has_assessable_permit_past_3_years
+  SELECT pin, has_recent_assessable_permit
   FROM default.vw_pin_status
   WHERE year = '{params$assessment$data_year}'
   ")
@@ -436,14 +432,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
   # Add assessable permit flag
-  left_join(
-    flag_assessable_permits,
-    by = c("meta_pin" = "pin", "meta_year" = "year")
-  ) %>%
+  left_join(flag_assessable_permits, by = c("meta_pin" = "pin")) %>%
   mutate(
-    flag_has_assessable_permit_past_3_years = as.numeric(
-      has_assessable_permit_past_3_years
-    )
+    flag_has_recent_assessable_permit = as.numeric(has_recent_assessable_permit)
   ) %>%
   # Select fields for output to workbook
   select(
@@ -471,7 +462,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value, flag_has_assessable_permit_past_3_years
+    flag_char_missing_critical_value, flag_has_recent_assessable_permit
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
