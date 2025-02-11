@@ -511,7 +511,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
   # the PIN-level details
-  training_pin_in_comps <- training_data$meta_sale_document_num %in% (
+  training_doc_nos_in_comps <- training_data$meta_sale_document_num %in% (
     assessment_pin_filtered %>%
       select(comp_document_num_1, comp_document_num_2) %>%
       unlist()
@@ -519,7 +519,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Next, filter the training data so only referenced sales are included.
   # This is ugly but faster than the equivalent filter() operation
-  training_data_filtered <- training_data[training_pin_in_comps, ]
+  training_data_filtered <- training_data[training_doc_nos_in_comps, ]
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
