@@ -355,8 +355,10 @@ if (comp_enable) {
         rowMeans(na.rm = TRUE)
     ) %>%
     select(
-      pin, overall_comp_score,
-      comp_pin_1, comp_score_1, comp_pin_2, comp_score_2
+      pin,
+      comp_document_num_1, comp_pin_1, comp_score_1,
+      comp_document_num_2, comp_pin_2, comp_score_2,
+      overall_comp_score
     )
 
   # Merge comp data into assessment data. Start with single-card PINs, where
@@ -439,8 +441,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_recent_2_outlier_type, sale_recent_2_document_num,
     char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
-    char_ncu,
-    comp_pin_1, comp_score_1, comp_pin_2, comp_score_2, overall_comp_score,
+    char_ncu, comp_pin_1, comp_pin_2,
+    comp_document_num_1, comp_score_1, comp_document_num_2, comp_score_2,
+    overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
@@ -508,11 +511,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
   # the PIN-level details
-  training_pin_in_comps <- training_data$meta_pin %in% (
+  training_pin_in_comps <- training_data$meta_sale_document_num %in% (
     assessment_pin_filtered %>%
-      select(comp_pin_1, comp_pin_2) %>%
+      select(comp_document_num_1, comp_document_num_2) %>%
       unlist()
   )
+
   # Next, filter the training data so only referenced sales are included.
   # This is ugly but faster than the equivalent filter() operation
   training_data_filtered <- training_data[training_pin_in_comps, ]
@@ -579,13 +583,19 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Update PIN-level data to link to comps detail sheet
   training_data_ids <- training_data_filtered %>%
     tibble::rowid_to_column("comp_detail_id") %>%
-    select(meta_pin, comp_detail_id)
+    select(meta_sale_document_num, comp_detail_id)
 
   assessment_pin_filtered <- assessment_pin_filtered %>%
-    left_join(training_data_ids, by = join_by(comp_pin_1 == meta_pin)) %>%
-    rename(comp_pin_1_coord = comp_detail_id) %>%
-    left_join(training_data_ids, by = join_by(comp_pin_2 == meta_pin)) %>%
-    rename(comp_pin_2_coord = comp_detail_id) %>%
+    left_join(
+      training_data_ids,
+      by = join_by(comp_document_num_1 == meta_sale_document_num)
+    ) %>%
+    rename(comp_document_num_1_coord = comp_detail_id) %>%
+    left_join(
+      training_data_ids,
+      by = join_by(comp_document_num_2 == meta_sale_document_num)
+    ) %>%
+    rename(comp_document_num_2_coord = comp_detail_id) %>%
     mutate(
       across(
         matches("_coord"),
@@ -598,19 +608,19 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     ) %>%
     mutate(
       comp_pin_1 = ifelse(
-        is.na(comp_pin_1_coord),
+        is.na(comp_document_num_1_coord),
         NA,
-        glue::glue(
-          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_1_coord}),',
-          '"{comp_pin_1}")'
+        glue::glue_data(
+          .,
+          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_document_num_1_coord}), "{comp_pin_1}")'
         )
       ),
       comp_pin_2 = ifelse(
-        is.na(comp_pin_2_coord),
+        is.na(comp_document_num_2_coord),
         NA,
-        glue::glue(
-          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_2_coord}),',
-          '"{comp_pin_2}")'
+        glue::glue_data(
+          .,
+          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_document_num_2_coord}), "{comp_pin_2}")'
         )
       )
     ) %>%
