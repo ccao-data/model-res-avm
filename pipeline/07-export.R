@@ -441,8 +441,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_recent_2_outlier_type, sale_recent_2_document_num,
     char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
-    char_ncu, comp_pin_1, comp_pin_2,
-    comp_document_num_1, comp_score_1, comp_document_num_2, comp_score_2,
+    char_ncu, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
+    comp_document_num_1,  comp_document_num_2,
     overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
@@ -624,7 +624,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
         )
       )
     ) %>%
-    select(-ends_with("_coord"))
+    select(-ends_with("_coord"), -comp_document_num_1, -comp_document_num_2, -comp_document_num_1_coord, -comp_document_num_2_coord)
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
