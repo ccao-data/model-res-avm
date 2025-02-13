@@ -536,7 +536,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
-      meta_pin, meta_sale_document_num, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
+      meta_pin, meta_sale_document_num, meta_sale_price,
+      meta_sale_date, char_class, meta_nbhd_code,
       loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
       char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
       char_land_sf, char_apts, char_ncu
@@ -599,9 +600,17 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     select(meta_sale_document_num, comp_detail_id)
 
   assessment_pin_filtered <- assessment_pin_filtered %>%
-    left_join(training_data_ids, by = join_by(comp_document_num_1 == meta_sale_document_num)) %>%
+    left_join(
+      training_data_ids, by = join_by(
+        comp_document_num_1 == meta_sale_document_num
+      )
+    ) %>%
     rename(comp_document_num_1_coord = comp_detail_id) %>%
-    left_join(training_data_ids, by = join_by(comp_document_num_2 == meta_sale_document_num)) %>%
+    left_join(
+      training_data_ids, by = join_by(
+        comp_document_num_2 == meta_sale_document_num
+      )
+    ) %>%
     rename(comp_document_num_2_coord = comp_detail_id) %>%
     mutate(
       across(
