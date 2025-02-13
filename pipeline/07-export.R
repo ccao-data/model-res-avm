@@ -20,7 +20,7 @@ suppressPackageStartupMessages({
 })
 
 # Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
 
 
@@ -263,6 +263,15 @@ assessment_card <- dbGetQuery(
   ")
 )
 
+# Pull assessable permit flag
+flag_assessable_permits <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
+  SELECT pin, has_recent_assessable_permit
+  FROM default.vw_pin_status
+  WHERE year = '{params$assessment$data_year}'
+  ")
+)
+
 
 
 
@@ -422,6 +431,12 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
+  # Add assessable permit flag
+  left_join(flag_assessable_permits, by = c("meta_pin" = "pin")) %>%
+  mutate(
+    flag_has_recent_assessable_permit = as.numeric(has_recent_assessable_permit)
+  ) %>%
+  # Select fields for output to workbook
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
     property_full_address, loc_cook_municipality_name, meta_complex_id,
@@ -447,7 +462,7 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value
+    flag_char_missing_critical_value, flag_has_recent_assessable_permit
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
@@ -620,7 +635,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:67 # Don't forget the two hidden rows at the end
+  pin_col_range <- 1:68 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -686,7 +701,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 66, 67), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 67, 68), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -806,18 +821,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$total_av,
-    startCol = 66,
+    startCol = 67,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$av_difference,
-    startCol = 67,
+    startCol = 68,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(66, 67),
+    c(67, 68),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
