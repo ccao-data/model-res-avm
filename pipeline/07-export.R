@@ -601,13 +601,15 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   assessment_pin_filtered <- assessment_pin_filtered %>%
     left_join(
-      training_data_ids, by = join_by(
+      training_data_ids,
+      by = join_by(
         comp_document_num_1 == meta_sale_document_num
       )
     ) %>%
     rename(comp_document_num_1_coord = comp_detail_id) %>%
     left_join(
-      training_data_ids, by = join_by(
+      training_data_ids,
+      by = join_by(
         comp_document_num_2 == meta_sale_document_num
       )
     ) %>%
