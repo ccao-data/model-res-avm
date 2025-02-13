@@ -419,5 +419,5 @@ comp:
 # Final run ID(s) chosen for export to Desk Review spreadsheets and iasWorld
 # upload
 export:
-  triad_code: "1"
-  run_id: "2025-01-10-serene-boni"
+  triad_code: "2"
+  run_id: "2025-02-11-charming-eric"
