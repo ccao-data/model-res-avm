@@ -20,7 +20,7 @@ suppressPackageStartupMessages({
 })
 
 # Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena())
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
 
 
@@ -263,6 +263,15 @@ assessment_card <- dbGetQuery(
   ")
 )
 
+# Pull assessable permit flag
+flag_assessable_permits <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
+  SELECT pin, has_recent_assessable_permit
+  FROM default.vw_pin_status
+  WHERE year = '{params$assessment$data_year}'
+  ")
+)
+
 
 
 
@@ -355,10 +364,9 @@ if (comp_enable) {
         rowMeans(na.rm = TRUE)
     ) %>%
     select(
-      pin,
-      comp_document_num_1, comp_pin_1, comp_score_1,
-      comp_document_num_2, comp_pin_2, comp_score_2,
-      overall_comp_score
+      pin, overall_comp_score,
+      comp_pin_1, comp_document_num_1, comp_score_1,
+      comp_pin_2, comp_document_num_2, comp_score_2
     )
 
   # Merge comp data into assessment data. Start with single-card PINs, where
@@ -424,6 +432,12 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
+  # Add assessable permit flag
+  left_join(flag_assessable_permits, by = c("meta_pin" = "pin")) %>%
+  mutate(
+    flag_has_recent_assessable_permit = as.numeric(has_recent_assessable_permit)
+  ) %>%
+  # Select fields for output to workbook
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
     property_full_address, loc_cook_municipality_name, meta_complex_id,
@@ -441,16 +455,16 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     sale_recent_2_outlier_type, sale_recent_2_document_num,
     char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
-    char_ncu, comp_pin_1, comp_score_1, comp_pin_2, comp_score_2,
-    comp_document_num_1,  comp_document_num_2,
-    overall_comp_score,
+    char_ncu,
+    comp_pin_1, comp_document_num_1, comp_score_1,
+    comp_pin_2, comp_document_num_2, comp_score_2, overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value
+    flag_char_missing_critical_value, flag_has_recent_assessable_permit
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
@@ -511,19 +525,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
   # the PIN-level details
-  training_doc_nos_in_comps <- training_data$meta_sale_document_num %in% (
+  training_pin_in_comps <- training_data$meta_pin %in% (
     assessment_pin_filtered %>%
-      select(comp_document_num_1, comp_document_num_2) %>%
+      select(comp_pin_1, comp_pin_2) %>%
       unlist()
   )
-
   # Next, filter the training data so only referenced sales are included.
   # This is ugly but faster than the equivalent filter() operation
-  training_data_filtered <- training_data[training_doc_nos_in_comps, ]
+  training_data_filtered <- training_data[training_pin_in_comps, ]
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
-      meta_pin, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
+      meta_pin, meta_sale_document_num, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
       loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
       char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
       char_land_sf, char_apts, char_ncu
@@ -558,19 +571,19 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, comp_sheet_name,
     style = style_price,
-    rows = comp_row_range, cols = c(2), gridExpand = TRUE
+    rows = comp_row_range, cols = c(3), gridExpand = TRUE
   )
   addStyle(
     wb, comp_sheet_name,
     style = style_comma,
-    rows = comp_row_range, cols = c(14, 16), gridExpand = TRUE
+    rows = comp_row_range, cols = c(15, 17), gridExpand = TRUE
   )
   addStyle(
     wb, comp_sheet_name,
     style = style_right_align,
-    rows = comp_row_range, cols = 17:18, gridExpand = TRUE
+    rows = comp_row_range, cols = 18:19, gridExpand = TRUE
   )
-  addFilter(wb, comp_sheet_name, 4, 1:18)
+  addFilter(wb, comp_sheet_name, 4, 1:19)
 
   # Write comp data to workbook
   writeData(
@@ -586,15 +599,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     select(meta_sale_document_num, comp_detail_id)
 
   assessment_pin_filtered <- assessment_pin_filtered %>%
-    left_join(
-      training_data_ids,
-      by = join_by(comp_document_num_1 == meta_sale_document_num)
-    ) %>%
+    # For the first comp: join using the document number rather than the PIN
+    left_join(training_data_ids, by = join_by(comp_document_num_1 == meta_sale_document_num)) %>%
     rename(comp_document_num_1_coord = comp_detail_id) %>%
-    left_join(
-      training_data_ids,
-      by = join_by(comp_document_num_2 == meta_sale_document_num)
-    ) %>%
+    # For the second comp: join using document number
+    left_join(training_data_ids, by = join_by(comp_document_num_2 == meta_sale_document_num)) %>%
     rename(comp_document_num_2_coord = comp_detail_id) %>%
     mutate(
       across(
@@ -610,27 +619,25 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       comp_pin_1 = ifelse(
         is.na(comp_document_num_1_coord),
         NA,
-        glue::glue_data(
-          .,
-          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_document_num_1_coord}), "{comp_pin_1}")'
+        glue::glue(
+          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_1_coord}", "{comp_pin_1}")'
         )
       ),
       comp_pin_2 = ifelse(
         is.na(comp_document_num_2_coord),
         NA,
-        glue::glue_data(
-          .,
-          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_document_num_2_coord}), "{comp_pin_2}")'
+        glue::glue(
+          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_2_coord}", "{comp_pin_2}")'
         )
       )
     ) %>%
-    select(-ends_with("_coord"), -comp_document_num_1, -comp_document_num_2, -comp_document_num_1_coord, -comp_document_num_2_coord)
+    select(-ends_with("_coord"), -comp_document_num_1, -comp_document_num_2)
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:67 # Don't forget the two hidden rows at the end
+  pin_col_range <- 1:68 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -696,7 +703,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 66, 67), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 67, 68), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -816,18 +823,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$total_av,
-    startCol = 66,
+    startCol = 67,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$av_difference,
-    startCol = 67,
+    startCol = 68,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(66, 67),
+    c(67, 68),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
