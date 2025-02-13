@@ -545,7 +545,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     ccao::vars_recode(code_type = "long") %>%
     mutate(
       char_apts = format_char_apts(char_apts),
-      char_ncu = ifelse(char_class == "212", char_ncu, NA)
+      char_ncu = ifelse(char_class == "212", char_ncu, NA),
+      meta_pin = glue(
+        '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
+      "{meta_pin}")'
+      )
     )
 
   # It seems like Excel can only handle between-sheet links if the linked
@@ -585,6 +589,16 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     rows = comp_row_range, cols = 18:19, gridExpand = TRUE
   )
   addFilter(wb, comp_sheet_name, 4, 1:19)
+
+  class(training_data_selected$meta_pin) <- c(
+    class(training_data_selected$meta_pin), "formula"
+  )
+
+  writeFormula(
+    wb, comp_sheet_name,
+    training_data_selected$meta_pin,
+    startRow = 5
+  )
 
   # Write comp data to workbook
   writeData(
