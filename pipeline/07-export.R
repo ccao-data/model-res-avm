@@ -600,18 +600,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       comp_pin_1 = ifelse(
         is.na(comp_pin_1_coord),
         NA,
-        glue::glue(
-          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_1_coord}),',
-          '"{comp_pin_1}")'
-        )
+        glue::glue('=HYPERLINK("#{comp_sheet_name}!{comp_pin_1_coord}", "{comp_pin_1}")')
       ),
       comp_pin_2 = ifelse(
         is.na(comp_pin_2_coord),
         NA,
-        glue::glue(
-          '=HYPERLINK(@CELL("address",{comp_sheet_name}!{comp_pin_2_coord}),',
-          '"{comp_pin_2}")'
-        )
+        glue::glue('=HYPERLINK("#{comp_sheet_name}!{comp_pin_2_coord}", "{comp_pin_2}")')
       )
     ) %>%
     select(-ends_with("_coord"))
