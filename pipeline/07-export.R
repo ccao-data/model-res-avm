@@ -629,14 +629,20 @@ for (town in unique(assessment_pin_prepped$township_code)) {
         is.na(comp_document_num_1_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_1_coord}", "{comp_pin_1}")'
+          '=HYPERLINK(',
+          '"#{comp_sheet_name}!{comp_document_num_1_coord}", ',
+          '"{comp_pin_1}"',
+          ')'
         )
       ),
       comp_pin_2 = ifelse(
         is.na(comp_document_num_2_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_2_coord}", "{comp_pin_2}")'
+          '=HYPERLINK(',
+          '"#{comp_sheet_name}!{comp_document_num_2_coord}", ',
+          '"{comp_pin_2}"',
+          ')'
         )
       )
     ) %>%
