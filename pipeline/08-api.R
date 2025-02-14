@@ -179,8 +179,6 @@ for (town in towns) {
   # workbooks. To finish each workbook, you must manually:
 
   # 1. Hide row 4 (model API variable names)
-  # 2. Developer tab > Visual Basic. Under Microsoft Excel Objects in the
-  #    explorer panel, copy the code from Sheet1 to Sheet3 (Cards).
-  # 3. Save, then close and re-open the workbook. Test the API by changing a
+  # 2. Save, then close and re-open the workbook. Test the API by changing a
   #    characteristic.
 }
