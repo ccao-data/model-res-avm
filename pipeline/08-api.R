@@ -30,7 +30,6 @@ message("Loading data for API creation")
 metadata <- read_parquet(paths$output$metadata$s3)
 predictors <- metadata$model_predictor_all_name[[1]]
 towns <- ccao::town_dict %>%
-  filter(triad_code == params$export$triad_code) %>%
   pull(township_code)
 
 # Load categorical variable dictionary for lookup and data validation
