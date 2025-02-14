@@ -434,7 +434,18 @@ assessment_pin_prepped <- assessment_pin_merged %>%
   # Add assessable permit flag
   left_join(flag_assessable_permits, by = c("meta_pin" = "pin")) %>%
   mutate(
-    flag_has_recent_assessable_permit = as.numeric(has_recent_assessable_permit)
+    flag_has_recent_assessable_permit =
+      as.numeric(has_recent_assessable_permit),
+    sale_recent_1_outlier_reasons = paste0(
+      sale_recent_1_outlier_reason1,
+      ", ",
+      sale_recent_1_outlier_reason2
+    ),
+    sale_recent_2_outlier_reasons = paste0(
+      sale_recent_2_outlier_reason1,
+      ", ",
+      sale_recent_2_outlier_reason2
+    )
   ) %>%
   # Select fields for output to workbook
   select(
@@ -449,9 +460,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
     sale_ratio, valuations_note,
     sale_recent_1_date, sale_recent_1_price,
-    sale_recent_1_outlier_type, sale_recent_1_document_num,
+    sale_recent_1_outlier_reasons, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price,
-    sale_recent_2_outlier_type, sale_recent_2_document_num,
+    sale_recent_2_outlier_reasons, sale_recent_2_document_num,
     char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
     char_ncu,
