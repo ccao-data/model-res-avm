@@ -80,13 +80,13 @@ for (town in towns) {
       api_prediction, api_prediction_rounded,
       all_of(top_predictors),
       starts_with("char_"),
-      ccao_is_corner_lot,
       starts_with("loc_"),
       starts_with("time"),
       starts_with("prox_"),
       starts_with("acs5_"),
       starts_with("other_"),
-      meta_sale_count_past_n_years
+      meta_sale_count_past_n_years,
+      starts_with("shp_")
     ) %>%
     arrange(meta_pin, meta_card_num) %>%
     mutate(
