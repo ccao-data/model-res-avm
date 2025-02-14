@@ -4,6 +4,24 @@ format: html
 ---
 
 ```{r}
+
+suppressPackageStartupMessages({
+  library(DBI)
+  library(igraph)
+  library(noctua)
+})
+
+# Adds arrow support to speed up ingest process.
+noctua_options(unload = TRUE)
+
+# Establish Athena connection
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
+  noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
+
+
+
 library(arrow)
 library(sf)
 library(ggplot2)
@@ -193,5 +211,75 @@ iasworld %>%
   summarise(across(everything(), ~ (sum(is.na(.)) / n()) * 100)) %>%
   filter(year >= 2016)
 
+```
+```{r}
+query <- glue_sql(
+  "SELECT * 
+  from z_ci_724_modify_foreclosure_script_for_values_of_0_proximity.cnt_pin_num_foreclosure"
+)
+
+data_1 <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query)
+
+query <- glue_sql(
+  "SELECT * 
+  from proximity.cnt_pin_num_foreclosure"
+)
+
+data_2 <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query)
+
+data_3 <- data_1 %>%
+  inner_join(data_2, by = c("pin10", "year")) %>%
+  arrange(desc(year))
+             
+diff <- data_3 %>%
+  filter(num_foreclosure_per_1000_pin_past_5_years.x != num_foreclosure_per_1000_pin_past_5_years.y |
+         num_foreclosure_in_half_mile_past_5_years.x != num_foreclosure_in_half_mile_past_5_years.y)
+
+test <- data_3 %>%
+  slice(1:1000)
+```
+
+```{r}
+query <- glue_sql(
+  "SELECT 
+  loc_school_elementary_district_geoid,
+  loc_school_secondary_district_geoid,
+  loc_school_unified_district_geoid,
+  meta_pin,
+  meta_year
+  from 
+  z_ci_722_modify_school_districts_to_fill_with_unified_school_district_if_possible_model.vw_pin_shared_input"
+)
+
+data_4 <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query)
+
+query <- glue_sql(
+  "SELECT
+  loc_school_elementary_district_geoid,
+  loc_school_secondary_district_geoid,
+  loc_school_unified_district_geoid,
+  meta_pin,
+  meta_year 
+  from 
+  model.vw_pin_shared_input"
+)
+
+data_5 <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query)
+
+data_6 <- data_4 %>%
+  inner_join(data_5, by = c("meta_pin", "meta_year"))
+
+diff <- data_6 %>%
+  filter(loc_school_elementary_district_geoid.x != loc_school_elementary_district_geoid.y |
+         loc_school_secondary_district_geoid.x != loc_school_secondary_district_geoid.y |
+         loc_school_unified_district_geoid.x != loc_school_unified_district_geoid.y)
+
+```
+
+
+```{r}
+rows_with_empty <- training_data[apply(training_data, 1, function(x) any(x == "")), ]
+
+columns_with_empty <- rows_with_empty[, apply(rows_with_empty, 2, function(x) any(x == ""))]
 ```
 
