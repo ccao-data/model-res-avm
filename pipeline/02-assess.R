@@ -382,12 +382,13 @@ sales_data_ratio_study <- sales_data %>%
 sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
-    meta_sale_price, meta_sale_date, meta_sale_document_num,
+    meta_sale_price, meta_sale_date, meta_sale_document_num, sv_is_outlier,
     sv_outlier_reason1, sv_outlier_reason2, sv_outlier_reason3
   ) %>%
   # Include outliers, since these data are used for desk review and
   # not for modeling
   rename(
+    meta_sale_is_outlier = sv_is_outlier,
     meta_sale_outlier_reason1 = sv_outlier_reason1,
     meta_sale_outlier_reason2 = sv_outlier_reason2,
     meta_sale_outlier_reason3 = sv_outlier_reason3
@@ -402,6 +403,7 @@ sales_data_two_most_recent <- sales_data %>%
       meta_sale_date,
       meta_sale_price,
       meta_sale_document_num,
+      meta_sale_is_outlier,
       meta_sale_outlier_reason1,
       meta_sale_outlier_reason2,
       meta_sale_outlier_reason3
@@ -534,7 +536,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
   mutate(
     flag_prior_near_to_pred_unchanged =
       prior_near_tot >= pred_pin_final_fmv_round - 100 &
-        prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
+      prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
     flag_pred_initial_to_final_changed = ccao::val_round_fmv(
       pred_pin_initial_fmv,
       breaks = params$pv$round_break,

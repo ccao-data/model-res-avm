@@ -17,6 +17,7 @@ suppressPackageStartupMessages({
   library(openxlsx)
   library(noctua)
   library(readr)
+  library(stringr)
 })
 
 # Establish Athena connection
@@ -436,16 +437,24 @@ assessment_pin_prepped <- assessment_pin_merged %>%
   mutate(
     flag_has_recent_assessable_permit =
       as.numeric(has_recent_assessable_permit),
-    sale_recent_1_outlier_reasons = paste0(
-      sale_recent_1_outlier_reason1,
-      ", ",
-      sale_recent_1_outlier_reason2
-    ),
-    sale_recent_2_outlier_reasons = paste0(
-      sale_recent_2_outlier_reason1,
-      ", ",
-      sale_recent_2_outlier_reason2
-    )
+    sale_recent_1_outlier_reasons = str_remove_all(ifelse(
+      sale_recent_1_is_outlier,
+      paste(
+        str_replace_na(sale_recent_1_outlier_reason1, ""),
+        str_replace_na(sale_recent_1_outlier_reason2, ""),
+        sep = ", "
+      ),
+      NA_character_
+    ), ", $"),
+    sale_recent_2_outlier_reasons = str_remove_all(ifelse(
+      sale_recent_2_is_outlier,
+      paste(
+        str_replace_na(sale_recent_2_outlier_reason1, ""),
+        str_replace_na(sale_recent_2_outlier_reason2, ""),
+        sep = ", "
+      ),
+      NA_character_
+    ), ", $")
   ) %>%
   # Select fields for output to workbook
   select(
