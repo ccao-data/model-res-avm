@@ -30,7 +30,6 @@ message("Loading data for API creation")
 metadata <- read_parquet(paths$output$metadata$s3)
 predictors <- metadata$model_predictor_all_name[[1]]
 towns <- ccao::town_dict %>%
-  filter(triad_code == params$export$triad_code) %>%
   pull(township_code)
 
 # Load categorical variable dictionary for lookup and data validation
@@ -80,13 +79,13 @@ for (town in towns) {
       api_prediction, api_prediction_rounded,
       all_of(top_predictors),
       starts_with("char_"),
-      ccao_is_corner_lot,
       starts_with("loc_"),
       starts_with("time"),
       starts_with("prox_"),
       starts_with("acs5_"),
       starts_with("other_"),
-      meta_sale_count_past_n_years
+      meta_sale_count_past_n_years,
+      starts_with("shp_")
     ) %>%
     arrange(meta_pin, meta_card_num) %>%
     mutate(
@@ -180,8 +179,6 @@ for (town in towns) {
   # workbooks. To finish each workbook, you must manually:
 
   # 1. Hide row 4 (model API variable names)
-  # 2. Developer tab > Visual Basic. Under Microsoft Excel Objects in the
-  #    explorer panel, copy the code from Sheet1 to Sheet3 (Cards).
-  # 3. Save, then close and re-open the workbook. Test the API by changing a
+  # 2. Save, then close and re-open the workbook. Test the API by changing a
   #    characteristic.
 }
