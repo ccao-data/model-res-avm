@@ -398,7 +398,7 @@ if (comp_enable) {
   # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-    group_by(meta_pin) %>%
+    group_by(meta_sale_document_num) %>%
     filter(meta_sale_date == max(meta_sale_date)) %>%
     ungroup()
 } else {
@@ -525,9 +525,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
   # the PIN-level details
-  training_pin_in_comps <- training_data$meta_pin %in% (
+  training_pin_in_comps <- training_data$meta_sale_document_num %in% (
     assessment_pin_filtered %>%
-      select(comp_pin_1, comp_pin_2) %>%
+      select(comp_document_num_1, comp_document_num_2) %>%
       unlist()
   )
   # Next, filter the training data so only referenced sales are included.
