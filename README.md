@@ -17,6 +17,7 @@ Table of Contents
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
     - [`assessment-year-2024`](#assessment-year-2024)
+    - [`assessment-year-2025`](#assessment-year-2025)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -502,15 +503,13 @@ their respective sources includes:
 |---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Tax rate                                          | Cook County Clerk’s Office                                                                                                                                                                                                                                                                               |
 | Airport noise                                     | Noise monitoring stations via the Chicago Department of Aviation                                                                                                                                                                                                                                         |
-| Road proximity                                    | Buffering [OpenStreetMap](https://www.openstreetmap.org/#map=10/41.8129/-87.6871) motorway, trunk, and primary roads                                                                                                                                                                                     |
+| Road proximity                                    | Buffering [IDOT](https://apps1.dot.illinois.gov/gist2/) roads                                                                                                                                                                                                                                            |
 | Flood risk and direction                          | [First Street](https://firststreet.org/risk-factor/flood-factor/) flood data                                                                                                                                                                                                                             |
 | All Census features                               | [ACS 5-year estimates](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2018/5-year.html) for each respective year                                                                                                                                        |
 | Elementary school district or attendance boundary | [Cook County school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-Elementary-School-Tax-Distric/an6r-bw5a) and [CPS attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-Elementary-School-Attendanc/7edu-z2e8)              |
 | High school district or attendance boundary       | [Cook County high school district boundaries](https://datacatalog.cookcountyil.gov/GIS-Maps/Historical-ccgisdata-High-School-Tax-Dist-2016/h3xu-azvs) and [CPS high school attendance boundaries](https://data.cityofchicago.org/Education/Chicago-Public-Schools-High-School-Attendance-Boun/y9da-bb2y) |
 | Walkability                                       | The [Chicago Metropolitan Agency for Planning’s](https://www.cmap.illinois.gov/) ON TO 2050 [Walkability Scores](https://datahub.cmap.illinois.gov/datasets/CMAPGIS::walkability-2018/about)                                                                                                             |
 | Subdivision, unincorporated areas, SSAs, etc.     | Cook County GIS                                                                                                                                                                                                                                                                                          |
-| PUMA Housing Index                                | [DePaul Institute for Housing Studies](https://www.housingstudies.org/)                                                                                                                                                                                                                                  |
-| School Ratings                                    | [GreatSchools.org](https://greatschools.org/), aggregated to the district level                                                                                                                                                                                                                          |
 | Distance to CTA, PACE, Metra                      | Each agency’s respective [GTFS feed](https://gtfs.org/), which contains the location of stops and lines                                                                                                                                                                                                  |
 
 #### Features Excluded
@@ -638,7 +637,7 @@ actually used by the model itself. They include:
   exemptions.
 - [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values
   for class 210 and 295 units. Provided by the Valuations department.
-  Not always used, so may be 0 rows for certain years.
+  Not always used, so may be unavailable or 0 rows for certain years.
 - [`land_nbhd_rate_data`](#getting-data) - Fixed \$/sqft land rates by
   assessor neighborhood for residential property classes except 210
   and 295. Provided by the Valuations department.
@@ -697,13 +696,12 @@ from the `assess` stage. These adjustments are internally called
 “post-modeling,” and are responsible for correcting minor deficiencies
 in the initial predictions. Specifically, post-modeling will:
 
-1.  Aggregate values for multi-card properties to the PIN level, then
-    disaggregate them back to the card level. A check is used to ensure
-    that the PIN-level assessed value is not significantly greater than
-    the prior year’s value. This is needed because often back buildings
-    (ADUs, secondary buildings) will receive a much higher initial value
-    than they are actually worth (since they are not differentiated as
-    ADUs by the model).
+1.  Handle multi-card properties. For PINs with more than 3 cards, this
+    means summing the estimate for each card to the PIN level, then
+    disaggregating back to the card level. For PINs with 3 or fewer
+    cards, the initial prediction of the *largest* card (plus the
+    building square footage of the remaining cards) is used as the
+    PIN-level estimate.
 
 2.  Ensure that nearly identical properties are identically valued. For
     some property classes, such as 210 and 295s, we manually adjust
@@ -854,6 +852,23 @@ the following major changes to the residential modeling codebase:
   using [renv profiles](#profiles-and-lockfiles) to increase
   replicability.
 
+### [`assessment-year-2025`](https://github.com/ccao-data/model-res-avm/tree/2025-assessment-year)
+
+- Re-worked multi-card PIN valuation (see
+  [\#328](https://github.com/ccao-data/model-res-avm/pull/328)). The new
+  method combines the building square footage of all cards into the
+  largest PIN, then uses that PIN’s prediction as the final value. This
+  leads to fewer overpredictions for the common “big house + coach
+  house” situation. Only applies to PINs with less than 4 cards.
+- Added new features: daily traffic counts, parcel geometry (vertices,
+  angles, shape), distance to stadium, distance to new construction.
+- Removed features: number of schools within 1/2 mile, school ratings
+  within 1/2 mile, homeowner exemption duration/indicator, corner lot
+  indicator, some ACS features, airport noise indicator.
+- Modified features: distance to road now uses Illinois Department of
+  Transportation street data instead of OpenStreetMap.
+- Added *lots* of additional bug fixes and minor improvements.
+
 # Ongoing Issues
 
 The CCAO faces a number of ongoing issues which make modeling difficult.
@@ -913,16 +928,16 @@ property characteristics recorded on our website are incorrect. Please
 [contact our office](https://www.cookcountyassessor.com/contact) to file
 a property characteristic appeal.
 
-##### Non-Arms-Length Sales
+##### Non-Arms-Length/Non-Market Sales
 
 It is difficult for our office to determine whether or not any given
 property sale is
 [arms-length](https://www.investopedia.com/terms/a/armslength.asp).
-Non-arms-length sales, such as selling your home to a family member at a
-discount, can bias the model and result in larger assessment errors. We
-do our best to [remove non-arms-length sales](#representativeness), but
-it’s nearly impossible to know for certain that every transaction is
-valid.
+Non-arms-length and non-market sales, such as selling your home to a
+family member at a discount, can bias the model and result in larger
+assessment errors. We do our best to [remove such
+sales](#representativeness), but it’s nearly impossible to know for
+certain that every transaction is valid.
 
 ##### Incentives Not to Disclose Accurate Information
 
@@ -1382,6 +1397,13 @@ transactions in the training set as possible.
 - [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/land_nbhd_rate_data.parquet)
 - [land_site_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/land_site_rate_data.parquet)
 - [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2024/run_id=2024-03-17-stupefied-maya/training_data.parquet)
+
+#### 2025
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/assessment_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/complex_id_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/).
