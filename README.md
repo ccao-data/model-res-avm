@@ -17,7 +17,7 @@ Table of Contents
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
     - [`assessment-year-2024`](#assessment-year-2024)
-- [Complex-Parcel-Configurations](#complex-parcel-configurations)
+- [Complex-Parcels](#complex-parcels)
   - [Multi-Card Parcels](#multi-card-parcels)
   - [Proration](#proration)
 - [Ongoing Issues](#ongoing-issues)
@@ -857,7 +857,7 @@ the following major changes to the residential modeling codebase:
   using [renv profiles](#profiles-and-lockfiles) to increase
   replicability.
 
-# Complex Parcel Configurations
+# Complex Parcels
 
 ### Multi-Card Parcels
 
