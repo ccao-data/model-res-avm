@@ -17,6 +17,7 @@ Table of Contents
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
     - [`assessment-year-2024`](#assessment-year-2024)
+    - [`assessment-year-2025`](#assessment-year-2025)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -853,6 +854,23 @@ the following major changes to the residential modeling codebase:
 - Separated development/reporting dependencies from primary dependencies
   using [renv profiles](#profiles-and-lockfiles) to increase
   replicability.
+
+### [`assessment-year-2025`](https://github.com/ccao-data/model-res-avm/tree/2025-assessment-year)
+
+- Re-worked multi-card PIN valuation (see
+  [\#328](https://github.com/ccao-data/model-res-avm/pull/328)). The new
+  method combines the building square footage of all cards into the
+  largest PIN, then uses that PIN’s prediction as the final value. This
+  leads to fewer overpredictions for the common “big house + coach
+  house” situation. Only applies to PINs with less than 4 cards.
+- Added new features: daily traffic counts, parcel geometry (vertices,
+  angles, shape), distance to stadium, distance to new construction.
+- Removed features: number of schools within 1/2 mile, school ratings
+  within 1/2 mile, homeowner exemption duration/indicator, corner lot
+  indicator, some ACS features, airport noise indicator.
+- Modified features: distance to road now uses Illinois Department of
+  Transportation street data instead of OpenStreetMap.
+- Added *lots* of additional bug fixes and minor improvements.
 
 # Ongoing Issues
 
