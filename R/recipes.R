@@ -64,11 +64,13 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
-    # Drop extra location predictors that aren't nbhd or township
-    step_rm(starts_with("loc_"), -all_numeric_predictors()) %>%
+    # Drop extra location predictors that aren't nbhd, township, or school district
+    step_rm(starts_with("loc_"), -all_numeric_predictors(), -starts_with("loc_school_")) %>%
     # Transforms and imputations
     step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
     step_mutate_at(
+      char_recent_renovation,
+      time_sale_post_covid,
       starts_with("ind_"),
       starts_with("ccao_is"),
       fn = as.numeric
@@ -81,17 +83,55 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Replace NA in factors with "unknown"
     step_unknown(all_nominal_predictors(), -has_role("ID")) %>%
     # Dummify categorical predictors
-    step_dummy(all_nominal_predictors(), -has_role("ID"), one_hot = TRUE) %>%
+    embed::step_lencode_glm(
+      meta_nbhd_code,
+      meta_township_code,
+      char_class,
+      loc_school_elementary_district_geoid,
+      loc_school_secondary_district_geoid,
+      outcome = vars(meta_sale_price)
+    ) %>%
+    step_dummy(
+      all_nominal_predictors(),
+      -meta_nbhd_code,
+      -meta_township_code,
+      -char_class,
+      -starts_with("loc_school_"),
+      -has_role("ID"),
+      one_hot = TRUE
+    ) %>%
     # Drop any predictors with near-zero variance, add interactions, and
     # perform transforms
-    step_interact(terms = ~ starts_with("meta_township_"):char_bldg_sf) %>%
+    step_interact(terms = ~ char_yrblt:char_bldg_sf) %>%
+    step_mutate(
+      prox_nearest_vacant_land_dist_ft_1 = prox_nearest_vacant_land_dist_ft + 0.001,
+      prox_nearest_new_construction_dist_ft_1 = prox_nearest_new_construction_dist_ft + 0.001,
+      acs5_percent_employment_unemployed_1 = acs5_percent_employment_unemployed + 0.00001
+    ) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
       acs5_median_income_household_past_year,
-      char_bldg_sf
+      char_bldg_sf,
+      prox_nearest_vacant_land_dist_ft_1,
+      prox_nearest_new_construction_dist_ft_1,
+      acs5_percent_employment_unemployed_1,
+      acs5_median_household_renter_occupied_gross_rent
     ) %>%
     step_normalize(
       acs5_median_household_renter_occupied_gross_rent,
       loc_longitude, loc_latitude
+    ) %>%
+    step_mutate(
+      char_land_sf = pmin(pmax(char_land_sf, quantile(char_land_sf, 0.01)), quantile(char_land_sf, 0.99)),
+      shp_parcel_edge_len_ft_sd = pmin(pmax(shp_parcel_edge_len_ft_sd, quantile(shp_parcel_edge_len_ft_sd, 0.01)), quantile(shp_parcel_edge_len_ft_sd, 0.99))
+    ) %>%
+    step_poly(
+      char_yrblt,
+      loc_access_cmap_walk_nta_score,
+      loc_access_cmap_walk_total_score,
+      prox_num_pin_in_half_mile,
+      prox_nearest_golf_course_dist_ft,
+      shp_parcel_edge_len_ft_sd,
+      degree = 2
     )
 }
