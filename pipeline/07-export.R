@@ -510,7 +510,7 @@ assessment_card_prepped <- assessment_card %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Write raw data to sheets for parcel details
-for (town in unique(upload_data$township_code)) {
+for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
 
   # Filter overall data to specific township
