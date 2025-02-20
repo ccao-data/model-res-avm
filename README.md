@@ -17,6 +17,8 @@ Table of Contents
     - [`assessment-year-2022`](#assessment-year-2022)
     - [`assessment-year-2023`](#assessment-year-2023)
     - [`assessment-year-2024`](#assessment-year-2024)
+- [Special Groups](#special-groups)
+  - [Multi-Card Parcels](#multi-card-parcels)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -138,23 +140,23 @@ stand-alone script) or as part of the overall pipeline (with
 > including dependencies, outputs, parameters, and more, see
 > [dvc.yaml](./dvc.yaml)
 
-0.  **Ingest**: Pull prepared data from the CCAO’s Athena database. This
+0. **Ingest**: Pull prepared data from the CCAO’s Athena database. This
     data is divided into [2 primary datasets](#data-used), one for
     training and one for assessment. NOTE: This stage is only run
     as-needed, since the input data does not change for each model run.
 
-1.  **Train**: Train the model using sales data. This involves splitting
+1. **Train**: Train the model using sales data. This involves splitting
     the input data into train/test sets and performing cross-validation
     to determine the optimal set of hyperparameters. The primary output
     of this stage is a trained model object.
 
-2.  **Assess**: Use the trained model to estimate values for all
+2. **Assess**: Use the trained model to estimate values for all
     residential properties. Values are [adjusted if
     necessary](#post-modeling) and then aggregated to the PIN level. The
     primary output of this stage is a data frame of PIN-level assessed
     values.
 
-3.  **Evaluate**: Measure the performance of the model using the
+3. **Evaluate**: Measure the performance of the model using the
     held-out test set and an assessor-specific ratio study method.
     Performance statistics include standard machine learning metrics
     (RMSE, MAE, MAPE) as well as assessor-specific metrics (COD, PRD,
@@ -163,7 +165,7 @@ stand-alone script) or as part of the overall pipeline (with
     output of this stage is a data frame of aggregate performance
     statistics.
 
-4.  **Interpret**: Calculate three major explanatory outputs:
+4. **Interpret**: Calculate three major explanatory outputs:
 
     - SHAP values for all the estimated values from the assess stage.
       These are the *per feature* contribution to the predicted value
@@ -174,7 +176,7 @@ stand-alone script) or as part of the overall pipeline (with
       the method described [in this
       vignette](https://ccao-data.github.io/lightsnip/articles/finding-comps.html)
 
-5.  **Finalize**: Save run timings and metadata. Render the following
+5. **Finalize**: Save run timings and metadata. Render the following
     Quarto documents:
 
     - An overall model report detailing model performance, effects, and
@@ -182,13 +184,13 @@ stand-alone script) or as part of the overall pipeline (with
     - For PINs of interest, individual PIN-level reports detailing the
       characteristics, SHAP values, and results for a given PIN
 
-6.  **Upload**: Upload all output objects to AWS (S3). All model outputs
+6. **Upload**: Upload all output objects to AWS (S3). All model outputs
     for every model run are stored in perpetuity in S3. Each run’s
     performance can be visualized using the CCAO’s internal Tableau
     dashboards. NOTE: This stage is only run internally, since it
     requires access to the CCAO Data AWS account.
 
-7.  **Export**: Export assessed values to Desk Review spreadsheets for
+7. **Export**: Export assessed values to Desk Review spreadsheets for
     Valuations, as well as a delimited text format for upload to the
     system of record (iasWorld). NOTE: This stage is only run when a
     final model is selected. It is not run automatically or as part of
@@ -566,10 +568,10 @@ different model](https://github.com/ccao-data/model-condo-avm).
 Models need data in order to be trained and measured for accuracy.
 Modern predictive modeling typically uses three data sets:
 
-1.  A training set, used to train the parameters of the model itself.
-2.  A validation set, used to choose a hyperparameter combination that
+1. A training set, used to train the parameters of the model itself.
+2. A validation set, used to choose a hyperparameter combination that
     optimizes model accuracy.
-3.  A test set, used to measure the performance of the trained, tuned
+3. A test set, used to measure the performance of the trained, tuned
     model on unseen data.
 
 `training_data` is used to create these data sets. It is subdivided
@@ -678,12 +680,12 @@ regression with the following specification:
 There a few caveats with this approach and with balance testing in
 general:
 
-1.  There could be statistically significant omitted variables that
+1. There could be statistically significant omitted variables that
     differentiate sold from unsold. Things like `recently_painted` or
     `full_kitchen_renovation` are good examples. We don’t collect these
     data points, so it could be the case that sold properties are more
     “sale-ready” in these unknown terms.
-2.  There could be significant variation by geography in the
+2. There could be significant variation by geography in the
     representativeness of the sales. In other words, certain areas could
     have non-representative sales whose predictive effect on
     `sold_in_last_2_years` is washed out due to mis- or under-specified
@@ -697,7 +699,7 @@ from the `assess` stage. These adjustments are internally called
 “post-modeling,” and are responsible for correcting minor deficiencies
 in the initial predictions. Specifically, post-modeling will:
 
-1.  Aggregate values for multi-card properties to the PIN level, then
+1. Aggregate values for multi-card properties to the PIN level, then
     disaggregate them back to the card level. A check is used to ensure
     that the PIN-level assessed value is not significantly greater than
     the prior year’s value. This is needed because often back buildings
@@ -705,14 +707,14 @@ in the initial predictions. Specifically, post-modeling will:
     than they are actually worth (since they are not differentiated as
     ADUs by the model).
 
-2.  Ensure that nearly identical properties are identically valued. For
+2. Ensure that nearly identical properties are identically valued. For
     some property classes, such as 210 and 295s, we manually adjust
     values such that all identical properties in the same complex
     receive the same predicted value. This is accomplished by replacing
     individual predicted values with the average predicted value for the
     complex.
 
-3.  Round PIN-level values (typically to the nearest \$1,000). This is
+3. Round PIN-level values (typically to the nearest \$1,000). This is
     done to indicate that model values are *estimates*, not precise
     values.
 
@@ -773,10 +775,10 @@ the following major changes to the residential modeling codebase:
   was moved to [pipeline/07-export.R](pipeline/07-export.R).
 - Added [DVC](https://dvc.org/) support/integration. This repository
   uses DVC in 2 ways:
-  1.  All input data in [`input/`](input/) is versioned, tracked, and
+  1. All input data in [`input/`](input/) is versioned, tracked, and
       stored using DVC. Previous input data sets are stored in
       perpetuity on S3.
-  2.  [DVC
+  2. [DVC
       pipelines](https://dvc.org/doc/user-guide/project-structure/pipelines-files)
       are used to sequentially run R pipeline scripts and track/cache
       inputs and outputs.
@@ -854,6 +856,18 @@ the following major changes to the residential modeling codebase:
   using [renv profiles](#profiles-and-lockfiles) to increase
   replicability.
 
+# Special Groups
+
+### Multi-Card Parcels
+
+Multi-card parcels are properties (PINs) that include more than one building,
+each represented by its own "card". Because our model is trained at the building
+level, these parcels can be challenging to value accurately.
+
+We consolidate the building square footage from all cards into a single “main” card.
+We then predict once for that combined building, ensuring location data is only
+factored in once while still capturing the total building area.
+
 # Ongoing Issues
 
 The CCAO faces a number of ongoing issues which make modeling difficult.
@@ -900,10 +914,10 @@ property condition.
 The property characteristics we track can sometimes be incorrect or
 outdated. The two major sources of characteristic errors are:
 
-1.  Data entry or processing errors. Records collected by our office
+1. Data entry or processing errors. Records collected by our office
     often need to digitized and mistakes happen. Fortunately, these
     types of errors are relatively rare.
-2.  Characteristic update errors. There are a variety of systems that
+2. Characteristic update errors. There are a variety of systems that
     update the characteristics of properties in our system. Some of them
     can be slow to detect changes or otherwise unreliable.
 
@@ -1130,19 +1144,19 @@ of the model.
 
 ### Installation
 
-1.  Clone this repository using git, or simply download it using the
+1. Clone this repository using git, or simply download it using the
     button at the top of the page.
-2.  Set your working directory to the local folder containing this
+2. Set your working directory to the local folder containing this
     repository’s files, either using R’s `setwd()` command or
     (preferably) using RStudio’s
     [projects](https://support.posit.co/hc/en-us/articles/200526207-Using-Projects).
-3.  Install `renv`, R’s package manager, by running
+3. Install `renv`, R’s package manager, by running
     `install.packages("renv")`.
-4.  Install all R package dependencies using `renv` by running
+4. Install all R package dependencies using `renv` by running
     `renv::restore()`. This step may take awhile. Linux users will
     likely need to install dependencies (via apt, yum, etc.) to build
     from source.
-5.  (Optional) The `finalize` step of the model pipeline requires some
+5. (Optional) The `finalize` step of the model pipeline requires some
     additional dependencies for generating a model performance report.
     Install these additional dependencies by running
     `renv::restore(lockfile = "renv/profiles/reporting/renv.lock")`.
@@ -1426,14 +1440,14 @@ installed automatically when you run `renv::restore()`.
 
 We use multiple renv lockfiles to manage R dependencies:
 
-1.  **`renv.lock`** is the canonical list of dependencies that are used
+1. **`renv.lock`** is the canonical list of dependencies that are used
     by the **core model pipeline**. Any dependencies that are required
     to run the model itself should be defined in this lockfile.
-2.  **`renv/profiles/reporting/renv.lock`** is the canonical list of
+2. **`renv/profiles/reporting/renv.lock`** is the canonical list of
     dependencies that are used to **generate model reports** in the
     `finalize` step of the pipeline. Any dependencies that are required
     to generate reports should be defined in this lockfile.
-3.  **`renv/profiles/dev/renv.lock`** is the canonical list of
+3. **`renv/profiles/dev/renv.lock`** is the canonical list of
     dependencies that are used **for local development**, running the
     `ingest`, `export`, and `api` steps of the pipeline, and building
     the README. These dependencies are required only by CCAO staff and
@@ -1467,10 +1481,10 @@ of it (run `renv::restore(lockfile = "renv/profiles/dev/renv.lock")`).
 The process for **updating core model pipeline dependencies** is
 straightforward:
 
-1.  Add the dependency to the list of explicit dependencies under the
+1. Add the dependency to the list of explicit dependencies under the
     `Depends:` key of the `DESCRIPTION` file
-2.  Run `renv::install("<dependency_name>")`
-3.  Run `renv::snapshot()` to update the core lockfile (the root
+2. Run `renv::install("<dependency_name>")`
+3. Run `renv::snapshot()` to update the core lockfile (the root
     `renv.lock`)
 
 The process for updating \*dependencies for other lockfiles\*\* is more
@@ -1479,15 +1493,15 @@ renv commands. Determine the name of the profile you’d like to update
 (`<profile_name>` in the code that follows) and run the following
 commands:
 
-1.  Run `renv::activate(profile = "<profile_name>")` to set the renv
+1. Run `renv::activate(profile = "<profile_name>")` to set the renv
     profile to `<profile_name>`
-2.  Make sure that the dependency is defined in the `DESCRIPTION` file
+2. Make sure that the dependency is defined in the `DESCRIPTION` file
     under the `Config/renv/profiles/<profile_name>/dependencies` key
-3.  Run `renv::install("<dependency_name>")` to add or update the
+3. Run `renv::install("<dependency_name>")` to add or update the
     dependency as necessary
-4.  Run `renv::snapshot()` to update the reporting lockfile with the
+4. Run `renv::snapshot()` to update the reporting lockfile with the
     dependencies defined in the `DESCRIPTION` file
-5.  Run `renv::activate(profile = "default")` if you would like to
+5. Run `renv::activate(profile = "default")` if you would like to
     switch back to the default renv profile
 
 ## Troubleshooting
