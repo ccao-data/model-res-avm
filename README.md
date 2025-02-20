@@ -878,7 +878,6 @@ Some buildings span multiple parcel boundaries. When this happens, each parcel (
 
 2. **Prorate the Building:**  
    - Multiply the building-wide figure by each PIN’s proration rate (e.g., if a PIN has 30% of the building, it gets 30% of that amount).  
-   - Round fractional dollars so the total matches exactly.
 
 3. **Add Back Land:**  
    - Each PIN has its own land value, which is not shared.  
