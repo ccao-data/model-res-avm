@@ -70,7 +70,7 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       -all_numeric_predictors(),
       -starts_with("loc_school_")
     ) %>%
-    # Transforms and imputations
+    # Convert logical values to numerics and get rid of 0s
     step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
     step_mutate_at(
       char_recent_renovation,
@@ -79,6 +79,7 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       starts_with("ccao_is"),
       fn = as.numeric
     ) %>%
+    # Fill missing values with the median/mode
     step_impute_median(all_numeric_predictors(), -has_role("ID")) %>%
     step_impute_mode(all_nominal_predictors(), -has_role("ID")) %>%
     step_zv(all_predictors()) %>%
@@ -86,15 +87,16 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     step_novel(all_nominal_predictors(), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
     step_unknown(all_nominal_predictors(), -has_role("ID")) %>%
-    # Dummify certain high cardinality nominal predictors
+    # Create linear encodings for certain high cardinality nominal predictors
     embed::step_lencode_glm(
       meta_nbhd_code,
       meta_township_code,
       char_class,
-      loc_school_elementary_district_geoid,
-      loc_school_secondary_district_geoid,
+      -starts_with("loc_school_"),
+      -has_role("ID"),
       outcome = vars(meta_sale_price)
     ) %>%
+    # Dummify (OHE) any remaining nominal predictors
     step_dummy(
       all_nominal_predictors(),
       -meta_nbhd_code,
@@ -104,9 +106,9 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       -has_role("ID"),
       one_hot = TRUE
     ) %>%
-    # Drop any predictors with near-zero variance, add interactions, and
-    # perform transforms
     step_interact(terms = ~ char_yrblt:char_bldg_sf) %>%
+    # Normalize/transform skewed numeric predictors. Add a small fudge factor
+    # so no values are zero
     step_mutate(
       prox_nearest_vacant_land_dist_ft_1 =
         prox_nearest_vacant_land_dist_ft + 0.001,
@@ -128,25 +130,13 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       acs5_median_household_renter_occupied_gross_rent,
       loc_longitude, loc_latitude
     ) %>%
-    step_mutate(
-      char_land_sf = pmin(
-        pmax(char_land_sf, quantile(char_land_sf, 0.01)),
-        quantile(char_land_sf, 0.99)
-      ),
-      shp_parcel_edge_len_ft_sd = pmin(
-        pmax(
-          shp_parcel_edge_len_ft_sd,
-          quantile(shp_parcel_edge_len_ft_sd, 0.01)
-        ), quantile(shp_parcel_edge_len_ft_sd, 0.99)
-      )
+    # Winsorize some extreme values in important numeric vars
+    step_mutate_at(
+      char_land_sf, char_bldg_sf,
+      fn = \(x) pmin(pmax(x, quantile(x, 0.01)), quantile(x, 0.99))
     ) %>%
     step_poly(
-      char_yrblt,
-      loc_access_cmap_walk_nta_score,
-      loc_access_cmap_walk_total_score,
-      prox_num_pin_in_half_mile,
-      prox_nearest_golf_course_dist_ft,
-      shp_parcel_edge_len_ft_sd,
+      char_yrblt, char_bldg_sf,
       degree = 2
     )
 }
