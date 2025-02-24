@@ -1800,21 +1800,8 @@
     },
     "uwot": {
       "Package": "uwot",
-      "Version": "0.2.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "FNN",
-        "Matrix",
-        "RSpectra",
-        "Rcpp",
-        "RcppAnnoy",
-        "RcppProgress",
-        "dqrng",
-        "irlba",
-        "methods"
-      ],
-      "Hash": "8c42d9de3b871975b5e63c0679aa7cfc"
+      "Version": "0.2.2",
+      "Source": "Repository"
     },
     "vctrs": {
       "Package": "vctrs",
