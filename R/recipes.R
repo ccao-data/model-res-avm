@@ -64,8 +64,12 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
-    # Drop extra location predictors that aren't nbhd, township, or school district
-    step_rm(starts_with("loc_"), -all_numeric_predictors(), -starts_with("loc_school_")) %>%
+    # Drop extra location predictors that aren't school district
+    step_rm(
+      starts_with("loc_"),
+      -all_numeric_predictors(),
+      -starts_with("loc_school_")
+    ) %>%
     # Transforms and imputations
     step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
     step_mutate_at(
@@ -82,7 +86,7 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     step_novel(all_nominal_predictors(), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
     step_unknown(all_nominal_predictors(), -has_role("ID")) %>%
-    # Dummify categorical predictors
+    # Dummify certain high cardinality nominal predictors
     embed::step_lencode_glm(
       meta_nbhd_code,
       meta_township_code,
@@ -104,9 +108,12 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # perform transforms
     step_interact(terms = ~ char_yrblt:char_bldg_sf) %>%
     step_mutate(
-      prox_nearest_vacant_land_dist_ft_1 = prox_nearest_vacant_land_dist_ft + 0.001,
-      prox_nearest_new_construction_dist_ft_1 = prox_nearest_new_construction_dist_ft + 0.001,
-      acs5_percent_employment_unemployed_1 = acs5_percent_employment_unemployed + 0.00001
+      prox_nearest_vacant_land_dist_ft_1 =
+        prox_nearest_vacant_land_dist_ft + 0.001,
+      prox_nearest_new_construction_dist_ft_1 =
+        prox_nearest_new_construction_dist_ft + 0.001,
+      acs5_percent_employment_unemployed_1 =
+        acs5_percent_employment_unemployed + 0.001
     ) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
@@ -122,8 +129,16 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       loc_longitude, loc_latitude
     ) %>%
     step_mutate(
-      char_land_sf = pmin(pmax(char_land_sf, quantile(char_land_sf, 0.01)), quantile(char_land_sf, 0.99)),
-      shp_parcel_edge_len_ft_sd = pmin(pmax(shp_parcel_edge_len_ft_sd, quantile(shp_parcel_edge_len_ft_sd, 0.01)), quantile(shp_parcel_edge_len_ft_sd, 0.99))
+      char_land_sf = pmin(
+        pmax(char_land_sf, quantile(char_land_sf, 0.01)),
+        quantile(char_land_sf, 0.99)
+      ),
+      shp_parcel_edge_len_ft_sd = pmin(
+        pmax(
+          shp_parcel_edge_len_ft_sd,
+          quantile(shp_parcel_edge_len_ft_sd, 0.01)
+        ), quantile(shp_parcel_edge_len_ft_sd, 0.99)
+      )
     ) %>%
     step_poly(
       char_yrblt,
