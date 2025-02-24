@@ -92,8 +92,7 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       meta_nbhd_code,
       meta_township_code,
       char_class,
-      -starts_with("loc_school_"),
-      -has_role("ID"),
+      starts_with("loc_school_"),
       outcome = vars(meta_sale_price)
     ) %>%
     # Dummify (OHE) any remaining nominal predictors
