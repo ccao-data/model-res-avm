@@ -397,10 +397,7 @@ if (comp_enable) {
 
   # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-    group_by(meta_sale_document_num) %>%
-    filter(meta_sale_date == max(meta_sale_date)) %>%
-    ungroup()
+    filter(!ind_pin_is_multicard, !sv_is_outlier)
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -634,33 +631,29 @@ for (town in unique(assessment_pin_prepped$township_code)) {
         ~ ifelse(
           is.na(.x),
           NA,
-          getCellRefs(data.frame(row = .x + 4, column = 1))
+          getCellRefs(data.frame(row = .x + 4, column = 2))
         )
       )
     ) %>%
     mutate(
-      comp_pin_1 = ifelse(
+      comp_document_num_1 = ifelse(
         is.na(comp_document_num_1_coord),
         NA,
         glue::glue(
-          "=HYPERLINK(",
-          '"#{comp_sheet_name}!{comp_document_num_1_coord}", ',
-          '"{comp_pin_1}"',
-          ")"
+          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_1_coord}",',
+          '"{comp_document_num_1}")'
         )
       ),
-      comp_pin_2 = ifelse(
+      comp_document_num_2 = ifelse(
         is.na(comp_document_num_2_coord),
         NA,
         glue::glue(
-          "=HYPERLINK(",
-          '"#{comp_sheet_name}!{comp_document_num_2_coord}", ',
-          '"{comp_pin_2}"',
-          ")"
+          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_2_coord}",',
+          '"{comp_document_num_2}")'
         )
       )
     ) %>%
-    select(-ends_with("_coord"), -comp_document_num_1, -comp_document_num_2)
+    select(-ends_with("_coord"), -comp_pin_1, -comp_pin_2)
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
@@ -702,12 +695,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     class(assessment_pin_sale_ratios$sale_ratio), "formula"
   )
 
-  # Make comp PIN fields formulas so Excel understands the links
-  class(assessment_pin_filtered$comp_pin_1) <- c(
-    class(assessment_pin_filtered$comp_pin_1), "formula"
+  # Make comp doc num fields formulas so Excel understands the links
+  class(assessment_pin_filtered$comp_document_num_1) <- c(
+    class(assessment_pin_filtered$comp_document_num_1), "formula"
   )
-  class(assessment_pin_filtered$comp_pin_2) <- c(
-    class(assessment_pin_filtered$comp_pin_2), "formula"
+  class(assessment_pin_filtered$comp_document_num_2) <- c(
+    class(assessment_pin_filtered$comp_document_num_2), "formula"
   )
 
   # Generate sheet and column headers
