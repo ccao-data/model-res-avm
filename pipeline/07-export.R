@@ -366,7 +366,8 @@ if (comp_enable) {
     ) %>%
     select(
       pin, overall_comp_score,
-      comp_pin_1, comp_score_1, comp_pin_2, comp_score_2
+      comp_pin_1, comp_document_num_1, comp_score_1,
+      comp_pin_2, comp_document_num_2, comp_score_2
     )
 
   # Merge comp data into assessment data. Start with single-card PINs, where
@@ -397,10 +398,7 @@ if (comp_enable) {
 
   # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
-    group_by(meta_pin) %>%
-    filter(meta_sale_date == max(meta_sale_date)) %>%
-    ungroup()
+    filter(!ind_pin_is_multicard, !sv_is_outlier)
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -475,7 +473,8 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
     char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
     char_ncu,
-    comp_pin_1, comp_score_1, comp_pin_2, comp_score_2, overall_comp_score,
+    comp_pin_1, comp_document_num_1, comp_score_1,
+    comp_pin_2, comp_document_num_2, comp_score_2, overall_comp_score,
     flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
@@ -543,9 +542,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter the training data so that we only display sales that are referenced.
   # First, get the indexes of every sale whose comp is referenced in
   # the PIN-level details
-  training_pin_in_comps <- training_data$meta_pin %in% (
+  training_pin_in_comps <- training_data$meta_sale_document_num %in% (
     assessment_pin_filtered %>%
-      select(comp_pin_1, comp_pin_2) %>%
+      select(comp_document_num_1, comp_document_num_2) %>%
       unlist()
   )
   # Next, filter the training data so only referenced sales are included.
@@ -554,7 +553,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Select only the columns that are needed for the comps detail view
   training_data_selected <- training_data_filtered %>%
     select(
-      meta_pin, meta_sale_price, meta_sale_date, char_class, meta_nbhd_code,
+      meta_pin, meta_sale_document_num, meta_sale_price,
+      meta_sale_date, char_class, meta_nbhd_code,
       loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
       char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
       char_land_sf, char_apts, char_ncu
@@ -562,7 +562,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     ccao::vars_recode(code_type = "long") %>%
     mutate(
       char_apts = format_char_apts(char_apts),
-      char_ncu = ifelse(char_class == "212", char_ncu, NA)
+      char_ncu = ifelse(char_class == "212", char_ncu, NA),
+      meta_pin = glue(
+        '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
+      "{meta_pin}")'
+      )
     )
 
   # It seems like Excel can only handle between-sheet links if the linked
@@ -589,19 +593,29 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, comp_sheet_name,
     style = style_price,
-    rows = comp_row_range, cols = c(2), gridExpand = TRUE
+    rows = comp_row_range, cols = c(3), gridExpand = TRUE
   )
   addStyle(
     wb, comp_sheet_name,
     style = style_comma,
-    rows = comp_row_range, cols = c(14, 16), gridExpand = TRUE
+    rows = comp_row_range, cols = c(15, 17), gridExpand = TRUE
   )
   addStyle(
     wb, comp_sheet_name,
     style = style_right_align,
-    rows = comp_row_range, cols = 17:18, gridExpand = TRUE
+    rows = comp_row_range, cols = 18:19, gridExpand = TRUE
   )
-  addFilter(wb, comp_sheet_name, 4, 1:18)
+  addFilter(wb, comp_sheet_name, 4, 1:19)
+
+  class(training_data_selected$meta_pin) <- c(
+    class(training_data_selected$meta_pin), "formula"
+  )
+
+  writeFormula(
+    wb, comp_sheet_name,
+    training_data_selected$meta_pin,
+    startRow = 5
+  )
 
   # Write comp data to workbook
   writeData(
@@ -614,40 +628,52 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Update PIN-level data to link to comps detail sheet
   training_data_ids <- training_data_filtered %>%
     tibble::rowid_to_column("comp_detail_id") %>%
-    select(meta_pin, comp_detail_id)
+    select(meta_sale_document_num, comp_detail_id)
 
   assessment_pin_filtered <- assessment_pin_filtered %>%
-    left_join(training_data_ids, by = join_by(comp_pin_1 == meta_pin)) %>%
-    rename(comp_pin_1_coord = comp_detail_id) %>%
-    left_join(training_data_ids, by = join_by(comp_pin_2 == meta_pin)) %>%
-    rename(comp_pin_2_coord = comp_detail_id) %>%
+    left_join(
+      training_data_ids,
+      by = join_by(
+        comp_document_num_1 == meta_sale_document_num
+      )
+    ) %>%
+    rename(comp_document_num_1_coord = comp_detail_id) %>%
+    left_join(
+      training_data_ids,
+      by = join_by(
+        comp_document_num_2 == meta_sale_document_num
+      )
+    ) %>%
+    rename(comp_document_num_2_coord = comp_detail_id) %>%
     mutate(
       across(
         matches("_coord"),
         ~ ifelse(
           is.na(.x),
           NA,
-          getCellRefs(data.frame(row = .x + 4, column = 1))
+          getCellRefs(data.frame(row = .x + 4, column = 2))
         )
       )
     ) %>%
     mutate(
-      comp_pin_1 = ifelse(
-        is.na(comp_pin_1_coord),
+      comp_document_num_1 = ifelse(
+        is.na(comp_document_num_1_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_pin_1_coord}", "{comp_pin_1}")'
+          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_1_coord}",',
+          '"{comp_document_num_1}")'
         )
       ),
-      comp_pin_2 = ifelse(
-        is.na(comp_pin_2_coord),
+      comp_document_num_2 = ifelse(
+        is.na(comp_document_num_2_coord),
         NA,
         glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_pin_2_coord}", "{comp_pin_2}")'
+          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_2_coord}",',
+          '"{comp_document_num_2}")'
         )
       )
     ) %>%
-    select(-ends_with("_coord"))
+    select(-ends_with("_coord"), -comp_pin_1, -comp_pin_2)
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
@@ -689,12 +715,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     class(assessment_pin_sale_ratios$sale_ratio), "formula"
   )
 
-  # Make comp PIN fields formulas so Excel understands the links
-  class(assessment_pin_filtered$comp_pin_1) <- c(
-    class(assessment_pin_filtered$comp_pin_1), "formula"
+  # Make comp doc num fields formulas so Excel understands the links
+  class(assessment_pin_filtered$comp_document_num_1) <- c(
+    class(assessment_pin_filtered$comp_document_num_1), "formula"
   )
-  class(assessment_pin_filtered$comp_pin_2) <- c(
-    class(assessment_pin_filtered$comp_pin_2), "formula"
+  class(assessment_pin_filtered$comp_document_num_2) <- c(
+    class(assessment_pin_filtered$comp_document_num_2), "formula"
   )
 
   # Generate sheet and column headers
