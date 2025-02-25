@@ -64,34 +64,81 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
-    # Drop extra location predictors that aren't nbhd or township
-    step_rm(starts_with("loc_"), -all_numeric_predictors()) %>%
-    # Transforms and imputations
+    # Drop extra location predictors that aren't school district
+    step_rm(
+      starts_with("loc_"),
+      -all_numeric_predictors(),
+      -starts_with("loc_school_")
+    ) %>%
+    # Convert logical values to numerics and get rid of 0s
     step_mutate(char_bldg_sf = ifelse(char_bldg_sf == 0, 1, char_bldg_sf)) %>%
     step_mutate_at(
+      char_recent_renovation,
+      time_sale_post_covid,
       starts_with("ind_"),
       starts_with("ccao_is"),
       fn = as.numeric
     ) %>%
+    # Fill missing values with the median/mode
     step_impute_median(all_numeric_predictors(), -has_role("ID")) %>%
     step_impute_mode(all_nominal_predictors(), -has_role("ID")) %>%
-    step_zv(all_predictors()) %>%
     # Replace novel levels with "new"
     step_novel(all_nominal_predictors(), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
     step_unknown(all_nominal_predictors(), -has_role("ID")) %>%
-    # Dummify categorical predictors
-    step_dummy(all_nominal_predictors(), -has_role("ID"), one_hot = TRUE) %>%
-    # Drop any predictors with near-zero variance, add interactions, and
-    # perform transforms
-    step_interact(terms = ~ starts_with("meta_township_"):char_bldg_sf) %>%
+    # Create linear encodings for certain high cardinality nominal predictors
+    embed::step_lencode_glm(
+      meta_nbhd_code,
+      meta_township_code,
+      char_class,
+      starts_with("loc_school_"),
+      outcome = vars(meta_sale_price)
+    ) %>%
+    # Dummify (OHE) any remaining nominal predictors
+    step_dummy(
+      all_nominal_predictors(),
+      -meta_nbhd_code,
+      -meta_township_code,
+      -char_class,
+      -starts_with("loc_school_"),
+      -has_role("ID"),
+      one_hot = TRUE
+    ) %>%
+    # Normalize/transform skewed numeric predictors. Add a small fudge factor
+    # so no values are zero
+    step_mutate(
+      prox_nearest_vacant_land_dist_ft_1 =
+        prox_nearest_vacant_land_dist_ft + 0.001,
+      prox_nearest_new_construction_dist_ft_1 =
+        prox_nearest_new_construction_dist_ft + 0.001,
+      acs5_percent_employment_unemployed_1 =
+        acs5_percent_employment_unemployed + 0.001
+    ) %>%
     step_BoxCox(
       acs5_median_income_per_capita_past_year,
       acs5_median_income_household_past_year,
-      char_bldg_sf
+      char_bldg_sf, char_land_sf,
+      prox_nearest_vacant_land_dist_ft_1,
+      prox_nearest_new_construction_dist_ft_1,
+      acs5_percent_employment_unemployed_1,
+      acs5_median_household_renter_occupied_gross_rent
     ) %>%
+    # Winsorize some extreme values in important numeric vars
+    step_mutate_at(
+      char_land_sf, char_bldg_sf,
+      fn = \(x) pmin(pmax(x, quantile(x, 0.01)), quantile(x, 0.99))
+    ) %>%
+    step_poly(
+      char_yrblt, char_bldg_sf, char_land_sf,
+      degree = 2
+    ) %>%
+    # Normalize basically all numeric predictors
     step_normalize(
-      acs5_median_household_renter_occupied_gross_rent,
-      loc_longitude, loc_latitude
-    )
+      meta_nbhd_code, meta_township_code, char_class,
+      starts_with("char_yrblt"), starts_with("char_bldg_sf"),
+      starts_with("char_land_sf"), starts_with("loc_"), starts_with("prox_"),
+      starts_with("shp_"), starts_with("acs5_"), starts_with("other_"),
+      -has_role("ID")
+    ) %>%
+    step_nzv(all_predictors())
 }
