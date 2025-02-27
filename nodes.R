@@ -1,0 +1,47 @@
+# Load required libraries
+library(lightgbm)
+library(dplyr)
+library(data.table)
+library(reticulate)
+
+# Generate some example data
+data(iris)
+iris <- as.data.table(iris)
+
+# Add a categorical feature
+iris[, CategoricalFeature := sample(letters[1:3], .N, replace = TRUE)]
+iris[, CategoricalFeature := as.integer(as.factor(CategoricalFeature))]
+
+# Prepare data for LightGBM
+# Convert the data table to a matrix, excluding the label column
+train_data <- as.matrix(iris[, -c("Species"), with=FALSE])
+# Convert the label column to numeric
+train_label <- as.numeric(iris$Species) - 1
+
+# Create LightGBM dataset with the categorical feature specified
+dtrain <- lgb.Dataset(data = train_data, label = train_label, categorical_feature = c("CategoricalFeature"))
+
+# Set parameters
+params <- list(
+  objective = "multiclass",
+  num_class = 3,
+  metric = "multi_logloss",
+  max_depth = 3
+)
+
+# Train the model
+bst <- lgb.train(params, dtrain, 100)
+
+# Predict leaf indices for each data point
+leaf_indices <- predict(bst, train_data, type = "leaf")
+
+# Extract tree structure
+tree_df <- lgb.model.dt.tree(bst)
+
+# Use reticulate to source the Python script
+trees_module = import("python.trees")
+
+# Example usage
+data_points <- train_data[1:2, ]
+split_nodes <- trees_module$get_split_nodes(data_points, tree_df, num_trees = 3)
+print(split_nodes)
