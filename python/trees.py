@@ -14,100 +14,188 @@ THRESHOLD = 8
 DECISION_TYPE = 9
 DEFAULT_LEFT = 10
 
+ZERO_LEAF_IDX = 0.1
+
 # Define a dictionary to map decision types to comparison functions
 decision_functions = {
-    "<": lambda feature_value, split_value: feature_value < split_value,
-    "<=": lambda feature_value, split_value: feature_value <= split_value,
-    ">": lambda feature_value, split_value: feature_value > split_value,
-    ">=": lambda feature_value, split_value: feature_value >= split_value,
-    "==": lambda feature_value, split_value: feature_value == split_value,
-    "!=": lambda feature_value, split_value: feature_value != split_value
+    "<": lambda feature_value, threshold: feature_value < threshold,
+    "<=": lambda feature_value, threshold: feature_value <= threshold,
+    ">": lambda feature_value, threshold: feature_value > threshold,
+    ">=": lambda feature_value, threshold: feature_value >= threshold,
+    "==": lambda feature_value, threshold: feature_value == threshold,
+    "!=": lambda feature_value, threshold: feature_value != threshold
 }
+
+def _parse_tree_structure(tree_df: np.ndarray, num_trees: int) -> list[dict]:
+    """
+    Parse the structure of a tree dataframe and return a dataframe that is
+    optimized for estimating node assignments for observations
+    """
+    tree_indices = np.unique(tree_df[:, TREE_INDEX])[:num_trees]
+    parsed_trees = []
+    for tree_index in tree_indices:
+        tree = tree_df[tree_df[:, TREE_INDEX] == tree_index]
+        parsed_nodes = []
+
+        # Consolidate split and leaf node metadata
+        for node in tree:
+            is_leaf = np.isnan(node[SPLIT_INDEX])
+            if is_leaf:
+                # Handle collisions between split and leaf node IDs by
+                # converting leaf node IDs to negative. This doesn't work for
+                # 0, so handle that as a special case
+                node_key = ZERO_LEAF_IDX if int(node[LEAF_INDEX]) == 0 else -int(node[LEAF_INDEX])
+                raw_parent = node[LEAF_PARENT]
+            else:
+                node_key = int(node[SPLIT_INDEX])
+                raw_parent = node[NODE_PARENT]
+
+            parsed_nodes.append(
+                {
+                    "is_leaf": is_leaf,
+                    "key": node_key,
+                    "depth": int(node[DEPTH]),
+                    "split_feature": node[SPLIT_FEATURE] if not is_leaf else None,
+                    "threshold": decimal.Decimal(node[THRESHOLD]) if not is_leaf else None,
+                    "decision_type": node[DECISION_TYPE] if not is_leaf else None,
+                    "default_to_pass": node[DEFAULT_LEFT] == "TRUE" if not is_leaf else None,
+                    "parent": int(raw_parent) if not np.isnan(raw_parent) else None,
+                    "child_pass": None,  # We'll fill this out later
+                    "child_fail": None,
+                }
+            )
+
+        # Assign child IDs to each split node
+        map_parent_to_children = {}
+        for node in parsed_nodes:
+            if node["parent"] is None:
+                continue
+
+            if not map_parent_to_children.get(node["parent"]):
+                map_parent_to_children[node["parent"]] = {"pass": node["key"]}
+            else:
+                # There should only be 2, so the second occurrence must be the
+                # failure branch
+                map_parent_to_children[node["parent"]]["fail"] = node["key"]
+
+        # Complete the structure of the tree by assigning child IDs to each
+        # split node
+        parsed_tree = {}
+        for node in parsed_nodes:
+            if not node["is_leaf"]:
+                node["child_pass"] = map_parent_to_children[node["key"]]["pass"]
+                node["child_fail"] = map_parent_to_children[node["key"]]["fail"]
+            node_without_key = node.copy()
+            del(node_without_key["key"])
+            parsed_tree[node["key"]] = node_without_key
+
+        # Validate structure of the parsed tree before assigning it to output
+        for node in parsed_nodes:
+            # Every split node should have a key in the parsed tree
+            assert node["is_leaf"] or node["key"] in parsed_tree, (
+                f"Split node {node['key']} is missing from parsed tree {tree_index}"
+            )
+
+        for key, node in parsed_tree.items():
+            if node["is_leaf"]:
+                # Leaf nodes should have no children
+                assert node["child_pass"] is None, (
+                    f"Leaf node {key} should not have a `child_pass` branch"
+                )
+                assert node["child_fail"] is None, (
+                    f"Leaf node {key} should not have a `child_fail` branch"
+                )
+            else:
+                # Split nodes should have exactly two children
+                assert node["child_pass"] is not None, (
+                    f"Split node {key} is missing required `child_pass` branch"
+                )
+                assert node["child_fail"] is not None, (
+                    f"Split node {key} is missing required `child_fail` branch"
+                )
+
+        # First node should always be a split node
+        assert parsed_nodes[0]["key"] == 0
+        assert not parsed_tree[0]["is_leaf"]
+
+        parsed_trees.append(parsed_tree)
+
+    return parsed_trees
 
 
 def _get_split_nodes(
     data_points: np.ndarray,
     tree_df: np.ndarray,
     feature_map: dict[str, int],
-    num_trees: int,
+    num_trees: int | None,
     max_depth: int
 ) -> np.ndarray:
+    num_trees = num_trees or np.unique(tree_df[:, TREE_INDEX]).max() + 1
     all_split_nodes = np.full((data_points.shape[0], num_trees, max_depth), np.nan)
-    tree_indices = np.unique(tree_df[:, TREE_INDEX])[:num_trees]
-    for i in range(data_points.shape[0]):
-        data_point = data_points[i]
-        for tree_index in tree_indices:
-            tree = tree_df[tree_df[:, TREE_INDEX] == tree_index]
-            current_node = 0
+    parsed_trees = _parse_tree_structure(tree_df, num_trees)
+    for obs_idx in range(data_points.shape[0]):
+        data_point = data_points[obs_idx]
+        for tree_idx, tree in enumerate(parsed_trees):
+            # The first node should always have an index of 0 (we validate this
+            # in the _parse_tree_structure function). This is the base case
+            # for the recursion that we use to traverse the tree
+            parent_node_key = 0
             while True:
-                # There should only ever be one node with the current idx, so
-                # pull it
-                node = tree[tree[:, SPLIT_INDEX] == current_node]
-                if node.shape[0] != 1:
-                    raise ValueError(f"Expected exactly one node, but got {node.shape[0]}")
-                node = node[0]
+                node = tree[parent_node_key]
+                if node["is_leaf"]:
+                    # We've reached the leaf node, which is the terminal
+                    # case for the tree traversal, so exit the loop
+                    break
 
-                # Extract data from the tree structure about this node
-                split_feature = node[SPLIT_FEATURE]
-                split_value = decimal.Decimal(node[THRESHOLD])
-                depth = node[DEPTH]
-                decision_type = node[DECISION_TYPE]
-                default_left = node[DEFAULT_LEFT] == "TRUE" if not pd.isna(node[DEFAULT_LEFT]) else False
+                decision_type = node["decision_type"]
+                split_feature = node["split_feature"]
+                threshold = node["threshold"]
+                child_pass, child_fail = node["child_pass"], node["child_fail"]
+                default_to_pass = node["default_to_pass"]
+                depth = node["depth"]
+
                 feature_value = data_point[feature_map[split_feature]]
-
-                # Determine the left and right child nodes
-                children = tree[(tree[:, NODE_PARENT] == current_node) | (tree[:, LEAF_PARENT] == current_node)]
-                if children.shape[0] != 2:
-                    raise ValueError(f"Expected exactly two children, but got {children.shape[0]}")
-                child_data = [
-                    {
-                        "index": int(c[SPLIT_INDEX]) if not np.isnan(c[SPLIT_INDEX]) else int(c[LEAF_INDEX]),
-                        "depth": c[DEPTH],
-                        "is_leaf": np.isnan(c[SPLIT_INDEX])
-                    }
-                    for c in children
-                ]
-                # Lefthand side should prefer splits and lower indices
-                # TODO: Is this correct? It doesn't seem to always produce
-                # the right assignment
-                child_data.sort(key=lambda x: (x["is_leaf"], x["index"]))
-                left_child, right_child = child_data[0], child_data[1]
 
                 # Use decision type to determine the next node
                 if decision_type in decision_functions:
                     if np.isnan(feature_value):
-                        next_node = left_child if default_left else right_child
+                        child_node_key = child_pass if default_to_pass else child_fail
                     else:
-                        next_node = left_child if decision_functions[decision_type](feature_value, split_value) else right_child
+                        child_node_key = child_pass if decision_functions[decision_type](feature_value, threshold) else child_fail
                 else:
                     raise ValueError(f"Unsupported decision type: {decision_type}")
 
-                # Distinguish splits from leaves in the output array by marking
-                # leaves as negative. This works even though some leaf nodes
-                # can have an index of 0, because the first split node always
-                # has an index of 0 but never should be included in the output
-                # as all observations share the first split
-                next_node_fmt = -next_node['index'] if next_node["is_leaf"] else next_node["index"]
-                all_split_nodes[i, tree_index, depth] = next_node_fmt
+                # Since the base case split node index (0) is shared between
+                # all observations, we don't count it as part of the split
+                # node path. This means that we don't need a special indicator
+                # for the leaf node that happens to share that same index, and
+                # we can revert it back to its original index for ease of
+                # comparing to other types of model output that record leaf
+                # node assignments
+                child_node_assign_key = 0 if child_node_key == ZERO_LEAF_IDX else child_node_key
+                all_split_nodes[obs_idx, tree_idx, depth] = child_node_assign_key
 
-                if next_node["is_leaf"]:
-                    # We've reached the leaf node, so exit the loop
-                    break
+                # Restart the loop and recurse the next branch
+                parent_node_key = child_node_key
 
-                # If the next node is not a leaf node (i.e. it's a split) start
-                # the loop over again at the next node
-                current_node = next_node["index"]
-
-    return all_split_nodes
+    # Take the absolute value of all array elements. We've been using
+    # negative numbers as indicators to separate leaf nodes from split nodes,
+    # but that distinction doesn't matter for the output
+    return np.absolute(all_split_nodes)
 
 
-def get_split_nodes(data_points, tree_df, num_trees: int) -> np.ndarray:
-    data_points_np = np.array(data_points)
-    tree_df_np = np.array(tree_df)
+def get_split_nodes(data_points, tree_df, num_trees: int | None = None) -> np.ndarray:
+    # Parse some metadata about the input data that we need to preserve before
+    # we transform the data for more efficient processing
     max_depth = max(tree_df.groupby("tree_index")["depth"].max().values)
     feature_map: dict[str, int] = {
         colname: idx for idx, colname in enumerate(data_points.columns)
     }
+    # Transform the input to numpy arrays so that we can process them more
+    # efficiently in the inner function
+    data_points_np = np.array(data_points)
+    tree_df_np = np.array(tree_df)
+    # Pass off to a parallelized helper function
     return _get_split_nodes(
         data_points_np,
         tree_df_np,
@@ -120,5 +208,5 @@ def get_split_nodes(data_points, tree_df, num_trees: int) -> np.ndarray:
 if __name__ == "__main__":
     data_points = pd.read_parquet("data_points.parquet")
     tree_df = pd.read_parquet("tree_df.parquet")
-    splits = get_split_nodes(data_points, tree_df, num_trees = 3)
+    splits = get_split_nodes(data_points, tree_df)
     print(splits)
