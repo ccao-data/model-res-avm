@@ -105,7 +105,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # that prediction as the PIN value. For > 3 cards, we predict each card with
   # its original square footage then sum the predictions to get the PIN value
   group_by(meta_pin) %>%
-  arrange(meta_pin, desc(char_bldg_sf), meta_card_num) %>%  # Added meta_card_num as tiebreaker
+  arrange(meta_pin, desc(char_bldg_sf), meta_card_num) %>%
   mutate(
     pred_pin_card_sum = ifelse(
       meta_pin_num_cards > 3,
