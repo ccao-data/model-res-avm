@@ -94,14 +94,17 @@ if (shap_enable) {
     ) %>%
     bind_cols(shap_values_tbl) %>%
     select(
-      meta_year, meta_pin, meta_card_num, meta_pin_num_cards, pred_card_shap_baseline_fmv,
+      meta_year, meta_pin, meta_card_num,
+      meta_pin_num_cards, pred_card_shap_baseline_fmv,
       all_of(params$model$predictor$all), township_code
     ) %>%
     group_by(meta_pin) %>%
     arrange(desc(char_bldg_sf), meta_card_num) %>%
     group_modify(~ {
       shap_cols <- c("pred_card_shap_baseline_fmv", params$model$predictor$all)
-      # If the first row indicates 2 or 3 cards, duplicate its SHAP values across the group.
+      # If the first row indicates 2 or 3 cards,
+      # duplicate its SHAP values across the group
+      # https://github.com/ccao-data/model-res-avm/issues/358#issue-2897826811
       if (.x$meta_pin_num_cards[1] %in% c(2, 3)) {
         .x[shap_cols] <- .x[rep(1, nrow(.x)), shap_cols]
       }
