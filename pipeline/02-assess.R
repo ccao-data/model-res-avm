@@ -105,7 +105,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # that prediction as the PIN value. For > 3 cards, we predict each card with
   # its original square footage then sum the predictions to get the PIN value
   group_by(meta_pin) %>%
-  arrange(meta_pin, desc(char_bldg_sf)) %>%
+  arrange(meta_pin, desc(char_bldg_sf), meta_card_num) %>%  # Added meta_card_num as tiebreaker
   mutate(
     pred_pin_card_sum = ifelse(
       meta_pin_num_cards > 3,
@@ -536,7 +536,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
   mutate(
     flag_prior_near_to_pred_unchanged =
       prior_near_tot >= pred_pin_final_fmv_round - 100 &
-        prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
+      prior_near_tot <= pred_pin_final_fmv_round + 100, # nolint
     flag_pred_initial_to_final_changed = ccao::val_round_fmv(
       pred_pin_initial_fmv,
       breaks = params$pv$round_break,

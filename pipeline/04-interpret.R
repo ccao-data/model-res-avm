@@ -13,22 +13,7 @@ tictoc::tic("Interpret")
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
-# # Exclude undesired columns (add "meta_card_num" if that's the one to ignore)
-# feature_cols <- setdiff(names(assessment_data), c("meta_pin", "meta_pin_card_num", "meta_card_num", "meta_pin_num_cards", "char_bldg_sf"))
-#
-# result <- assessment_data %>%
-#   group_by(meta_pin) %>%
-#   filter(first(meta_pin_num_cards) %in% c(2, 3)) %>%      # meta_pin_num_cards condition
-#   filter(any(duplicated(char_bldg_sf))) %>%               # char_bldg_sf duplicate condition
-#   summarise(across(all_of(feature_cols), ~ n_distinct(.x))) %>% # count distinct feature values
-#   rowwise() %>%
-#   mutate(
-#     has_diff = any(c_across(all_of(feature_cols)) > 1),
-#     differing_features = paste(feature_cols[which(c_across(all_of(feature_cols)) > 1)], collapse = "_")
-#   ) %>%
-#   ungroup() %>%
-#   filter(has_diff) %>%
-#   select(meta_pin, differing_features)
+
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
@@ -42,16 +27,9 @@ lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 if (shap_enable || comp_enable) {
   message("Loading assessment data for SHAP and comp calculation")
 
-  df_verify_frankencard <- read_parquet("df_to_grab_consistent_frankencard.parquet") %>%
-    as_tibble()
-
   # Load the input data used for assessment. This is the universe of CARDs (not
-  # PINs) that need values. Will use the trained model to calculate SHAP values
+  # PINs) that need values. Will use the the trained model to calc SHAP values
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
-
-  assessment_data <- as.data.table(assessment_data)
-
-  assessment_data <- as_tibble(assessment_data[meta_pin_num_cards %in% c(2, 3)])
 
   # Apply the same square footage aggregation logic for multi-card PINs
   assessment_data <- assessment_data %>%
@@ -64,7 +42,6 @@ if (shap_enable || comp_enable) {
       ),
       .by = meta_pin
     )
-
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
@@ -81,7 +58,7 @@ if (comp_enable) {
 }
 
 
-#TODO:  store those SHAPs and comps for all cards, even the smaller ones.
+
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Calculate SHAP Values -----------------------------------------------------
@@ -90,7 +67,7 @@ if (comp_enable) {
 if (shap_enable) {
   message("Calculating SHAP values")
 
-  # Calculate a SHAP value for each observation for each feature in the %>%
+  # Calculate a SHAP value for each observation for each feature in the
   # assessment data. Uses lightgbm's built-in method (predcontrib = TRUE)
   shap_values <- predict(
     object = lgbm_final_full_fit$fit,
@@ -116,203 +93,28 @@ if (shap_enable) {
     ) %>%
     bind_cols(shap_values_tbl) %>%
     select(
-      meta_year, meta_pin, meta_card_num, meta_pin_num_cards,
-      pred_card_shap_baseline_fmv,
+      meta_year, meta_pin, meta_card_num, meta_pin_num_cards, pred_card_shap_baseline_fmv,
       all_of(params$model$predictor$all), township_code
     ) %>%
     group_by(meta_pin) %>%
-    arrange(meta_pin, desc(char_bldg_sf)) %>%
-    mutate(
-      first_selection = ifelse(row_number() == 1, 1, 0)
-    ) %>%
+    arrange(desc(char_bldg_sf), meta_card_num) %>%
+    group_modify(~ {
+      shap_cols <- c("pred_card_shap_baseline_fmv", params$model$predictor$all)
+      # If the first row indicates 2 or 3 cards, duplicate its SHAP values across the group.
+      if (.x$meta_pin_num_cards[1] %in% c(2, 3)) {
+        .x[shap_cols] <- .x[rep(1, nrow(.x)), shap_cols]
+      }
+      .x
+    }) %>%
     arrange(meta_pin, meta_card_num) %>%
-    ungroup() #%>%
-    #write_parquet(paths$output$shap$local)
+    ungroup() %>%
+    select(-meta_pin_num_cards) %>%
+    write_parquet(paths$output$shap$local)
 } else {
   # If SHAP creation is disabled, we still need to write an empty stub file
   # so DVC doesn't complain
   arrow::write_parquet(data.frame(), paths$output$shap$local)
 }
-
-#
-#
-#
-# Work space - check predictions. try to get pred for shap and match to original output
-#
-#
-#
-
-# Load additional dev R libraries (see README#managing-r-dependencies)
-suppressPackageStartupMessages({
-  library(DBI)
-  library(igraph)
-  library(noctua)
-})
-
-# Adds arrow support to speed up ingest process.
-noctua_options(unload = FALSE)
-
-# Establish Athena connection
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(
-  noctua::athena(),
-  rstudio_conn_tab = FALSE
-)
-
-assesment_pin_mc_model_preds <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, glue("
-  SELECT * FROM model.assessment_pin
-  where run_id = '2025-02-11-charming-eric'
-  and meta_pin_num_cards IN (2, 3)
-  ")
-)
-
-
-# -----------------------------------------------------------------------------
-# Helper Function: Pivot predictions and compute ratio
-# -----------------------------------------------------------------------------
-compute_ratio <- function(df, ratio_col) {
-  df %>%
-    select(meta_pin, prediction, prediction_type) %>%
-    pivot_wider(names_from = prediction_type, values_from = prediction) %>%
-    mutate(!!ratio_col := shapped_pred / pred_pin_final_fmv)
-}
-
-# -----------------------------------------------------------------------------
-# 1. Transform Predictions into a Unified Format
-# -----------------------------------------------------------------------------
-shap_preds <- shap_values_final %>%
-  mutate(shapped_pred = rowSums(across(pred_card_shap_baseline_fmv:shp_parcel_num_vertices))) %>%
-  transmute(
-    meta_pin,
-    meta_card_num,
-    first_selection,
-    prediction      = shapped_pred,
-    prediction_type = "shapped_pred"
-  )
-
-athena_preds <- assesment_pin_mc_model_preds %>%
-  transmute(
-    meta_pin,
-    meta_tieback_key_pin,
-    meta_tieback_proration_rate,
-    prediction      = pred_pin_final_fmv,
-    prediction_type = "pred_pin_final_fmv",
-    meta_card_num   = NA
-  )
-
-combined_preds <- bind_rows(athena_preds, shap_preds) %>%
-  arrange(meta_pin)
-
-# -----------------------------------------------------------------------------
-# 2. Identify PINs with Duplicate Square Footage ("SqFt Ties")
-# -----------------------------------------------------------------------------
-sqft_ties <- read_parquet(paths$input$assessment$local) %>%
-  as_tibble() %>%
-  group_by(meta_pin) %>%
-  filter(
-    first(meta_pin_num_cards) %in% 2:3,
-    char_bldg_sf %in% char_bldg_sf[duplicated(char_bldg_sf)]
-  ) %>%
-  ungroup() %>%
-  distinct(meta_pin) %>%
-  pull(meta_pin)
-
-# -----------------------------------------------------------------------------
-# 3. Filter Combined Predictions for SqFt Tie Cases
-#    - final_inspection_all: all rows from combined_preds for these PINs
-#    - final_inspection_first: only rows where either:
-#         * prediction_type == "pred_pin_final_fmv" OR
-#         * prediction_type == "shapped_pred" AND first_selection == 1
-# -----------------------------------------------------------------------------
-final_inspection_all <- combined_preds %>%
-  filter(meta_pin %in% sqft_ties)
-
-# final_inspection_first <- final_inspection_all %>%
-#   filter(
-#     prediction_type == "pred_pin_final_fmv" |
-#       (prediction_type == "shapped_pred" & meta_card_num == 1)
-#   )
-final_inspection_first <- final_inspection_all %>%
-  group_by(meta_pin) %>%
-  mutate(min_meta_card_num = min(meta_card_num[prediction_type == "shapped_pred"], na.rm = TRUE)) %>%
-  filter(
-    prediction_type == "pred_pin_final_fmv" |
-      (prediction_type == "shapped_pred" & meta_card_num == min_meta_card_num)
-  ) %>%
-  ungroup() %>%
-  select(-min_meta_card_num)
-
-
-# Count occurrences of meta_pin
-final_inspection_first %>%
-  group_by(meta_pin) %>%
-  filter(n() == 1) %>%
-  ungroup()
-
-# -----------------------------------------------------------------------------
-# 4. Compute Ratio: (SHAP-Based Prediction) / (Model FMV)
-#    for first-selection rows
-# -----------------------------------------------------------------------------
-shap_fmv_ratio <- compute_ratio(final_inspection_first, "pred_ratio")
-
-# -----------------------------------------------------------------------------
-# 5. Merge with Complex/Proration Data
-# -----------------------------------------------------------------------------
-complex_data <- assessment_data %>%
-  left_join(
-    read_parquet(paths$input$complex_id$local) %>% select(meta_pin, meta_complex_id),
-    by = "meta_pin"
-  ) %>%
-  distinct(meta_pin, meta_complex_id, meta_tieback_key_pin, meta_tieback_proration_rate)
-
-final_ordered_inspection <- shap_fmv_ratio %>%
-  left_join(complex_data, by = "meta_pin")
-
-# -----------------------------------------------------------------------------
-# 6. Validate Index-Based Method for All PINs
-#    Use df_verify_frankencard to verify shap predictions against valid index pairs
-# -----------------------------------------------------------------------------
-not_shap <- final_inspection_all %>%
-  filter(prediction_type != "shapped_pred")
-
-shap_verified <- final_inspection_all %>%
-  filter(prediction_type == "shapped_pred") %>%
-  semi_join(df_verify_frankencard, by = c("meta_pin", "meta_card_num"))
-
-all_index_preds <- bind_rows(not_shap, shap_verified)
-
-franken_ratio <- compute_ratio(all_index_preds, "pred_ratio_franken_index") %>%
-  select(meta_pin, pred_ratio_franken_index)
-
-# -----------------------------------------------------------------------------
-# 7. Final Comparison: Join the Two Ratios & Complex Data
-# -----------------------------------------------------------------------------
-final_comparison <- final_ordered_inspection %>%
-  left_join(franken_ratio, by = "meta_pin") %>%
-  select(meta_pin:pred_ratio, pred_ratio_franken_index, meta_complex_id:meta_tieback_proration_rate)
-
-final_comparison %>%
-  select(meta_pin, pred_ratio, pred_ratio_franken_index, meta_complex_id, meta_tieback_key_pin) %>% View()
-
-
-
-# GET BINS -----------------------------------------------------
-# Define breaks for binning (0.05 intervals)
-breaks <- seq(floor(min(final_comparison$pred_ratio) * 20) / 20,
-              ceiling(max(final_comparison$pred_ratio) * 20) / 20,
-              by = 0.01)
-
-# Bin the pred_ratio column
-final_comparison_bins <- final_comparison %>%
-  filter(is.na(meta_complex_id), is.na(meta_tieback_key_pin)) %>%
-  mutate(bin = cut(pred_ratio, breaks = breaks, include.lowest = TRUE, right = FALSE))
-
-# Count occurrences in each bin
-bin_counts <- final_comparison_bins %>%
-  count(bin) %>%
-  arrange(bin)
-
-
 
 
 
