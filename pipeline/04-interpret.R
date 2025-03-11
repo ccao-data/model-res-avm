@@ -34,7 +34,6 @@ if (shap_enable || comp_enable) {
   # Apply the same square footage aggregation logic for multi-card PINs
   assessment_data <- assessment_data %>%
     mutate(
-      og_char_bldg_sf = char_bldg_sf,  # Save the original square footage
       char_bldg_sf = ifelse(
         ind_pin_is_multicard & meta_pin_num_cards %in% c(2, 3),
         sum(char_bldg_sf),
