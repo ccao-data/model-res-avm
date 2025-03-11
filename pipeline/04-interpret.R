@@ -31,7 +31,9 @@ if (shap_enable || comp_enable) {
   # PINs) that need values. Will use the the trained model to calc SHAP values
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
-  # Apply the same square footage aggregation logic for multi-card PINs
+  # Aggregate square footage to building level. We do this to ensure consistent
+  # shap values based on the generated prediction for multi-card pins. More
+  # details in multi-card handling in the assess stage.
   assessment_data <- assessment_data %>%
     mutate(
       char_bldg_sf = ifelse(
