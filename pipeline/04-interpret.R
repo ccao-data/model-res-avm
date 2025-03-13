@@ -31,6 +31,19 @@ if (shap_enable || comp_enable) {
   # PINs) that need values. Will use the the trained model to calc SHAP values
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
+  # Aggregate square footage to building level. We do this to ensure consistent
+  # shap values and comps based on the generated prediction for multi-card pins.
+  # More details in multi-card handling in the assess stage.
+  # https://github.com/ccao-data/model-res-avm/issues/358
+  assessment_data <- assessment_data %>%
+    mutate(
+      char_bldg_sf = ifelse(
+        ind_pin_is_multicard & meta_pin_num_cards %in% c(2, 3),
+        sum(char_bldg_sf),
+        char_bldg_sf
+      ),
+      .by = meta_pin
+    )
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
@@ -77,13 +90,30 @@ if (shap_enable) {
   shap_values_final <- assessment_data %>%
     select(
       meta_year, meta_pin, meta_card_num,
+      meta_pin_num_cards,
       township_code = meta_township_code
     ) %>%
     bind_cols(shap_values_tbl) %>%
     select(
-      meta_year, meta_pin, meta_card_num, pred_card_shap_baseline_fmv,
+      meta_year, meta_pin, meta_card_num,
+      meta_pin_num_cards, pred_card_shap_baseline_fmv,
       all_of(params$model$predictor$all), township_code
     ) %>%
+    group_by(meta_pin) %>%
+    arrange(desc(char_bldg_sf), meta_card_num) %>%
+    group_modify(~ {
+      shap_cols <- c("pred_card_shap_baseline_fmv", params$model$predictor$all)
+      # If the first row indicates 2 or 3 cards,
+      # duplicate its SHAP values across the group
+      # https://github.com/ccao-data/model-res-avm/issues/358#issue-2897826811
+      if (.x$meta_pin_num_cards[1] %in% c(2, 3)) {
+        .x[shap_cols] <- .x[rep(1, nrow(.x)), shap_cols]
+      }
+      .x
+    }) %>%
+    arrange(meta_pin, meta_card_num) %>%
+    ungroup() %>%
+    select(-meta_pin_num_cards) %>%
     write_parquet(paths$output$shap$local)
 } else {
   # If SHAP creation is disabled, we still need to write an empty stub file
@@ -124,17 +154,37 @@ if (comp_enable) {
 
   # Filter target properties for only the current triad, to speed up the comps
   # algorithm
-  comp_assessment_data <- assessment_data %>%
-    filter(
-      meta_township_code %in% (
-        ccao::town_dict %>%
-          filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
-          pull(township_code)
-      )
+  comp_assessment_data_preprocess <- assessment_data %>% filter(
+    meta_township_code %in% (
+      ccao::town_dict %>%
+        filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
+        pull(township_code)
     )
+  ) %>% # TODO: Remove this before merging
+    filter(meta_pin_num_cards %in% c(2, 3))
+
+  # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
+  # aggregating the bldg_sf to a single card, and using that card to predict
+  # which becomes the value for the mult-card pin. Since we don't predict on the
+  # other cards, we set them aside for comp generation re-attach them later
+  multicard_props <- comp_assessment_data_preprocess %>%
+    filter(meta_pin_num_cards %in% c(2, 3))
+
+  selected_cards <- multicard_props %>%
+    group_by(meta_pin) %>%
+    arrange(desc(char_bldg_sf), meta_card_num) %>%
+    slice(1) %>%
+    ungroup()
+
+  singlecard_props <- comp_assessment_data_preprocess %>%
+    filter(!meta_pin %in% multicard_props$meta_pin)
+
+  comp_assessment_data_intermediate <-
+    bind_rows(singlecard_props, selected_cards)
+
   comp_assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
-    new_data = comp_assessment_data,
+    new_data = comp_assessment_data_intermediate,
     all_predictors()
   )
 
@@ -259,9 +309,24 @@ if (comp_enable) {
     ) %>%
     relocate(pin, card)
 
-  # Combine the comp indexes and scores into one dataframe and write to a file
-  cbind(comps[[1]], comps[[2]]) %>%
-    write_parquet(paths$output$comp$local)
+  final_comps_data <- cbind(comps[[1]], comps[[2]])
+
+  # Grab removed multi_card_cards,re-add them, and assign them the comps data
+  # that we used for the main frankencard used for prediction
+  removed_cards <- multicard_props %>%
+    anti_join(selected_cards, by = c("meta_pin", "meta_card_num")) %>%
+    select(meta_pin, meta_card_num)
+
+  removed_cards_comps <- removed_cards %>%
+    rename(pin = meta_pin, card = meta_card_num) %>%
+    left_join(final_comps_data %>% select(-card), by = "pin")
+
+  complete_comps_data <-
+    bind_rows(final_comps_data, removed_cards_comps) %>%
+    arrange(pin, card)
+
+  # Save final combined comps data
+  arrow::write_parquet(complete_comps_data, paths$output$comp$local)
 } else {
   # If comp creation is disabled, we still need to write an empty stub file
   # so DVC doesn't complain
