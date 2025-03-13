@@ -214,7 +214,6 @@ if (comp_enable) {
   # leaf node assignments based on the most important features.
   # To do this, we need the training data so that we can compute the mean sale
   # price and use it as the base model error
-  # Details here: https://github.com/ccao-data/model-res-avm/issues/358
   message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
