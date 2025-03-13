@@ -32,8 +32,8 @@ if (shap_enable || comp_enable) {
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
   # Aggregate square footage to building level. We do this to ensure consistent
-  # shap values based on the generated prediction for multi-card pins. More
-  # details in multi-card handling in the assess stage.
+  # shap values and comps based on the generated prediction for multi-card pins.
+  # More details in multi-card handling in the assess stage.
   # https://github.com/ccao-data/model-res-avm/issues/358
   assessment_data <- assessment_data %>%
     mutate(
