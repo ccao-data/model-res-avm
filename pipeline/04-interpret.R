@@ -316,8 +316,11 @@ if (comp_enable) {
   # that we used for the main frankencard used for prediction
   removed_cards <- multicard_props %>%
     filter(
-      !(paste(meta_pin, meta_card_num) %in%
-        paste(selected_cards$meta_pin, selected_cards$meta_card_num))
+      !(
+        paste(
+          meta_pin, meta_card_num
+        ) %in% paste(selected_cards$meta_pin, selected_cards$meta_card_num)
+      )
     ) %>%
     select(meta_pin, meta_card_num)
 
