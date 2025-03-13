@@ -315,13 +315,7 @@ if (comp_enable) {
   # Grab removed multi_card_cards,re-add them, and assign them the comps data
   # that we used for the main frankencard used for prediction
   removed_cards <- multicard_props %>%
-    filter(
-      !(
-        paste(
-          meta_pin, meta_card_num
-        ) %in% paste(selected_cards$meta_pin, selected_cards$meta_card_num)
-      )
-    ) %>%
+    anti_join(selected_cards, by = c("meta_pin", "meta_card_num")) %>%
     select(meta_pin, meta_card_num)
 
   removed_cards_comps <- removed_cards %>%
