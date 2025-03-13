@@ -161,14 +161,14 @@ if (comp_enable) {
         pull(township_code)
     )
   ) %>% # TODO: Remove this before merging
-    filter(meta_pin_num_cards %in% c(2,3))
+    filter(meta_pin_num_cards %in% c(2, 3))
 
   # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
   # aggregating the bldg_sf to a single card, and using that card to predict
   # which becomes the value for the mult-card pin. Since we don't predict on the
   # other cards, we set them aside for comp generation re-attach them later
   multicard_props <- comp_assessment_data_preprocess %>%
-    filter(meta_pin_num_cards %in% c(2,3))
+    filter(meta_pin_num_cards %in% c(2, 3))
 
   selected_cards <- multicard_props %>%
     group_by(meta_pin) %>%
@@ -214,6 +214,7 @@ if (comp_enable) {
   # leaf node assignments based on the most important features.
   # To do this, we need the training data so that we can compute the mean sale
   # price and use it as the base model error
+  # Details here: https://github.com/ccao-data/model-res-avm/issues/358
   message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
@@ -316,8 +317,8 @@ if (comp_enable) {
   removed_cards <- multicard_props %>%
     filter(
       !(paste(meta_pin, meta_card_num) %in%
-          paste(selected_cards$meta_pin, selected_cards$meta_card_num))
-      ) %>%
+        paste(selected_cards$meta_pin, selected_cards$meta_card_num))
+    ) %>%
     select(meta_pin, meta_card_num)
 
   removed_cards_comps <- removed_cards %>%
