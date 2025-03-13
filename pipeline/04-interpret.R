@@ -317,7 +317,7 @@ if (comp_enable) {
   removed_cards <- multicard_props %>%
     filter(
       !(paste(meta_pin, meta_card_num) %in%
-          paste(selected_cards$meta_pin, selected_cards$meta_card_num))
+        paste(selected_cards$meta_pin, selected_cards$meta_card_num))
     ) %>%
     select(meta_pin, meta_card_num)
 
