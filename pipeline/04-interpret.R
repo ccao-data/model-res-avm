@@ -170,10 +170,10 @@ if (comp_enable) {
     filter(
       meta_township_code %in% (
         ccao::town_dict %>%
-        filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
-        pull(township_code)
+          filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
+          pull(township_code)
+      )
     )
-  )
 
   # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
   # aggregating the bldg_sf to a single card, and using that card to predict
