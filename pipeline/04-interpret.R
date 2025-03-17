@@ -168,8 +168,8 @@ if (comp_enable) {
   # algorithm
   comp_assessment_data_preprocess <- assessment_data %>%
     filter(
-    meta_township_code %in% (
-      ccao::town_dict %>%
+      meta_township_code %in% (
+        ccao::town_dict %>%
         filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
         pull(township_code)
     )
