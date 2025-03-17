@@ -180,20 +180,20 @@ if (comp_enable) {
   # aggregating the bldg_sf to a single card, and using that card to predict
   # which becomes the value for the mult-card pin. Since we don't predict on the
   # other cards, we set them aside for comp generation re-attach them later
-  multicard_props <- comp_assessment_data_preprocess %>%
+  multicard_pins <- comp_assessment_data_preprocess %>%
     filter(meta_pin_num_cards %in% c(2, 3))
 
-  selected_cards <- multicard_props %>%
+  selected_cards <- multicard_pins %>%
     group_by(meta_pin) %>%
     arrange(sqft_card_num_sort) %>%
     slice(1) %>%
     ungroup()
 
-  singlecard_props <- comp_assessment_data_preprocess %>%
-    filter(!meta_pin %in% multicard_props$meta_pin)
+  singlecard_pins <- comp_assessment_data_preprocess %>%
+    filter(!meta_pin %in% multicard_pins$meta_pin)
 
   comp_assessment_data_intermediate <-
-    bind_rows(singlecard_props, selected_cards)
+    bind_rows(singlecard_pins, selected_cards)
 
   comp_assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
@@ -317,8 +317,8 @@ if (comp_enable) {
     ) %>%
     select(-starts_with("comp_idx_")) %>%
     cbind(
-      pin = comp_assessment_data$meta_pin,
-      card = comp_assessment_data$meta_card_num
+      pin = comp_assessment_data_intermediate$meta_pin,
+      card = comp_assessment_data_intermediate$meta_card_num
     ) %>%
     relocate(pin, card)
 
@@ -326,7 +326,7 @@ if (comp_enable) {
 
   # Grab removed multi_card_cards,re-add them, and assign them the comps data
   # that we used for the main frankencard used for prediction
-  removed_cards <- multicard_props %>%
+  removed_cards <- multicard_pins %>%
     anti_join(selected_cards, by = c("meta_pin", "meta_card_num")) %>%
     select(meta_pin, meta_card_num)
 
