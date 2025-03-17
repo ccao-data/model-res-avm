@@ -173,8 +173,7 @@ if (comp_enable) {
         filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
         pull(township_code)
     )
-  ) %>% # TODO: Remove this before merging
-    filter(meta_pin_num_cards %in% c(2, 3))
+  )
 
   # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
   # aggregating the bldg_sf to a single card, and using that card to predict
@@ -324,7 +323,7 @@ if (comp_enable) {
 
   final_comps_data <- cbind(comps[[1]], comps[[2]])
 
-  # Grab removed multi_card_cards,re-add them, and assign them the comps data
+  # Grab removed multi-card cards,re-add them, and assign them the comps data
   # that we used for the main frankencard used for prediction
   removed_cards <- multicard_pins %>%
     anti_join(selected_cards, by = c("meta_pin", "meta_card_num")) %>%
