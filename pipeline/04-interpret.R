@@ -178,7 +178,7 @@ if (comp_enable) {
   # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
   # aggregating the bldg_sf to a single card, and using that card to predict
   # which becomes the value for the mult-card pin. Since we don't predict on the
-  # other cards, we set them aside for comp generation re-attach them later
+  # other cards, we set them aside for comp generation, to re-attach them later
   multicard_pins <- comp_assessment_data_preprocess %>%
     filter(meta_pin_num_cards %in% c(2, 3))
 
