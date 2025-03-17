@@ -35,7 +35,15 @@ if (shap_enable || comp_enable) {
   # shap values and comps based on the generated prediction for multi-card pins.
   # More details in multi-card handling in the assess stage.
   # https://github.com/ccao-data/model-res-avm/issues/358
-  assessment_data <- assessment_data %>%
+
+  # Persist sort order
+  assessment_data_ordered <- assessment_data %>%
+    group_by(meta_pin) %>%
+    arrange(desc(char_bldg_sf), meta_card_num) %>%
+    mutate(sqft_card_num_sort = row_number()) %>%
+    ungroup()
+
+  assessment_data <- assessment_data_ordered %>%
     mutate(
       char_bldg_sf = ifelse(
         ind_pin_is_multicard & meta_pin_num_cards %in% c(2, 3),
@@ -44,10 +52,11 @@ if (shap_enable || comp_enable) {
       ),
       .by = meta_pin
     )
+
   # Run the saved recipe on the assessment data to format it for prediction
   assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
-    new_data = assessment_data,
+    new_data = assessment_data %>% select(-sqft_card_num_sort),
     all_predictors()
   )
 }
@@ -91,16 +100,19 @@ if (shap_enable) {
     select(
       meta_year, meta_pin, meta_card_num,
       meta_pin_num_cards,
-      township_code = meta_township_code
+      township_code = meta_township_code,
+      sqft_card_num_sort
     ) %>%
     bind_cols(shap_values_tbl) %>%
     select(
-      meta_year, meta_pin, meta_card_num,
+      meta_year, meta_pin, meta_card_num, sqft_card_num_sort,
       meta_pin_num_cards, pred_card_shap_baseline_fmv,
       all_of(params$model$predictor$all), township_code
     ) %>%
     group_by(meta_pin) %>%
-    arrange(desc(char_bldg_sf), meta_card_num) %>%
+    # Replicate sort used in the assess stage to ensure the same card's chars
+    # are used accross the assess stage and interpret stage
+    arrange(sqft_card_num_sort) %>%
     group_modify(~ {
       shap_cols <- c("pred_card_shap_baseline_fmv", params$model$predictor$all)
       # If the first row indicates 2 or 3 cards,
@@ -154,7 +166,8 @@ if (comp_enable) {
 
   # Filter target properties for only the current triad, to speed up the comps
   # algorithm
-  comp_assessment_data_preprocess <- assessment_data %>% filter(
+  comp_assessment_data_preprocess <- assessment_data %>%
+    filter(
     meta_township_code %in% (
       ccao::town_dict %>%
         filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
@@ -172,7 +185,7 @@ if (comp_enable) {
 
   selected_cards <- multicard_props %>%
     group_by(meta_pin) %>%
-    arrange(desc(char_bldg_sf), meta_card_num) %>%
+    arrange(sqft_card_num_sort) %>%
     slice(1) %>%
     ungroup()
 
