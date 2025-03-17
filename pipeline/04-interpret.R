@@ -125,7 +125,7 @@ if (shap_enable) {
     }) %>%
     arrange(meta_pin, meta_card_num) %>%
     ungroup() %>%
-    select(-meta_pin_num_cards) %>%
+    select(-meta_pin_num_cards, -sqft_card_num_sort) %>%
     write_parquet(paths$output$shap$local)
 } else {
   # If SHAP creation is disabled, we still need to write an empty stub file
