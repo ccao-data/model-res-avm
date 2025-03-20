@@ -178,10 +178,7 @@ def _get_split_nodes(
                 # Restart the loop and recurse the next branch
                 parent_node_key = child_node_key
 
-    # Take the absolute value of all array elements. We've been using
-    # negative numbers as indicators to separate leaf nodes from split nodes,
-    # but that distinction doesn't matter for the output
-    return np.absolute(all_split_nodes)
+    return all_split_nodes
 
 
 def get_split_nodes(data_points, tree_df, num_trees: int | None = None) -> np.ndarray:
@@ -193,12 +190,12 @@ def get_split_nodes(data_points, tree_df, num_trees: int | None = None) -> np.nd
     }
     # Transform the input to numpy arrays so that we can process them more
     # efficiently in the inner function
-    data_points_np = np.array(data_points)
-    tree_df_np = np.array(tree_df)
+    data_points_arr = np.array(data_points)
+    tree_arr = np.array(tree_df)
     # Pass off to a parallelized helper function
     return _get_split_nodes(
-        data_points_np,
-        tree_df_np,
+        data_points_arr,
+        tree_arr,
         feature_map,
         num_trees,
         max_depth
