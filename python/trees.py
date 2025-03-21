@@ -10,6 +10,7 @@ SPLIT_FEATURE = 3
 NODE_PARENT = 4
 LEAF_INDEX = 5
 LEAF_PARENT = 6
+SPLIT_GAIN = 7
 THRESHOLD = 8
 DECISION_TYPE = 9
 DEFAULT_LEFT = 10
@@ -56,6 +57,7 @@ def _parse_tree_structure(tree_df: np.ndarray, num_trees: int) -> list[dict]:
                     "key": node_key,
                     "depth": int(node[DEPTH]),
                     "split_feature": node[SPLIT_FEATURE] if not is_leaf else None,
+                    "split_gain": node[SPLIT_GAIN] if not is_leaf else None,
                     "threshold": decimal.Decimal(node[THRESHOLD]) if not is_leaf else None,
                     "decision_type": node[DECISION_TYPE] if not is_leaf else None,
                     "default_to_pass": node[DEFAULT_LEFT] == "TRUE" if not is_leaf else None,
@@ -65,7 +67,7 @@ def _parse_tree_structure(tree_df: np.ndarray, num_trees: int) -> list[dict]:
                 }
             )
 
-        # Assign child IDs to each split node
+        # Assign child IDs and gain to each split node
         map_parent_to_children = {}
         for node in parsed_nodes:
             if node["parent"] is None:
@@ -123,15 +125,16 @@ def _parse_tree_structure(tree_df: np.ndarray, num_trees: int) -> list[dict]:
     return parsed_trees
 
 
-def _get_split_nodes(
+def _get_splits(
     data_points: np.ndarray,
     tree_df: np.ndarray,
     feature_map: dict[str, int],
     num_trees: int | None,
     max_depth: int
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     num_trees = num_trees or np.unique(tree_df[:, TREE_INDEX]).max() + 1
     all_split_nodes = np.full((data_points.shape[0], num_trees, max_depth), np.nan)
+    all_split_gains = np.full(all_split_nodes.shape, np.nan)
     parsed_trees = _parse_tree_structure(tree_df, num_trees)
     for obs_idx in range(data_points.shape[0]):
         data_point = data_points[obs_idx]
@@ -149,6 +152,7 @@ def _get_split_nodes(
 
                 decision_type = node["decision_type"]
                 split_feature = node["split_feature"]
+                split_gain = node["split_gain"]
                 threshold = node["threshold"]
                 child_pass, child_fail = node["child_pass"], node["child_fail"]
                 default_to_pass = node["default_to_pass"]
@@ -174,14 +178,15 @@ def _get_split_nodes(
                 # node assignments
                 child_node_assign_key = 0 if child_node_key == ZERO_LEAF_IDX else child_node_key
                 all_split_nodes[obs_idx, tree_idx, depth] = child_node_assign_key
+                all_split_gains[obs_idx, tree_idx, depth] = split_gain
 
                 # Restart the loop and recurse the next branch
                 parent_node_key = child_node_key
 
-    return all_split_nodes
+    return all_split_nodes, all_split_gains
 
 
-def get_split_nodes(data_points, tree_df, num_trees: int | None = None) -> np.ndarray:
+def get_splits(data_points, tree_df, num_trees: int | None = None) -> np.ndarray:
     # Parse some metadata about the input data that we need to preserve before
     # we transform the data for more efficient processing
     max_depth = max(tree_df.groupby("tree_index")["depth"].max().values)
@@ -193,17 +198,23 @@ def get_split_nodes(data_points, tree_df, num_trees: int | None = None) -> np.nd
     data_points_arr = np.array(data_points)
     tree_arr = np.array(tree_df)
     # Pass off to a parallelized helper function
-    return _get_split_nodes(
+    split_nodes, split_gains = _get_splits(
         data_points_arr,
         tree_arr,
         feature_map,
         num_trees,
         max_depth
     )
+    # While a tuple or an enum would be more Pythonic here, we use a dict so
+    # that reticulate will return a list when run in an R context
+    return {
+        "node": split_nodes,
+        "gain": split_gains,
+    }
 
 
 if __name__ == "__main__":
     data_points = pd.read_parquet("data_points.parquet")
     tree_df = pd.read_parquet("tree_df.parquet")
-    splits = get_split_nodes(data_points, tree_df)
+    splits = get_splits(data_points, tree_df)
     print(splits)

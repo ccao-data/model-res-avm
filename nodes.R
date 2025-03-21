@@ -4,7 +4,10 @@ library(dplyr)
 library(data.table)
 library(reticulate)
 
+source("R/helpers.R")
+
 # Generate some example data
+# TODO: Refactor for regression problem
 data(iris)
 iris <- as.data.table(iris)
 
@@ -32,12 +35,21 @@ params <- list(
   metric = "multi_logloss",
   max_depth = 3
 )
+num_trees <- 100
 
 # Train the model
-bst <- lgb.train(params, dtrain, 100)
+bst <- lgb.train(params, dtrain, num_trees)
 
 # Predict leaf indices for each data point
 leaf_indices <- predict(bst, train_data, type = "leaf")
+
+tree_weights <- extract_tree_weights(
+  model = bst,
+  init_score = mean(train_label),
+  training_data = train_data,
+  outcome = train_label,
+  num_iterations = num_trees
+)
 
 # Extract tree structure
 tree_df <- lgb.model.dt.tree(bst)
@@ -47,9 +59,9 @@ trees_module <- import("python.trees")
 
 # Example usage
 data_points <- train_data[1:2, ]
-split_nodes <- trees_module$get_split_nodes(
+split <- trees_module$get_splits(
   as.data.frame(data_points),
   tree_df %>% mutate(split_index = coalesce(split_index, NaN)),
   num_trees = 3L
 )
-print(split_nodes)
+print(split)
