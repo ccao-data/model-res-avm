@@ -10,7 +10,7 @@ def get_comps(
     comparison_df: pd.DataFrame,
     weights: np.ndarray,
     num_comps: int = 5,
-    num_chunks: int = 10
+    num_chunks: int = 10,
 ) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Fast algorithm to get the top `num_comps` comps from a dataframe of
@@ -119,7 +119,7 @@ def _get_top_n_comps(
     leaf_node_matrix: np.ndarray,
     comparison_leaf_node_matrix: np.ndarray,
     weights_matrix: np.ndarray,
-    num_comps: int
+    num_comps: int,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Helper function that takes matrices of leaf node assignments for
     observations in a tree model, a matrix of weights for each obs/tree, and an
@@ -169,9 +169,7 @@ def _get_top_n_comps(
 
 @nb.njit(fastmath=True)
 def _insert_at_idx_and_shift(
-    arr: np.ndarray,
-    elem: typing.Union[int, float],
-    idx: int
+    arr: np.ndarray, elem: typing.Union[int, float], idx: int
 ) -> np.ndarray:
     """Helper function to insert an element `elem` into a sorted numpy array `arr`
     at a given index `idx` and shift the subsequent elements down one index."""

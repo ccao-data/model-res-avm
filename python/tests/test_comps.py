@@ -23,7 +23,7 @@ import comps as comps_module
                     # Only two comparison observations have any leaf nodes that
                     # match the input observation, so make sure that the third
                     # comp is empty
-                    "comp_idx_3": [-1]
+                    "comp_idx_3": [-1],
                 },
                 dtype=np.int32,
             ),
@@ -35,11 +35,11 @@ import comps as comps_module
                     # that match the input observation
                     "comp_score_1": [0.333 * 2],
                     "comp_score_2": [0.333 * 1],
-                    "comp_score_3": [0.333 * 0]
+                    "comp_score_3": [0.333 * 0],
                 },
                 dtype=np.float32,
             ),
-            id="simple_one_observation"
+            id="simple_one_observation",
         ),
         # Extend the simple test to work with two observations to ensure
         # that the algorithm correctly prioritizes larger counts of matches
@@ -73,11 +73,11 @@ import comps as comps_module
                     "comp_score_1": [0.333 * 3] * 2,
                     "comp_score_2": [0.333 * 2] * 2,
                     "comp_score_3": [0.333 * 1] * 2,
-                    "comp_score_4": [0.333 * 0] * 2
+                    "comp_score_4": [0.333 * 0] * 2,
                 },
                 dtype=np.float32,
             ),
-            id="simple_two_observations"
+            id="simple_two_observations",
         ),
         # Test to make sure that the tree weight vector is correctly applied
         # to break ties in situations where comparison observations have the
@@ -96,14 +96,14 @@ import comps as comps_module
                 {
                     "comp_score_1": [0.5 + 0.3],
                     "comp_score_2": [0.3 + 0.2],
-                    "comp_score_3": [0.2 + 0.1]
+                    "comp_score_3": [0.2 + 0.1],
                 },
                 dtype=np.float32,
             ),
-            id="weights_tiebreak"
+            id="weights_tiebreak",
         ),
         # TODO: Test to make sure that chunking produces the correct values
-    ]
+    ],
 )
 def test_get_comps(
     leaf_nodes,
