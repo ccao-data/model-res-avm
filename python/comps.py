@@ -111,7 +111,7 @@ def _get_top_n_comps(
                     leaf_node_matrix[x_i][tree_idx]
                     == comparison_leaf_node_matrix[y_i][tree_idx]
                 ):
-                    similarity_score += weights_matrix[x_i][tree_idx]
+                    similarity_score += weights_matrix[y_i][tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
