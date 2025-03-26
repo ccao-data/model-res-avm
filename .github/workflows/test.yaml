@@ -34,7 +34,7 @@ jobs:
           uv pip install -r requirements.txt
           uv pip install pytest~=8.3.5
 
-      - name: Run tests
+      - name: Run Python tests
         shell: bash
         working-directory: python
         run: pytest
