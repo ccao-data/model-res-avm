@@ -52,12 +52,24 @@ def get_comps(
                 most similar comparables. The order of rows will match the
                 order of rows in `observation_df`.
     """
+    # Check to make sure the shape of the input matrices is correct
+    if observation_df.shape[1] != comparison_df.shape[1]:
+        raise ValueError(
+            "Number of columns in `observation_df` "
+            f"({observation_df.shape[1]}) "
+            f"must match `comparison_df` ({comparison_df.shape[1]})"
+        )
+    if comparison_df.shape != weights.shape:
+        raise ValueError(
+            f"`comparison_df.shape` {comparison_df.shape} must match "
+            f"`weights.shape` {weights.shape}"
+        )
+
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
     weights_matrix = np.asarray(weights, dtype=np.float32)
 
     # Chunk the observations so that the script can periodically report progress
-    num_chunks = 10
     observation_df["chunk"] = pd.cut(
         observation_df.index, bins=num_chunks, labels=False
     )
@@ -65,7 +77,7 @@ def get_comps(
     total_num_observations = len(observation_df)
     total_num_possible_comps = len(comparison_df)
     chunked_ids, chunked_scores = [], []
-    for chunk_num in set(observation_df["chunk"]):
+    for chunk_num in observation_df["chunk"].unique():
         observations = observation_df[observation_df["chunk"] == chunk_num]
         # Drop chunk column to produce a matrix that we can accelerate
         # with numba
@@ -158,8 +170,8 @@ def _get_top_n_comps(
             if similarity_score > all_top_n_scores[x_i][-1]:
                 for idx, score in enumerate(all_top_n_scores[x_i]):
                     if similarity_score > score:
-                        _insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
-                        _insert_at_idx_and_shift(
+                        insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
+                        insert_at_idx_and_shift(
                             all_top_n_scores[x_i], similarity_score, idx
                         )
                         break
@@ -168,7 +180,7 @@ def _get_top_n_comps(
 
 
 @nb.njit(fastmath=True)
-def _insert_at_idx_and_shift(
+def insert_at_idx_and_shift(
     arr: np.ndarray, elem: typing.Union[int, float], idx: int
 ) -> np.ndarray:
     """Helper function to insert an element `elem` into a sorted numpy array `arr`
