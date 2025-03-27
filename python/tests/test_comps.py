@@ -105,8 +105,8 @@ import comps as comps_module
             ),
             id="weights_tiebreak",
         ),
-        # Test that score tiebreaks always prioritize the first comparison
-        # observation in the input array
+        # Test that score tiebreaks always prioritize the first observation
+        # in the comparison array
         pt.param(
             pd.DataFrame([[1, 1, 1]]),
             pd.DataFrame([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
