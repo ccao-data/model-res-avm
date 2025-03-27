@@ -1,0 +1,12 @@
+[project]
+name = "model-res-avm-python"
+version = "0.0.1"
+description = "Python code for the CCAO residential model AVM"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+minversion = "7.0.0"
+addopts = "-v --cache-clear -rf"
+# Make sure the python/ subdir is correctly loaded into the PATH during
+# test execution
+pythonpath = ["."]

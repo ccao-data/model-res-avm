@@ -1,0 +1,40 @@
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+name: test
+
+env:
+  PYTHONUNBUFFERED: "1"
+  UV_SYSTEM_PYTHON: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: requirements.txt
+          cache-suffix: pytest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          uv pip install -r requirements.txt
+          uv pip install pytest~=8.3.5
+
+      - name: Run Python tests
+        shell: bash
+        working-directory: python
+        run: pytest

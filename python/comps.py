@@ -1,28 +1,75 @@
+import typing
+
 import numba as nb
 import numpy as np
 import pandas as pd
 
 
 def get_comps(
-    observation_df,
-    comparison_df,
-    weights,
-    num_comps=5,
-):
-    """Fast algorithm to get the top `num_comps` comps from a dataframe of lightgbm
-    leaf node assignments (`observation_df`) compared to a second dataframe of
-    assignments (`comparison_df`). Leaf nodes are weighted according to a tree
-    importance matrix `weights` and used to generate a similarity score and
-    return two dataframes, one a set of indices and the other a set of scores
-    for the `n` most similar comparables. More details on the underlying
-    algorithm here: https://ccao-data.github.io/lightsnip/articles/finding-comps.html
+    observation_df: pd.DataFrame,
+    comparison_df: pd.DataFrame,
+    weights: np.ndarray,
+    num_comps: int = 5,
+    num_chunks: int = 10,
+) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
     """
+    Fast algorithm to get the top `num_comps` comps from a dataframe of
+    lightgbm leaf node assignments (`observation_df`) compared to a second
+    dataframe of leaf node assignments (`comparison_df`).
+
+    Leaf nodes are weighted according to a tree importance matrix `weights`
+    and used to generate a similarity score. The function returns two
+    dataframes: One containing the indices of the most similar compararables
+    and the other containing their corresponding similarity scores.
+
+    More details on the underlying algorithm can be found here:
+    https://ccao-data.github.io/lightsnip/articles/finding-comps.html
+
+    Args:
+        observation_df (pandas.DataFrame):
+            DataFrame containing leaf node assignments for observations.
+        comparison_df (pandas.DataFrame):
+            DataFrame containing leaf node assignments for potential
+            comparables.
+        weights (numpy.ndarray):
+            Importance weights for leaf nodes, used to compute similarity
+            scores.
+        num_comps (int, optional):
+            Number of top comparables to return for each observation.
+            Default is 5.
+        num_chunks (int, optional):
+            Number of chunks to split observations for progress reporting.
+            Default is 10.
+
+    Returns:
+        tuple:
+            - pd.DataFrame:
+                DataFrame containing the indices of the `num_comps`
+                most similar comparables in `comparison_df`. The order of
+                rows will match the order of rows in `observation_df`.
+            - pd.DataFrame:
+                DataFrame containing similarity scores for the `num_comps`
+                most similar comparables. The order of rows will match the
+                order of rows in `observation_df`.
+    """
+    # Check to make sure the shape of the input matrices is correct
+    if observation_df.shape[1] != comparison_df.shape[1]:
+        raise ValueError(
+            "Number of columns in `observation_df` "
+            f"({observation_df.shape[1]}) "
+            f"must match `comparison_df` ({comparison_df.shape[1]})"
+        )
+    if comparison_df.shape != weights.shape:
+        raise ValueError(
+            f"`comparison_df.shape` {comparison_df.shape} must match "
+            f"`weights.shape` {weights.shape}"
+        )
+
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
     weights_matrix = np.asarray(weights, dtype=np.float32)
 
     # Chunk the observations so that the script can periodically report progress
-    num_chunks = 10
     observation_df["chunk"] = pd.cut(
         observation_df.index, bins=num_chunks, labels=False
     )
@@ -30,7 +77,7 @@ def get_comps(
     total_num_observations = len(observation_df)
     total_num_possible_comps = len(comparison_df)
     chunked_ids, chunked_scores = [], []
-    for chunk_num in set(observation_df["chunk"]):
+    for chunk_num in observation_df["chunk"].unique():
         observations = observation_df[observation_df["chunk"] == chunk_num]
         # Drop chunk column to produce a matrix that we can accelerate
         # with numba
@@ -81,8 +128,11 @@ def get_comps(
 
 @nb.njit(fastmath=True, parallel=True)
 def _get_top_n_comps(
-    leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps
-):
+    leaf_node_matrix: np.ndarray,
+    comparison_leaf_node_matrix: np.ndarray,
+    weights_matrix: np.ndarray,
+    num_comps: int,
+) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Helper function that takes matrices of leaf node assignments for
     observations in a tree model, a matrix of weights for each obs/tree, and an
     integer `num_comps`, and returns a matrix where each observation is scored
@@ -120,8 +170,8 @@ def _get_top_n_comps(
             if similarity_score > all_top_n_scores[x_i][-1]:
                 for idx, score in enumerate(all_top_n_scores[x_i]):
                     if similarity_score > score:
-                        _insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
-                        _insert_at_idx_and_shift(
+                        insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
+                        insert_at_idx_and_shift(
                             all_top_n_scores[x_i], similarity_score, idx
                         )
                         break
@@ -130,7 +180,9 @@ def _get_top_n_comps(
 
 
 @nb.njit(fastmath=True)
-def _insert_at_idx_and_shift(arr, elem, idx):
+def insert_at_idx_and_shift(
+    arr: np.ndarray, elem: typing.Union[int, float], idx: int
+) -> np.ndarray:
     """Helper function to insert an element `elem` into a sorted numpy array `arr`
     at a given index `idx` and shift the subsequent elements down one index."""
     arr[idx + 1 :] = arr[idx:-1]

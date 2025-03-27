@@ -34,3 +34,15 @@ repos:
         language: r
         additional_dependencies:
           - yaml
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.2
+    hooks:
+      # Python linter. Ruff recommends running this before the formatter to
+      # avoid conflicts when using the --fix flag
+      - id: ruff
+        args:
+          - --fix
+        files: ^python/
+      # Formatter
+      - id: ruff-format
+        files: ^python/
