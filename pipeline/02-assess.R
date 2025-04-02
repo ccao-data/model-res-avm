@@ -111,7 +111,7 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
     meta_card_pct_total_fmv = ifelse(
       is.na(meta_card_pct_total_fmv),
       1 / n(),
-      meta_card_pct_total_fmv
+      meta_card_pct_total_fmv # nolint
     ),
     pred_card_fmv_to_prorate = pred_pin_card_sum_temp_to_prorate * meta_card_pct_total_fmv
   ) %>%
