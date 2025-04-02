@@ -79,18 +79,6 @@ message("Performing post-modeling adjustments")
 ## 3.1. Multicards -------------------------------------------------------------
 message("Fixing multicard PINs")
 
-
-
-# Testing
-assessment_card_data_mc <- assessment_card_data_pred %>%
-     select(
-           meta_year, meta_pin, meta_nbhd_code, meta_class, meta_card_num,
-          meta_pin_num_cards, char_bldg_sf, char_land_sf,
-           meta_tieback_key_pin, meta_tieback_proration_rate,
-           meta_1yr_pri_board_tot, pred_card_initial_fmv
-       ) %>% filter(!is.na(meta_tieback_key_pin), meta_pin_num_cards == 2)
-
-
 # Cards represent buildings/improvements. A PIN can have multiple cards, and
 # the total taxable value of the PIN is (usually) the sum of all cards
 assessment_card_data_mc <- assessment_card_data_pred %>%
