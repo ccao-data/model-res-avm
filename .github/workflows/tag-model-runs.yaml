@@ -13,12 +13,13 @@ on:
         type: choice
         description: New/replacement run type to apply to specified runs
         options:
+          - baseline
+          - candidate
+          - comps
+          - final
           - junk
           - rejected
           - test
-          - baseline
-          - candidate
-          - final
         default: test
         required: true
       run_ids:
