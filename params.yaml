@@ -10,7 +10,7 @@
 # Run Control ------------------------------------------------------------------
 
 # Model tag used to identify the purpose of the run. Must be one of:
-# "junk", "rejected", "test", "baseline", "candidate", or "final"
+# "junk", "rejected", "test", "baseline", "candidate", "final", or "comps"
 run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run

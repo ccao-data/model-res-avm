@@ -100,7 +100,8 @@ run_type <- as.character(
 # Must be one of the dedicated run types
 possible_run_types <- c(
   "junk", "rejected", "test",
-  "baseline", "candidate", "final"
+  "baseline", "candidate", "final",
+  "comps"
 )
 if (!run_type %in% possible_run_types) {
   stop(
