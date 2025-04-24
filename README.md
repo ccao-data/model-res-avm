@@ -701,16 +701,25 @@ in the initial predictions. Specifically, post-modeling will:
     disaggregating back to the card level. For PINs with 3 or fewer
     cards, the initial prediction of the *largest* card (plus the
     building square footage of the remaining cards) is used as the
-    PIN-level estimate.
+    PIN-level estimate. For a more detailed explanation of multi-card
+    handling, see the [multi-card wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Multi-Card%20PINs/multi_card_explainer.md).
 
-2.  Ensure that nearly identical properties are identically valued. For
+2. Handle prorated PINs. When a single building spans multiple PINs,
+   each one technically contains only a portion of the structure. To
+   ensure fair valuation, the model's estimates are adjusted so that
+   the building’s total value is distributed proportionally across
+   its PINs. This involves calculating an average building-only value,
+   prorating it based on each PIN’s share, and then adding back
+   PIN-specific land value. For more detail, see the [proration wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Proration/proration_explainer.md).
+
+3.  Ensure that nearly identical properties are identically valued. For
     some property classes, such as 210 and 295s, we manually adjust
     values such that all identical properties in the same complex
     receive the same predicted value. This is accomplished by replacing
     individual predicted values with the average predicted value for the
     complex.
 
-3.  Round PIN-level values (typically to the nearest \$1,000). This is
+4.  Round PIN-level values (typically to the nearest \$1,000). This is
     done to indicate that model values are *estimates*, not precise
     values.
 
