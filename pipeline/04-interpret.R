@@ -185,20 +185,20 @@ if (comp_enable) {
   # aggregating the bldg_sf to a single card, and using that card to predict
   # the value for the multi-card PIN as a whole Since we don't predict on the
   # other cards, we set them aside for comp generation, to re-attach them later
-  multicard_pins <- comp_assessment_data_preprocess %>%
+  small_multicards <- comp_assessment_data_preprocess %>%
     filter(meta_pin_num_cards %in% c(2, 3))
 
-  selected_cards <- multicard_pins %>%
+  frankencards <- small_multicards %>%
     group_by(meta_pin) %>%
     arrange(sqft_card_num_sort) %>%
     slice(1) %>%
     ungroup()
 
-  singlecard_pins <- comp_assessment_data_preprocess %>%
-    filter(!meta_pin %in% multicard_pins$meta_pin)
+  single_cards_and_large_multicards <- comp_assessment_data_preprocess %>%
+    filter(!meta_pin %in% small_multicards$meta_pin)
 
-  comp_assessment_data_intermediate <-
-    bind_rows(singlecard_pins, selected_cards)
+  comp_assessment_data <-
+    bind_rows(single_cards_and_large_multicards, frankencards)
 
   comp_assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
