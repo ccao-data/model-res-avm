@@ -37,7 +37,9 @@ if (shap_enable || comp_enable) {
   # predicting values for these parcels. More details in multi-card handling
   # step in the assess stage.
 
-  # Persist sort order
+  # Start by persisting card sort order for the purposes of aggregating building square
+  # footage. We use characteristics from the largest card ("frankencard") in order to
+  # predict value, so we save the card sort order as a way to reference this card later on
   assessment_data_ordered <- assessment_data %>%
     group_by(meta_pin) %>%
     arrange(desc(char_bldg_sf), meta_card_num) %>%
