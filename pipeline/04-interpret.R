@@ -31,9 +31,11 @@ if (shap_enable || comp_enable) {
   # PINs) that need values. Will use the the trained model to calc SHAP values
   assessment_data <- as_tibble(read_parquet(paths$input$assessment$local))
 
-  # Aggregate square footage to building level. We do this to ensure consistent
-  # shap values and comps based on the generated prediction for multi-card pins.
-  # More details in multi-card handling in the assess stage.
+  # Aggregate square footage to the parcel level for small (2-3 card) multi-cards.
+  # We do this to ensure consistent SHAP values for small multi-card parcels,
+  # since we use aggregated parcel square footage when predicting values for
+  # these parcels.
+  # More details in multi-card handling step in the assess stage.
   # https://github.com/ccao-data/model-res-avm/issues/358
 
   # Persist sort order
