@@ -113,9 +113,12 @@ if (shap_enable) {
       meta_pin_num_cards, pred_card_shap_baseline_fmv,
       all_of(params$model$predictor$all), township_code
     ) %>%
+    # Adjust small (2-3 card) multi-cards to copy the SHAPs from the
+    # "frankencard" to all of the cards in the PIN. This aligns with the way
+    # that we handle small multi-cards in the assess stage.
+    # Start by grouping and sorting the same way we do in the assess stage
+    # so that we can figure out which card is the frankencard
     group_by(meta_pin) %>%
-    # Replicate sort used in the assess stage to ensure the same card's chars
-    # are used accross the assess stage and interpret stage
     arrange(sqft_card_num_sort) %>%
     group_modify(~ {
       shap_cols <- c("pred_card_shap_baseline_fmv", params$model$predictor$all)
