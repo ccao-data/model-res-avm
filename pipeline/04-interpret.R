@@ -202,7 +202,7 @@ if (comp_enable) {
 
   comp_assessment_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,
-    new_data = comp_assessment_data_intermediate,
+    new_data = comp_assessment_data,
     all_predictors()
   )
 
@@ -322,8 +322,8 @@ if (comp_enable) {
     ) %>%
     select(-starts_with("comp_idx_")) %>%
     cbind(
-      pin = comp_assessment_data_intermediate$meta_pin,
-      card = comp_assessment_data_intermediate$meta_card_num
+      pin = comp_assessment_data$meta_pin,
+      card = comp_assessment_data$meta_card_num
     ) %>%
     relocate(pin, card)
 
@@ -331,8 +331,8 @@ if (comp_enable) {
 
   # Grab removed small multi-cards, re-add them, and assign them the comps data
   # that we calculated for the frankencard
-  removed_cards <- multicard_pins %>%
-    anti_join(selected_cards, by = c("meta_pin", "meta_card_num")) %>%
+  removed_cards <- small_multicards %>%
+    anti_join(frankencards, by = c("meta_pin", "meta_card_num")) %>%
     select(meta_pin, meta_card_num)
 
   removed_cards_comps <- removed_cards %>%
