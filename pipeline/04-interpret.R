@@ -327,24 +327,22 @@ if (comp_enable) {
     ) %>%
     relocate(pin, card)
 
-  final_comps_data <- cbind(comps[[1]], comps[[2]])
+  comp_idxs_and_scores <- cbind(comps[[1]], comps[[2]])
 
-  # Grab removed multi-card cards,re-add them, and assign them the comps data
-  # that we used for the main frankencard used for prediction
+  # Grab removed small multi-cards, re-add them, and assign them the comps data
+  # that we calculated for the frankencard
   removed_cards <- multicard_pins %>%
     anti_join(selected_cards, by = c("meta_pin", "meta_card_num")) %>%
     select(meta_pin, meta_card_num)
 
   removed_cards_comps <- removed_cards %>%
     rename(pin = meta_pin, card = meta_card_num) %>%
-    left_join(final_comps_data %>% select(-card), by = "pin")
-
-  complete_comps_data <-
-    bind_rows(final_comps_data, removed_cards_comps) %>%
-    arrange(pin, card)
+    left_join(comp_idxs_and_scores %>% select(-card), by = "pin")
 
   # Save final combined comps data
-  arrow::write_parquet(complete_comps_data, paths$output$comp$local)
+  bind_rows(comp_idxs_and_scores, removed_cards_comps) %>%
+    arrange(pin, card) %>%
+    arrow::write_parquet(paths$output$comp$local)
 } else {
   # If comp creation is disabled, we still need to write an empty stub file
   # so DVC doesn't complain
