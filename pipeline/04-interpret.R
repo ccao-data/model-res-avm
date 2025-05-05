@@ -195,7 +195,7 @@ if (comp_enable) {
     ungroup()
 
   single_cards_and_large_multicards <- comp_assessment_data_preprocess %>%
-    filter(!meta_pin %in% small_multicards$meta_pin)
+    filter(!meta_pin %in% frankencards$meta_pin)
 
   comp_assessment_data <-
     bind_rows(single_cards_and_large_multicards, frankencards)
