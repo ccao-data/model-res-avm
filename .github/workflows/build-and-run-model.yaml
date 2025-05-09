@@ -65,11 +65,12 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/add-command-argument-to-build-and-run-batch-job
     with:
+      ref: jeancochrane/add-command-argument-to-build-and-run-batch-job
       backend: "ec2"
-      vcpu: "40"
-      memory: "158000"
+      vcpu: "8"
+      memory: "8000"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
       role-duration-seconds: 21000
@@ -84,6 +85,7 @@ jobs:
         CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
+      command: echo helloworld
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
