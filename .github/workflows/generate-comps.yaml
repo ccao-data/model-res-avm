@@ -1,0 +1,43 @@
+# Workflow that can be manually dispatched to generate comps for an existing
+# model run.
+
+name: generate-comps
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Existing model run ID
+        required: true
+        type: string
+
+jobs:
+  generate-comps:
+    permissions:
+      # contents:read and id-token:write permissions are needed to interact
+      # with GitHub's OIDC Token endpoint so that we can authenticate with AWS
+      contents: read
+      id-token: write
+      # While packages:write is usually not required for workflows, it is
+      # required in order to allow the reusable called workflow to push to
+      # GitHub Container Registry
+      packages: write
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/add-command-argument-to-build-and-run-batch-job
+    with:
+      ref: jeancochrane/add-command-argument-to-build-and-run-batch-job
+      backend: "ec2"
+      # vcpu: "40"
+      # memory: "158000"
+      vcpu: "8"
+      memory: "8000"
+      # Disable Batch job status polling since this workflow often takes
+      # more than 6 hours
+      poll_for_status: false
+      command: echo hello & echo world
+    secrets:
+      AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      # Set these env vars as secrets so they get masked in the GitHub
+      # Actions logs
+      CONTAINER_ENV_VARS: |
+        AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
