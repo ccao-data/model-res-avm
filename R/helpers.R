@@ -183,51 +183,6 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
-# Extract weights for model features based on tree importance. Assumes that
-# the model was trained with the `valids` parameter set such that error metrics
-# are saved for each tree on the model$record_evals attribute. The output
-# weights are useful for computing comps using leaf node assignments
-extract_tree_weights <- function(model,
-                                 init_score,
-                                 training_data,
-                                 outcome,
-                                 num_iterations) {
-  tree_predictions <- matrix(
-    nrow = nrow(training_data),
-    ncol = num_iterations + 1
-  )
-  tree_predictions[, 1] <- init_score
-  for (num_iteration in seq_len(num_iterations)) {
-    if (num_iteration %% 100 == 0) {
-      message(
-        glue::glue("Extracting weights for tree {num_iteration}")
-      )
-    }
-    tree_predictions[, num_iteration + 1] <- predict(
-      object = model,
-      newdata = as.matrix(training_data),
-      num_iteration = num_iteration
-    )
-  }
-  tree_errors <- abs(outcome - tree_predictions)
-  # Get a lagged diff of the error matrix by row. Since diff() operates on
-  # matrix columns, we need to transpose the input
-  diff_in_errors <- tree_errors %>%
-    t() %>%
-    diff(1, 1) %>%
-    t() * -1
-
-  diff_in_errors <- diff_in_errors %>%
-    apply(2, function(x) ifelse(x < 0, 0, x))
-
-  # Take proportion of diff in errors over total diff in
-  # errors from all trees
-  weights <- diff_in_errors / rowSums(diff_in_errors)
-  weights[is.nan(weights)] <- 0
-
-  return(weights)
-}
-
 # Given the result of a CV search, get the number of iterations from the
 # result set with the best performing hyperparameters
 select_iterations <- function(tune_results, metric, type = "mean") {
@@ -438,4 +393,16 @@ create_rolling_origin_splits <- function(data,
     subclass = c("rolling_origin", "rset")
   )
   return(rset)
+}
+
+# Helper function for downloading data from our DVC cache based on a hash.
+# Note that this only works for data from 2023 on, since we changed our
+# file structure for DVC in 2023
+download_dvc_data <- function(dvc_hash) {
+  paste0(
+    "s3://ccao-data-dvc-us-east-1/files/md5/",
+    substr(dvc_hash, 1, 2), "/",
+    substr(dvc_hash, 3, nchar(dvc_hash))
+  ) %>%
+    read_parquet()
 }
