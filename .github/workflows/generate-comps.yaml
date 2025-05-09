@@ -26,14 +26,12 @@ jobs:
     with:
       ref: jeancochrane/add-command-argument-to-build-and-run-batch-job
       backend: "ec2"
-      # vcpu: "40"
-      # memory: "158000"
-      vcpu: "8"
-      memory: "8000"
+      vcpu: "40"
+      memory: "158000"
       # Disable Batch job status polling since this workflow often takes
       # more than 6 hours
       poll_for_status: false
-      command: echo hello & echo world
+      command: .github/scripts/generate_comps.R ${{ input.run_id }}
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
