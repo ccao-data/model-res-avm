@@ -51,6 +51,11 @@ on:
         description: Calculate SHAP values
         default: false
         required: true
+      repro_ingest:
+        type: boolean
+        description: Reproduce ingest during model run
+        deafult: false
+        required: true
   push:
     branches: [master, "*-assessment-year"]
 
