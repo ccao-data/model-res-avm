@@ -60,6 +60,20 @@ on:
     branches: [master, "*-assessment-year"]
 
 jobs:
+  parse-command:
+    runs-on: ubuntu-latest
+    outputs:
+      command: ${{ steps.set.outputs.command }}
+    steps:
+      - name: Determine DVC command
+        id: set
+        shell: bash
+        run: |
+          if [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
+            echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
+          else
+            echo "command=" >> $GITHUB_OUTPUT
+          fi
   build-and-run-model:
     permissions:
       # contents:read and id-token:write permissions are needed to interact
