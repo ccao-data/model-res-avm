@@ -85,8 +85,9 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@Add-parameter-to-build-and-run-model-res-workflow-to-run-ingest-on-Batch
     with:
+      ref: Add-parameter-to-build-and-run-model-res-workflow-to-run-ingest-on-Batch
       command: ${{ needs.parse-command.outputs.command }}
       backend: "ec2"
       vcpu: "40"
