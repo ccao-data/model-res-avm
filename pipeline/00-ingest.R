@@ -12,12 +12,6 @@ tictoc::tic("Ingest")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
-# Load additional dev R libraries (see README#managing-r-dependencies)
-suppressPackageStartupMessages({
-  library(DBI)
-  library(noctua)
-})
-
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
 
@@ -26,8 +20,6 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   noctua::athena(),
   rstudio_conn_tab = FALSE
 )
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
