@@ -474,13 +474,13 @@
     },
     "curl": {
       "Package": "curl",
-      "Version": "5.2.0",
+      "Version": "6.2.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
-      "Hash": "ce88d13c0b10fe88a37d9c59dba2d7f9"
+      "Hash": "e4f9e10b18f453a1b7eaf38247dad4fe"
     },
     "data.table": {
       "Package": "data.table",
@@ -857,6 +857,27 @@
         "openssl"
       ],
       "Hash": "ac107251d9d9fd72f0ca8049988f1d7f"
+    },
+    "httr2": {
+      "Package": "httr2",
+      "Version": "1.1.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "R6",
+        "cli",
+        "curl",
+        "glue",
+        "lifecycle",
+        "magrittr",
+        "openssl",
+        "rappdirs",
+        "rlang",
+        "vctrs",
+        "withr"
+      ],
+      "Hash": "ade531519694081d91036b509eb30594"
     },
     "ipred": {
       "Package": "ipred",
@@ -1246,27 +1267,27 @@
     },
     "paws.analytics": {
       "Package": "paws.analytics",
-      "Version": "0.7.0",
+      "Version": "0.9.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "0b550ad3a3196182b3972d87f67ee52f"
+      "Hash": "3213419b212594e3d5ba31b92522e493"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
-      "Version": "0.7.0",
+      "Version": "0.9.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "56caa9cc142939976c23d618de875fad"
+      "Hash": "b36a81f2be98e63b209ddebeeea51909"
     },
     "paws.common": {
       "Package": "paws.common",
-      "Version": "0.7.7",
+      "Version": "0.8.3",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1274,14 +1295,14 @@
         "base64enc",
         "curl",
         "digest",
-        "httr",
+        "httr2",
         "jsonlite",
         "methods",
         "stats",
         "utils",
         "xml2"
       ],
-      "Hash": "d184fea5f7f48426720b84f5b488380d"
+      "Hash": "f44124e772f34a8b776eef5615821b50"
     },
     "pillar": {
       "Package": "pillar",
@@ -1421,13 +1442,8 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.0.7",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "utils"
-      ],
-      "Hash": "397b7b2a265bc5a7a06852524dabae20"
+      "Version": "1.0.11",
+      "Source": "Repository"
     },
     "reticulate": {
       "Package": "reticulate",
