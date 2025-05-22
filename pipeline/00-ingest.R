@@ -15,7 +15,6 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
   library(DBI)
-  library(igraph)
   library(noctua)
 })
 
