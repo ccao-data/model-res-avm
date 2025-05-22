@@ -12,6 +12,13 @@ tictoc::tic("Ingest")
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
+# Load additional dev R libraries (see README#managing-r-dependencies)
+suppressPackageStartupMessages({
+  library(DBI)
+  library(igraph)
+  library(noctua)
+})
+
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
 
@@ -81,9 +88,10 @@ pools <- dbGetQuery(
   glue("
     SELECT
       parid,
+      class,
       taxyr
     FROM iasworld.oby
-    WHERE code = '297'
+    WHERE class = '297'
   ")
 ) %>%
   distinct(parid, taxyr) %>%
