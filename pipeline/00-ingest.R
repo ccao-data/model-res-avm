@@ -70,9 +70,10 @@ process_array_column <- function(x) {
   })
 }
 
-
-
-
+Sys.setenv(
+  AWS_ATHENA_S3_STAGING_DIR = "s3://ccao-athena-results-us-east-1",
+  AWS_DEFAULT_REGION        = "us-east-1"
+)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Pull Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
