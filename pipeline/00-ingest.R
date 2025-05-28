@@ -23,9 +23,9 @@ noctua_options(unload = TRUE)
 
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   noctua::athena(),
-  s3_staging_dir    = Sys.getenv("AWS_ATHENA_S3_STAGING_DIR"),
-  region_name       = Sys.getenv("AWS_DEFAULT_REGION"),
-  rstudio_conn_tab  = FALSE
+  s3_staging_dir   = "s3://ccao-athena-results-us-east-1/",
+  region_name      = "us-east-1",
+  rstudio_conn_tab = FALSE
 )
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
