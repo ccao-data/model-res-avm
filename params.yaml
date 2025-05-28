@@ -244,7 +244,6 @@ model:
       - "shp_parcel_mrr_area_ratio"
       - "shp_parcel_mrr_side_ratio"
       - "shp_parcel_num_vertices"
-      - "in_ground_pool"
 
     # List of predictors included in predictor.all which are categoricals.
     # It is CRITICAL that any categorical variables are included in this list,
@@ -273,7 +272,6 @@ model:
       - "loc_school_elementary_district_geoid"
       - "loc_school_secondary_district_geoid"
       - "time_sale_quarter_of_year"
-      - "in_ground_pool"
 
     # List of identifiers for each observation, can be ignored
     id:
