@@ -21,12 +21,12 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
 
-# Establish Athena connection
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   noctua::athena(),
-  rstudio_conn_tab = FALSE
+  s3_staging_dir    = Sys.getenv("AWS_ATHENA_S3_STAGING_DIR"),
+  region_name       = Sys.getenv("AWS_DEFAULT_REGION"),
+  rstudio_conn_tab  = FALSE
 )
-
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Define Functions ----------------------------------------------------------
@@ -70,10 +70,6 @@ process_array_column <- function(x) {
   })
 }
 
-Sys.setenv(
-  AWS_ATHENA_S3_STAGING_DIR = "s3://ccao-athena-results-us-east-1",
-  AWS_DEFAULT_REGION        = "us-east-1"
-)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Pull Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
