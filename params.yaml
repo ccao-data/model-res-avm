@@ -198,7 +198,7 @@ model:
       - "prox_nearest_cta_stop_dist_ft"
       - "prox_nearest_hospital_dist_ft"
       - "prox_lake_michigan_dist_ft"
-      - 'prox_nearest_metra_route_dist_ft'
+      - "prox_nearest_metra_route_dist_ft"
       - "prox_nearest_metra_stop_dist_ft"
       - "prox_nearest_park_dist_ft"
       - "prox_nearest_railroad_dist_ft"
