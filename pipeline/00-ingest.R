@@ -114,26 +114,21 @@ training_data <- dbGetQuery(
 tictoc::toc()
 
 pools <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA,
-  glue("
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
     SELECT
       parid,
       taxyr
-    FROM iasworld.oby
+    FROM z_ci_820_investigate_res_characteristic_has_in_ground_pool_default.vw_card_res_char
     WHERE code = '297'
     AND user1 = '13'
   ")
-) %>%
-  distinct(parid, taxyr) %>%
-  mutate(pool = 1L)
+)
 
 training_data <- training_data %>%
   left_join(
     pools,
     by = c("meta_pin" = "parid", "year" = "taxyr")
-  ) %>%
-  # replace missing with 0
-  mutate(pool = coalesce(pool, 0L))
+  )
 
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
@@ -168,9 +163,7 @@ assessment_data <- assessment_data %>%
   left_join(
     pools,
     by = c("meta_pin" = "parid", "year" = "taxyr")
-  ) %>%
-  # replace missing with 0
-  mutate(pool = coalesce(pool, 0L))
+  )
 
 # Save both years for report generation using the characteristics
 assessment_data %>%
