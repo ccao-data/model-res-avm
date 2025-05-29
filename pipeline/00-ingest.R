@@ -12,6 +12,7 @@ tictoc::tic("Ingest")
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
   library(DBI)
+  library(igraph)
   library(noctua)
 })
 
