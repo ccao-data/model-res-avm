@@ -22,6 +22,7 @@ suppressPackageStartupMessages({
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
 
+# Establish Athena connection
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   noctua::athena(),
   s3_staging_dir   = "s3://ccao-athena-results-us-east-1/",
