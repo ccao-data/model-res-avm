@@ -9,15 +9,15 @@
 tictoc::tic.clearlog()
 tictoc::tic("Ingest")
 
+# Load libraries, helpers, and recipes from files
+purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
+
 # Load additional dev R libraries (see README#managing-r-dependencies)
 suppressPackageStartupMessages({
   library(DBI)
   library(igraph)
   library(noctua)
 })
-
-# Load libraries, helpers, and recipes from files
-purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 # Adds arrow support to speed up ingest process.
 noctua_options(unload = TRUE)
@@ -28,6 +28,9 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   region_name      = "us-east-1",
   rstudio_conn_tab = FALSE
 )
+
+
+
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Define Functions ----------------------------------------------------------
@@ -71,6 +74,9 @@ process_array_column <- function(x) {
   })
 }
 
+
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Pull Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -79,7 +85,6 @@ message("Pulling data from Athena")
 # Pull the training data, which contains actual sales + attached characteristics
 # from the residential input view. Earlier years are included to help calculate
 # lagged features
-
 tictoc::tic("Training data pulled")
 training_data <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
@@ -112,7 +117,6 @@ training_data <- dbGetQuery(
   ")
 )
 tictoc::toc()
-
 
 # Pull all ADDCHARS/HIE data. These are Home Improvement Exemptions (HIEs)
 # stored in the legacy (AS/400) data system
