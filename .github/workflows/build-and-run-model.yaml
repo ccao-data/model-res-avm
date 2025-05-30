@@ -54,7 +54,7 @@ on:
       repro_ingest:
         type: boolean
         description: Run ingest stage before running model
-        deafult: false
+        default: false
         required: true
   push:
     branches: [master, "*-assessment-year"]
