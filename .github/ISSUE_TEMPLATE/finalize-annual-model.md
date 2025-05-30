@@ -50,7 +50,7 @@ Low priority tasks must be complete eventually, but are not time-sensitive:
     - [ ] Upload the data to the CCAO's public S3 bucket
     - [ ] Make each file in the S3 bucket public using an ACL
     - [ ] Create a link for each file under the appropriate year in the README
-    - [ ] Update the [model.training_data.py](https://github.com/ccao-data/data-architecture/pull/804/files#diff-7f936444f61f4e1d04fa586ea1d9b437c34fbbdd0fde119fb2e66fe1aeedb2ff) incremental model by running `dbt run --select model.training_data`. 
+    - [ ] Update the [`model.training_data`](https://github.com/ccao-data/data-architecture/blob/master/dbt/models/model/model.training_data.py) incremental model by running `dbt run --select model.training_data`
 - [ ] Take a pass through the condo model README to make sure it's up to date
   - [ ] Double-check that the "Features Used" table includes all features and has no missing descriptions
   - [ ] Make sure the "Prior Models" section has a pointer to last year's model
