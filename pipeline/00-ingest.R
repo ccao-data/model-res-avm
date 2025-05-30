@@ -25,6 +25,8 @@ noctua_options(unload = TRUE)
 # Establish Athena connection
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   noctua::athena(),
+  s3_staging_dir   = "s3://ccao-athena-results-us-east-1/",
+  region_name      = "us-east-1",
   rstudio_conn_tab = FALSE
 )
 

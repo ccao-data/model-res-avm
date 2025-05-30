@@ -51,11 +51,31 @@ on:
         description: Calculate SHAP values
         default: false
         required: true
+      repro_ingest:
+        type: boolean
+        description: Run ingest stage before running model
+        default: false
+        required: true
   push:
     branches: [master, "*-assessment-year"]
 
 jobs:
+  parse-command:
+    runs-on: ubuntu-latest
+    outputs:
+      command: ${{ steps.set.outputs.command }}
+    steps:
+      - name: Determine DVC command
+        id: set
+        shell: bash
+        run: |
+          if [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
+            echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
+          else
+            echo "command=" >> $GITHUB_OUTPUT
+          fi
   build-and-run-model:
+    needs: parse-command
     permissions:
       # contents:read and id-token:write permissions are needed to interact
       # with GitHub's OIDC Token endpoint so that we can authenticate with AWS
@@ -65,8 +85,10 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@Add-parameter-to-build-and-run-model-res-workflow-to-run-ingest-on-Batch
     with:
+      ref: Add-parameter-to-build-and-run-model-res-workflow-to-run-ingest-on-Batch
+      command: ${{ needs.parse-command.outputs.command }}
       backend: "ec2"
       vcpu: "40"
       memory: "158000"
