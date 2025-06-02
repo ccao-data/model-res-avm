@@ -56,15 +56,10 @@ data <- dbGetQuery(
   ")
 )
 
-data <- data %>%
-  group_by(meta_pin) %>%
-  mutate(cards_per_pin = n_distinct(meta_card_num)) %>%
-  ungroup()
 
 group_cols <- c("meta_tieback_key_pin", grouping_col, "meta_card_num")
 
 
-#–– TEST 1: pred_pin_initial_fmv – all values in the group must match (n_distinct == 1) ––#
 test <- data %>%
   group_by(across(all_of(group_cols))) %>%
   filter(n_distinct(pred_pin_initial_fmv) != 1) %>%
@@ -72,7 +67,6 @@ test <- data %>%
   ungroup()
 
 
-#–– TEST 2: pred_card_initial_fmv – all values in the group must match ––#
 test_1 <- data %>%
   group_by(across(all_of(group_cols))) %>%
   filter(n_distinct(pred_card_initial_fmv) != 1) %>%
@@ -80,7 +74,6 @@ test_1 <- data %>%
   ungroup()
 
 
-#–– TEST 3: pred_card_final_fmv – all values in the group must match ––#
 test_2 <- data %>%
   group_by(across(all_of(group_cols))) %>%
   filter(n_distinct(pred_card_final_fmv) != 1) %>%
@@ -88,7 +81,6 @@ test_2 <- data %>%
   ungroup()
 
 
-#–– TEST 4: pred_pin_final_fmv – keep groups where values do NOT all match (n_distinct != 1) ––#
 test_3 <- data %>%
   group_by(across(all_of(group_cols))) %>%
   filter(n_distinct(pred_pin_final_fmv) != 1) %>%
