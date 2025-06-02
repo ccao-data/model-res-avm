@@ -87,6 +87,7 @@ jobs:
       packages: write
     uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
     with:
+      command: ${{ needs.parse-command.outputs.command }}
       backend: "ec2"
       vcpu: "40"
       memory: "158000"
