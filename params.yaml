@@ -172,7 +172,6 @@ model:
       - "char_land_sf"
       - "char_heat"
       - "char_ncu"
-      - "char_porch"
       - "char_roof_cnst"
       - "char_rooms"
       - "char_tp_dsgn"
