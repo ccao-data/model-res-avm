@@ -200,14 +200,19 @@ extract_tree_weights <- function(model,
 
   total_trees <- ncol(leaf_idx)
   if (num_iterations > total_trees) {
-    warning(sprintf("num_iterations (%d) > model trees (%d); using %d.",
-                    num_iterations, total_trees, total_trees))
+    warning(sprintf(
+      "num_iterations (%d) > model trees (%d); using %d.",
+      num_iterations, total_trees, total_trees
+    ))
     num_iterations <- total_trees
   }
   leaf_idx <- leaf_idx[, seq_len(num_iterations), drop = FALSE]
 
   tree_dt <- lgb.model.dt.tree(model)
-  leaf_lookup <- tree_dt[!is.na(leaf_index), c("tree_index", "leaf_index", "leaf_value")]
+  leaf_lookup <- tree_dt[
+    !is.na(leaf_index),
+    c("tree_index", "leaf_index", "leaf_value")
+  ]
 
   leaf_values <- matrix(NA_real_, nrow = nrow(leaf_idx), ncol = ncol(leaf_idx))
   for (t in seq_len(ncol(leaf_idx))) {
