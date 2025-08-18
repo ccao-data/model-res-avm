@@ -537,16 +537,12 @@ complex_id_temp <- assessment_data_clean %>%
     relationship = "many-to-many"
   ) %>%
   # Filter with attributes that can be "fuzzy" matched
-  # nolint start
   filter(
     char_rooms.x >= char_rooms.y - params$input$complex$match_fuzzy$rooms,
     char_rooms.x <= char_rooms.y + params$input$complex$match_fuzzy$rooms,
-    char_beds.x >= char_beds.y - params$input$complex$match_fuzzy$beds,
-    char_beds.x <= char_beds.y + params$input$complex$match_fuzzy$beds,
-    char_gar1_size.x >= char_gar1_size.y - params$input$complex$match_fuzzy$gar1_size,
-    char_gar1_size.x <= char_gar1_size.y + params$input$complex$match_fuzzy$gar1_size,
     char_bldg_sf.x >= char_bldg_sf.y - params$input$complex$match_fuzzy$bldg_sf,
     char_bldg_sf.x <= char_bldg_sf.y + params$input$complex$match_fuzzy$bldg_sf,
+    # nolint start
     (char_yrblt.x >= char_yrblt.y - params$input$complex$match_fuzzy$yrblt &
       char_yrblt.x <= char_yrblt.y + params$input$complex$match_fuzzy$yrblt) |
       is.na(char_yrblt.x),
