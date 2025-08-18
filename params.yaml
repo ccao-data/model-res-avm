@@ -72,8 +72,11 @@ input:
     # considered in the same complex
     match_exact:
       - "meta_township_code"
+      - "meta_class"
       - "char_bsmt"
+      - "char_gar1_size"
       - "char_attic_fnsh"
+      - "char_beds"
       - "meta_pin_num_cards"
       - "meta_tieback_proration_rate"
 
@@ -84,8 +87,6 @@ input:
       bldg_sf: 25
       yrblt: 4
       dist_ft: 250
-      garages: 1
-      bedrooms: 1
 
 
 # Cross-validation -------------------------------------------------------------
