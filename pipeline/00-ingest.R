@@ -20,7 +20,6 @@ suppressPackageStartupMessages({
 })
 
 # Adds arrow support to speed up ingest process.
-noctua_options(unload = TRUE)
 
 # Establish Athena connection
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(
@@ -523,6 +522,7 @@ message("Creating townhome complex identifiers")
 # https://stackoverflow.com/questions/68353869/create-group-based-on-fuzzy-criteria # nolint
 complex_id_temp <- assessment_data_clean %>%
   filter(meta_class %in% c("210", "295")) %>%
+  mutate(char_gar1_size = as.numeric(char_gar1_size)) %>%
   # Self-join with attributes that must be exactly matching
   select(
     meta_pin, meta_card_num, meta_township_code, meta_class,

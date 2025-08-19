@@ -84,8 +84,8 @@ input:
       bldg_sf: 25
       yrblt: 4
       dist_ft: 250
-      garages: 1
-      bedrooms: 1
+      gar1_size: 1
+      beds: 1
 
 
 # Cross-validation -------------------------------------------------------------
