@@ -31,17 +31,12 @@ extract_tree_weights <- function(model,
                                  training_data,
                                  outcome,
                                  num_iterations) {
-  # Coerce and validate
-  num_iterations <- as.integer(num_iterations)
-  stopifnot(is.numeric(outcome), length(outcome) == nrow(training_data))
-
-  # Convert predictors to numeric matrix
   X <- training_data |>
     as.data.frame() |>
     data.matrix()
 
-  # ---- Leaf index extraction ----
   leaf_idx <- predict(model, X, type = "leaf")
+
   total_trees <- ncol(leaf_idx)
   if (num_iterations > total_trees) {
     warning(sprintf(
@@ -52,50 +47,36 @@ extract_tree_weights <- function(model,
   }
   leaf_idx <- leaf_idx[, seq_len(num_iterations), drop = FALSE]
 
-  # ---- Map leaf indices to values ----
   tree_dt <- lgb.model.dt.tree(model)
-  leaf_lookup <- subset(tree_dt, !is.na(leaf_index),
-    select = c("tree_index", "leaf_index", "leaf_value")
-  )
+  leaf_lookup <- tree_dt[
+    !is.na(leaf_index),
+    c("tree_index", "leaf_index", "leaf_value")
+  ]
 
-  leaf_values <- matrix(0.0, nrow = nrow(leaf_idx), ncol = ncol(leaf_idx))
+  leaf_values <- matrix(NA_real_, nrow = nrow(leaf_idx), ncol = ncol(leaf_idx))
   for (t in seq_len(ncol(leaf_idx))) {
-    this_tree <- leaf_lookup[leaf_lookup$tree_index == (t - 1L), , drop = FALSE]
+    this_tree <- subset(leaf_lookup, tree_index == (t - 1L))
     m <- match(leaf_idx[, t], this_tree$leaf_index)
-    v <- this_tree$leaf_value[m]
-    v[is.na(v)] <- 0.0
-    leaf_values[, t] <- v
+    leaf_values[, t] <- this_tree$leaf_value[m]
   }
 
-  # ---- Row-wise cumulative sums ----
-  if (ncol(leaf_values) >= 2L) {
-    for (j in 2:ncol(leaf_values)) {
-      leaf_values[, j] <- leaf_values[, j] + leaf_values[, j - 1L]
-    }
-  }
+  leaf_cumsum <- t(apply(leaf_values, 1, cumsum))
 
-  # ---- Predictions from init score baseline ----
-  tree_predictions <- matrix(init_score,
-    nrow = nrow(X),
-    ncol = num_iterations + 1L
-  )
-  if (num_iterations >= 1L) {
-    tree_predictions[, 2:(num_iterations + 1L)] <- init_score + leaf_values
-  }
+  tree_predictions <- matrix(nrow = nrow(X), ncol = num_iterations + 1)
+  tree_predictions[, 1] <- init_score
+  tree_predictions[, 2:(num_iterations + 1)] <- leaf_cumsum
 
-  # ---- Error differences & weights ----
-  outcome_mat <- matrix(outcome,
-    nrow = length(outcome),
-    ncol = ncol(tree_predictions)
-  )
-  tree_errors <- abs(outcome_mat - tree_predictions)
+  tree_errors <- abs(outcome - tree_predictions)
 
-  diff_in_errors <- t(apply(tree_errors, 1L, diff)) * -1
-  diff_in_errors[diff_in_errors < 0] <- 0
+  diff_in_errors <- tree_errors |>
+    t() |>
+    diff(1, 1) |>
+    t() * -1
 
-  denom <- rowSums(diff_in_errors)
-  weights <- diff_in_errors / ifelse(denom == 0, 1, denom)
-  weights[is.na(weights)] <- 0
+  diff_in_errors <- apply(diff_in_errors, 2, function(x) ifelse(x < 0, 0, x))
+
+  weights <- diff_in_errors / rowSums(diff_in_errors)
+  weights[is.nan(weights)] <- 0
 
   return(weights)
 }
@@ -161,3 +142,13 @@ weights_old <- extract_tree_weights_old(
 )
 
 write.csv(weights_old, "weights_old.csv")
+
+
+# Find elementwise differences
+diff_matrix <- abs(weights - weights_old)
+
+# Logical matrix of where the difference exceeds the threshold
+diff_locs <- diff_matrix > 0.000001
+
+# Get row/col indices of those differences
+which(diff_locs, arr.ind = TRUE)
