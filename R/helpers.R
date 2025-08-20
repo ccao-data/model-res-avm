@@ -222,6 +222,9 @@ extract_tree_weights <- function(model,
     leaf_values[, t] <- this_tree$leaf_value[m]
   }
 
+  # Compute rolling sums of leaf node values across rows to get predicted
+  # values for each tree. Applying this operation across rows transposes the
+  # dataframe, so we need to transpose it back
   leaf_cumsum <- t(apply(leaf_values, 1, cumsum))
 
   tree_predictions <- matrix(nrow = nrow(X), ncol = num_iterations + 1)
