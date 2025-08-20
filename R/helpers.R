@@ -192,8 +192,8 @@ extract_tree_weights <- function(model,
                                  training_data,
                                  outcome,
                                  num_iterations) {
-  X <- training_data |>
-    as.data.frame() |>
+  X <- training_data %>%
+    as.data.frame() %>%
     data.matrix()
 
   leaf_idx <- predict(model, X, type = "leaf")
@@ -233,9 +233,9 @@ extract_tree_weights <- function(model,
 
   tree_errors <- abs(outcome - tree_predictions)
 
-  diff_in_errors <- tree_errors |>
-    t() |>
-    diff(1, 1) |>
+  diff_in_errors <- tree_errors %>%
+    t() %>%
+    diff(1, 1) %>%
     t() * -1
 
   diff_in_errors <- apply(diff_in_errors, 2, function(x) ifelse(x < 0, 0, x))
