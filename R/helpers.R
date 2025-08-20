@@ -183,40 +183,44 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
-# Extract weights for model features based on tree importance. Assumes that
-# the model was trained with the `valids` parameter set such that error metrics
-# are saved for each tree on the model$record_evals attribute. The output
-# weights are useful for computing comps using leaf node assignments
-extract_tree_weights <- function(model,
-                                 init_score,
-                                 training_data,
-                                 outcome,
-                                 num_iterations) {
-  X <- training_data %>%
-    as.data.frame() %>%
-    data.matrix()
+# Helper function to return weights for comps
+# Computes per-tree weights from cumulative leaf node values.
 
-  leaf_idx <- predict(model, X, type = "leaf")
+# Basic Steps
+# For every observation, map its assigned leaf index in
+# each tree to the corresponding leaf value.
+# Compute the row-wise cumulative sums of these
+# leaf values (stand-in for prediction).
+# Calculate the absolute prediction error at each
+# prefix compared to the true outcome.
+# Compute the improvement (reduction in error) relative to the previous step.
+# Normalize these improvements row-wise so that each
+# observation’s per-tree weights sum to 1.
 
-  total_trees <- ncol(leaf_idx)
-  if (num_iterations > total_trees) {
-    warning(sprintf(
-      "num_iterations (%d) > model trees (%d); using %d.",
-      num_iterations, total_trees, total_trees
-    ))
-    num_iterations <- total_trees
-  }
-  leaf_idx <- leaf_idx[, seq_len(num_iterations), drop = FALSE]
+# Inputs:
+#   model:      Lightgbm model
+#   leaf_idx:   integer matrix [training data x trees] of leaf indices
+#   init_score: mean value of sale prices in the training data
+#   outcome:    Predicted FMV values for each observation in the training data
+# Returns:
+#   weights: numeric matrix [n_obs x n_trees] where each row sums to 1
+extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
+  n_obs <- nrow(leaf_idx)
+  n_trees <- ncol(leaf_idx)
 
+  init_vec <- rep_len(as.numeric(init_score), n_obs)
+
+  # Lookup: leaf_index -> leaf_value for each tree
+  # (LightGBM tree_index is 0-based)
   tree_dt <- lgb.model.dt.tree(model)
   leaf_lookup <- tree_dt[
     !is.na(leaf_index),
     c("tree_index", "leaf_index", "leaf_value")
   ]
 
-  leaf_values <- matrix(NA_real_, nrow = nrow(leaf_idx), ncol = ncol(leaf_idx))
-  for (t in seq_len(ncol(leaf_idx))) {
-    # The trees in the LightGBM tree structure dataframe are 0-indexed
+  # Map leaf indices to values
+  leaf_values <- matrix(NA_real_, nrow = n_obs, ncol = n_trees)
+  for (t in seq_len(n_trees)) {
     this_tree <- subset(leaf_lookup, tree_index == (t - 1L))
     m <- match(leaf_idx[, t], this_tree$leaf_index)
     leaf_values[, t] <- this_tree$leaf_value[m]
@@ -227,24 +231,28 @@ extract_tree_weights <- function(model,
   # dataframe, so we need to transpose it back
   leaf_cumsum <- t(apply(leaf_values, 1, cumsum))
 
-  tree_predictions <- matrix(nrow = nrow(X), ncol = num_iterations + 1)
-  tree_predictions[, 1] <- init_score
-  tree_predictions[, 2:(num_iterations + 1)] <- leaf_cumsum
+  # Predictions after each tree: col1 = F0, then cumulative after each tree
+  tree_predictions <- cbind(unname(init_vec), leaf_cumsum)
 
+  # Ensure no name is carried over
+  colnames(tree_predictions) <- NULL
+
+  # Absolute errors vs outcome for each prefix
   tree_errors <- abs(outcome - tree_predictions)
 
-  diff_in_errors <- tree_errors %>%
-    t() %>%
-    diff(1, 1) %>%
-    t() * -1
+  # Improvement per tree = previous error - next error
+  prev_err <- tree_errors[, 1:n_trees, drop = FALSE]
+  next_err <- tree_errors[, 2:(n_trees + 1L), drop = FALSE]
+  diff_in_errors <- pmax(0, prev_err - next_err)
 
-  diff_in_errors <- apply(diff_in_errors, 2, function(x) ifelse(x < 0, 0, x))
-
-  weights <- diff_in_errors / rowSums(diff_in_errors)
+  # Normalize row-wise
+  row_sums <- rowSums(diff_in_errors)
+  weights <- diff_in_errors / row_sums
   weights[is.nan(weights)] <- 0
 
-  return(weights)
+  weights
 }
+
 
 # Given the result of a CV search, get the number of iterations from the
 # result set with the best performing hyperparameters
