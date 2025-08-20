@@ -122,13 +122,24 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
 if (comp_enable) {
   message("Finding comparables")
 
+  # Filter target properties for only the current triad, to speed up the comps
+  # algorithm
+  comp_assessment_data_preprocess <- assessment_data %>%
+    filter(
+      meta_township_code %in% (
+        ccao::town_dict %>%
+          filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
+          pull(township_code)
+      )
+    )
+
   # Calculate the leaf node assignments for every predicted value.
   # Due to integer overflow problems with leaf node assignment, we need to
   # chunk our data such that they are strictly less than the limit of 1073742
   # rows. More detail here: https://github.com/microsoft/LightGBM/issues/1884
   chunk_size <- 500000
   chunks <- split(
-    assessment_data_prepped,
+    comp_assessment_data_preprocess,
     ceiling(seq_along(assessment_data_prepped[[1]]) / chunk_size)
   )
   chunked_leaf_nodes <- chunks %>%
