@@ -257,7 +257,7 @@ def _get_top_n_comps(
             for tree_idx in range(len(leaf_node_matrix[x_i])):
                 similarity_score += (
                     weights_matrix[x_i][tree_idx] * (
-                        leaf_node_matrix[x_i][tree_idx] ==
+                        leaf_node_matrix[y_i][tree_idx] ==
                         comparison_leaf_node_matrix[y_i][tree_idx]
                     )
                 )
