@@ -216,6 +216,7 @@ extract_tree_weights <- function(model,
 
   leaf_values <- matrix(NA_real_, nrow = nrow(leaf_idx), ncol = ncol(leaf_idx))
   for (t in seq_len(ncol(leaf_idx))) {
+    # The trees in the LightGBM tree structure dataframe are 0-indexed
     this_tree <- subset(leaf_lookup, tree_index == (t - 1L))
     m <- match(leaf_idx[, t], this_tree$leaf_index)
     leaf_values[, t] <- this_tree$leaf_value[m]
