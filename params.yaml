@@ -431,12 +431,12 @@ ratio_study:
 # in the interpret pipeline stage. Only used if comp_enable = TRUE
 comp:
   # Number of comps to generate for each PIN/card
-  num_comps: 20
+  num_comps: 5
 
   # Number of price bins to use when binning properties for the purpose of
   # comparison. Corresponds to ntile of predicted FMV, e.g. 10 creates deciles
   # of predicted values. Larger deciles = larger comparables search range
-  num_price_bins: 20
+  num_price_bins: 5
 
 
 # Export -----------------------------------------------------------------------
