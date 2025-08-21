@@ -83,11 +83,22 @@ def get_comps(
 @nb.njit(fastmath=True, parallel=True)
 def _get_top_n_comps(
     leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps
+    all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype))
+
+    num_observations = len(leaf_node_matrix)
+    num_possible_comparisons = len(comparison_leaf_node_matrix)
+    idx_dtype = np.int32
+    score_dtype = np.float32
+
+    # Store scores and indexes in two separate arrays rather than a 3d matrix
+    # for simplicity (array of tuples does not convert to pandas properly).
+    # Indexes default to -1, which is an impossible index and so is a signal
+    # that no comp was found
+    all_top_n_idxs = np.full((num_observations, num_comps), -1, dtype=idx_dtype)
     all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
 
+
     for x_i in nb.prange(num_observations):
-
-
 
         # TODO: We could probably speed this up by skipping comparisons we've
         # already made; we just need to do it in a way that will have a
