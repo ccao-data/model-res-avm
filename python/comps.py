@@ -82,8 +82,7 @@ def get_comps(
 
 @nb.njit(fastmath=True, parallel=True)
 def _get_top_n_comps(
-    leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps
-    all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype))
+    leaf_node_matrix, comparison_leaf_node_matrix, weights_matrix, num_comps):
 
     num_observations = len(leaf_node_matrix)
     num_possible_comparisons = len(comparison_leaf_node_matrix)
