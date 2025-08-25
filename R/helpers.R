@@ -253,7 +253,6 @@ extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
   weights
 }
 
-
 # Given the result of a CV search, get the number of iterations from the
 # result set with the best performing hyperparameters
 select_iterations <- function(tune_results, metric, type = "mean") {
