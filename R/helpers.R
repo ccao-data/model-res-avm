@@ -190,12 +190,10 @@ extract_num_iterations <- function(x) {
 # For every observation, map its assigned leaf index in
 # each tree to the corresponding leaf value.
 # Compute the row-wise cumulative sums of these
-# leaf values (stand-in for prediction).
-# Calculate the absolute prediction error at each
-# prefix compared to the true outcome.
-# Compute the improvement (reduction in error) relative to the previous step.
-# Normalize these improvements row-wise so that each
-# observation’s per-tree weights sum to 1.
+# leaf values (stand-in for training data predictions).
+# Calculate the absolute prediction error.
+# Compute the reduction in error.
+# Normalize these improvements so that row-weights sum to 1.
 
 # Inputs:
 #   model:      Lightgbm model
