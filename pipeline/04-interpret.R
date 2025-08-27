@@ -215,7 +215,7 @@ if (comp_enable) {
     {
       comps <- comps_module$get_comps(
         leaf_nodes, training_leaf_nodes, tree_weights,
-        num_comps = as.integer(params$comp$num_comps),
+        num_comps = as.integer(params$comp$num_comps)
       )
     },
     error = function(e) {
