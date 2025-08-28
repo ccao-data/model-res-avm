@@ -243,11 +243,10 @@ if (comp_enable) {
   )
 
   tree_weights <- extract_tree_weights(
-    model = lgbm_final_full_fit$fit,
+    model      = lgbm_final_full_fit$fit,
+    leaf_idx   = as.matrix(leaf_nodes),
     init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    training_data = training_data_prepped,
-    outcome = training_data$meta_sale_price,
-    num_iterations = lgbm_final_full_fit$fit$params$num_iterations
+    outcome    = training_data$meta_sale_price
   )
 
   if (length(tree_weights) == 0) {
