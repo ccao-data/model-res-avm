@@ -268,7 +268,6 @@ if (comp_enable) {
     print(head(tree_weights, 5))
   }
 
-  message("Getting leaf node assignments for the training data")
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects
