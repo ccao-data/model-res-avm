@@ -241,9 +241,9 @@ extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
   # Improvement per tree = previous error - next error
   prev_err <- tree_errors[, 1:n_trees, drop = FALSE]
   next_err <- tree_errors[, 2:(n_trees + 1L), drop = FALSE]
-  diff_in_errors <- pmax(prev_err - next_err, 0)
+  diff_in_errors <- pmax(0, prev_err - next_err)
   dim(diff_in_errors) <- dim(prev_err)
-  
+
   # Normalize row-wise
   row_sums <- rowSums(diff_in_errors)
   weights <- diff_in_errors / row_sums
