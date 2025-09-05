@@ -221,7 +221,9 @@ extract_tree_weights <- function(model,
 
   # Take proportion of diff in errors over total diff in
   # errors from all trees
-  weights <- diff_in_errors / rowSums(diff_in_errors)
+  # Set weights to 1 if the tree reduces error at all, and 0 otherwise
+  weights <- ifelse(diff_in_errors > 0, 1, 0)
+  weights <- weights / rowSums(weights)
   weights[is.nan(weights)] <- 0
 
   return(weights)
