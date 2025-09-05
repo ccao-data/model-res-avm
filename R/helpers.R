@@ -202,11 +202,9 @@ extract_num_iterations <- function(x) {
 #   outcome:    Predicted FMV values for each observation in the training data
 # Returns:
 #   weights: numeric matrix [n_obs x n_trees] where each row sums to 1
-extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
+extract_tree_weights <- function(model, leaf_idx) {
   n_obs <- nrow(leaf_idx)
   n_trees <- ncol(leaf_idx)
-
-  init_vec <- rep_len(as.numeric(init_score), n_obs)
 
   # Lookup: leaf_index -> leaf_value for each tree
   # (LightGBM tree_index is 0-based)
@@ -224,32 +222,7 @@ extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
     leaf_values[, t] <- this_tree$leaf_value[m]
   }
 
-  # Compute rolling sums of leaf node values across rows to get predicted
-  # values for each tree. Applying this operation across rows transposes the
-  # dataframe, so we need to transpose it back
-  leaf_cumsum <- t(apply(leaf_values, 1, cumsum))
-
-  # Predictions after each tree: col1 = F0, then cumulative after each tree
-  tree_predictions <- cbind(unname(init_vec), leaf_cumsum)
-
-  # Ensure no name is carried over
-  colnames(tree_predictions) <- NULL
-
-  # Absolute errors vs outcome for each prefix
-  tree_errors <- abs(outcome - tree_predictions)
-
-  # Improvement per tree = previous error - next error
-  prev_err <- tree_errors[, 1:n_trees, drop = FALSE]
-  next_err <- tree_errors[, 2:(n_trees + 1L), drop = FALSE]
-  diff_in_errors <- pmax(0, prev_err - next_err)
-  dim(diff_in_errors) <- dim(prev_err)
-
-  # Normalize row-wise
-  row_sums <- rowSums(diff_in_errors)
-  weights <- diff_in_errors / row_sums
-  weights[is.nan(weights)] <- 0
-
-  weights
+  abs(leaf_values)
 }
 
 # Given the result of a CV search, get the number of iterations from the

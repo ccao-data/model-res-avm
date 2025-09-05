@@ -65,13 +65,6 @@ if (shap_enable || comp_enable) {
   )
 }
 
-if (comp_enable) {
-  message("Loading predicted values for comp calculation")
-
-  assessment_card <- read_parquet(paths$output$assessment_card$local) %>%
-    as_tibble()
-}
-
 
 
 
@@ -179,6 +172,16 @@ if (comp_enable) {
           filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
           pull(township_code)
       )
+    ) %>%
+    filter(
+      meta_pin %in% c(
+        "03223070270000",
+        "03264120230000",
+        "03283020430000",
+        "03302020310000",
+        "03362030270000",
+        "11191080060000"
+      )
     )
 
   # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
@@ -233,6 +236,12 @@ if (comp_enable) {
   # To do this, we need the training data so that we can compute the mean sale
   # price and use it as the base model error
   message("Extracting weights from training data")
+  tree_weights <- extract_tree_weights(
+    model      = lgbm_final_full_fit$fit,
+    leaf_idx   = as.matrix(leaf_nodes)
+  )
+
+  message("Getting training leaf nodes")
   training_data <- read_parquet(paths$input$training$local) %>%
     filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     as_tibble()
@@ -250,24 +259,10 @@ if (comp_enable) {
   ) %>%
     as_tibble()
 
-  # Create row-wise weights for each observation in the training data
-  # with columns representing each tree in the model.
-  tree_weights <- extract_tree_weights(
-    model      = lgbm_final_full_fit$fit,
-    leaf_idx   = as.matrix(training_leaf_nodes),
-    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    outcome    = training_data$meta_sale_price
-  )
 
   if (length(tree_weights) == 0) {
     message("Warning: tree_weights are empty")
   }
-  if (all(rowSums(tree_weights) %in% c(0, 1))) {
-    message("Warning: tree_weights do not sum to 1 or 0 for each row")
-    message("First 5 weights:")
-    print(head(tree_weights, 5))
-  }
-
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects

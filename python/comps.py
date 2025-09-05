@@ -59,9 +59,9 @@ def get_comps(
             f"({observation_df.shape[1]}) "
             f"must match `comparison_df` ({comparison_df.shape[1]})"
         )
-    if comparison_df.shape != weights.shape:
+    if observation_df.shape != weights.shape:
         raise ValueError(
-            f"`comparison_df.shape` {comparison_df.shape} must match "
+            f"`observation_df.shape` {observation_df.shape} must match "
             f"`weights.shape` {weights.shape}"
         )
 
@@ -161,7 +161,7 @@ def _get_top_n_comps(
                     leaf_node_matrix[x_i][tree_idx]
                     == comparison_leaf_node_matrix[y_i][tree_idx]
                 ):
-                    similarity_score += weights_matrix[y_i][tree_idx]
+                    similarity_score += weights_matrix[x_i][tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
     )
     tree_weights = np.asarray(
-        [np.random.dirichlet(np.ones(num_trees)) for _ in range(num_comparisons)]
+        [np.random.dirichlet(np.ones(num_trees)) for _ in range(num_obs)]
     )
 
     start = time.time()
