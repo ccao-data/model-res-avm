@@ -72,7 +72,6 @@ input:
     # considered in the same complex
     match_exact:
       - "meta_township_code"
-      - "meta_class"
       - "char_bsmt"
       - "char_gar1_size"
       - "char_attic_fnsh"
@@ -84,7 +83,7 @@ input:
     # complex e.g. a PIN with 2000 and a PIN with 2020 square feet will match
     match_fuzzy:
       rooms: 1
-      bldg_sf: 100
+      bldg_sf: 25
       yrblt: 4
       dist_ft: 250
 
