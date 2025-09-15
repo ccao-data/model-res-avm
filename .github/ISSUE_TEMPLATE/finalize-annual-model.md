@@ -41,7 +41,7 @@ Low priority tasks must be complete eventually, but are not time-sensitive:
 - [ ] Make sure the `vars_dict` data in [`ccao`](https://github.com/ccao-data/ccao/) is up-to-date for new features
   - If you add any features to this dictionary that are used in either model, make sure to re-knit the README for models that use the feature
 - [ ] Update `pinval` resources in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to support this year's model
-  - [ ] Double check the [`all_predictors`](https://github.com/ccao-data/data-architecture/blob/master/dbt/macros/all_predictors.sql) macro to make sure that the `pinval` views that use it are  selecting any new features from this year's model
+  - [ ] Double check the [`all_predictors`](https://github.com/ccao-data/data-architecture/blob/master/dbt/macros/all_predictors.sql) macro to make sure that the `pinval` views that use it are selecting any new features from this year's model
   - [ ] Add new assessment, SHAP, and comp run IDs to the [`pinval.model_run` seed](https://github.com/ccao-data/data-architecture/blob/master/dbt/seeds/pinval/pinval.model_run.csv)
 - [ ] Take a pass through the res model README to make sure it's up to date
   - [ ] Update the "Major Changes from Previous Versions" section to include any major changes from this year
