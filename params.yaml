@@ -204,6 +204,7 @@ model:
       - "prox_nearest_university_dist_ft"
       - "prox_nearest_vacant_land_dist_ft"
       - "prox_nearest_water_dist_ft"
+      - "prox_nearest_water_name"
       - "prox_nearest_golf_course_dist_ft"
       - "prox_nearest_road_highway_dist_ft"
       - "prox_nearest_road_arterial_dist_ft"
