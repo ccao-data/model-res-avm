@@ -222,11 +222,8 @@ extract_tree_weights <- function(model, leaf_idx) {
 
   var_per_tree[is.na(var_per_tree)] <- 0
   s <- sum(var_per_tree)
-  if (s <= 0) {
-    w <- rep(1 / n_trees, n_trees)   # fallback uniform
-  } else {
-    w <- var_per_tree / s
-  }
+  w <- var_per_tree / s
+
   w  # length = n_trees
 }
 # Given the result of a CV search, get the number of iterations from the
