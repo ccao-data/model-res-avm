@@ -253,10 +253,8 @@ if (comp_enable) {
   # Create row-wise weights for each observation in the training data
   # with columns representing each tree in the model.
   tree_weights <- extract_tree_weights(
-    model      = lgbm_final_full_fit$fit,
-    leaf_idx   = as.matrix(training_leaf_nodes),
-    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    outcome    = training_data$meta_sale_price
+    model    = lgbm_final_full_fit$fit,
+    leaf_idx = as.matrix(training_leaf_nodes)
   )
 
   if (length(tree_weights) == 0) {

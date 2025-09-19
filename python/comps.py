@@ -59,11 +59,17 @@ def get_comps(
             f"({observation_df.shape[1]}) "
             f"must match `comparison_df` ({comparison_df.shape[1]})"
         )
-    if comparison_df.shape != weights.shape:
+    # ---- 1-D per-tree weights only (length = number of trees) ----
+    if not isinstance(weights, np.ndarray):
+        weights = np.asarray(weights)
+    if weights.ndim != 1:
+        raise ValueError("`weights` must be a 1-D array of per-tree weights.")
+    if weights.shape[0] != comparison_df.shape[1]:
         raise ValueError(
-            f"`comparison_df.shape` {comparison_df.shape} must match "
-            f"`weights.shape` {weights.shape}"
+            f"`weights` length {weights.shape[0]} must equal number of trees "
+            f"{comparison_df.shape[1]}"
         )
+    weights_vector = weights.astype(np.float32, copy=False)
 
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
@@ -100,7 +106,7 @@ def get_comps(
 
         # Compute comps for each observation
         comp_ids, comp_scores = _get_top_n_comps(
-            observation_matrix, possible_comp_matrix, weights_matrix, num_comps
+            observation_matrix, possible_comp_matrix, weights_vector, num_comps
         )
 
         observation_ids = observations.index.values
@@ -130,7 +136,7 @@ def get_comps(
 def _get_top_n_comps(
     leaf_node_matrix: np.ndarray,
     comparison_leaf_node_matrix: np.ndarray,
-    weights_matrix: np.ndarray,
+    weights_vector: np.ndarray,
     num_comps: int,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Helper function that takes matrices of leaf node assignments for
@@ -156,12 +162,12 @@ def _get_top_n_comps(
         # low memory footprint
         for y_i in range(num_possible_comparisons):
             similarity_score = 0.0
-            for tree_idx in range(len(leaf_node_matrix[x_i])):
+            for tree_idx in range(leaf_node_matrix.shape[1]):
                 if (
-                    leaf_node_matrix[x_i][tree_idx]
-                    == comparison_leaf_node_matrix[y_i][tree_idx]
+                    leaf_node_matrix[x_i, tree_idx]
+                    == comparison_leaf_node_matrix[y_i, tree_idx]
                 ):
-                    similarity_score += weights_matrix[y_i][tree_idx]
+                    similarity_score += weights_vector[tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
