@@ -280,7 +280,7 @@ if (comp_enable) {
   tryCatch(
     {
       comps <- comps_module$get_comps(
-        leaf_nodes %>% head(5), training_leaf_nodes, tree_weights,
+        leaf_nodes, training_leaf_nodes, tree_weights,
         num_comps = as.integer(params$comp$num_comps)
       )
     },
