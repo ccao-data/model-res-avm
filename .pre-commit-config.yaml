@@ -2,7 +2,7 @@
 # R specific hooks: https://github.com/lorenzwalthert/precommit
 repos:
   - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.2
+    rev: v0.4.3
     hooks:
       - id: style-files
         args: [--style_pkg=styler, --style_fun=tidyverse_style]
@@ -27,3 +27,22 @@ repos:
         entry: Cannot commit .Rhistory, .RData, .Rds or .rds.
         language: fail
         files: '\.(Rhistory|RData|Rds|rds)$'
+      - id: check-data-dict
+        name: Data dictionary must be up to date with params file
+        entry: Rscript R/hooks/check-data-dict.R
+        files: (^|/)((params\.yaml)|(data-dict\.csv))$
+        language: r
+        additional_dependencies:
+          - yaml
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.2
+    hooks:
+      # Python linter. Ruff recommends running this before the formatter to
+      # avoid conflicts when using the --fix flag
+      - id: ruff
+        args:
+          - --fix
+        files: ^python/
+      # Formatter
+      - id: ruff-format
+        files: ^python/
