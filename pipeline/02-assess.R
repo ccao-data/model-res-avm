@@ -88,17 +88,6 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
     meta_tieback_key_pin, meta_tieback_proration_rate,
     meta_1yr_pri_board_tot, pred_card_initial_fmv
   ) %>%
-  # For prorated PINs with multiple cards, take the average of the card
-  # (building) across PINs. This is because the same prorated building spread
-  # across multiple PINs sometimes receives different values from the model
-  group_by(meta_tieback_key_pin, meta_card_num, char_bldg_sf) %>%
-  mutate(
-    pred_card_intermediate_fmv = ifelse(
-      is.na(meta_tieback_key_pin),
-      pred_card_initial_fmv,
-      mean(pred_card_initial_fmv)
-    )
-  ) %>%
   # For single-card PINs, the card-level predicted value is the PIN value.
   # For multi-card PINs with 2 or 3 cards, we aggregate the building square
   # footage of all cards into a single card (the largest), predict, then use
@@ -109,8 +98,8 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   mutate(
     pred_pin_card_sum = ifelse(
       meta_pin_num_cards > 3,
-      sum(pred_card_intermediate_fmv),
-      first(pred_card_intermediate_fmv)
+      sum(pred_card_initial_fmv),
+      first(pred_card_initial_fmv)
     )
   ) %>%
   arrange(meta_pin, meta_card_num) %>%
