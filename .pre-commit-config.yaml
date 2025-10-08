@@ -2,7 +2,7 @@
 # R specific hooks: https://github.com/lorenzwalthert/precommit
 repos:
   - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.3
+    rev: v0.4.3.9015
     hooks:
       - id: style-files
         args: [--style_pkg=styler, --style_fun=tidyverse_style]
@@ -14,7 +14,7 @@ repos:
       - id: no-browser-statement
       - id: no-debug-statement
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         args: ['--maxkb=200']
@@ -35,7 +35,7 @@ repos:
         additional_dependencies:
           - yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
+    rev: v0.14.0
     hooks:
       # Python linter. Ruff recommends running this before the formatter to
       # avoid conflicts when using the --fix flag
