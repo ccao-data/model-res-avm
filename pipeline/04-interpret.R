@@ -242,12 +242,21 @@ if (comp_enable) {
     all_predictors()
   )
 
+  # Get predicted values and leaf node assignments for the training data
+  training_leaf_nodes <- predict(
+    object = lgbm_final_full_fit$fit,
+    newdata = as.matrix(training_data_prepped),
+    type = "leaf"
+  ) %>%
+    as_tibble()
+
+  # Create row-wise weights for each observation in the training data
+  # with columns representing each tree in the model.
   tree_weights <- extract_tree_weights(
-    model = lgbm_final_full_fit$fit,
+    model      = lgbm_final_full_fit$fit,
+    leaf_idx   = as.matrix(training_leaf_nodes),
     init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    training_data = training_data_prepped,
-    outcome = training_data$meta_sale_price,
-    num_iterations = lgbm_final_full_fit$fit$params$num_iterations
+    outcome    = training_data$meta_sale_price
   )
 
   if (length(tree_weights) == 0) {
@@ -259,15 +268,6 @@ if (comp_enable) {
     print(head(tree_weights, 5))
   }
 
-  message("Getting leaf node assignments for the training data")
-
-  # Get predicted values and leaf node assignments for the training data
-  training_leaf_nodes <- predict(
-    object = lgbm_final_full_fit$fit,
-    newdata = as.matrix(training_data_prepped),
-    type = "leaf"
-  ) %>%
-    as_tibble()
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects
