@@ -164,7 +164,7 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     land_nbhd_rate,
     by = c("meta_nbhd_code" = "meta_nbhd", "meta_class")
   ) %>%
-  group_by(meta_tieback_key_pin, meta_tieback_proration_rate) %>%
+  group_by(meta_tieback_key_pin) %>%
   mutate(temp_value = ifelse(
     is.na(meta_tieback_key_pin),
     pred_pin_final_fmv_round_no_prorate,
