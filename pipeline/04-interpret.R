@@ -242,23 +242,19 @@ if (comp_enable) {
     all_predictors()
   )
 
-  tree_weights <- extract_tree_weights(
-    model = lgbm_final_full_fit$fit,
-    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    training_data = training_data_prepped,
-    outcome = training_data$meta_sale_price,
-    num_iterations = lgbm_final_full_fit$fit$params$num_iterations
-  )
+  # Set uniform weights across trees
+  # N = number of trees in the model
+  n_trees <- ncol(training_leaf_nodes)
+  tree_weights <- rep(1 / n_trees, n_trees)
 
   if (length(tree_weights) == 0) {
     message("Warning: tree_weights are empty")
   }
-  if (all(rowSums(tree_weights) %in% c(0, 1))) {
-    message("Warning: tree_weights do not sum to 1 or 0 for each row")
-    message("First 5 weights:")
-    print(head(tree_weights, 5))
-  }
-
+  if (!isTRUE(all.equal(sum(tree_weights), 1))) {
+      message("Warning: tree_weights do not sum to 1")
+      message("First 5 weights:")
+      print(head(tree_weights, 5))
+    }
   message("Getting leaf node assignments for the training data")
 
   # Get predicted values and leaf node assignments for the training data
