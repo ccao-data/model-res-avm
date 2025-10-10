@@ -150,7 +150,7 @@ message("Valuing land")
 # Land values are provided by Valuations and are capped at a percentage of the
 # total FMV for the PIN. For 210 and 295s (townhomes), there's sometimes a pre-
 # calculated land total value, for all other classes, there's a $/sqft rate
-assessment_pin_data_w_land_new <- assessment_card_data_round_new %>%
+assessment_pin_data_w_land <- assessment_card_data_round %>%
   # Keep only the necessary unique PIN-level values, since land is valued by
   # PIN rather than card
   group_by(meta_year, meta_pin) %>%
