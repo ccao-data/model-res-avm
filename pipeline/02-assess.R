@@ -137,13 +137,7 @@ message("Rounding predictions")
 # Round PIN-level predictions using the breaks and amounts specified in params
 assessment_card_data_round <- assessment_card_data_cid %>%
   mutate(
-    pred_pin_final_fmv_round_no_prorate = ccao::val_round_fmv(
-      pred_pin_final_fmv,
-      breaks = params$pv$round_break,
-      round_to = params$pv$round_to_nearest,
-      type = params$pv$round_type
-    )
-  )
+    pred_pin_final_fmv_round_no_prorate = pred_pin_final_fmv)
 
 
 
@@ -156,7 +150,7 @@ message("Valuing land")
 # Land values are provided by Valuations and are capped at a percentage of the
 # total FMV for the PIN. For 210 and 295s (townhomes), there's sometimes a pre-
 # calculated land total value, for all other classes, there's a $/sqft rate
-assessment_pin_data_w_land <- assessment_card_data_round %>%
+assessment_pin_data_w_land_new <- assessment_card_data_round_new %>%
   # Keep only the necessary unique PIN-level values, since land is valued by
   # PIN rather than card
   group_by(meta_year, meta_pin) %>%
@@ -170,12 +164,18 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     land_nbhd_rate,
     by = c("meta_nbhd_code" = "meta_nbhd", "meta_class")
   ) %>%
+  group_by(meta_tieback_key_pin, meta_tieback_proration_rate) %>%
+  mutate(temp_value = ifelse(
+    is.na(meta_tieback_key_pin),
+    pred_pin_final_fmv_round_no_prorate,
+    mean(pred_pin_final_fmv_round_no_prorate)
+  )) %>%
   mutate(
     pred_pin_final_fmv_land = ceiling(case_when(
       # Use the land $/sqft rate (unless it exceeds the % of total value cap)
-      char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round_no_prorate *
+      char_land_sf * land_rate_per_sqft >= temp_value *
         params$pv$land_pct_of_total_cap ~
-        pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
+        temp_value * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
     )),
     # If the land $/sqft is missing, just use the max capped land value as a
@@ -186,7 +186,7 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     # finalized land $/sqft rates
     pred_pin_final_fmv_land = ifelse(
       is.na(pred_pin_final_fmv_land),
-      pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
+      temp_value * params$pv$land_pct_of_total_cap,
       pred_pin_final_fmv_land
     ),
     # Keep the uncapped value for display in desk review
