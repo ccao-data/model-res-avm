@@ -53,6 +53,7 @@ def get_comps(
                 order of rows in `observation_df`.
     """
     # Check to make sure the shape of the input matrices is correct
+    """
     if observation_df.shape[1] != comparison_df.shape[1]:
         raise ValueError(
             "Number of columns in `observation_df` "
@@ -64,10 +65,11 @@ def get_comps(
             f"`comparison_df.shape` {comparison_df.shape} must match "
             f"`weights.shape` {weights.shape}"
         )
-
+    """
     # Convert the weights to a numpy array so that we can take advantage of
     # numba acceleration later on
-    weights_matrix = np.asarray(weights, dtype=np.float32)
+    # weights_matrix = np.asarray(weights, dtype=np.float32)
+    weights_vector = np.asarray(weights, dtype=np.float32)
 
     # Chunk the observations so that the script can periodically report progress
     observation_df["chunk"] = pd.cut(
@@ -100,7 +102,7 @@ def get_comps(
 
         # Compute comps for each observation
         comp_ids, comp_scores = _get_top_n_comps(
-            observation_matrix, possible_comp_matrix, weights_matrix, num_comps
+            observation_matrix, possible_comp_matrix, weights_vector, num_comps
         )
 
         observation_ids = observations.index.values
@@ -130,7 +132,7 @@ def get_comps(
 def _get_top_n_comps(
     leaf_node_matrix: np.ndarray,
     comparison_leaf_node_matrix: np.ndarray,
-    weights_matrix: np.ndarray,
+    weights_vector: np.ndarray,
     num_comps: int,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Helper function that takes matrices of leaf node assignments for
@@ -161,7 +163,7 @@ def _get_top_n_comps(
                     leaf_node_matrix[x_i][tree_idx]
                     == comparison_leaf_node_matrix[y_i][tree_idx]
                 ):
-                    similarity_score += weights_matrix[y_i][tree_idx]
+                    similarity_score += weights_matrix[tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
