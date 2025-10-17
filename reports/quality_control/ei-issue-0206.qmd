@@ -1,0 +1,27 @@
+---
+title: "Model I/O QC"
+author: "Jean Cochrane"
+date: "2025-01-24"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  assessment_year: "2025"
+  baseline_run_id: "2025-01-23-dreamy-ida"
+  n_most_recent_models: 5
+---
+
+here("reports/quality_control")
+
+{{< include baseline_categorical.qmd >}}
+
+{{< include baseline_continuous.qmd >}}
+
+{{< include baseline_missingness.qmd >}}
+
+{{< include n_most_recent_model_outliers.qmd >}}

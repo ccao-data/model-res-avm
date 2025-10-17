@@ -1,0 +1,123 @@
+---
+title: "Model I/O QC - Baseline Categorical Variable Analysis"
+subtitle: "Run ID: `r params$baseline_run_id`"
+author: "Jean Cochrane"
+date: "2025-01-24"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  assessment_year: "2025"
+  baseline_run_id: "2025-02-08-happy-eric"
+---
+
+```{r load_data}
+#| cache: true
+#| cache-extra: !expr rlang::hash(params)
+#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
+#| cache-file-2: !expr rlang::hash_file("_utils.R")
+
+source("_baseline_query_data.R")
+```
+
+# Distributions of features
+
+::: {.panel-tabset}
+
+### Assessment set
+
+```{r feature_dist_assess_cat_transform}
+baseline_cat_chars_assess_long <- baseline_assessment_data %>%
+  select(all_of(categorical_preds)) %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
+```
+
+```{r feature_dist_assess_cat_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(baseline_cat_chars_assess_long)
+
+plot_small_multiple_histograms(baseline_cat_chars_assess_long, stat = "count")
+```
+
+```{r feature_dist_assess_cat_cleanup}
+#| output: false
+
+rm(baseline_cat_chars_assess_long)
+gc()
+```
+
+### Training set
+
+```{r feature_dist_train_cat_transform}
+baseline_cat_chars_train_long <- baseline_training_data %>%
+  select(all_of(categorical_preds)) %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
+```
+
+```{r feature_dist_train_cat_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(baseline_cat_chars_train_long)
+
+plot_small_multiple_histograms(baseline_cat_chars_train_long, stat = "count")
+```
+
+```{r feature_dist_train_cat_cleanup}
+#| output: false
+
+rm(baseline_cat_chars_train_long)
+gc()
+```
+
+:::
+
+# Distribution of SHAPs
+
+```{r shap_dist_cat_transform}
+baseline_cat_shap_long <- baseline_shaps %>%
+  select(all_of(c(categorical_preds, categorical_shaps))) %>%
+  pivot_longer(
+    cols = all_of(categorical_preds),
+    names_to = "predictor",
+    values_to = "value"
+  ) %>%
+  pivot_longer(
+    cols = all_of(categorical_shaps),
+    names_to = "shap_name",
+    values_to = "shap_value"
+  ) %>%
+  filter(predictor == str_remove(shap_name, "_shap")) %>%
+  select(-shap_name)
+```
+
+```{r shap_dist_cat_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(baseline_cat_shap_long, ncol = ncol_violin)
+
+plot_small_multiple_violins(
+  baseline_cat_shap_long,
+  "shap_value",
+  y_axis_label = "SHAP Value"
+)
+```
+
+```{r shap_dist_cat_cleanup}
+#| output: false
+
+rm(baseline_cat_shap_long)
+gc()
+```

@@ -1,0 +1,86 @@
+---
+title: "Model I/O QC - Baseline Variable Missingness"
+subtitle: "Distribution by geography (disabled due to performance issues)"
+author: "Jean Cochrane"
+date: "2025-01-24"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  assessment_year: "2025"
+  baseline_run_id: "2025-01-23-dreamy-ida"
+---
+
+```{r load_data}
+#| cache: true
+#| cache-extra: !expr rlang::hash(params)
+#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
+#| cache-file-2: !expr rlang::hash_file("_utils.R")
+
+source("_baseline_query_data.R")
+```
+
+# Missingness by geography
+
+```{r missingness_cols}
+missingness_cols <- model_predictor_all_name
+```
+
+```{r missing_geo_transform}
+missing_geo <- baseline_assessment_data %>%
+  select(all_of(c("loc_latitude", "loc_longitude", missingness_cols))) %>%
+  bind_rows(
+    baseline_training_data %>%
+      select(all_of(c("loc_latitude", "loc_longitude", missingness_cols)))
+  ) %>%
+  drop_na(loc_latitude, loc_longitude)
+```
+
+```{r missing_geo_plot}
+#| column: screen-inset
+
+missing_map <- leaflet() %>%
+  addTiles() %>%
+  setView(
+    lng = mean(missing_geo$loc_longitude),
+    lat = mean(missing_geo$loc_latitude),
+    zoom = 9
+  )
+
+for (col in missingness_cols) {
+  missing_points <- missing_geo %>%
+    filter(is.na(!!sym(col)))
+
+  missing_map <- missing_map %>%
+    addCircleMarkers(
+      data = missing_points,
+      lng = ~loc_longitude,
+      lat = ~loc_latitude,
+      radius = 5,
+      color = "steelblue",
+      fillOpacity = 0.7,
+      group = col,
+      popup = ~ paste0("Missing: ", col)
+    )
+}
+
+missing_map %>%
+  addLayersControl(
+    overlayGroups = missingness_cols,
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  # Hide all feature layers by default since there are a lot of them
+  hideGroup(missingness_cols)
+```
+
+```{r missing_geo_cleanup}
+#| output: false
+
+rm(missing_geo, missing_map)
+gc()
+```

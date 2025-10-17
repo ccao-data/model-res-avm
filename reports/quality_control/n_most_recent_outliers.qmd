@@ -1,0 +1,261 @@
+---
+title: "Model I/O QC - Most Recent Model Outliers"
+subtitle: "Run ID: `r params$baseline_run_id`"
+author: "Jean Cochrane"
+date: "2025-01-24"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  baseline_run_id: "2025-02-08-happy-eric"
+  assessment_year: "2025"
+  n_most_recent_models: 5
+---
+
+```{r load_data}
+#| cache: true
+#| cache-extra: !expr rlang::hash(params)
+#| cache-file: !expr rlang::hash_file("_utils.R")
+
+source("_utils.R")
+```
+
+# Outliers in the `r params$n_most_recent_models` most recent models
+
+```{r outlier_query_run_ids}
+#| cache: true
+
+n_most_recent_models <- dbGetQuery(
+  conn,
+  glue("
+    select
+      run_id,
+      row_number() over (order by run_id desc) as model_num
+    from model.metadata
+    where run_type in ('test', 'candidate', 'final', 'baseline')
+    and assessment_group = 'residential'
+    and assessment_year = '{params$assessment_year}'
+    order by run_id desc
+    limit {params$n_most_recent_models}
+  ")
+)
+
+# Same as above, we just want to filter for only runs that have SHAPs
+n_most_recent_shap_models <- dbGetQuery(
+  conn,
+  glue("
+    select
+      run_id,
+      row_number() over (order by run_id desc) as model_num
+    from model.metadata
+    where run_type in ('test', 'candidate', 'final', 'baseline')
+    and assessment_group = 'residential'
+    and assessment_year = '{params$assessment_year}'
+    and shap_enable
+    order by run_id desc
+    limit {params$n_most_recent_models}
+  ")
+)
+```
+
+```{r outlier_query_preds_and_shaps}
+# The queries in this chunk are typically too big for the Quarto cache, so
+# cache them locally instead
+get_cached_query <- function(cache_filename, query_fn) {
+  cache_dir <- "manual_cache"
+  cache_path <- file.path(cache_dir, cache_filename)
+
+  dir.create(cache_dir, showWarnings = FALSE)
+
+  if (file.exists(cache_path)) {
+    read_parquet(cache_path)
+  } else {
+    result <- query_fn()
+    write_parquet(result, cache_path)
+    result
+  }
+}
+
+n_most_recent_preds <- get_cached_query(
+  "n_most_recent_preds.parquet",
+  function() {
+    dbGetQuery(
+      conn,
+      glue_sql(
+        "
+        select
+          card.run_id,
+          card.meta_pin,
+          card.meta_card_num,
+          card.pred_card_initial_fmv,
+          pin.pred_pin_final_fmv_round
+        from model.assessment_card as card
+        left join model.assessment_pin as pin
+          on card.meta_pin = pin.meta_pin
+          and card.meta_year = pin.meta_year
+          and card.run_id = pin.run_id
+        where card.run_id in ({n_most_recent_models$run_id*})
+        ",
+        .con = conn
+      )
+    )
+  }
+)
+
+n_most_recent_shaps <- get_cached_query(
+  "n_most_recent_shaps.parquet",
+  function() {
+    dbGetQuery(
+      conn,
+      glue_sql("
+        select *
+        from model.shap
+        where year = {params$assessment_year}
+        and run_id in ({n_most_recent_shap_models$run_id*})
+      ",
+        .con = conn
+      )
+    )
+  }
+)
+```
+
+## FMV outliers
+
+```{r outlier_pred_dist_transform}
+pred_cols <- c("pred_card_initial_fmv", "pred_pin_final_fmv_round")
+
+n_most_recent_pred_sd <- n_most_recent_preds %>%
+  group_by(meta_pin, meta_card_num) %>%
+  summarise(across(all_of(pred_cols), ~ sd(.x, na.rm = TRUE)), .groups = "keep")
+
+n_most_recent_pred_sd_long <- n_most_recent_pred_sd %>%
+  pivot_longer(
+    cols = all_of(pred_cols),
+    names_to = "predictor",
+    values_to = "value"
+  )
+```
+
+```{r outlier_pred_dist_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(n_most_recent_pred_sd_long)
+
+plot_small_multiple_histograms(n_most_recent_pred_sd_long)
+```
+
+### Top PIN FMV outliers
+
+```{r outlier_pred_dist_pin_table_transform}
+n_most_recent_pred_sd_pin_table <- n_most_recent_pred_sd_long %>%
+  filter(predictor == "pred_pin_final_fmv_round") %>%
+  group_by(meta_pin) %>%
+  arrange(desc(value)) %>%
+  mutate(
+    rank = row_number(),
+    value = scales::dollar(value)
+  ) %>%
+  filter(rank <= 5) %>%
+  select(-predictor) %>%
+  rename("pin" = "meta_pin", "stddev" = "value")
+```
+
+```{r outlier_pred_dist_pin_table_display}
+n_most_recent_pred_sd_pin_table %>%
+  datatable(
+    options = list(
+      columnDefs = list(
+        # Right-align stddev col
+        list(className = "dt-right", targets = which(colnames(.) == "stddev"))
+      )
+    )
+  )
+```
+
+### Top card FMV outliers
+
+```{r outlier_pred_dist_card_table_transform}
+n_most_recent_pred_sd_card_table <- n_most_recent_pred_sd_long %>%
+  filter(predictor == "pred_card_initial_fmv") %>%
+  arrange(desc(value)) %>%
+  mutate(
+    rank = row_number(),
+    value = scales::dollar(value)
+  ) %>%
+  filter(rank <= 5) %>%
+  select(-predictor) %>%
+  rename("pin" = "meta_pin", "card" = "meta_card_num", "stddev" = "value")
+```
+
+```{r outlier_pred_dist_card_table_display}
+n_most_recent_pred_sd_card_table %>%
+  datatable(
+    options = list(
+      columnDefs = list(
+        # Right-align stddev col
+        list(className = "dt-right", targets = which(colnames(.) == "stddev"))
+      )
+    )
+  )
+```
+
+## SHAP outliers
+
+```{r outlier_shap_dist_transform}
+shap_cols <- model_predictor_all_name
+
+n_most_recent_shap_sd <- n_most_recent_shaps %>%
+  group_by(meta_pin, meta_card_num) %>%
+  summarise(across(all_of(shap_cols), ~ sd(.x, na.rm = TRUE)), .groups = "keep")
+
+n_most_recent_shap_sd_long <- n_most_recent_shap_sd %>%
+  pivot_longer(
+    cols = all_of(shap_cols),
+    names_to = "predictor",
+    values_to = "value"
+  )
+```
+
+```{r outlier_shap_dist_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(n_most_recent_shap_sd_long)
+
+plot_small_multiple_histograms(n_most_recent_shap_sd_long)
+```
+
+### Top SHAP outliers
+
+```{r outlier_shap_dist_table_transform}
+n_most_recent_shap_table <- n_most_recent_shap_sd_long %>%
+  group_by(predictor) %>%
+  arrange(desc(value)) %>%
+  mutate(
+    rank = row_number(),
+    value = scales::dollar(value)
+  ) %>%
+  ungroup() %>%
+  filter(rank <= 5) %>%
+  rename(
+    "pin" = "meta_pin",
+    "card" = "meta_card_num",
+    "outcome" = "predictor",
+    "stddev" = "value"
+  )
+```
+
+```{r outlier_shap_dist_table_display}
+n_most_recent_shap_table %>%
+  datatable(
+    options = list(
+      columnDefs = list(
+        # Right-align stddev col
+        list(className = "dt-right", targets = which(colnames(.) == "stddev"))
+      )
+    )
+  )
+```

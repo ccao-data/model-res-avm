@@ -1,0 +1,125 @@
+---
+title: "Model I/O QC - Baseline Continuous Variable Analysis"
+subtitle: "Run ID: `r params$baseline_run_id`"
+author: "Jean Cochrane"
+date: "2025-01-24"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  assessment_year: "2025"
+  baseline_run_id: "2025-02-08-happy-eric"
+---
+
+```{r load_data}
+#| cache: true
+#| cache-extra: !expr rlang::hash(params)
+#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
+#| cache-file-2: !expr rlang::hash_file("_utils.R")
+
+source("_baseline_query_data.R")
+```
+
+# Distributions of features
+
+::: {.panel-tabset}
+
+### Assessment set
+
+```{r feature_dist_assess_cont_transform}
+baseline_cont_chars_assess_long <- baseline_assessment_data %>%
+  select(all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
+```
+
+```{r feature_dist_assess_cont_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(baseline_cont_chars_assess_long)
+
+plot_small_multiple_histograms(baseline_cont_chars_assess_long, stat = "bin")
+```
+
+```{r feature_dist_assess_cont_cleanup}
+#| output: false
+
+rm(baseline_cont_chars_assess_long)
+gc()
+```
+
+### Training set
+
+```{r feature_dist_train_cont_transform}
+baseline_cont_chars_train_long <- baseline_training_data %>%
+  select(all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
+```
+
+```{r feature_dist_train_cont_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(baseline_cont_chars_train_long)
+
+plot_small_multiple_histograms(baseline_cont_chars_train_long, stat = "bin")
+```
+
+```{r feature_dist_train_cont_cleanup}
+#| output: false
+
+rm(baseline_cont_chars_train_long)
+gc()
+```
+
+:::
+
+# Distribution of SHAPs
+
+```{r shap_dist_cont_transform}
+baseline_cont_shap_long <- baseline_shaps %>%
+  select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = all_of(continuous_preds),
+    names_to = "predictor",
+    values_to = "value"
+  ) %>%
+  left_join(
+    baseline_shaps %>%
+      select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
+      pivot_longer(
+        cols = all_of(continuous_shaps),
+        names_to = "shap_name",
+        values_to = "shap_value"
+      ) %>%
+      mutate(shap_name = str_replace(shap_name, "_shap$", "")),
+    by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
+  )
+```
+
+```{r shap_dist_cont_plot}
+#| column: screen-inset
+#| fig-height: !expr fig_height(baseline_cont_shap_long, ncol = ncol_line)
+
+plot_small_multiple_lines(
+  baseline_cont_shap_long,
+  "shap_value",
+  y_axis_label = "SHAP Value"
+)
+```
+
+```{r shap_dist_cont_cleanup}
+#| output: false
+
+rm(baseline_cont_shap_long)
+gc()
+```
