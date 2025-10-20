@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.4.2",
+    "Version": "4.5.1",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -263,7 +263,7 @@
     },
     "aws.s3": {
       "Package": "aws.s3",
-      "Version": "0.3.21",
+      "Version": "0.3.22",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -276,7 +276,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "a0b873f71741bba67e3bc128d8f09fe3"
+      "Hash": "cbb6690391d3ac39dfdfb4bff7250b4e"
     },
     "aws.signature": {
       "Package": "aws.signature",
@@ -534,7 +534,7 @@
       "Package": "digest",
       "Version": "0.6.37",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/all/__linux__/jammy/latest",
       "Requirements": [
         "R",
         "utils"
@@ -824,19 +824,19 @@
     },
     "here": {
       "Package": "here",
-      "Version": "1.0.1",
+      "Version": "1.0.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "rprojroot"
       ],
-      "Hash": "24b224366f9c2e7534d2344d10d59211"
+      "Hash": "e5114f2abe04168238181913a8572358"
     },
     "highr": {
       "Package": "highr",
       "Version": "0.11",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/all/__linux__/jammy/latest",
       "Requirements": [
         "R",
         "xfun"
@@ -1316,7 +1316,7 @@
       "Package": "png",
       "Version": "0.1-8",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
@@ -1433,7 +1433,7 @@
     },
     "reticulate": {
       "Package": "reticulate",
-      "Version": "1.40.0",
+      "Version": "1.43.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1451,18 +1451,18 @@
         "utils",
         "withr"
       ],
-      "Hash": "04740f615607c4e6099356ff6d6694ee"
+      "Hash": "0b3db378d9940f6846a626b24352530a"
     },
     "rlang": {
       "Package": "rlang",
-      "Version": "1.1.5",
+      "Version": "1.1.6",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "R",
         "utils"
       ],
-      "Hash": "724dcc1490cd7071ee75ca2994a5446e"
+      "Hash": "892124978869b74935dc3934c42bfe5a"
     },
     "rpart": {
       "Package": "rpart",
@@ -1479,13 +1479,13 @@
     },
     "rprojroot": {
       "Package": "rprojroot",
-      "Version": "2.0.4",
+      "Version": "2.1.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
-      "Hash": "4c8415e0ec1e29f3f4f6fc108bef0144"
+      "Hash": "b2453de2d29aa646afe4781defdc7903"
     },
     "rsample": {
       "Package": "rsample",
@@ -1801,7 +1801,20 @@
     "uwot": {
       "Package": "uwot",
       "Version": "0.2.2",
-      "Source": "Repository"
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "FNN",
+        "Matrix",
+        "RSpectra",
+        "Rcpp",
+        "RcppAnnoy",
+        "RcppProgress",
+        "dqrng",
+        "irlba",
+        "methods"
+      ],
+      "Hash": "f693a0ca6d34b02eb432326388021805"
     },
     "vctrs": {
       "Package": "vctrs",
