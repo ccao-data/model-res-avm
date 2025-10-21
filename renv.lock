@@ -4,7 +4,7 @@
     "Repositories": [
       {
         "Name": "CRAN",
-        "URL": "https://cran.rstudio.com"
+        "URL": "https://cran.r-project.org"
       }
     ]
   },
@@ -534,7 +534,7 @@
       "Package": "digest",
       "Version": "0.6.37",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/all/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "utils"
@@ -836,7 +836,7 @@
       "Package": "highr",
       "Version": "0.11",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/all/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "xfun"
