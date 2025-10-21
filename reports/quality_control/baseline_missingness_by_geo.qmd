@@ -1,8 +1,7 @@
 ---
-title: "Model I/O QC - Baseline Variable Missingness"
-subtitle: "Distribution by geography (disabled due to performance issues)"
-author: "Jean Cochrane"
-date: "2025-01-24"
+title: "Model QC"
+author: "Jean Cochrane & Damon Major"
+date: time(Sys.time())
 execute:
   echo: false
   warning: false
@@ -12,16 +11,21 @@ format:
     # Use SVG for higher-resolution figures
     fig-format: svg
 params:
-  assessment_year: "2025"
-  baseline_run_id: "2025-01-23-dreamy-ida"
+  comp_year: "2025"
+  comp_run_id: "2025-02-11-charming-eric"
+  baseline_run_id: "2024-03-17-stupefied-maya"
+  baseline_year: "2024"
+  n_most_recent_models: 5
 ---
 
-```{r load_data}
+```{r}
 #| cache: true
 #| cache-extra: !expr rlang::hash(params)
 #| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
 #| cache-file-2: !expr rlang::hash_file("_utils.R")
+```
 
+```{r _missingness_geo_setup_script}
 source("_baseline_query_data.R")
 ```
 

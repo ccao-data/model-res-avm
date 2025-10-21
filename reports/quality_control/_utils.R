@@ -1,4 +1,5 @@
 library(arrow)
+library(data.table)
 library(dplyr)
 library(DT)
 library(ggplot2)
@@ -37,6 +38,28 @@ model_predictor_categorical_name <-
   unlist()
 dvc_md5_assessment_data <- baseline_metadata$dvc_md5_assessment_data
 dvc_md5_training_data <- baseline_metadata$dvc_md5_training_data
+
+
+# Model metadata
+comp_metadata <- dbGetQuery(
+  conn,
+  # This query should only ever return one row, but limit the results to 1
+  # just to be defensive
+  glue(
+    "
+    select
+      dvc_md5_assessment_data,
+      dvc_md5_training_data,
+      model_predictor_all_name,
+      model_predictor_categorical_name
+    from model.metadata
+    where run_id = '{params$baseline_run_id}'
+    limit 1
+    "
+  )
+)
+
+dvc_md5_assessment_data_comp <- comp_metadata$dvc_md5_assessment_data
 
 # Split categorical and continuous predictors since we need to plot them
 # differently (e.g. count vs. bin histograms, respectively)
@@ -107,7 +130,7 @@ plot_small_multiple_violins <- function(
     y,
     y_axis_label = "FMV",
     range = NULL) {
-  plot_small_multiple_base(df, y, ncol_violin, y_axis_label, range) %>%
+  plot_small_multiple_base(df, y, ncol_violin, y_axis_label, range) +
     geom_violin(fill = "steelblue", alpha = 0.3)
 }
 
@@ -117,7 +140,7 @@ plot_small_multiple_lines <- function(
     y,
     y_axis_label = "FMV",
     range = NULL) {
-  plot_small_multiple_base(df, y, ncol_line, y_axis_label, range) %>%
+  plot_small_multiple_base(df, y, ncol_line, y_axis_label, range) +
     geom_smooth(fill = "steelblue", linewidth = 0.5)
 }
 

@@ -1,7 +1,7 @@
 ---
-title: "Model I/O QC"
-author: "Jean Cochrane"
-date: "2025-01-24"
+title: "Model QC"
+author: "Jean Cochrane & Damon Major"
+date: time(Sys.time())
 execute:
   echo: false
   warning: false
@@ -11,17 +11,25 @@ format:
     # Use SVG for higher-resolution figures
     fig-format: svg
 params:
-  assessment_year: "2025"
-  baseline_run_id: "2025-01-23-dreamy-ida"
+  comp_run_id: "2025-02-11-charming-eric"
+  comp_year: "2025"
+  baseline_run_id: "2024-03-17-stupefied-maya"
+  baseline_year: "2024"
   n_most_recent_models: 5
 ---
 
-here("reports/quality_control")
-
-{{< include baseline_categorical.qmd >}}
+```{r _setup_script}
+source("_baseline_query_data.R")
+```
 
 {{< include baseline_continuous.qmd >}}
 
+{{< include baseline_categorical.qmd >}}
+
 {{< include baseline_missingness.qmd >}}
 
-{{< include n_most_recent_model_outliers.qmd >}}
+{{< include baseline_missingness_by_geo.qmd >}}
+
+<!-- {{< include data_changes.qmd >}} -->
+
+

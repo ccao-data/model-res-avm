@@ -12,16 +12,18 @@ format:
     # Use SVG for higher-resolution figures
     fig-format: svg
 params:
-  assessment_year: "2025"
+  baseline_year: "2025"
   baseline_run_id: "2025-02-08-happy-eric"
 ---
 
-```{r load_data}
+```{r}
 #| cache: true
 #| cache-extra: !expr rlang::hash(params)
 #| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
 #| cache-file-2: !expr rlang::hash_file("_utils.R")
+```
 
+```{r _categorical_setup_script}
 source("_baseline_query_data.R")
 ```
 

@@ -1,5 +1,6 @@
 source("_utils.R")
 
+
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
@@ -9,6 +10,22 @@ baseline_chars <- open_dataset(
     glue("{base_dvc_url}/files/md5/"),
     substr(dvc_md5_assessment_data, 1, 2), "/",
     substr(dvc_md5_assessment_data, 3, 32)
+  )
+) %>%
+  select(
+    meta_pin,
+    meta_card_num,
+    meta_year,
+    meta_class,
+    all_of(model_predictor_all_name)
+  ) %>%
+  collect()
+
+comp_chars <- open_dataset(
+  paste0(
+    glue("{base_dvc_url}/files/md5/"),
+    substr(dvc_md5_assessment_data_comp, 1, 2), "/",
+    substr(dvc_md5_assessment_data_comp, 3, 32)
   )
 ) %>%
   select(
@@ -89,5 +106,5 @@ baseline_training_data <- open_dataset(
   collect()
 
 # Clean up large objects that we no longer need
-rm(baseline_chars, baseline_preds, baseline_assess_card, baseline_assess_pin)
+rm(baseline_preds, baseline_assess_card, baseline_assess_pin)
 gc()

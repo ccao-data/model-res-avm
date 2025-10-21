@@ -1,0 +1,122 @@
+---
+title: "Model QC"
+author: "Jean Cochrane & Damon Major"
+date: time(Sys.time())
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  comp_year: "2025"
+  comp_run_id: "2025-02-11-charming-eric"
+  baseline_run_id: "2024-03-17-stupefied-maya"
+  baseline_year: "2024"
+  n_most_recent_models: 5
+---
+
+```{r}
+#| cache: true
+#| cache-extra: !expr rlang::hash(params)
+#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.qmd")
+#| cache-file-2: !expr rlang::hash_file("_utils.R")
+```
+
+
+```{r _data_changes_setup_script}
+source("_baseline_query_data.R")
+```
+
+# Changed Values by Year
+
+```{r}
+card_data <- rbind(comp_chars, baseline_chars)
+
+dt <- as.data.table(card_data) %>%
+  arrange(meta_pin, meta_card_num) %>%
+  rename(year = meta_year)
+
+distinct <- dt[, lapply(.SD, function(x) uniqueN(unlist(x)) > 1),
+  by = .(meta_pin, meta_card_num)
+]
+
+distinct <- as.data.table(distinct)[, !c("meta_pin", "meta_card_num")]
+
+# Percentage of distinct values
+
+percentage_true <- distinct[, lapply(
+  .SD,
+  function(x) mean(x, na.rm = TRUE) * 100
+)]
+
+# Count of distinct values
+
+count_true <- distinct[, lapply(.SD, function(x) sum(x, na.rm = TRUE))]
+
+count_true_long <- count_true %>%
+  pivot_longer(cols = everything(), names_to = "Column", values_to = "Count")
+
+DT::datatable(
+  count_true_long,
+  options = list(
+    scrollY = "300px",
+    scrollX = TRUE, paging = FALSE, searching = TRUE
+  ),
+  rownames = FALSE
+)
+
+reactable::reactable(
+  count_true_long,
+  searchable = TRUE,
+  pagination = FALSE,
+  height = 300
+)
+```
+
+```{r}
+# Unique values (not counts), computed in memory (no parquet)
+
+distinct_vals <- dt[, lapply(.SD, function(x) {
+  x <- as.character(x)
+  if (uniqueN(x) == 1) NA_character_ else x
+}), by = .(meta_pin, meta_card_num, year)]
+
+# Keep only observations with a valid year
+
+distinct_vals <- distinct_vals %>% filter(!is.na(year))
+
+# Pivot wider so values are side-by-side by year
+
+distinct_wide <- dcast(
+  distinct_vals,
+  meta_pin + meta_card_num ~ year,
+  value.var = setdiff(
+    names(distinct_vals),
+    c("meta_pin", "meta_card_num", "year")
+  ),
+  sep = "_"
+)
+
+DT::datatable(
+  distinct_wide,
+  options = list(
+    scrollY = "300px",
+    scrollX = TRUE, paging = FALSE, searching = TRUE
+  ),
+  rownames = FALSE
+)
+```
+
+```{r}
+reactable::reactable(
+  distinct_wide,
+  searchable = TRUE,
+  pagination = FALSE,
+  height = 300
+)
+```
+
+

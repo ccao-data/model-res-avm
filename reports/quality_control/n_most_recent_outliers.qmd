@@ -13,11 +13,11 @@ format:
     fig-format: svg
 params:
   baseline_run_id: "2025-02-08-happy-eric"
-  assessment_year: "2025"
+  baseline_year: "2025"
   n_most_recent_models: 5
 ---
 
-```{r load_data}
+```{r}
 #| cache: true
 #| cache-extra: !expr rlang::hash(params)
 #| cache-file: !expr rlang::hash_file("_utils.R")
@@ -39,7 +39,7 @@ n_most_recent_models <- dbGetQuery(
     from model.metadata
     where run_type in ('test', 'candidate', 'final', 'baseline')
     and assessment_group = 'residential'
-    and assessment_year = '{params$assessment_year}'
+    and assessment_year = '{params$baseline_year}'
     order by run_id desc
     limit {params$n_most_recent_models}
   ")
@@ -55,7 +55,7 @@ n_most_recent_shap_models <- dbGetQuery(
     from model.metadata
     where run_type in ('test', 'candidate', 'final', 'baseline')
     and assessment_group = 'residential'
-    and assessment_year = '{params$assessment_year}'
+    and assessment_year = '{params$baseline_year}'
     and shap_enable
     order by run_id desc
     limit {params$n_most_recent_models}
@@ -115,7 +115,7 @@ n_most_recent_shaps <- get_cached_query(
       glue_sql("
         select *
         from model.shap
-        where year = {params$assessment_year}
+        where year = {params$baseline_year}
         and run_id in ({n_most_recent_shap_models$run_id*})
       ",
         .con = conn
