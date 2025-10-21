@@ -1457,7 +1457,7 @@
       "Package": "rlang",
       "Version": "1.1.6",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "utils"
