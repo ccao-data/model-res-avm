@@ -88,6 +88,22 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
     meta_tieback_key_pin, meta_tieback_proration_rate,
     meta_1yr_pri_board_tot, pred_card_initial_fmv
   ) %>%
+  # For prorated PINs with multiple cards, take the average of the card
+  # (building) across PINs. This is because the same prorated building spread
+  # across multiple PINs sometimes receives different values from the model
+  group_by(
+    meta_tieback_key_pin,
+    meta_card_num,
+    char_land_sf,
+    meta_pin_num_cards
+  ) %>%
+  mutate(
+    pred_card_intermediate_fmv = ifelse(
+      is.na(meta_tieback_key_pin),
+      pred_card_initial_fmv,
+      mean(pred_card_initial_fmv)
+    )
+  ) %>%
   # For single-card PINs, the card-level predicted value is the PIN value.
   # For multi-card PINs with 2 or 3 cards, we aggregate the building square
   # footage of all cards into a single card (the largest), predict, then use
@@ -98,8 +114,8 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   mutate(
     pred_pin_card_sum = ifelse(
       meta_pin_num_cards > 3,
-      sum(pred_card_initial_fmv),
-      first(pred_card_initial_fmv)
+      sum(pred_card_intermediate_fmv),
+      first(pred_card_intermediate_fmv)
     )
   ) %>%
   arrange(meta_pin, meta_card_num) %>%
@@ -137,7 +153,13 @@ message("Rounding predictions")
 # Round PIN-level predictions using the breaks and amounts specified in params
 assessment_card_data_round <- assessment_card_data_cid %>%
   mutate(
-    pred_pin_final_fmv_round_no_prorate = pred_pin_final_fmv)
+    pred_pin_final_fmv_round_no_prorate = ccao::val_round_fmv(
+      pred_pin_final_fmv,
+      breaks = params$pv$round_break,
+      round_to = params$pv$round_to_nearest,
+      type = params$pv$round_type
+    )
+  )
 
 
 
@@ -164,18 +186,12 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     land_nbhd_rate,
     by = c("meta_nbhd_code" = "meta_nbhd", "meta_class")
   ) %>%
-  group_by(meta_tieback_key_pin) %>%
-  mutate(temp_value = ifelse(
-    is.na(meta_tieback_key_pin),
-    pred_pin_final_fmv_round_no_prorate,
-    mean(pred_pin_final_fmv_round_no_prorate)
-  )) %>%
   mutate(
     pred_pin_final_fmv_land = ceiling(case_when(
       # Use the land $/sqft rate (unless it exceeds the % of total value cap)
-      char_land_sf * land_rate_per_sqft >= temp_value *
+      char_land_sf * land_rate_per_sqft >= pred_pin_final_fmv_round_no_prorate *
         params$pv$land_pct_of_total_cap ~
-        temp_value * params$pv$land_pct_of_total_cap,
+        pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       TRUE ~ char_land_sf * land_rate_per_sqft
     )),
     # If the land $/sqft is missing, just use the max capped land value as a
@@ -186,7 +202,7 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     # finalized land $/sqft rates
     pred_pin_final_fmv_land = ifelse(
       is.na(pred_pin_final_fmv_land),
-      temp_value * params$pv$land_pct_of_total_cap,
+      pred_pin_final_fmv_round_no_prorate * params$pv$land_pct_of_total_cap,
       pred_pin_final_fmv_land
     ),
     # Keep the uncapped value for display in desk review
