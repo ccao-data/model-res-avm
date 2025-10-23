@@ -40,6 +40,7 @@ Low priority tasks must be complete eventually, but are not time-sensitive:
 - [ ] Update the `model.final_model` seed in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to include metadata for the res and condo models
 - [ ] Make sure the `vars_dict` data in [`ccao`](https://github.com/ccao-data/ccao/) is up-to-date for new features
   - If you add any features to this dictionary that are used in either model, make sure to re-knit the README for models that use the feature
+- [ ] Make sure any new features are up on the open data portal 
 - [ ] Update `pinval` resources in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to support this year's model
   - [ ] Double check the [`all_predictors`](https://github.com/ccao-data/data-architecture/blob/master/dbt/macros/all_predictors.sql) macro to make sure that the `pinval` views that use it are selecting any new features from this year's model
   - [ ] Add new assessment, SHAP, and comp rows to the [`pinval.model_run` seed](https://github.com/ccao-data/data-architecture/blob/master/dbt/seeds/pinval/pinval.model_run.csv)
