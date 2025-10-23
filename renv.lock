@@ -9,7 +9,7 @@
     ]
   },
   "Python": {
-    "Version": "3.14.0",
+    "Version": "3.10.12",
     "Type": "virtualenv",
     "Name": "./renv/python/virtualenvs/renv-python-3.10"
   },
@@ -1424,9 +1424,12 @@
     "renv": {
       "Package": "renv",
       "Version": "1.1.5",
-      "OS_type": null,
+      "Source": "Repository",
       "Repository": "CRAN",
-      "Source": "Repository"
+      "Requirements": [
+        "utils"
+      ],
+      "Hash": "770fcbc2c4616e8fbcb187cccd46a6b1"
     },
     "reticulate": {
       "Package": "reticulate",
