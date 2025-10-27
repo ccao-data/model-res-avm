@@ -53,7 +53,7 @@ comp_metadata <- dbGetQuery(
       model_predictor_all_name,
       model_predictor_categorical_name
     from model.metadata
-    where run_id = '{params$baseline_run_id}'
+    where run_id = '{params$comp_run_id}'
     limit 1
     "
   )
@@ -87,18 +87,21 @@ plot_small_multiple_histograms <- function(df, stat = "bin") {
   df %>%
     ggplot(aes(x = value)) +
     geom_histogram(fill = "steelblue", stat = stat) +
-    facet_wrap(~predictor, scales = "free", ncol = ncol_histogram) +
+    facet_wrap(
+      ~predictor,
+      scales = "free",
+      ncol = ncol_histogram
+    ) +
     scale_y_continuous(labels = scales::comma) +
     theme(
-      strip.text = element_text(size = strip_text_size),
+      strip.text = element_text(size = strip_text_size * 0.7),
       axis.text = element_text(size = axis_text_size),
       axis.text.x = element_text(angle = 45, hjust = 1),
       axis.title = element_text(size = axis_title_size)
     )
 }
 
-# Base function for plotting small multiple violins and lines, which share lots
-# of common logic
+# Base function for plotting small multiple violins and lines
 plot_small_multiple_base <- function(
     df,
     y,
@@ -108,23 +111,25 @@ plot_small_multiple_base <- function(
   df %>%
     ggplot(aes(x = value, y = .data[[y]])) +
     geom_violin(fill = "steelblue", alpha = 0.3) +
-    facet_wrap(~predictor, scales = "free", ncol = ncol) +
+    facet_wrap(
+      ~predictor,
+      scales = "free",
+      ncol = ncol
+    ) +
     scale_y_continuous(
-      # Limit the range so that outliers aren't so distracting
       limits = range,
       labels = scales::label_currency()
     ) +
     labs(x = "Value", y = y_axis_label) +
     theme_minimal() +
     theme(
-      strip.text = element_text(size = strip_text_size),
+      strip.text = element_text(size = strip_text_size * 0.7),
       axis.text = element_text(size = axis_text_size),
       axis.text.x = element_text(angle = 45, hjust = 1),
       axis.title = element_text(size = axis_title_size)
     )
 }
 
-# Function to plot small multiples of features vs a Y axis variable
 plot_small_multiple_violins <- function(
     df,
     y,

@@ -1,22 +1,4 @@
----
-title: "Model QC"
-author: "Jean Cochrane & Damon Major"
-date: time(Sys.time())
-execute:
-  echo: false
-  warning: false
-format:
-  html:
-    embed-resources: true
-    # Use SVG for higher-resolution figures
-    fig-format: svg
-params:
-  comp_year: "2025"
-  comp_run_id: "2025-02-11-charming-eric"
-  baseline_run_id: "2024-03-17-stupefied-maya"
-  baseline_year: "2024"
-  n_most_recent_models: 5
----
+
 
 ```{r}
 #| cache: true
@@ -33,6 +15,38 @@ source("_baseline_query_data.R")
 # Changed Values by Year
 
 ```{r}
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(DT)
+
+base_tol <- list(
+  meta_sale_count_past_n_years = 1,
+  loc_longitude = 0.005,
+  loc_latitude = 0.005
+)
+
+card_data <- rbind(comp_chars, baseline_chars)
+
+dt <- as.data.table(card_data) %>%
+  arrange(meta_pin, meta_card_num) %>%
+  rename(year = meta_year) %>%
+  as.data.table()
+
+# build tolerance list: any column ending with "dist_ft" gets tolerance 5
+dist_cols <- grep("dist_ft$", names(dt), value = TRUE)
+suffix_tol <- setNames(as.list(rep(5, length(dist_cols))), dist_cols)
+
+# combine to ONE named list so [[nm]] works
+tol <- c(base_tol, suffix_tol)
+
+dt <- dt %>% slice(1:10000)
+
+# helper to fetch tolerance or 0
+get_tol <- function(nm) {
+  val <- tol[[nm]]
+  if (is.null(val)) 0 else as.numeric(val)
+}
 card_data <- rbind(comp_chars, baseline_chars)
 
 dt <- as.data.table(card_data) %>%
@@ -45,51 +59,42 @@ distinct <- dt[, lapply(.SD, function(x) uniqueN(unlist(x)) > 1),
 
 distinct <- as.data.table(distinct)[, !c("meta_pin", "meta_card_num")]
 
-# Percentage of distinct values
-
 percentage_true <- distinct[, lapply(
   .SD,
   function(x) mean(x, na.rm = TRUE) * 100
 )]
-
 # Count of distinct values
-
 count_true <- distinct[, lapply(.SD, function(x) sum(x, na.rm = TRUE))]
 
 count_true_long <- count_true %>%
-  pivot_longer(cols = everything(), names_to = "Column", values_to = "Count")
+  pivot_longer(
+    cols = everything(),
+    names_to = "Column", values_to = "Count"
+  )
 
-DT::datatable(
-  count_true_long,
+DT::datatable(count_true_long,
   options = list(
     scrollY = "300px",
-    scrollX = TRUE, paging = FALSE, searching = TRUE
+    scrollX = TRUE,
+    paging = FALSE,
+    searching = TRUE
   ),
   rownames = FALSE
-)
-
-reactable::reactable(
-  count_true_long,
-  searchable = TRUE,
-  pagination = FALSE,
-  height = 300
 )
 ```
 
 ```{r}
-# Unique values (not counts), computed in memory (no parquet)
-
 distinct_vals <- dt[, lapply(.SD, function(x) {
   x <- as.character(x)
   if (uniqueN(x) == 1) NA_character_ else x
-}), by = .(meta_pin, meta_card_num, year)]
-
+}),
+by = .(meta_pin, meta_card_num)
+]
 # Keep only observations with a valid year
 
 distinct_vals <- distinct_vals %>% filter(!is.na(year))
 
 # Pivot wider so values are side-by-side by year
-
 distinct_wide <- dcast(
   distinct_vals,
   meta_pin + meta_card_num ~ year,
@@ -102,21 +107,18 @@ distinct_wide <- dcast(
 
 DT::datatable(
   distinct_wide,
+  extensions = "Scroller",
   options = list(
-    scrollY = "300px",
-    scrollX = TRUE, paging = FALSE, searching = TRUE
+    deferRender = TRUE,
+    scrollY = 400,
+    scroller = TRUE,
+    scrollX = TRUE,
+    paging = FALSE,
+    searching = TRUE
   ),
   rownames = FALSE
 )
 ```
 
-```{r}
-reactable::reactable(
-  distinct_wide,
-  searchable = TRUE,
-  pagination = FALSE,
-  height = 300
-)
-```
 
 
