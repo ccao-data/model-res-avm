@@ -3,7 +3,7 @@
 ```{r}
 #| cache: true
 #| cache-extra: !expr rlang::hash(params)
-#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.qmd")
+#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
 #| cache-file-2: !expr rlang::hash_file("_utils.R")
 ```
 
@@ -15,64 +15,97 @@ source("_baseline_query_data.R")
 # Changed Values by Year
 
 ```{r}
-library(data.table)
-library(dplyr)
-library(tidyr)
-library(DT)
+# tolerance list:
 
-base_tol <- list(
-  meta_sale_count_past_n_years = 1,
-  loc_longitude = 0.005,
-  loc_latitude = 0.005
-)
-
-card_data <- rbind(comp_chars, baseline_chars)
-
-dt <- as.data.table(card_data) %>%
-  arrange(meta_pin, meta_card_num) %>%
-  rename(year = meta_year) %>%
-  as.data.table()
-
-# build tolerance list: any column ending with "dist_ft" gets tolerance 5
-dist_cols <- grep("dist_ft$", names(dt), value = TRUE)
-suffix_tol <- setNames(as.list(rep(5, length(dist_cols))), dist_cols)
-
-# combine to ONE named list so [[nm]] works
-tol <- c(base_tol, suffix_tol)
-
-dt <- dt %>% slice(1:10000)
-
-# helper to fetch tolerance or 0
-get_tol <- function(nm) {
-  val <- tol[[nm]]
-  if (is.null(val)) 0 else as.numeric(val)
-}
-card_data <- rbind(comp_chars, baseline_chars)
-
-dt <- as.data.table(card_data) %>%
-  arrange(meta_pin, meta_card_num) %>%
-  rename(year = meta_year)
-
-distinct <- dt[, lapply(.SD, function(x) uniqueN(unlist(x)) > 1),
-  by = .(meta_pin, meta_card_num)
-]
-
-distinct <- as.data.table(distinct)[, !c("meta_pin", "meta_card_num")]
-
-percentage_true <- distinct[, lapply(
-  .SD,
-  function(x) mean(x, na.rm = TRUE) * 100
-)]
-# Count of distinct values
-count_true <- distinct[, lapply(.SD, function(x) sum(x, na.rm = TRUE))]
-
-count_true_long <- count_true %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = "Column", values_to = "Count"
+# Many of our features shouild be exact matches but are not. For example,
+# our distance to features have some minor variation due to geocoding variance.
+# Because of this, all distance features have a buffer of 5 feet.
+# There are also features which should not match, but we want to make sure that
+# they stay relatively stable. For example, the percentage of college educated
+# individuals should not change by more than 5% year over year.
+get_tolerance <- function(nm) {
+  base_tolerance <- c(
+    year = 1,
+    loc_longitude = 0.0001,
+    loc_latitude = 0.0001,
+    prox_num_foreclosure_per_1000_pin_past_5_years = 5,
+    other_tax_bill_rate = 0.5,
+    ccao_n_years_exe_homeowner = 1,
+    acs5_median_household_renter_occupied_gross_rent = 400,
+    acs5_median_age_total = 5,
+    acs5_median_income_household_past_year = 5000,
+    acs5_median_income_per_capita_past_year = 5000,
+    acs5_median_household_total_occupied_year_built = 5,
+    time_sale_year = 1,
+    time_sale_day = 31,
+    time_sale_day_of_week = 7
   )
 
-DT::datatable(count_true_long,
+  # Distance features have a 5 ft buffer
+  if (grepl("dist_ft$", nm)) {
+    return(5)
+  }
+
+  # Percentage features have a 5% buffer
+  if (grepl("^acs5_percent_", nm)) {
+    return(0.05)
+  }
+  if (nm %in% names(base_tolerance)) {
+    return(base_tolerance[[nm]])
+  }
+  0
+}
+
+match_with_buffer <- function(x, colname) {
+  # Convert universally to character to make sure nothing changes over time
+  vals_chr <- trimws(as.character(x))
+
+  tolerance <- get_tolerance(colname)
+
+  # Try numeric tolerance for those which we use a tolerance
+  # otherwise exact match.
+  vals_num <- suppressWarnings(as.numeric(vals_chr))
+  if (all(!is.na(vals_num))) {
+    return((max(vals_num) - min(vals_num)) <= tolerance)
+  } else {
+    return(length(unique(toleranceower(vals_chr))) <= 1)
+  }
+}
+
+# -------------------- PIPELINE --------------------
+# Expect comp_chars and baseline_chars in the environment
+card_data <- rbind(comp_chars, baseline_chars)
+
+# Order values for easier readability
+dt <- as.data.table(card_data)[order(meta_pin, meta_card_num)]
+setnames(dt, "meta_year", "year")
+
+# Set the unique row level keys
+key_cols <- c("meta_pin", "meta_card_num")
+cols <- setdiff(names(dt), key_cols)
+
+group_matches <- dt[, Map(
+  function(col, nm) match_with_buffer(col, nm),
+  .SD, names(.SD)
+),
+by = key_cols, .SDcols = cols
+]
+
+
+match_only <- as.data.table(group_matches)[, (key_cols) := NULL]
+
+# Summaries
+count_not_matching <- match_only[, lapply(
+  .SD,
+  function(v) sum(!v, na.rm = TRUE)
+)] %>%
+  pivot_longer(everything(),
+    names_to = "Column", values_to = "Count"
+  ) %>%
+  arrange(desc(Count))
+
+DT::datatable(
+  count_not_matching,
   options = list(
     scrollY = "300px",
     scrollX = TRUE,
@@ -81,32 +114,35 @@ DT::datatable(count_true_long,
   ),
   rownames = FALSE
 )
-```
 
-```{r}
 distinct_vals <- dt[, lapply(.SD, function(x) {
   x <- as.character(x)
   if (uniqueN(x) == 1) NA_character_ else x
 }),
 by = .(meta_pin, meta_card_num)
 ]
-# Keep only observations with a valid year
 
-distinct_vals <- distinct_vals %>% filter(!is.na(year))
+# Keep only observations with a valid year. This removes NA from the outputs
+distinct_vals <- distinct_vals %>%
+  filter(!is.na(year))
 
-# Pivot wider so values are side-by-side by year
-distinct_wide <- dcast(
-  distinct_vals,
-  meta_pin + meta_card_num ~ year,
-  value.var = setdiff(
-    names(distinct_vals),
-    c("meta_pin", "meta_card_num", "year")
-  ),
+# Convert to wide format: PIN + CARD as identifiers, columns and years nested
+unmatched_wide <- dcast(
+  unmatched_values_long,
+  meta_pin + meta_card_num ~ column + year,
+  value.var = "value",
   sep = "_"
 )
 
+# Because there can be mismatched values for all rows, we randomize the order
+# and then slice to 10,000 rows.
+# This makes the table readable in the html output if one indicator
+# is continuously missing or unmatched (e.g., schools are not uploaded yet).
+unmatched_wide <- unmatched_wide %>%
+  slice_sample(n = min(10000, nrow(.)))
+
 DT::datatable(
-  distinct_wide,
+  unmatched_wide,
   extensions = "Scroller",
   options = list(
     deferRender = TRUE,
@@ -119,6 +155,4 @@ DT::datatable(
   rownames = FALSE
 )
 ```
-
-
 
