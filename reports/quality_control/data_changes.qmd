@@ -68,15 +68,14 @@ match_with_buffer <- function(x, colname) {
   if (all(!is.na(vals_num))) {
     return((max(vals_num) - min(vals_num)) <= tolerance)
   } else {
-    return(length(unique(toleranceower(vals_chr))) <= 1)
+    return(length(unique(tolower(vals_chr))) <= 1)
   }
 }
 
 # -------------------- PIPELINE --------------------
-# Expect comp_chars and baseline_chars in the environment
 card_data <- rbind(comp_chars, baseline_chars)
 
-# Order values for easier readability
+# Order values for easier readability in final output
 dt <- as.data.table(card_data)[order(meta_pin, meta_card_num)]
 setnames(dt, "meta_year", "year")
 
@@ -91,7 +90,8 @@ group_matches <- dt[, Map(
 by = key_cols, .SDcols = cols
 ]
 
-
+# Keep only matched observations since unmatched observations
+# will not have a comparison observation.
 match_only <- as.data.table(group_matches)[, (key_cols) := NULL]
 
 # Summaries

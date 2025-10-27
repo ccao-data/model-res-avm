@@ -1,7 +1,7 @@
 ---
 title: "Model QC"
 author: "Jean Cochrane & Damon Major"
-date: time(Sys.time())
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 execute:
   echo: false
   warning: false
@@ -21,6 +21,8 @@ params:
 source("_baseline_query_data.R")
 ```
 
+{{< include data_changes.qmd >}}
+
 {{< include baseline_continuous.qmd >}}
 
 <!-- {{< include baseline_continuous_dist_by_price.qmd >}} -->
@@ -29,10 +31,8 @@ source("_baseline_query_data.R")
 
 {{< include baseline_missingness.qmd >}}
 
-<!-- {{< include baseline_missingness_by_geo.qmd >}} -->
+{{< include baseline_missingness_by_geo.qmd >}}
 
 <!-- {{< include n_most_recent_outliers.qmd >}} -->
-
-{{< include data_changes.qmd >}}
 
 

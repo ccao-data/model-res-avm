@@ -1,22 +1,4 @@
----
-title: "Model QC"
-author: "Jean Cochrane & Damon Major"
-date: time(Sys.time())
-execute:
-  echo: false
-  warning: false
-format:
-  html:
-    embed-resources: true
-    # Use SVG for higher-resolution figures
-    fig-format: svg
-params:
-  comp_year: "2025"
-  comp_run_id: "2025-02-11-charming-eric"
-  baseline_run_id: "2024-03-17-stupefied-maya"
-  baseline_year: "2024"
-  n_most_recent_models: 5
----
+
 
 ```{r}
 #| cache: true
