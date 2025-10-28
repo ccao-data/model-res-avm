@@ -1,6 +1,5 @@
 ---
 title: "Model QC"
-author: "Jean Cochrane & Damon Major"
 date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 execute:
   echo: false
