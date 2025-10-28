@@ -74,59 +74,70 @@ match_with_buffer <- function(x, colname) {
 
 # -------------------- PIPELINE --------------------
 card_data <- rbind(comp_chars, baseline_chars)
-
-# Order values for easier readability in final output
 dt <- as.data.table(card_data)[order(meta_pin, meta_card_num)]
 setnames(dt, "meta_year", "year")
 
-# Set the unique row level keys
 key_cols <- c("meta_pin", "meta_card_num")
 cols <- setdiff(names(dt), key_cols)
 
-group_matches <- dt[, Map(
-  function(col, nm) match_with_buffer(col, nm),
-  .SD, names(.SD)
-),
-by = key_cols, .SDcols = cols
+# Tolerance checks once ---
+group_matches <- dt[
+  , Map(function(col, nm) match_with_buffer(col, nm), .SD, names(.SD)),
+  by = key_cols, .SDcols = cols
 ]
 
-# Keep only matched observations since unmatched observations
-# will not have a comparison observation.
-match_only <- as.data.table(group_matches)[, (key_cols) := NULL]
+# Long form of match flags (used by BOTH outputs)
+gm_long <- melt(
+  as.data.table(group_matches),
+  id.vars = key_cols,
+  variable.name = "column",
+  value.name = "is_match"
+)
 
-# Summaries
-count_not_matching <- match_only[, lapply(
-  .SD,
-  function(v) sum(!v, na.rm = TRUE)
-)] %>%
-  pivot_longer(everything(),
-    names_to = "Column", values_to = "Count"
-  ) %>%
-  arrange(desc(Count))
+# Count of NOT matching, straight from gm_long ---
+count_not_matching <- gm_long[is_match == FALSE,
+  .(Count = .N),
+  by = .(Column = column)
+][order(-Count)]
+```
 
+::: {.panel-tabset}
+
+## Count of Unmatched Values
+```{r}
 DT::datatable(
   count_not_matching,
   options = list(
     scrollY = "300px",
     scrollX = TRUE,
-    paging = FALSE,
+    paging = TRUE,
+    pageLength = 100,
     searching = TRUE
   ),
   rownames = FALSE
 )
 
-distinct_vals <- dt[, lapply(.SD, function(x) {
-  x <- as.character(x)
-  if (uniqueN(x) == 1) NA_character_ else x
-}),
-by = .(meta_pin, meta_card_num)
-]
+# Unmatched values by year (only FAILED triples) ---
+# Long form of values once (shared)
+dt_long <- melt(
+  dt,
+  id.vars = c(key_cols, "year"),
+  measure.vars = cols,
+  variable.name = "column",
+  value.name = "value"
+)
 
-# Keep only observations with a valid year. This removes NA from the outputs
-distinct_vals <- distinct_vals %>%
-  filter(!is.na(year))
+# Keys that failed tolerance
+unmatched_idx <- gm_long[is_match == FALSE, .(meta_pin, meta_card_num, column)]
 
-# Convert to wide format: PIN + CARD as identifiers, columns and years nested
+# Keep values only for failed triples
+unmatched_values_long <- merge(
+  dt_long, unmatched_idx,
+  by = c("meta_pin", "meta_card_num", "column"),
+  all = FALSE
+)
+
+# Wide with year-suffixed columns
 unmatched_wide <- dcast(
   unmatched_values_long,
   meta_pin + meta_card_num ~ column + year,
@@ -134,13 +145,14 @@ unmatched_wide <- dcast(
   sep = "_"
 )
 
-# Because there can be mismatched values for all rows, we randomize the order
-# and then slice to 10,000 rows.
-# This makes the table readable in the html output if one indicator
-# is continuously missing or unmatched (e.g., schools are not uploaded yet).
-unmatched_wide <- unmatched_wide %>%
-  slice_sample(n = min(10000, nrow(.)))
+# Sample for readability
+if (nrow(unmatched_wide) > 10000) {
+  unmatched_wide <- unmatched_wide[sample(.N, 10000)]
+}
+```
+## Card Level Changes
 
+```{r}
 DT::datatable(
   unmatched_wide,
   extensions = "Scroller",
@@ -149,10 +161,12 @@ DT::datatable(
     scrollY = 400,
     scroller = TRUE,
     scrollX = TRUE,
-    paging = FALSE,
+    paging = TRUE,
+    pageLength = 100,
+    lengthMenu = c(10, 25, 50, 100),
     searching = TRUE
   ),
   rownames = FALSE
 )
 ```
-
+:::
