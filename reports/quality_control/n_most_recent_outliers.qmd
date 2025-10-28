@@ -1,21 +1,3 @@
----
-title: "Model I/O QC - Most Recent Model Outliers"
-subtitle: "Run ID: `r params$baseline_run_id`"
-author: "Jean Cochrane"
-date: "2025-01-24"
-execute:
-  echo: false
-  warning: false
-format:
-  html:
-    embed-resources: true
-    # Use SVG for higher-resolution figures
-    fig-format: svg
-params:
-  baseline_run_id: "2025-02-08-happy-eric"
-  baseline_year: "2025"
-  n_most_recent_models: 5
----
 
 ```{r}
 #| cache: true

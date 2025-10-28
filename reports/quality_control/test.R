@@ -7,20 +7,21 @@ cols <- setdiff(names(dt), key_cols)
 
 # Create tolerance list
 base_tol <- c(
-  year = 1,
-  loc_longitude = 0.0001,
-  loc_latitude = 0.0001,
-  prox_num_foreclosure_per_1000_pin_past_5_years = 5,
-  other_tax_bill_rate = 0.5,
-  ccao_n_years_exe_homeowner = 1,
-  acs5_median_household_renter_occupied_gross_rent = 400,
   acs5_median_age_total = 5,
+  acs5_median_household_renter_occupied_gross_rent = 400,
+  acs5_median_household_total_occupied_year_built = 5,
   acs5_median_income_household_past_year = 5000,
   acs5_median_income_per_capita_past_year = 5000,
-  acs5_median_household_total_occupied_year_built = 5,
-  time_sale_year = 1,
+  ccao_n_years_exe_homeowner = 1,
+  loc_latitude = 0.0001,
+  loc_longitude = 0.0001,
+  other_tax_bill_rate = 0.5,
+  prox_airport_dnl_total = 1,
+  prox_num_foreclosure_per_1000_pin_past_5_years = 5,
   time_sale_day = 31,
-  time_sale_day_of_week = 7
+  time_sale_day_of_week = 7,
+  time_sale_year = 1,
+  year = 1
 )
 
 tol <- setNames(rep(NA_real_, length(cols)), cols)
