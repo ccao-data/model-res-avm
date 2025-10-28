@@ -23,56 +23,6 @@ source("_baseline_query_data.R")
 # There are also features which should not match, but we want to make sure that
 # they stay relatively stable. For example, the percentage of college educated
 # individuals should not change by more than 5% year over year.
-get_tolerance <- function(nm) {
-  base_tolerance <- c(
-    year = 1,
-    loc_longitude = 0.0001,
-    loc_latitude = 0.0001,
-    prox_num_foreclosure_per_1000_pin_past_5_years = 5,
-    other_tax_bill_rate = 0.5,
-    ccao_n_years_exe_homeowner = 1,
-    acs5_median_household_renter_occupied_gross_rent = 400,
-    acs5_median_age_total = 5,
-    acs5_median_income_household_past_year = 5000,
-    acs5_median_income_per_capita_past_year = 5000,
-    acs5_median_household_total_occupied_year_built = 5,
-    time_sale_year = 1,
-    time_sale_day = 31,
-    time_sale_day_of_week = 7
-  )
-
-  # Distance features have a 5 ft buffer
-  if (grepl("dist_ft$", nm)) {
-    return(5)
-  }
-
-  # Percentage features have a 5% buffer
-  if (grepl("^acs5_percent_", nm)) {
-    return(0.05)
-  }
-  if (nm %in% names(base_tolerance)) {
-    return(base_tolerance[[nm]])
-  }
-  0
-}
-
-match_with_buffer <- function(x, colname) {
-  # Convert universally to character to make sure nothing changes over time
-  vals_chr <- trimws(as.character(x))
-
-  tolerance <- get_tolerance(colname)
-
-  # Try numeric tolerance for those which we use a tolerance
-  # otherwise exact match.
-  vals_num <- suppressWarnings(as.numeric(vals_chr))
-  if (all(!is.na(vals_num))) {
-    return((max(vals_num) - min(vals_num)) <= tolerance)
-  } else {
-    return(length(unique(tolower(vals_chr))) <= 1)
-  }
-}
-
-# -------------------- PIPELINE --------------------
 card_data <- rbind(comp_chars, baseline_chars)
 dt <- as.data.table(card_data)[order(meta_pin, meta_card_num)]
 setnames(dt, "meta_year", "year")
@@ -80,10 +30,80 @@ setnames(dt, "meta_year", "year")
 key_cols <- c("meta_pin", "meta_card_num")
 cols <- setdiff(names(dt), key_cols)
 
-# Tolerance checks once ---
+# Create tolerance list
+base_tol <- c(
+  acs5_median_age_total = 5,
+  acs5_median_household_renter_occupied_gross_rent = 400,
+  acs5_median_household_total_occupied_year_built = 5,
+  acs5_median_income_household_past_year = 5000,
+  acs5_median_income_per_capita_past_year = 5000,
+  ccao_n_years_exe_homeowner = 1,
+  loc_latitude = 0.0001,
+  loc_longitude = 0.0001,
+  other_tax_bill_rate = 0.5,
+  prox_airport_dnl_total = 1,
+  prox_num_foreclosure_per_1000_pin_past_5_years = 5,
+  time_sale_day = 31,
+  time_sale_day_of_week = 7,
+  time_sale_year = 1,
+  year = 1
+)
+
+make_tol <- function(cols) {
+  tibble(col = cols) %>%
+    mutate(val = case_when(
+      col %in% names(base_tol) ~ base_tol[match(col, names(base_tol))],
+      str_detect(col, "dist_ft$") ~ 5,
+      str_detect(col, "^acs5_percent_") ~ 0.05,
+      TRUE ~ NA_real_
+    )) %>%
+    {
+      setNames(.$val, .$col)
+    }
+}
+
+tol <- make_tol(cols)
+
+tol_defined <- !is.na(tol) # TRUE only where a tolerance exists
+
+# Group-wise checks: numeric path ONLY if tolerance is defined ---
 group_matches <- dt[
-  , Map(function(col, nm) match_with_buffer(col, nm), .SD, names(.SD)),
-  by = key_cols, .SDcols = cols
+  ,
+  as.list(mapply(
+    function(v, nm) {
+      t <- tol[[nm]]
+
+      # if both values are NA -> match
+      if (all(is.na(v))) {
+        return(TRUE)
+      }
+
+      if (tol_defined[[nm]]) {
+        # try numeric path (only if coercion yields no NAs)
+        nv <- suppressWarnings(as.numeric(v))
+        if (anyNA(nv)) {
+          # Since we qualify if both is NA we return a match,
+          # either NA will return a FALSE match here
+          return(FALSE)
+        } else {
+          r <- range(nv)
+          return((r[2] - r[1]) <= t)
+        }
+      } else {
+        # exact match after normalization
+        sv <- tolower(trimws(as.character(v)))
+        # "both NA" handled above; here NA present in only one side -> non-match
+        if (anyNA(sv)) {
+          return(FALSE)
+        }
+        return(uniqueN(sv) <= 1)
+      }
+    },
+    .SD, names(.SD),
+    SIMPLIFY = FALSE
+  )),
+  by = key_cols,
+  .SDcols = cols
 ]
 
 # Long form of match flags (used by BOTH outputs)
@@ -117,8 +137,7 @@ DT::datatable(
   rownames = FALSE
 )
 
-# Unmatched values by year (only FAILED triples) ---
-# Long form of values once (shared)
+# Unmatched values by year
 dt_long <- melt(
   dt,
   id.vars = c(key_cols, "year"),
