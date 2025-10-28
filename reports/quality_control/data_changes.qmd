@@ -94,7 +94,7 @@ gm_long <- melt(
   value.name = "is_match"
 )
 
-# Count of NOT matching, straight from gm_long ---
+# Count of NOT matching values
 count_not_matching <- gm_long[is_match == FALSE,
   .(Count = .N),
   by = .(Column = column)
