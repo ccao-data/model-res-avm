@@ -17,7 +17,7 @@ source("_baseline_query_data.R")
 ```{r}
 # tolerance list:
 
-# Many of our features shouild be exact matches but are not. For example,
+# Many of our features should be exact matches but are not. For example,
 # our distance to features have some minor variation due to geocoding variance.
 # Because of this, all distance features have a buffer of 5 feet.
 # There are also features which should not match, but we want to make sure that
