@@ -14,21 +14,30 @@ source("_baseline_query_data.R")
 
 # Changed Values by Year
 
-```{r}
-# tolerance list:
+```{r changed_values_processing}
+# Get only the common columns between runs
+common_cols <- intersect(names(comp_chars), names(baseline_chars))
 
+# Subset both datasets to those common columns
+comp_common <- comp_chars[, common_cols, drop = FALSE]
+baseline_common <- baseline_chars[, common_cols, drop = FALSE]
+
+# row-bind
+card_data <- rbind(comp_common, baseline_common)
+
+dt <- as.data.table(card_data)[order(meta_pin, meta_card_num)]
+setnames(dt, "meta_year", "year")
+
+key_cols <- c("meta_pin", "meta_card_num")
+cols <- setdiff(names(dt), key_cols)
+
+# tolerance list:
 # Many of our features should be exact matches but are not. For example,
 # our distance to features have some minor variation due to geocoding variance.
 # Because of this, all distance features have a buffer of 5 feet.
 # There are also features which should not match, but we want to make sure that
 # they stay relatively stable. For example, the percentage of college educated
 # individuals should not change by more than 5% year over year.
-card_data <- rbind(comp_chars, baseline_chars)
-dt <- as.data.table(card_data)[order(meta_pin, meta_card_num)]
-setnames(dt, "meta_year", "year")
-
-key_cols <- c("meta_pin", "meta_card_num")
-cols <- setdiff(names(dt), key_cols)
 
 # Create tolerance list
 base_tol <- c(
@@ -124,7 +133,7 @@ count_not_matching <- gm_long[is_match == FALSE,
 ::: {.panel-tabset}
 
 ## Count of Unmatched Values
-```{r}
+```{r unmatched_values}
 DT::datatable(
   count_not_matching,
   options = list(
@@ -136,7 +145,11 @@ DT::datatable(
   ),
   rownames = FALSE
 )
+```
 
+## Card Level Changes
+
+```{r card_level_changes}
 # Unmatched values by year
 dt_long <- melt(
   dt,
@@ -168,10 +181,7 @@ unmatched_wide <- dcast(
 if (nrow(unmatched_wide) > 10000) {
   unmatched_wide <- unmatched_wide[sample(.N, 10000)]
 }
-```
-## Card Level Changes
 
-```{r}
 DT::datatable(
   unmatched_wide,
   extensions = "Scroller",
