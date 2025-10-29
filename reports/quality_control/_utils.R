@@ -94,7 +94,7 @@ plot_small_multiple_histograms <- function(df, stat = "bin") {
     ) +
     scale_y_continuous(labels = scales::comma) +
     theme(
-      strip.text = element_text(size = strip_text_size * 0.7),
+      strip.text = element_text(size = strip_text_size),
       axis.text = element_text(size = axis_text_size),
       axis.text.x = element_text(angle = 45, hjust = 1),
       axis.title = element_text(size = axis_title_size)
@@ -123,7 +123,7 @@ plot_small_multiple_base <- function(
     labs(x = "Value", y = y_axis_label) +
     theme_minimal() +
     theme(
-      strip.text = element_text(size = strip_text_size * 0.7),
+      strip.text = element_text(size = strip_text_size),
       axis.text = element_text(size = axis_text_size),
       axis.text.x = element_text(angle = 45, hjust = 1),
       axis.title = element_text(size = axis_title_size)

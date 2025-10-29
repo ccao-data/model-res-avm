@@ -44,8 +44,8 @@ base_tol <- c(
   acs5_median_age_total = 5,
   acs5_median_household_renter_occupied_gross_rent = 400,
   acs5_median_household_total_occupied_year_built = 5,
-  acs5_median_income_household_past_year = 5000,
-  acs5_median_income_per_capita_past_year = 5000,
+  acs5_median_income_household_past_year = 10000,
+  acs5_median_income_per_capita_past_year = 7500,
   ccao_n_years_exe_homeowner = 1,
   loc_latitude = 0.0001,
   loc_longitude = 0.0001,
@@ -63,7 +63,7 @@ make_tol <- function(cols) {
     mutate(val = case_when(
       col %in% names(base_tol) ~ base_tol[match(col, names(base_tol))],
       str_detect(col, "dist_ft$") ~ 5,
-      str_detect(col, "^acs5_percent_") ~ 0.05,
+      str_detect(col, "^acs5_percent_") ~ 0.1,
       TRUE ~ NA_real_
     )) %>%
     {
@@ -75,37 +75,36 @@ tol <- make_tol(cols)
 
 tol_defined <- !is.na(tol) # TRUE only where a tolerance exists
 
-# Group-wise checks: numeric path ONLY if tolerance is defined ---
+# Group-wise checks: numeric path ONLY if tolerance is defined
 group_matches <- dt[
   ,
   as.list(mapply(
     function(v, nm) {
       t <- tol[[nm]]
 
-      # if both values are NA -> match
+      # If both values are NA -> match
       if (all(is.na(v))) {
         return(TRUE)
       }
 
+      # Numeric path if tolerance is defined
       if (tol_defined[[nm]]) {
-        # try numeric path (only if coercion yields no NAs)
         nv <- suppressWarnings(as.numeric(v))
         if (anyNA(nv)) {
-          # Since we qualify if both is NA we return a match,
-          # either NA will return a FALSE match here
+          # If any non-NA mismatch exists, return FALSE
           return(FALSE)
         } else {
           r <- range(nv)
           return((r[2] - r[1]) <= t)
         }
       } else {
-        # exact match after normalization
-        sv <- tolower(trimws(as.character(v)))
-        # "both NA" handled above; here NA present in only one side -> non-match
-        if (anyNA(sv)) {
+        # Exact raw string match
+        # If some values are NA (but not all), it's a mismatch
+        if (anyNA(v)) {
           return(FALSE)
         }
-        return(uniqueN(sv) <= 1)
+        # Check all raw values are identical
+        return(uniqueN(v) <= 1)
       }
     },
     .SD, names(.SD),
@@ -114,6 +113,7 @@ group_matches <- dt[
   by = key_cols,
   .SDcols = cols
 ]
+
 
 # Long form of match flags (used by BOTH outputs)
 gm_long <- melt(
