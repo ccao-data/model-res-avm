@@ -8,11 +8,6 @@
       }
     ]
   },
-  "Python": {
-    "Version": "3.10.12",
-    "Type": "virtualenv",
-    "Name": "./.venv"
-  },
   "Packages": {
     "BH": {
       "Package": "BH",
