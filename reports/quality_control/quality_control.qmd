@@ -1,0 +1,30 @@
+---
+title: "Model QC"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+execute:
+  echo: false
+  warning: false
+format:
+  html:
+    embed-resources: true
+    # Use SVG for higher-resolution figures
+    fig-format: svg
+params:
+  comp_run_id: "2024-03-17-stupefied-maya"
+  comp_year: "2024"
+  baseline_run_id: "2025-02-11-charming-eric"
+  baseline_year: "2025"
+---
+
+```{r _setup_script}
+source("_baseline_query_data.R")
+```
+
+{{< include data_changes.qmd >}}
+
+{{< include baseline_continuous.qmd >}}
+
+{{< include baseline_categorical.qmd >}}
+
+{{< include baseline_missingness.qmd >}}
+
