@@ -37,7 +37,7 @@ cols <- setdiff(names(dt), key_cols)
 # Because of this, all distance features have a buffer of 5 feet.
 # There are also features which should not match, but we want to make sure that
 # they stay relatively stable. For example, the percentage of college educated
-# individuals should not change by more than 5% year over year.
+# individuals should not change by more than 10% year over year.
 
 # Create tolerance list
 base_tol <- c(
