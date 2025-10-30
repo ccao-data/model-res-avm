@@ -9,6 +9,17 @@
 tictoc::tic.clearlog()
 tictoc::tic("Interpret")
 
+# Use uv to manage Python dependencies for the comps computation.
+# This function doesn't actually install the Python dependencies, it just
+# configures reticulate to use uv to install those dependencies. Reticulate
+# will install the dependencies when we import them. In this particular script,
+# we don't import Python dependencies directly, but rather we import the
+# comps module which then imports these dependencies
+reticulate::py_require(
+  packages = c("numpy==2.2.*", "numba==0.62.*", "pandas==2.3.*"),
+  python_version = "3.10"
+)
+
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
