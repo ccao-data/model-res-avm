@@ -7,8 +7,6 @@ execute:
 format:
   html:
     embed-resources: true
-    # Use SVG for higher-resolution figures
-    fig-format: svg
 params:
   comp_run_id: "2024-03-17-stupefied-maya"
   comp_year: "2024"

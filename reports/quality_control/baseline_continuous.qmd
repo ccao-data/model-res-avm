@@ -10,7 +10,7 @@
 source("_baseline_query_data.R")
 ```
 
-# Distributions of features
+# Distributions of features (Continuous)
 
 ::: {.panel-tabset}
 
@@ -68,7 +68,7 @@ gc()
 
 :::
 
-# Distribution of SHAPs
+# Distribution of SHAPs (Continuous)
 
 ```{r shap_dist_cont_transform}
 baseline_cont_shap_long <- baseline_shaps %>%

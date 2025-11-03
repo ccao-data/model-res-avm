@@ -10,7 +10,7 @@
 source("_baseline_query_data.R")
 ```
 
-# Distributions of features
+# Distributions of features (Categorical)
 
 ::: {.panel-tabset}
 
@@ -70,7 +70,7 @@ gc()
 
 :::
 
-# Distribution of SHAPs
+# Distribution of SHAPs (Categorical)
 
 ```{r shap_dist_cat_transform}
 baseline_cat_shap_long <- baseline_shaps %>%
