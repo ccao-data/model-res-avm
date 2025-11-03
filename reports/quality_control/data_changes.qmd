@@ -238,9 +238,9 @@ make_card_comp_chart <- function(col_name) {
   sub_wide[]
 }
 
-unmatched_tables <- unique(unmatched_values_long$column) |>
-  lapply(make_card_comp_chart) |>
-  (\(x) setNames(x, unique(unmatched_values_long$column)))() |>
+unmatched_tables <- unique(unmatched_values_long$column) %>%
+  lapply(make_card_comp_chart) %>%
+  (\(x) setNames(x, unique(unmatched_values_long$column)))() %>%
   (\(x) x[!vapply(x, is.null, logical(1))])()
 ```
 
