@@ -22,16 +22,13 @@ common_cols <- intersect(names(comp_chars), names(baseline_chars))
 comp_common <- comp_chars[, common_cols, drop = FALSE]
 baseline_common <- baseline_chars[, common_cols, drop = FALSE]
 
-# Keep only observations with data in both runs
+# Keep only PIN Card combos with data in both runs
 card_data <- bind_rows(comp_common, baseline_common) %>%
   group_by(meta_pin, meta_card_num) %>%
   filter(n() > 1) %>%
   ungroup() %>%
   arrange(meta_pin, meta_card_num) %>%
   as.data.table()
-
-card_data <- card_data %>%
-  slice(1:1000)
 
 setnames(card_data, "meta_year", "year")
 
@@ -74,6 +71,7 @@ make_tol <- function(cols) {
   tibble(col = cols) %>%
     mutate(val = case_when(
       col %in% names(base_tol) ~ base_tol[match(col, names(base_tol))],
+      # Create standard ditstance and acs tolerances
       str_detect(col, "dist_ft$") ~ 5,
       str_detect(col, "^acs5_percent_") ~ 0.1,
       TRUE ~ NA_real_
@@ -88,6 +86,7 @@ tol <- make_tol(cols)
 tol_defined <- !is.na(tol) # TRUE only where a tolerance exists
 
 # Group-wise checks: numeric path ONLY if tolerance is defined
+# Otherwise use exact matching
 group_matches <- card_data[
   ,
   as.list(mapply(
@@ -163,29 +162,29 @@ DT::datatable(
 
 
 ```{r card_level_changes}
-card_data_long <- melt(
-  as.data.table(card_data),
-  id.vars = c(key_cols, "year"),
-  measure.vars = cols,
-  variable.name = "column",
-  value.name = "value"
-)
-card_data_long[, `:=`(
-  column = as.character(column),
-  year   = as.integer(year)
-)]
+unmatched_values_long <-
+  as.data.table(card_data)[
+    , melt(
+      .SD,
+      id.vars = c(key_cols, "year"),
+      measure.vars = cols,
+      variable.name = "column",
+      value.name = "value"
+    )
+  ][
+    , `:=`(column = as.character(column), year = as.integer(year))
+  ][
+    # inner join to keep only failed triples
+    gm_long[is_match == FALSE, .(meta_pin, meta_card_num, column)][
+      , column := as.character(column)
+    ],
+    on = .(meta_pin, meta_card_num, column),
+    nomatch = 0
+  ][
+    order(column, meta_pin, meta_card_num, year)
+  ]
 
-unmatched_idx <- gm_long[is_match == FALSE, .(meta_pin, meta_card_num, column)]
-unmatched_idx[, column := as.character(column)]
-
-unmatched_values_long <- merge(
-  card_data_long, unmatched_idx,
-  by = c("meta_pin", "meta_card_num", "column"),
-  all = FALSE
-)
-
-setorder(unmatched_values_long, column, meta_pin, meta_card_num, year)
-make_col_table_two_years <- function(col_name) {
+make_card_comp_chart <- function(col_name) {
   sub_long <- unmatched_values_long[column == col_name]
   if (nrow(sub_long) == 0L) {
     return(NULL)
@@ -239,25 +238,19 @@ make_col_table_two_years <- function(col_name) {
   sub_wide[]
 }
 
-vars_with_unmatched <- unique(unmatched_values_long$column)
-unmatched_tables <- lapply(vars_with_unmatched, make_col_table_two_years)
-names(unmatched_tables) <- vars_with_unmatched
-unmatched_tables <- unmatched_tables[!vapply(
-  unmatched_tables,
-  is.null, logical(1)
-)]
+unmatched_tables <- unique(unmatched_values_long$column) |>
+  lapply(make_card_comp_chart) |>
+  (\(x) setNames(x, unique(unmatched_values_long$column)))() |>
+  (\(x) x[!vapply(x, is.null, logical(1))])()
 ```
 
 
 ```{r}
 unmatched_charts <- list()
-vars <- names(unmatched_tables)
-prefix <- stringr::str_extract(vars, "^[^_]+")
-vars_sorted <- vars[order(prefix, vars)]
 
-unmatched_charts <- list()
+vars <- sort(names(unmatched_tables))
 
-for (var in vars_sorted) {
+for (var in vars) {
   tbl <- unmatched_tables[[var]]
 
   unmatched_charts[[var]] <- knitr::kable(
@@ -269,6 +262,7 @@ for (var in vars_sorted) {
   )
 }
 ```
+
 ## Unmatched Values by Variable
 
 ::: {.panel-tabset}
