@@ -218,15 +218,6 @@ make_card_comp_chart <- function(col_name) {
     new = c(paste0(col_name, "_base"), paste0(col_name, "_comp"))
   )
 
-  # Order columns
-  setcolorder(
-    sub_wide,
-    c(
-      "meta_pin", "meta_card_num",
-      paste0(col_name, "_base"), paste0(col_name, "_comp")
-    )
-  )
-
   # Cap at 1,000 rows for readability with sample
   # to make sure it's not lower number PINs
   if (nrow(sub_wide) > 1000L) sub_wide <- sub_wide[sample(.N, 1000L)]
