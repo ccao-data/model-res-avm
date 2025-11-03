@@ -50,7 +50,6 @@ base_tol <- c(
   acs5_median_household_total_occupied_year_built = 5,
   acs5_median_income_household_past_year = 10000,
   acs5_median_income_per_capita_past_year = 7500,
-  ccao_n_years_exe_homeowner = 1,
   loc_latitude = 0.0001,
   loc_longitude = 0.0001,
   other_tax_bill_rate = 5,
@@ -186,9 +185,6 @@ unmatched_values_long <-
 
 make_card_comp_chart <- function(col_name) {
   sub_long <- unmatched_values_long[column == col_name]
-  if (nrow(sub_long) == 0L) {
-    return(NULL)
-  }
 
   # Collapse duplicate values per pin/card/year
   sub_long <- sub_long[
@@ -242,10 +238,7 @@ unmatched_tables <- unique(unmatched_values_long$column) %>%
   lapply(make_card_comp_chart) %>%
   (\(x) setNames(x, unique(unmatched_values_long$column)))() %>%
   (\(x) x[!vapply(x, is.null, logical(1))])()
-```
 
-
-```{r}
 unmatched_charts <- list()
 
 vars <- sort(names(unmatched_tables))
