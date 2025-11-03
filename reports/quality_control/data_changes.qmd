@@ -133,11 +133,16 @@ gm_long <- melt(
   value.name = "is_match"
 )
 
-# Count of NOT matching values
-count_not_matching <- gm_long[is_match == FALSE,
-  .(Count = .N),
-  by = .(Column = column)
-][order(-Count)]
+gm_long <- gm_long %>%
+  mutate(tolerance = unname(tol[as.character(column)]))
+
+# Summarize non-matching counts and include tolerance
+count_not_matching <- gm_long %>%
+  filter(!is_match) %>%
+  group_by(Column = column) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  mutate(Tolerance = unname(tol[as.character(Column)])) %>%
+  arrange(desc(Count))
 ```
 
 
