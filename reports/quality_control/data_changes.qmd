@@ -178,14 +178,6 @@ unmatched_values_long <-
 make_card_comp_chart <- function(col_name) {
   chart_data_long <- unmatched_values_long[column == col_name]
 
-  # Collapse duplicate values per pin/card/year
-  chart_data_long <- chart_data_long[
-    , .(value = paste(unique(na.omit(as.character(value))),
-      collapse = " | "
-    )),
-    by = .(meta_pin, meta_card_num, year)
-  ]
-
   # Identify comparison (lower) and base (higher) years
   yrs <- sort(unique(chart_data_long$year))
   y_comp <- yrs[1] # lower year
