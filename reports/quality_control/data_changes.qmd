@@ -89,32 +89,25 @@ tol_defined <- !is.na(tol) # TRUE only where a tolerance exists
 group_matches <- card_data[
   ,
   as.list(mapply(
-    function(v, nm) {
-      t <- tol[[nm]]
+    function(value, name) {
+      t <- tol[[name]]
 
-      # If both values are NA -> match
-      if (all(is.na(v))) {
+      # Both NA returns match
+      if (all(is.na(value))) {
         return(TRUE)
       }
 
+      # Any single NA present returns no match
+      if (any(is.na(value))) {
+        return(FALSE)
+      }
+
       # Numeric path if tolerance is defined
-      if (tol_defined[[nm]]) {
-        nv <- suppressWarnings(as.numeric(v))
-        if (anyNA(nv)) {
-          # If any non-NA mismatch exists, return FALSE
-          return(FALSE)
-        } else {
-          r <- range(nv)
-          return((r[2] - r[1]) <= t)
-        }
+      if (isTRUE(tol_defined[[name]])) {
+        numeric_value <- suppressWarnings(as.numeric(value))
+        (max(numeric_value) - min(numeric_value)) <= t
       } else {
-        # Exact raw string match
-        # If one value is NA (but not both), it's a mismatch
-        if (anyNA(v)) {
-          return(FALSE)
-        }
-        # Check all raw values are identical
-        return(uniqueN(v) <= 1)
+        uniqueN(value) <= 1 # exact match path
       }
     },
     .SD, names(.SD),
@@ -124,18 +117,19 @@ group_matches <- card_data[
   .SDcols = cols
 ]
 
-gm_long <- melt(
+
+card_matches_long <- melt(
   as.data.table(group_matches),
   id.vars = key_cols,
   variable.name = "column",
   value.name = "is_match"
 )
 
-gm_long <- gm_long %>%
+card_matches_long <- card_matches_long %>%
   mutate(tolerance = unname(tol[as.character(column)]))
 
 # Summarize non-matching counts and include tolerance
-count_not_matching <- gm_long %>%
+count_not_matching <- card_matches_long %>%
   filter(!is_match) %>%
   group_by(Column = column) %>%
   summarise(Count = n(), .groups = "drop") %>%
@@ -143,8 +137,8 @@ count_not_matching <- gm_long %>%
   arrange(desc(Count))
 ```
 
-
 ## Count of Unmatched Values
+
 ```{r unmatched_values}
 DT::datatable(
   count_not_matching,
@@ -171,10 +165,8 @@ unmatched_values_long <-
       value.name = "value"
     )
   ][
-    , `:=`(column = as.character(column), year = as.integer(year))
-  ][
     # inner join to keep only failed triples
-    gm_long[is_match == FALSE, .(meta_pin, meta_card_num, column)][
+    card_matches_long[is_match == FALSE, .(meta_pin, meta_card_num, column)][
       , column := as.character(column)
     ],
     on = .(meta_pin, meta_card_num, column),
@@ -184,10 +176,10 @@ unmatched_values_long <-
   ]
 
 make_card_comp_chart <- function(col_name) {
-  sub_long <- unmatched_values_long[column == col_name]
+  chart_data_long <- unmatched_values_long[column == col_name]
 
   # Collapse duplicate values per pin/card/year
-  sub_long <- sub_long[
+  chart_data_long <- chart_data_long[
     , .(value = paste(unique(na.omit(as.character(value))),
       collapse = " | "
     )),
@@ -195,34 +187,36 @@ make_card_comp_chart <- function(col_name) {
   ]
 
   # Identify comparison (lower) and base (higher) years
-  yrs <- sort(unique(sub_long$year))
+  yrs <- sort(unique(chart_data_long$year))
   y_comp <- yrs[1] # lower year
   y_base <- yrs[2] # higher year
 
-  # Tag rows as comp/base and pivot
-  sub_long[, tag := fcase(
-    year == y_comp, "comp",
-    year == y_base, "base"
+  # Tag rows as new/old and pivot
+  chart_data_long[, tag := fcase(
+    year == y_comp, "old",
+    year == y_base, "new"
   )]
 
-  sub_wide <- dcast(
-    sub_long,
+  chart_data_wide <- dcast(
+    chart_data_long,
     meta_pin + meta_card_num ~ tag,
     value.var = "value"
   )
 
-  # Rename columns to <col_name>_base and <col_name>_comp
+  # Rename columns to <col_name>_new and <col_name>_old
   setnames(
-    sub_wide,
-    old = c("base", "comp"),
-    new = c(paste0(col_name, "_base"), paste0(col_name, "_comp"))
+    chart_data_wide,
+    old = c("new", "old"),
+    new = c(paste0(col_name, "_new"), paste0(col_name, "_old"))
   )
 
   # Cap at 1,000 rows for readability with sample
   # to make sure it's not lower number PINs
-  if (nrow(sub_wide) > 1000L) sub_wide <- sub_wide[sample(.N, 1000L)]
+  if (nrow(chart_data_wide) > 1000L) {
+    chart_data_wide <- chart_data_wide[sample(.N, 1000L)]
+  }
 
-  sub_wide[]
+  chart_data_wide[]
 }
 
 unmatched_tables <- unique(unmatched_values_long$column) %>%
@@ -239,11 +233,20 @@ for (var in vars) {
 
   unmatched_charts[[var]] <- knitr::kable(
     tbl,
-    format = "pipe",
+    format = "html",
     caption = sprintf("Unmatched values for %s", var),
     row.names = FALSE,
     align = rep("l", ncol(tbl))
-  )
+  ) %>%
+    kableExtra::kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE
+    ) %>%
+    kableExtra::scroll_box(
+      height = "400px",
+      width = "100%",
+      box_css = "border: 1px solid #ddd; padding: 5px;"
+    )
 }
 ```
 
@@ -282,4 +285,15 @@ card_data %>%
     ),
     rownames = FALSE
   )
+```
+
+```{r data_changes_cleanup}
+#| output: false
+
+rm(
+  card_data, common_cols, comp_common, baseline_common,
+  group_matches, card_matches_long, count_not_matching,
+  unmatched_values_long, unmatched_tables, unmatched_charts
+)
+gc()
 ```
