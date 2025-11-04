@@ -90,7 +90,17 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   ) %>%
   # For prorated PINs with multiple cards, take the average of the card
   # (building) across PINs. This is because the same prorated building spread
-  # across multiple PINs sometimes receives different values from the model
+  # across multiple PINs sometimes receives different values from the model.
+
+  # Prorated pins can be hard to trace through the pipeline and are affected by multiple
+  # rounding and averaging stages.
+  # These pins can be multi-card, both with the same number of cards (tiebacks ).
+  # They can also have capped land values (tiebacks 16012030310000 or 29071130320000 in 
+  # run_id 2025-02-11-charming-eric).
+  # They can also be part of townhome complexes. Townhome complexes are grouped based on 
+  # different characteristics, such as the number of rooms and square footage, meaning
+  # tiebacks can be averaged in separate groupings (tiebacks 15213010030000 or 30171010230000)
+
   group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
     pred_card_intermediate_fmv = ifelse(
