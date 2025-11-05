@@ -232,8 +232,8 @@ message("Prorating buildings")
 # grouping. For example, tieback PIN 05283170010000 has 5 total cards with the
 # same Square footage, and tieback PIN 05283170030000 has 5 total cards with two
 # separate square footage values. The PIN with tieback PIN 09221110050000 has
-# two cards for each PIN with the same SQ Footage and and tiebackPIN 09263150040000
-# has three cards for each PIN with different SQ Footage values.
+# two cards for each PIN with the same SQ Footage and and tieback PIN
+# 09263150040000 has three cards for each PIN with different SQ Footage values.
 
 # They can also have capped land values in stage 4. An example of capped value
 # are tieback PINs 16012030310000 or 29071130320000
