@@ -238,15 +238,13 @@ message("Prorating buildings")
 # are tieback PINs 16012030310000 or 29071130320000
 # in run_id 2025-02-11-charming-eric.
 
-# They can also be part of town-home complexes. Town-home complexes are grouped
-# based on different characteristics, such as the number of rooms, square
+# They can also be part of town-home complexes (Stage 3.2). Town-home complexes
+# are grouped based on different characteristics, such as the number of rooms, square
 # footage, or proration rate, meaning tiebacks can be averaged in separate groupings
 # (tieback PINs 15213010030000 or 30171010230000)
-# These PINs are averaged in stage 3.2.
 
-# Prorated PINs will also be rounded in stage 3.3,
-# meaning the averaging that occurs in this and in
-# stage 3.1 will be operating off of different values.
+# Prorated PINs will also be rounded in stage 3.3, meaning the averaging that occurs
+# in this and in stage 3.1 will be operating off of different values.
 
 # Prorating is the process of dividing a building's value among multiple PINs.
 # See the steps outlined below for the process to determine a prorated value:
