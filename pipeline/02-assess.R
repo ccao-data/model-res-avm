@@ -227,6 +227,14 @@ message("Prorating buildings")
 # In stage 3.1, tieback PIN 05283170010000 has PINs with 2 and 3 cards,
 # and tieback PIN 01131010080000 has PINs with 1 and 2 cards.
 
+# We currently group by meta_tieback_key_pin, meta_card_num, and char_land_sf.
+# Values for char_land_sf can be both the same and different in each tieback
+# grouping. For example, tieback 05283170010000 has 5 total cards with the
+# same Square footage, and tieback 05283170030000 has 5 total cards with two
+# separate square footage values. The PIN with tieback 09221110050000 has
+# two cards for each PIN with the same SQ Footage and and tieback 09263150040000
+# has three cards for each PIN with different SQ Footage values.
+
 # They can also have capped land values in stage 4. An example of capped value
 # are tiebacks 16012030310000 or 29071130320000
 # in run_id 2025-02-11-charming-eric.
