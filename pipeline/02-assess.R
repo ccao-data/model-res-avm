@@ -240,8 +240,8 @@ message("Prorating buildings")
 
 # They can also be part of town-home complexes (Stage 3.2). Town-home complexes
 # are grouped based on different characteristics, such as the number of rooms,
-# square footage, or proration rate, meaning tiebacks can be averaged in separate
-# groupings (tieback PINs 15213010030000 or 30171010230000)
+# square footage, or proration rate, meaning tiebacks can be averaged in
+# separate groupings (tieback PINs 15213010030000 or 30171010230000)
 
 # Prorated PINs will also be rounded in stage 3.3, meaning the averaging that
 # occurs in this and in stage 3.1 will be operating off of different values.
