@@ -93,8 +93,8 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   # across multiple PINs sometimes receives different values from the model.
 
   # This stage creates average values for each tieback in a manner which is
-  # partially duplicative of what happens in stage 5. However, because
-  # other adjustments are made (townhome averaging and land value capping),
+  # partially duplicative of what happens in stage 5. However, because other
+  # adjustments are made (townhome averaging, rounding, and land value capping),
   # model outputs change when either stage of the duplicative code is removed.
   # See stage 5 for more details.
 
