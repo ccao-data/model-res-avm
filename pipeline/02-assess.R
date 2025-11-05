@@ -226,22 +226,21 @@ message("Prorating buildings")
 # PINs can be multi-card, and have different numbers of cards.
 # In stage 3.1, tieback PIN 05283170010000 has PINs with 2 and 3 cards,
 # and tieback PIN 01131010080000 has PINs with 1 and 2 cards.
-
 # We currently group by meta_tieback_key_pin, meta_card_num, and char_land_sf.
 # Values for char_land_sf can be both the same and different in each tieback
 # grouping. For example, tieback PIN 05283170010000 has 5 total cards with the
-# same Square footage, and tieback PIN 05283170030000 has 5 total cards with two
-# separate square footage values. The PIN with tieback PIN 09221110050000 has
-# two cards for each PIN with the same SQ Footage and and tieback PIN
-# 09263150040000 has three cards for each PIN with different SQ Footage values.
+# same SQ footage, and tieback PIN 05283170030000 has 5 total cards with two
+# separate SQ footage values. The PIN with tieback PIN 09221110050000 has
+# two cards for each PIN with the same SQ footage and and tieback PIN
+# 09263150040000 has three cards for each PIN with different SQ footage values.
 
 # They can also have capped land values in stage 4. An example of capped value
 # are tieback PINs 16012030310000 or 29071130320000
 # in run_id 2025-02-11-charming-eric.
 
 # They can also be part of town-home complexes. Town-home complexes are grouped
-# based on different characteristics, such as the number of rooms and square
-# footage, meaning tiebacks can be averaged in separate groupings
+# based on different characteristics, such as the number of rooms, square
+# footage, or proration rate, meaning tiebacks can be averaged in separate groupings
 # (tieback PINs 15213010030000 or 30171010230000)
 # These PINs are averaged in stage 3.2.
 
