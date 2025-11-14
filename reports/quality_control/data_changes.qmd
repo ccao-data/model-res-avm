@@ -16,11 +16,11 @@ source("_baseline_query_data.R")
 
 ```{r changed_values_processing}
 # Get only the common columns between runs
-common_cols <- intersect(names(comp_chars), names(baseline_chars))
+common_cols <- intersect(names(comp_chars), names(baseline_assessment_data))
 
 # Subset both datasets to those common columns
 comp_common <- comp_chars[, common_cols, drop = FALSE]
-baseline_common <- baseline_chars[, common_cols, drop = FALSE]
+baseline_common <- baseline_assessment_data[, common_cols, drop = FALSE]
 
 # Keep only PIN Card combos with data in both runs
 card_data <- bind_rows(comp_common, baseline_common) %>%

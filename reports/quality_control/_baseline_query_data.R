@@ -5,7 +5,7 @@ base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
 # Assessment set chars
-baseline_chars <- open_dataset(
+baseline_assessment_data <- open_dataset(
   paste0(
     glue("{base_dvc_url}/files/md5/"),
     substr(dvc_md5_assessment_data, 1, 2), "/",
@@ -37,26 +37,6 @@ comp_chars <- open_dataset(
   ) %>%
   collect()
 
-# Assessment set predictions
-baseline_assess_card <- open_dataset(
-  paste0(
-    glue("{base_model_results_url}/assessment_card/"),
-    glue("year={params$baseline_year}/"),
-    glue("run_id={params$baseline_run_id}")
-  )
-) %>%
-  collect()
-
-# Grab PIN predictions so we can get the final rounded value
-baseline_assess_pin <- open_dataset(
-  paste0(
-    glue("{base_model_results_url}/assessment_pin/"),
-    glue("year={params$baseline_year}/"),
-    glue("run_id={params$baseline_run_id}")
-  )
-) %>%
-  collect()
-
 # SHAPs
 baseline_shaps <- open_dataset(
   paste0(
@@ -67,7 +47,7 @@ baseline_shaps <- open_dataset(
 ) %>%
   collect() %>%
   left_join(
-    baseline_chars,
+    baseline_assessment_data,
     by = c("meta_pin", "meta_card_num"),
     suffix = c("_shap", "")
   ) %>%
@@ -93,6 +73,4 @@ baseline_training_data <- open_dataset(
   ) %>%
   collect()
 
-# Clean up large objects that we no longer need
-rm(baseline_assess_card, baseline_assess_pin)
 gc()
