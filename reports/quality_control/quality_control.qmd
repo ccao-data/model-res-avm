@@ -1,5 +1,7 @@
 ---
 title: "Model QC"
+subtitle: |
+  `r params$baseline_run_id` <-> `r params$comp_run_id`
 date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 execute:
   echo: false

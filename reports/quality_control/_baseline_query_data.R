@@ -57,18 +57,6 @@ baseline_assess_pin <- open_dataset(
 ) %>%
   collect()
 
-baseline_preds <- baseline_assess_card %>%
-  left_join(baseline_assess_pin, by = c("meta_pin")) %>%
-  select(
-    meta_pin, meta_card_num,
-    pred_card_initial_fmv,
-    pred_pin_final_fmv_round
-  )
-
-# Full assessment set
-baseline_assessment_data <- baseline_chars %>%
-  left_join(baseline_preds, by = c("meta_pin", "meta_card_num"))
-
 # SHAPs
 baseline_shaps <- open_dataset(
   paste0(
@@ -106,5 +94,5 @@ baseline_training_data <- open_dataset(
   collect()
 
 # Clean up large objects that we no longer need
-rm(baseline_preds, baseline_assess_card, baseline_assess_pin)
+rm(baseline_assess_card, baseline_assess_pin)
 gc()
