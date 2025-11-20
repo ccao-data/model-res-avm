@@ -349,14 +349,14 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "1.3.0",
+      "Version": "1.3.1",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "8b6f53e14c1732fcec5f6982fbc4bfb32f45f194",
+      "RemoteSha": "18e12ca5115741924a58b0be6b4055f480f22a2d",
       "Requirements": [
         "R",
         "assessr",
@@ -365,7 +365,7 @@
         "rlang",
         "tidyr"
       ],
-      "Hash": "1663306aa228ded9892f07d65ec20db3"
+      "Hash": "c4c334d304550bbf4736eee6a4f15592"
     },
     "class": {
       "Package": "class",
@@ -556,7 +556,7 @@
       "Package": "dplyr",
       "Version": "1.1.4",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "R6",
@@ -723,7 +723,7 @@
       "Package": "ggplot2",
       "Version": "3.5.1",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "MASS",
         "R",
@@ -1268,12 +1268,12 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.analytics",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "ec4fb624e5532758d12b6d31a986e4f0"
+      "Hash": "9325b775d017abfb48bab9e2aa8360d0"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
@@ -1281,20 +1281,20 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.application.integration",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "7422072f1f6305bc664ce093a42df33f"
+      "Hash": "cabf81b01fe2e75234b146c95f4320f2"
     },
     "paws.common": {
       "Package": "paws.common",
-      "Version": "0.8.5.9000",
+      "Version": "0.8.6",
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "paws.common",
       "Requirements": [
         "R",
@@ -1309,7 +1309,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "7b3adf41416a621266e69fffa610a0e3"
+      "Hash": "f4084af1990bfba0d7fc9c337aaf60bc"
     },
     "pillar": {
       "Package": "pillar",
@@ -1408,7 +1408,7 @@
       "Package": "rappdirs",
       "Version": "0.3.3",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
@@ -1732,7 +1732,7 @@
       "Package": "tidyselect",
       "Version": "1.2.1",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
@@ -1846,7 +1846,7 @@
       "Package": "vctrs",
       "Version": "0.6.5",
       "Source": "Repository",
-      "Repository": "https://packagemanager.rstudio.com/all/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
