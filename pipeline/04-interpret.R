@@ -264,20 +264,18 @@ if (comp_enable) {
   # Create row-wise weights for each observation in the training data
   # with columns representing each tree in the model.
   tree_weights <- extract_tree_weights(
-    model      = lgbm_final_full_fit$fit,
-    leaf_idx   = as.matrix(training_leaf_nodes),
-    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
-    outcome    = training_data$meta_sale_price
+    model    = lgbm_final_full_fit$fit,
+    leaf_idx = as.matrix(training_leaf_nodes)
   )
 
-  if (length(tree_weights) == 0) {
-    message("Warning: tree_weights are empty")
-  }
-  if (all(rowSums(tree_weights) %in% c(0, 1))) {
-    message("Warning: tree_weights do not sum to 1 or 0 for each row")
-    message("First 5 weights:")
-    print(head(tree_weights, 5))
-  }
+  # if (length(tree_weights) == 0) {
+  #   message("Warning: tree_weights are empty")
+  # }
+  # if (all(rowSums(tree_weights) %in% c(0, 1))) {
+  #   message("Warning: tree_weights do not sum to 1 or 0 for each row")
+  #   message("First 5 weights:")
+  #   print(head(tree_weights, 5))
+  # }
 
 
   # Make sure that the leaf node tibbles are all integers, which is what
