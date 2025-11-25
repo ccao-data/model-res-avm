@@ -85,8 +85,9 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@jeancochrane/skip-ci-image-push-for-external-repos
     with:
+      ref: jeancochrane/skip-ci-image-push-for-external-repos
       command: ${{ needs.parse-command.outputs.command }}
       backend: "ec2"
       vcpu: "40"
