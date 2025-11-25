@@ -525,7 +525,7 @@ complex_id_temp <- assessment_data_clean %>%
   filter(meta_class %in% c("210", "295")) %>%
   # Self-join with attributes that must be exactly matching
   select(
-    meta_pin, meta_card_num, meta_township_code, meta_class,
+    meta_pin, meta_card_num, meta_township_code,
     all_of(params$input$complex$match_exact),
     any_of(paste0("char_", names(params$input$complex$match_fuzzy))),
     loc_x_3435, loc_y_3435
