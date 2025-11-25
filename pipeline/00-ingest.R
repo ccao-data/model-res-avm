@@ -570,7 +570,7 @@ complex_id_temp <- assessment_data_clean %>%
 # a sequential integer
 complex_id_data <- assessment_data_clean %>%
   filter(meta_class %in% c("210", "295")) %>%
-  distinct(meta_pin, meta_township_code) %>%
+  distinct(meta_pin) %>%
   left_join(complex_id_temp, by = "meta_pin") %>%
   arrange(meta_complex_id) %>%
   mutate(meta_complex_id = ifelse(
