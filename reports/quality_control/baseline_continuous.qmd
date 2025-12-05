@@ -10,7 +10,7 @@
 source("_baseline_query_data.R")
 ```
 
-# Distributions of features (Continuous)
+# Distributions of Features (Continuous)
 
 ::: {.panel-tabset}
 

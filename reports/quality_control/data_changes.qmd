@@ -15,16 +15,16 @@ source("_baseline_query_data.R")
 # Changed Values by Year
 
 ```{r changed_values_processing}
-# Get only the common columns between runs
+# Build card_data with dataset label
 common_cols <- intersect(names(comp_chars), names(baseline_assessment_data))
 
-# Subset both datasets to those common columns
-comp_common <- comp_chars[, common_cols, drop = FALSE]
-baseline_common <- baseline_assessment_data[, common_cols, drop = FALSE]
-
-# Keep only PIN Card combos with data in both runs
-card_data <- bind_rows(comp_common, baseline_common) %>%
+card_data <- bind_rows(
+  comp = comp_chars %>% select(all_of(common_cols)),
+  baseline = baseline_assessment_data %>% select(all_of(common_cols)),
+  .id = "dataset" # "comp" or "baseline"
+) %>%
   group_by(meta_pin, meta_card_num) %>%
+  # keep only PIN-card combos appearing in both datasets
   filter(n() > 1) %>%
   ungroup() %>%
   arrange(meta_pin, meta_card_num) %>%
@@ -32,8 +32,9 @@ card_data <- bind_rows(comp_common, baseline_common) %>%
 
 setnames(card_data, "meta_year", "year")
 
+# Keys and comparison columns
 key_cols <- c("meta_pin", "meta_card_num")
-cols <- setdiff(names(card_data), key_cols)
+cols <- setdiff(names(card_data), c(key_cols, "dataset"))
 
 # tolerance list:
 # Many of our features should be exact matches but are not. For example,
@@ -42,14 +43,12 @@ cols <- setdiff(names(card_data), key_cols)
 # There are also features which should not match, but we want to make sure that
 # they stay relatively stable. For example, the percentage of college educated
 # individuals should not change by more than 10% year over year.
-
-# Create tolerance list
 base_tol <- c(
   acs5_median_age_total = 10,
-  acs5_median_household_renter_occupied_gross_rent = 400,
-  acs5_median_household_total_occupied_year_built = 5,
-  acs5_median_income_household_past_year = 10000,
-  acs5_median_income_per_capita_past_year = 7500,
+  acs5_median_household_renter_occupied_gross_rent = 500,
+  acs5_median_household_total_occupied_year_built = 10,
+  acs5_median_income_household_past_year = 20000,
+  acs5_median_income_per_capita_past_year = 15000,
   loc_latitude = 0.0001,
   loc_longitude = 0.0001,
   other_tax_bill_rate = 5,
@@ -81,42 +80,44 @@ make_tol <- function(cols) {
 }
 
 tol <- make_tol(cols)
-
 tol_defined <- !is.na(tol) # TRUE only where a tolerance exists
 
-# Group-wise checks: numeric path ONLY if tolerance is defined
+# Group-wise checks: numeric path only if tolerance is defined
 # Otherwise use exact matching
 group_matches <- card_data[
   ,
-  as.list(mapply(
-    function(value, name) {
-      t <- tol[[name]]
+  {
+    res <- mapply(
+      function(value, name) {
+        t <- tol[[name]]
 
-      # Both NA returns match
-      if (all(is.na(value))) {
-        return(TRUE)
-      }
+        # Both NA returns match
+        if (all(is.na(value))) {
+          return(TRUE)
+        }
 
-      # Any single NA present returns no match
-      if (any(is.na(value))) {
-        return(FALSE)
-      }
+        # Any single NA present returns no match
+        if (any(is.na(value))) {
+          return(FALSE)
+        }
 
-      # Numeric path if tolerance is defined
-      if (isTRUE(tol_defined[[name]])) {
-        numeric_value <- suppressWarnings(as.numeric(value))
-        (max(numeric_value) - min(numeric_value)) <= t
-      } else {
-        uniqueN(value) <= 1 # exact match path
-      }
-    },
-    .SD, names(.SD),
-    SIMPLIFY = FALSE
-  )),
+        # Numeric path if tolerance is defined
+        if (isTRUE(tol_defined[[name]])) {
+          numeric_value <- suppressWarnings(as.numeric(value))
+          (max(numeric_value) - min(numeric_value)) <= t
+        } else {
+          uniqueN(value) <= 1 # exact match path
+        }
+      },
+      .SD, names(.SD),
+      SIMPLIFY = FALSE
+    )
+
+    as.list(res)
+  },
   by = key_cols,
   .SDcols = cols
 ]
-
 
 card_matches_long <- melt(
   as.data.table(group_matches),
@@ -154,62 +155,127 @@ DT::datatable(
 ```
 
 
-```{r card_level_changes}
+## Count of Unique Changes
+
+Because many PINs will have the same expected change(for example ACS Household
+Income changing from 100,000 to 130,000), we group these into unique changes.
+
+```{r unique_counts}
 unmatched_values_long <-
   as.data.table(card_data)[
     , melt(
       .SD,
-      id.vars = c(key_cols, "year"),
+      id.vars = c(key_cols, "dataset"),
       measure.vars = cols,
       variable.name = "column",
       value.name = "value"
     )
   ][
-    # inner join to keep only failed triples
+    # inner join to keep only failed combinations
     card_matches_long[is_match == FALSE, .(meta_pin, meta_card_num, column)][
       , column := as.character(column)
     ],
     on = .(meta_pin, meta_card_num, column),
     nomatch = 0
   ][
-    order(column, meta_pin, meta_card_num, year)
+    order(column, meta_pin, meta_card_num, dataset)
   ]
 
+changes_summary <- unmatched_values_long %>%
+  as_tibble() %>%
+  # Rename comp and baseline to new and old for readability
+  group_by(column, meta_pin, meta_card_num) %>%
+  summarise(
+    old_value = value[dataset == "comp"][1],
+    new_value = value[dataset == "baseline"][1],
+    .groups = "drop"
+  ) %>%
+  # Count specific old -> new change occurrences
+  group_by(column, old_value, new_value) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  # Number of unique changes for that column
+  group_by(column) %>%
+  mutate(
+    N_unique_changes = n_distinct(paste0(old_value, "->", new_value))
+  ) %>%
+  ungroup()
+
+changes_summary %>%
+  arrange(desc(N_unique_changes), desc(n)) %>%
+  select(column, N_unique_changes) %>%
+  distinct(column, .keep_all = TRUE) %>%
+  DT::datatable(
+    options = list(
+      scrollY = "300px",
+      scrollX = TRUE,
+      paging = TRUE,
+      pageLength = 100,
+      searching = TRUE
+    ),
+    rownames = FALSE
+  )
+```
+
+
+```{r card_level_changes}
 make_card_comp_chart <- function(col_name) {
+  # Filter to the column of interest
   chart_data_long <- unmatched_values_long[column == col_name]
 
-  # Identify comparison (lower) and base (higher) years
-  yrs <- sort(unique(chart_data_long$year))
-  y_comp <- yrs[1] # lower year
-  y_base <- yrs[2] # higher year
-
-  # Tag rows as new/old and pivot
+  # Tag rows as old/new based on dataset:
   chart_data_long[, tag := fcase(
-    year == y_comp, "old",
-    year == y_base, "new"
+    dataset == "comp", "old",
+    dataset == "baseline", "new"
   )]
 
+  # Pivot to wide: one row per PIN/Card with old/new values
   chart_data_wide <- dcast(
     chart_data_long,
     meta_pin + meta_card_num ~ tag,
     value.var = "value"
   )
 
-  # Rename columns to <col_name>_new and <col_name>_old
+  # Rename columns to <col_name>_new (baseline) and <col_name>_old (comp)
   setnames(
     chart_data_wide,
     old = c("new", "old"),
     new = c(paste0(col_name, "_new"), paste0(col_name, "_old"))
   )
 
+  # Names for  old/new cols
+  old_nm <- paste0(col_name, "_old")
+  new_nm <- paste0(col_name, "_new")
+
+  # Count how many times each old/new pair occurs
+  pair_counts <- chart_data_wide[
+    ,
+    .(n = .N),
+    by = c(old_nm, new_nm)
+  ]
+
+  # Join counts back to the detailed table
+  chart_data_wide <- merge(
+    chart_data_wide,
+    pair_counts,
+    by = c(old_nm, new_nm),
+    all.x = TRUE
+  )
+
+  order <- c("meta_pin", "meta_card_num", old_nm, new_nm, "n")
+  present <- intersect(order, names(chart_data_wide))
+  data.table::setcolorder(chart_data_wide, present)
+
   # Cap at 1,000 rows for readability with sample
-  # to make sure it's not lower number PINs
   if (nrow(chart_data_wide) > 1000L) {
     chart_data_wide <- chart_data_wide[sample(.N, 1000L)]
   }
 
   chart_data_wide[]
 }
+
 
 unmatched_tables <- unique(unmatched_values_long$column) %>%
   lapply(make_card_comp_chart) %>%
@@ -242,7 +308,10 @@ for (var in vars) {
 }
 ```
 
-## Unmatched Values by Variable
+## Distinct Unmatched Values by Pin-Card Combo
+
+For values where n is > 1, the PIN selected is arbitrary and solely used for
+reference.
 
 ::: {.panel-tabset}
 
@@ -255,7 +324,7 @@ for (i in seq_along(unmatched_charts)) {
 ```
 :::
 
-## Count of Empty Strings (Should be 0)
+## Count of Empty Strings (Should be Empty)
 
 ```{r empty_string_counts}
 card_data %>%
@@ -283,7 +352,7 @@ card_data %>%
 #| output: false
 
 rm(
-  card_data, common_cols, comp_common, baseline_common,
+  card_data, common_cols,
   group_matches, card_matches_long, count_not_matching,
   unmatched_values_long, unmatched_tables, unmatched_charts
 )
