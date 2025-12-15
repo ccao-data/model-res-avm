@@ -72,7 +72,6 @@ input:
     # considered in the same complex
     match_exact:
       - "meta_township_code"
-      - "meta_class"
       - "char_bsmt"
       - "char_gar1_size"
       - "char_attic_fnsh"
