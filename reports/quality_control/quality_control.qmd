@@ -11,10 +11,24 @@ format:
     embed-resources: true
 params:
   comp_run_id: "2024-03-17-stupefied-maya"
-  comp_year: "2024"
   baseline_run_id: "2025-02-11-charming-eric"
-  baseline_year: "2025"
 ---
+
+```{r}
+library(arrow)
+library(data.table)
+library(dplyr)
+library(DT)
+library(ggplot2)
+library(glue)
+library(kableExtra)
+library(knitr)
+library(leaflet)
+library(noctua)
+library(stringr)
+library(tidyr)
+```
+
 
 ```{r _setup_script}
 source("_baseline_query_data.R")

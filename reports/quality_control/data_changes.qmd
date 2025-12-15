@@ -138,6 +138,8 @@ count_not_matching <- card_matches_long %>%
   arrange(desc(Count))
 ```
 
+::: {.panel-tabset}
+
 ## Count of Unmatched Values
 
 ```{r unmatched_values}
@@ -219,7 +221,7 @@ changes_summary %>%
   )
 ```
 
-
+:::
 ```{r card_level_changes}
 make_card_comp_chart <- function(col_name) {
   # Filter to the column of interest
