@@ -5,13 +5,13 @@
 #| cache-extra: !expr rlang::hash(params)
 #| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
 #| cache-file-2: !expr rlang::hash_file("_utils.R")
+source("_baseline_query_data.R")
 ```
 
 # Missingness
 
 ```{r}
 #| cache: true
-
 missingness_cols <- model_predictor_all_name
 ```
 
