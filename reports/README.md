@@ -6,7 +6,7 @@ This directory contains Quarto diagnostic documents for the residential model. T
 
 1. `performance.qmd` - Overall look at model performance containing ratio statistics, diagnostic visualizations, debugging/quality control tables, etc.
 2. `challenge_groups.qmd` - Report on specific, hard-to-model properties such as prorated PINs, multi-card properties, etc.
-3. `features.qmd` - Report that looks at model inputs. It has three sections, features changes between the previous and current model, distributions of SHAP and feature values, and missingness for features. This should be run annually during the build-up for modeling.
+3. `model_features.qmd` - Report that looks at model inputs. It has three sections, features changes between the previous and current model, distributions of SHAP and feature values, and missingness for features. This should be run annually during the build-up for modeling.
 
 ## Structure
 
