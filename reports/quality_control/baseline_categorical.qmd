@@ -6,9 +6,6 @@
 #| cache-file-2: !expr rlang::hash_file("_utils.R")
 ```
 
-```{r _categorical_setup_script}
-source("_baseline_query_data.R")
-```
 
 # Distributions of Features (Categorical)
 

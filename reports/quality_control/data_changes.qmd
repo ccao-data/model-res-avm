@@ -7,11 +7,6 @@
 #| cache-file-2: !expr rlang::hash_file("_utils.R")
 ```
 
-
-```{r _data_changes_setup_script}
-source("_baseline_query_data.R")
-```
-
 # Changed Values by Year
 
 ```{r changed_values_processing}
