@@ -84,24 +84,6 @@ if (!exists("comp_metadata")) {
   )
 }
 
-if (!exists("baseline_assessment_data")) {
-  baseline_assessment_data <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_assessment_data, 1, 2), "/",
-      substr(dvc_md5_assessment_data, 3, 32)
-    )
-  ) %>%
-    select(
-      meta_pin,
-      meta_card_num,
-      meta_year,
-      meta_class,
-      all_of(model_predictor_all_name)
-    ) %>%
-    collect()
-}
-
 if (!exists("assessment_year_comp")) {
   assessment_year_comp <- comp_metadata$assessment_year
 }
@@ -127,39 +109,6 @@ if (!exists("comp_chars")) {
     ) %>%
     collect()
 }
-
-# Assessment set chars
-baseline_assessment_data <- open_dataset(
-  paste0(
-    glue("{base_dvc_url}/files/md5/"),
-    substr(dvc_md5_assessment_data, 1, 2), "/",
-    substr(dvc_md5_assessment_data, 3, 32)
-  )
-) %>%
-  select(
-    meta_pin,
-    meta_card_num,
-    meta_year,
-    meta_class,
-    all_of(model_predictor_all_name)
-  ) %>%
-  collect()
-
-comp_chars <- open_dataset(
-  paste0(
-    glue("{base_dvc_url}/files/md5/"),
-    substr(dvc_md5_assessment_data_comp, 1, 2), "/",
-    substr(dvc_md5_assessment_data_comp, 3, 32)
-  )
-) %>%
-  select(
-    meta_pin,
-    meta_card_num,
-    meta_year,
-    meta_class,
-    any_of(model_predictor_all_name)
-  ) %>%
-  collect()
 
 if (!exists("baseline_year")) {
   baseline_year <- baseline_metadata$assessment_year
@@ -201,26 +150,6 @@ if (!exists("baseline_chars")) {
       meta_year,
       meta_class,
       all_of(model_predictor_all_name)
-    ) %>%
-    collect()
-}
-
-if (!exists("comp_chars")) {
-  comp_chars <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_assessment_data_comp, 1, 2), "/",
-      substr(dvc_md5_assessment_data_comp, 3, 32)
-    )
-  ) %>%
-    select(
-      meta_pin,
-      meta_card_num,
-      meta_year,
-      meta_class,
-      # Use any_of rather than all_of, since predictors can
-      # change year-over-year
-      any_of(model_predictor_all_name)
     ) %>%
     collect()
 }
