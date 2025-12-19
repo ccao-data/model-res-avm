@@ -136,8 +136,8 @@ if (!exists("continuous_shaps")) {
 }
 
 # Assessment set chars
-if (!exists("baseline_chars")) {
-  baseline_chars <- open_dataset(
+if (!exists("baseline_assessment_data")) {
+  baseline_assessment_data <- open_dataset(
     paste0(
       glue("{base_dvc_url}/files/md5/"),
       substr(dvc_md5_assessment_data, 1, 2), "/",
@@ -165,7 +165,7 @@ if (!exists("baseline_shaps")) {
   ) %>%
     collect() %>%
     left_join(
-      baseline_chars,
+      baseline_assessment_data,
       by = c("meta_pin", "meta_card_num"),
       suffix = c("_shap", "")
     ) %>%

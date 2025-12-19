@@ -14,7 +14,7 @@ source("_baseline_query_data.R")
 ### Assessment set
 
 ```{r feature_dist_assess_cont_transform}
-baseline_cont_chars_assess_long <- baseline_assessment_data %>%
+baseline_cont_chars_assess_long <- baseline_chars %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),

@@ -12,11 +12,11 @@ source("_baseline_query_data.R")
 
 ```{r changed_values_processing}
 # Build card_data with dataset label
-common_cols <- intersect(names(comp_chars), names(baseline_chars))
+common_cols <- intersect(names(comp_chars), names(baseline_assessment_data))
 
 card_data <- bind_rows(
   comp = comp_chars %>% select(all_of(common_cols)),
-  baseline = baseline_chars %>% select(all_of(common_cols)),
+  baseline = baseline_assessment_data %>% select(all_of(common_cols)),
   .id = "dataset" # "comp" or "baseline"
 ) %>%
   group_by(meta_pin, meta_card_num) %>%
