@@ -8,7 +8,6 @@ execute:
   warning: false
 format:
   html:
-    embed-resources: true
 params:
   comp_run_id: "2024-03-17-stupefied-maya"
   baseline_run_id: "2025-02-11-charming-eric"
