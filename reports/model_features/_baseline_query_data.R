@@ -116,11 +116,11 @@ if (!exists("baseline_year")) {
 
 # Split categorical and continuous predictors since we need to plot them
 # differently (e.g. count vs. bin histograms, respectively)
-if (!exists(" categorical_preds")) {
+if (!exists("categorical_preds")) {
   categorical_preds <- model_predictor_categorical_name
 }
 
-if (!exists(" continuous_preds")) {
+if (!exists("continuous_preds")) {
   continuous_preds <- setdiff(
     model_predictor_all_name,
     model_predictor_categorical_name

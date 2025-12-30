@@ -155,7 +155,7 @@ DT::datatable(
 
 ## Count of Unique Changes
 
-Because many PINs will have the same expected change(for example ACS Household
+Because many PINs will have the same expected change (for example ACS Household
 Income changing from 100,000 to 130,000), we group these into unique changes.
 
 ```{r unique_counts}

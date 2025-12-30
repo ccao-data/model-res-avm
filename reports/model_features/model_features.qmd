@@ -6,15 +6,15 @@ date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 execute:
   echo: false
   warning: false
-format: html
+format:
+  html:
+    embed-resources: true
 params:
+  # The run ID for last year's model (usually the final res model)
   comp_run_id: "2024-03-17-stupefied-maya"
+  # The run ID for the new model run that we want to compare to last year's model
   baseline_run_id: "2025-02-11-charming-eric"
 ---
-
-```{r _setup_script}
-source("_baseline_query_data.R")
-```
 
 {{< include data_changes.qmd >}}
 
