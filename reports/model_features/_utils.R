@@ -1,3 +1,16 @@
+library(arrow)
+library(data.table)
+library(dplyr)
+library(DT)
+library(ggplot2)
+library(glue)
+library(kableExtra)
+library(knitr)
+library(leaflet)
+library(noctua)
+library(stringr)
+library(tidyr)
+
 # Text sizes for small multiples
 axis_title_size <- 6
 strip_text_size <- 4

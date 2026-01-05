@@ -1,18 +1,3 @@
-library(arrow)
-library(data.table)
-library(dplyr)
-library(DT)
-library(ggplot2)
-library(glue)
-library(kableExtra)
-library(knitr)
-library(leaflet)
-library(noctua)
-library(stringr)
-library(tidyr)
-
-source("_utils.R")
-
 noctua_options(cache_size = 10, unload = TRUE)
 conn <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
