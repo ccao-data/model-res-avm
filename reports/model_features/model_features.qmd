@@ -20,9 +20,9 @@ source("_utils.R")
 
 {{< include data_changes.qmd >}}
 
-{{< include baseline_continuous.qmd >}}
+{{< include continuous.qmd >}}
 
-{{< include baseline_categorical.qmd >}}
+{{< include categorical.qmd >}}
 
-{{< include baseline_missingness.qmd >}}
+{{< include missingness.qmd >}}
 
