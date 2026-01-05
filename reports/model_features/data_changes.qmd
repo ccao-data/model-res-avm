@@ -7,6 +7,10 @@
 source("_baseline_query_data.R")
 ```
 
+```{r}
+source("_utils.R")
+```
+
 # Changed Values by Year
 
 ```{r changed_values_processing}
