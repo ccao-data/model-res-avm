@@ -72,19 +72,23 @@ gc()
 
 ```{r shap_dist_cat_transform}
 baseline_cat_shap_long <- baseline_shaps %>%
-  select(all_of(c(categorical_preds, categorical_shaps))) %>%
+  select(meta_pin, meta_card_num, all_of(categorical_preds)) %>%
   pivot_longer(
     cols = all_of(categorical_preds),
     names_to = "predictor",
     values_to = "value"
   ) %>%
-  pivot_longer(
-    cols = all_of(categorical_shaps),
-    names_to = "shap_name",
-    values_to = "shap_value"
-  ) %>%
-  filter(predictor == str_remove(shap_name, "_shap")) %>%
-  select(-shap_name)
+  left_join(
+    baseline_shaps %>%
+      select(meta_pin, meta_card_num, all_of(categorical_shaps)) %>%
+      pivot_longer(
+        cols = all_of(categorical_shaps),
+        names_to = "shap_name",
+        values_to = "shap_value"
+      ) %>% 
+      mutate(shap_name = str_replace(shap_name, "_shap$", "")),
+    by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
+  )
 ```
 
 ```{r shap_dist_cat_plot}
