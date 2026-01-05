@@ -85,7 +85,7 @@ baseline_cat_shap_long <- baseline_shaps %>%
         cols = all_of(categorical_shaps),
         names_to = "shap_name",
         values_to = "shap_value"
-      ) %>% 
+      ) %>%
       mutate(shap_name = str_replace(shap_name, "_shap$", "")),
     by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
   )
