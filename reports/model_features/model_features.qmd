@@ -16,8 +16,6 @@ params:
   baseline_run_id: "2025-02-11-charming-eric"
 ---
 
-invisible(source("_utils.R"))
-
 {{< include data_changes.qmd >}}
 
 {{< include continuous.qmd >}}
