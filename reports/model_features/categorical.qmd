@@ -1,13 +1,12 @@
+```{r}
+source("_utils.R")
+```
 
 ```{r}
 #| cache: true
 #| cache-extra: !expr rlang::hash(params)
 #| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
 source("_baseline_query_data.R")
-```
-
-```{r}
-source("_utils.R")
 ```
 
 
