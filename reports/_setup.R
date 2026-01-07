@@ -33,6 +33,22 @@ cpp11::cpp_source(code = "
 
 ignore_sigpipes()
 
+# We want report sub-sections to be able to be run on their own. This ensures
+# that if `performance.qmd` isn't the report run, we add a
+# default params object.
+
+if (!exists("model_params")) {
+  model_params <- list()
+}
+
+if (is.null(model_params$run_id)) {
+  model_params$run_id <- "2025-02-11-charming-eric"
+}
+
+if (is.null(model_params$year)) {
+  model_params$year <- 2025
+}
+
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict(model_params$run_id, model_params$year)
 
