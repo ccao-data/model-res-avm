@@ -34,8 +34,8 @@ cpp11::cpp_source(code = "
 ignore_sigpipes()
 
 # We want report sub-sections to be able to be run on their own. This ensures
-# that if `performance.qmd` isn't the report run, we add a
-# default params object.
+# that if `performance.qmd` isn't the report run and no model_param is created,
+# we add a default params object.
 
 if (!exists("model_params")) {
   model_params <- list()
