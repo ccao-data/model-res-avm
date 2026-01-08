@@ -96,7 +96,7 @@ training_data <- dbGetQuery(
       sale.deed_type AS meta_sale_deed_type,
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
-      sale.sv_is_outlier,
+      sale.is_outlier,
       sale.sv_outlier_reason1,
       sale.sv_outlier_reason2,
       sale.sv_outlier_reason3,
@@ -321,7 +321,7 @@ training_data_clean <- training_data_w_hie %>%
   # Only exclude explicit outliers from training. Sales with missing validation
   # outcomes will be considered non-outliers
   mutate(
-    sv_is_outlier = replace_na(sv_is_outlier, FALSE)
+    is_outlier = replace_na(is_outlier, FALSE)
   ) %>%
   mutate(
     # Miscellaneous column-level cleanup
@@ -335,7 +335,7 @@ training_data_clean <- training_data_w_hie %>%
       training_data %>%
         select(meta_pin, meta_sale_document_num, meta_sale_date),
       training_data %>%
-        filter(!sv_is_outlier) %>%
+        filter(!is_outlier) %>%
         select(meta_pin, meta_sale_date),
       by = "meta_pin",
       relationship = "many-to-many"
@@ -451,7 +451,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
     left_join(
       assessment_data %>% select(meta_pin),
       training_data %>%
-        filter(!sv_is_outlier) %>%
+        filter(!is_outlier) %>%
         select(meta_pin, meta_sale_date),
       by = "meta_pin",
       relationship = "many-to-many"
