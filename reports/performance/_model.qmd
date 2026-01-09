@@ -994,7 +994,7 @@ test_card %>%
 ```{r _model_time_trends_seen, fig.height=8, fig.width=7}
 training_data_pred %>%
   filter(
-    !sv_is_outlier,
+    !is_outlier,
     meta_triad_name == run_triad,
     !ind_pin_is_multicard
   ) %>%
@@ -1265,7 +1265,7 @@ model_big_misses_assessment %>%
 
 ```{r _model_big_misses_training}
 model_big_misses_training <- training_data_pred %>%
-  filter(!sv_is_outlier) %>%
+  filter(!is_outlier) %>%
   filter(n_distinct(meta_card_num) == 1, .by = meta_pin) %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   filter(meta_triad_code == run_triad_code, !is.na(meta_sale_price)) %>%
@@ -1332,7 +1332,7 @@ These plot shows show trends in the variance of sale price and estimated FMV. Id
 
 ```{r _model_organize_variance_data}
 training_data_monthly <- training_data_pred %>%
-  filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
+  filter(!ind_pin_is_multicard, !is_outlier) %>%
   mutate(
     meta_sale_date = as.Date(meta_sale_date),
     year = year(meta_sale_date),
