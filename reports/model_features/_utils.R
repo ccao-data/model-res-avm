@@ -27,7 +27,6 @@ if (is.null(params$baseline_run_id)) {
   params$baseline_run_id <- "2025-02-11-charming-eric"
 }
 
-
 # Text sizes for small multiples
 axis_title_size <- 6
 strip_text_size <- 4
