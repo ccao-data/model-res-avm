@@ -11,7 +11,6 @@ library(noctua)
 library(stringr)
 library(tidyr)
 
-
 # We want report sub-sections to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
 # we add a default params object.
@@ -27,7 +26,6 @@ if (is.null(params$comp_run_id)) {
 if (is.null(params$baseline_run_id)) {
   params$baseline_run_id <- "2025-02-11-charming-eric"
 }
-
 
 # Text sizes for small multiples
 axis_title_size <- 6
