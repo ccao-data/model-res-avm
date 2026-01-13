@@ -7,7 +7,7 @@
 library(purrr)
 library(here)
 
-# We want report sub-sections to be able to be run on their own. This ensures
+# We want sub-reports to be able to be run on their own. This ensures
 # that if `performance.qmd` isn't the report run and no param is created,
 # we add a default params object.
 
