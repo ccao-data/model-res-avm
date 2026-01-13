@@ -7,6 +7,22 @@
 library(purrr)
 library(here)
 
+# We want report sub-sections to be able to be run on their own. This ensures
+# that if `performance.qmd` isn't the report run and no param is created,
+# we add a default params object.
+
+if (!exists("params")) {
+  params <- list()
+}
+
+if (is.null(params$run_id)) {
+  params$run_id <- "2025-02-11-charming-eric"
+}
+
+if (is.null(params$year)) {
+  params$year <- 2025
+}
+
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
@@ -32,22 +48,6 @@ cpp11::cpp_source(code = "
 ")
 
 ignore_sigpipes()
-
-# We want report sub-sections to be able to be run on their own. This ensures
-# that if `performance.qmd` isn't the report run and no model_param is created,
-# we add a default params object.
-
-if (!exists("model_params")) {
-  model_params <- list()
-}
-
-if (is.null(model_params$run_id)) {
-  model_params$run_id <- "2025-02-11-charming-eric"
-}
-
-if (is.null(model_params$year)) {
-  model_params$year <- 2025
-}
 
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 paths <- model_file_dict(model_params$run_id, model_params$year)
