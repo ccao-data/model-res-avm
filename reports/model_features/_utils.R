@@ -11,7 +11,6 @@ library(noctua)
 library(stringr)
 library(tidyr)
 
-
 # We want report sub-sections to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
 # we add a default params object.
