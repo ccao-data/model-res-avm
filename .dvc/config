@@ -3,4 +3,4 @@
     remote = storage
     autostage = true
 ['remote "storage"']
-    url = s3://ccao-data-dvc-us-east-1/model-res-avm
+    url = s3://ccao-data-dvc-us-east-1/model-res-avm/
