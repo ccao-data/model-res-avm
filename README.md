@@ -1041,7 +1041,7 @@ statistical models. Worse, it can bias assessment accuracy in favor of
 recently sold properties, giving an unfair advantage to areas or
 properties with high turnover. For more information, see [Appendix E of
 the IAAO Standard on Ratio
-Studies](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf).
+Studies](https://www.iaao.org/wp-content/uploads/Standard_on_Ratio_Studies.pdf).
 
 **Q: How are comparables used in the model?**
 
@@ -1101,7 +1101,7 @@ features, interactions, and non-linearities.
 **Q: How do you measure model performance?**
 
 Assessors tend to use [housing and assessment-specific
-measurements](https://www.iaao.org/media/standards/Standard_on_Ratio_Studies.pdf)
+measurements](https://www.iaao.org/wp-content/uploads/Standard_on_Ratio_Studies.pdf)
 to gauge the performance of their mass appraisal systems, including:
 
 - [COD (Coefficient of

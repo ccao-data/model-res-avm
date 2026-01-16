@@ -1,0 +1,156 @@
+```{r}
+source("_utils.R")
+```
+
+```{r}
+#| cache: true
+#| cache-extra: !expr rlang::hash(params)
+#| cache-file-1: !expr rlang::hash_file("_baseline_query_data.R")
+source("_baseline_query_data.R")
+```
+
+# Missingness
+
+```{r}
+#| cache: true
+missingness_cols <- model_predictor_all_name
+```
+
+::: {.panel-tabset}
+
+## By class (assessment set)
+
+```{r missing_by_class_assess_transform}
+#| cache: true
+
+missing_assess_class <- baseline_assessment_data %>%
+  select(all_of(c("meta_class", missingness_cols))) %>%
+  group_by(meta_class) %>%
+  summarize(across(everything(), ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("pct_na_"),
+    names_to = "predictor",
+    values_to = "pct_na"
+  )
+```
+
+```{r missing_by_class_assess_plot}
+#| cache: true
+#| column: screen-inset
+#| fig-height: !expr fig_height(missing_assess_class, ncol = 5)
+
+missing_assess_class %>%
+  ggplot(aes(meta_class, pct_na)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~predictor, scales = "free", ncol = 5) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    labels = scales::label_percent(accuracy = 0.01)
+  ) +
+  labs(x = "Class", y = "% Missing") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = strip_text_size),
+    axis.text = element_text(size = axis_text_size),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = axis_title_size)
+  )
+```
+
+## By class (training set)
+
+```{r missing_by_class_train_transform}
+#| cache: true
+
+missing_train_class <- baseline_training_data %>%
+  select(all_of(c("meta_class", missingness_cols))) %>%
+  group_by(meta_class) %>%
+  summarize(across(everything(), ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("pct_na_"),
+    names_to = "predictor",
+    values_to = "pct_na"
+  )
+```
+
+```{r missing_by_class_train_plot}
+#| cache: true
+#| column: screen-inset
+#| fig-height: !expr fig_height(missing_train_class, ncol = 5)
+
+missing_train_class %>%
+  ggplot(aes(meta_class, pct_na)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~predictor, scales = "free", ncol = 5) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    labels = scales::label_percent(accuracy = 0.01)
+  ) +
+  labs(x = "Class", y = "% Missing") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = strip_text_size),
+    axis.text = element_text(size = axis_text_size),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = axis_title_size)
+  )
+```
+
+## By time
+
+```{r missing_by_time_transform}
+#| cache: true
+
+missing_time <- baseline_assessment_data %>%
+  select(all_of(missingness_cols)) %>%
+  bind_rows(
+    baseline_training_data %>%
+      select(all_of(missingness_cols))
+  ) %>%
+  group_by(time_sale_year) %>%
+  summarize(across(everything(), ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("pct_na_"),
+    names_to = "predictor",
+    values_to = "pct_na"
+  )
+```
+
+```{r missing_by_time_assess_plot}
+#| cache: true
+#| column: screen-inset
+#| fig-height: !expr fig_height(missing_time, ncol = 5)
+
+missing_time %>%
+  ggplot(aes(time_sale_year, pct_na)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~predictor, scales = "free", ncol = 5) +
+  scale_x_continuous(breaks = function(x) unique(missing_time$time_sale_year)) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    labels = scales::label_percent(accuracy = 0.01)
+  ) +
+  labs(x = "Year", y = "% Missing") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = strip_text_size),
+    axis.text = element_text(size = axis_text_size),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = axis_title_size)
+  )
+```
+
+```{r missing_by_time_cleanup}
+#| output: false
+
+rm(missing_assess_class, missing_train_class, missing_time)
+gc()
+```
+
+:::
