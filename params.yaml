@@ -24,7 +24,7 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: true
+  shap_enable: false
 
   # Should comps be calculated for this run in the interpret stage?
   comp_enable: true
