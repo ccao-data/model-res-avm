@@ -24,10 +24,10 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: false
+  shap_enable: true
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: false
+  comp_enable: true
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to false if you are not a CCAO employee
