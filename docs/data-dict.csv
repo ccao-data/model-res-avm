@@ -1,5 +1,5 @@
 feature_name,variable_name,description,category,type,possible_codes,possible_values
-"Percent Population Age, Under 19 Years Old",acs5_percent_age_children,Percent of the people 17 years or younger,ACS5,numeric,,
+"Percent Population Age, 19 Years Old and Under",acs5_percent_age_children,Percent of the people 19 years or younger,ACS5,numeric,,
 "Percent Population Age, Over 65 Years Old",acs5_percent_age_senior,Percent of the people 65 years or older,ACS5,numeric,,
 Median Population Age,acs5_median_age_total,Median age for whole population,ACS5,numeric,,
 "Percent Households Family, Married",acs5_percent_household_family_married,"Percent of households that are family, married",ACS5,numeric,,
