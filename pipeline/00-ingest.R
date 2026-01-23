@@ -96,11 +96,9 @@ training_data <- dbGetQuery(
       sale.deed_type AS meta_sale_deed_type,
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
-      sale.is_outlier,
-      sale.sv_outlier_reason1,
-      sale.sv_outlier_reason2,
-      sale.sv_outlier_reason3,
-      sale.sv_run_id,
+      sale.sale_filter_is_outlier AS is_outlier,
+      sale.outlier_reason
+      sale.flag_run_id,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
@@ -318,11 +316,6 @@ training_data_clean <- training_data_w_hie %>%
     any_of(col_type_dict$var_name),
     ~ recode_column_type(.x, cur_column())
   )) %>%
-  # Only exclude explicit outliers from training. Sales with missing validation
-  # outcomes will be considered non-outliers
-  mutate(
-    is_outlier = replace_na(is_outlier, FALSE)
-  ) %>%
   mutate(
     # Miscellaneous column-level cleanup
     ccao_is_corner_lot = replace_na(ccao_is_corner_lot, FALSE),

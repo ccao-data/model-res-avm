@@ -398,7 +398,7 @@ if (comp_enable) {
 
   # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !sv_is_outlier)
+    filter(!ind_pin_is_multicard, !is_outlier)
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches
@@ -435,24 +435,14 @@ assessment_pin_prepped <- assessment_pin_merged %>%
   mutate(
     flag_has_recent_assessable_permit =
       as.numeric(has_recent_assessable_permit),
-    sale_recent_1_outlier_reasons = str_remove_all(ifelse(
-      sale_recent_1_is_outlier,
-      paste(
-        str_replace_na(sale_recent_1_outlier_reason1, ""),
-        str_replace_na(sale_recent_1_outlier_reason2, ""),
-        sep = ", "
-      ),
-      NA_character_
-    ), ", $"),
-    sale_recent_2_outlier_reasons = str_remove_all(ifelse(
-      sale_recent_2_is_outlier,
-      paste(
-        str_replace_na(sale_recent_2_outlier_reason1, ""),
-        str_replace_na(sale_recent_2_outlier_reason2, ""),
-        sep = ", "
-      ),
-      NA_character_
-    ), ", $")
+    sale_recent_1_outlier_reasons = str_replace_na(
+      sale_recent_1_outlier_reason,
+      ""
+    ),
+    sale_recent_2_outlier_reasons = str_replace_na(
+      sale_recent_1_outlier_reason,
+      ""
+    ),
   ) %>%
   # Select fields for output to workbook
   select(

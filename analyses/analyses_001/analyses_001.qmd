@@ -31,7 +31,7 @@ training_data <- read_parquet("input/training_data.parquet")
 training_data <- training_data %>%
   # Remove sales from training data which we don't use
   filter(ind_pin_is_multicard == "FALSE") %>%
-  filter(sv_is_outlier == "FALSE") %>%
+  filter(is_outlier == "FALSE") %>%
   mutate(township_name = ccao::town_convert(meta_township_code)) %>%
   arrange(meta_sale_date)
 

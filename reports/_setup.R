@@ -222,11 +222,11 @@ m_train_n_sales_prop <- (
 m_train_med_sp <- training_data$meta_sale_price %>%
   median() %>%
   scales::dollar()
-m_train_n_outliers <- training_data$sv_is_outlier %>%
+m_train_n_outliers <- training_data$is_outlier %>%
   sum() %>%
   scales::comma()
 m_train_n_outliers_prop <-
-  ((sum(training_data$sv_is_outlier) / nrow(training_data))) %>%
+  ((sum(training_data$is_outlier) / nrow(training_data))) %>%
   scales::percent(accuracy = 0.01)
 
 m_assess_min_date <- min(assessment_pin$sale_ratio_study_date, na.rm = TRUE)
