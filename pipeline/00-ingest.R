@@ -97,7 +97,7 @@ training_data <- dbGetQuery(
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
       sale.is_outlier,
-      sale.outlier_reason
+      sale.outlier_reason,
       sale.flag_run_id,
       res.*
   FROM model.vw_card_res_input res
