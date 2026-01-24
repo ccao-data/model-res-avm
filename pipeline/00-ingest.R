@@ -96,7 +96,7 @@ training_data <- dbGetQuery(
       sale.deed_type AS meta_sale_deed_type,
       sale.seller_name AS meta_sale_seller_name,
       sale.buyer_name AS meta_sale_buyer_name,
-      sale.sale_filter_is_outlier AS is_outlier,
+      sale.is_outlier,
       sale.outlier_reason
       sale.flag_run_id,
       res.*
