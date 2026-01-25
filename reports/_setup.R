@@ -8,21 +8,27 @@ library(purrr)
 library(here)
 
 # We want sub-reports to be able to be run on their own. This ensures
-# that if `performance.qmd` isn't the report run and no param is created,
-# we add a default params object.
+# that if `model_features.qmd` isn't the report run and no param is created,
+# we create the params object from the frontmatter of the main report file
 
-if (!exists("params")) {
-  params <- list()
+parse_params_from_frontmatter <- function(path, defaults = NULL) {
+  fm <- rmarkdown::yaml_front_matter(path)
+
+  p <- fm$params
+
+  # Ensure a regular named list
+  p <- as.list(p)
+
+  if (!is.null(defaults)) {
+    defaults <- as.list(defaults)
+    # params override defaults
+    p <- utils::modifyList(defaults, p)
+  }
+
+  p
 }
 
-if (is.null(params$run_id)) {
-  params$run_id <- "2025-02-11-charming-eric"
-}
-
-if (is.null(params$year)) {
-  params$year <- 2025
-}
-
+params <- parse_params_from_frontmatter("performance.qmd")
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 

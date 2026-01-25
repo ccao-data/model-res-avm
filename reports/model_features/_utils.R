@@ -13,19 +13,25 @@ library(tidyr)
 
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
-# we add a default params object.
+# we create the params object from the frontmatter of the main report file
+parse_params_from_frontmatter <- function(path, defaults = NULL) {
+  fm <- rmarkdown::yaml_front_matter(path)
 
-if (!exists("params")) {
-  params <- list()
+  p <- fm$params
+
+  # Ensure a regular named list
+  p <- as.list(p)
+
+  if (!is.null(defaults)) {
+    defaults <- as.list(defaults)
+    # params override defaults
+    p <- utils::modifyList(defaults, p)
+  }
+
+  p
 }
 
-if (is.null(params$comp_run_id)) {
-  params$comp_run_id <- "2024-03-17-stupefied-maya"
-}
-
-if (is.null(params$baseline_run_id)) {
-  params$baseline_run_id <- "2025-02-11-charming-eric"
-}
+params <- parse_params_from_frontmatter("model_features.qmd")
 
 # Text sizes for small multiples
 axis_title_size <- 6
