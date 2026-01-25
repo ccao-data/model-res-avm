@@ -514,6 +514,33 @@ assessment_pin_data_sale <- assessment_pin_data_base %>%
 
 ## 7.4. Add Flags --------------------------------------------------------------
 message("Adding Desk Review flags")
+# A tieback cycle is a group of prorated PINs which do not have a singular
+# tieback that they are associated with. For example PIN A has PIN B as
+# 'meta_tieback_key_pin' and PIN B has PIN A as 'meta_tieback_key_pin'.
+
+# Identify all PINs which are prorated (have a tieback pin)
+edges <- assessment_pin_data_sale %>%
+  select(meta_pin, meta_tieback_key_pin) %>%
+  filter(!is.na(meta_tieback_key_pin)) %>%
+  distinct()
+
+# Create an undirected graph from the edges and find connected components
+comps_tbl <- {
+  g <- graph_from_data_frame(edges, directed = FALSE)
+  comps <- components(g)
+  tibble(meta_pin = names(comps$membership), comp_id = comps$membership)
+}
+
+# Flag PINs that are in tieback cycles.
+tieback_cycle_flag <- comps_tbl %>%
+  left_join(edges, by = "meta_pin") %>%
+  group_by(comp_id) %>%
+  mutate(flag_tieback_cycle = n_distinct(meta_tieback_key_pin) > 1) %>%
+  ungroup() %>%
+  right_join(assessment_pin_data_sale %>%
+    distinct(meta_pin), by = "meta_pin") %>% # nolintr
+  mutate(flag_tieback_cycle = coalesce(flag_tieback_cycle, FALSE)) %>%
+  distinct(meta_pin, flag_tieback_cycle)
 
 # Flags are used to identify PINs for potential desktop review
 assessment_pin_data_final <- assessment_pin_data_sale %>%
@@ -527,6 +554,9 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
     FALSE
   )) %>%
   ungroup() %>%
+  # Add flag for PINs which have aformentioned tieback cycles
+  left_join(tieback_cycle_flag, by = "meta_pin") %>%
+  mutate(flag_tieback_cycle = coalesce(flag_tieback_cycle, FALSE)) %>%
   # Flag for capped land value
   mutate(
     flag_land_value_capped = pred_pin_final_fmv_round *
@@ -558,6 +588,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
     flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
   )
 
+rm(tieback_cycle_flag)
 
 ## 7.5. Clean/Reorder/Save -----------------------------------------------------
 message("Saving final PIN-level data")

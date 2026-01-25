@@ -348,76 +348,9 @@ assessment_pin_w_land <- assessment_pin_w_card_chars %>%
   filter(!is.na(pred_pin_final_fmv_land)) %>%
   mutate(across(ends_with("_date"), as_date))
 
-if (comp_enable) {
-  message("Pulling comp data from Athena")
-  # We don't know how many comp_score_{x} columns there are, and selecting
-  # columns via wildcard in SQL is complicated, so just query everything and
-  # then select the necessary columns in R
-  comps <- dbGetQuery(
-    conn = AWS_ATHENA_CONN_NOCTUA, glue("
-    SELECT *
-    FROM model.comp
-    WHERE run_id = '{params$export$run_id}'
-    ")
-  ) %>%
-    mutate(
-      overall_comp_score = select(., starts_with("comp_score_")) %>%
-        rowMeans(na.rm = TRUE)
-    ) %>%
-    select(
-      pin, overall_comp_score,
-      comp_pin_1, comp_document_num_1, comp_score_1,
-      comp_pin_2, comp_document_num_2, comp_score_2
-    )
-
-  # Merge comp data into assessment data. Start with single-card PINs, where
-  # the comps for the card are the same as the comps for the parcel
-  assessment_pin_single_card <- assessment_pin_w_land %>%
-    filter(meta_pin_num_cards == 1 | is.na(meta_pin_num_cards)) %>%
-    left_join(comps, by = join_by(meta_pin == pin))
-
-  # In cases where the PIN has multiple cards, choose the highest-performing
-  # comps across all cards as the top two. This is necessary because comps are
-  # defined at the card level and not the parcel level.
-  # To start, group the comps by PIN and select the comps with the top
-  # overall_score. This is ugly datatable code but it is much faster than the
-  # dplyr version using group_by and slice_max
-  comps_by_top_score <- comps[
-    comps[, .I[overall_comp_score == max(overall_comp_score)], by = pin]$V1
-  ] %>%
-    distinct()
-  # Next, join the PIN-level data to the top-scoring comps
-  assessment_pin_multicard <- assessment_pin_w_land %>%
-    filter(meta_pin_num_cards > 1) %>%
-    left_join(comps_by_top_score, by = join_by(meta_pin == pin))
-  # Finally, combine both single and multicard PINs
-  assessment_pin_merged <- bind_rows(
-    assessment_pin_single_card, assessment_pin_multicard
-  ) %>%
-    arrange(meta_pin)
-
-  # Query and filter training data to use as a comp detail view
-  training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !sv_is_outlier)
-} else {
-  # Add NA columns for comps so that assessment_pin_merged has the same
-  # shape in both conditional branches
-  assessment_pin_merged <- assessment_pin_merged %>%
-    cbind(
-      tibble(
-        overall_comp_score = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_pin_1 = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_score_1 = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_pin_2 = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_score_2 = rep(NA, each = nrow(assessment_pin_merged)),
-      )
-    )
-  training_data <- tibble()
-}
-
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
-assessment_pin_prepped <- assessment_pin_merged %>%
+assessment_pin_prepped <- assessment_pin_w_land %>%
   mutate(
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
@@ -426,6 +359,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       loc_property_address,
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
+    ),
+    homeval_link = glue(
+      "{HOMEVAL_STAGING_BASE_URL}/{assessment_year}/{pin}.html"
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
@@ -465,18 +401,15 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     pred_pin_final_fmv_round, land_rate_per_sqft, pred_pin_land_rate_effective,
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
-    sale_ratio, valuations_note,
-    sale_recent_1_date, sale_recent_1_price,
+    sale_ratio, valuations_note, sale_recent_1_date, sale_recent_1_price,
     sale_recent_1_outlier_reasons, sale_recent_1_document_num,
-    sale_recent_2_date, sale_recent_2_price,
+    sale_recent_1_digest, sale_recent_2_date, sale_recent_2_price,
     sale_recent_2_outlier_reasons, sale_recent_2_document_num,
-    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
+    sale_recent_2, digest, char_yrblt, char_beds, char_ext_wall, char_bsmt,
+    char_bsmt_fin, char_air,
     char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
-    char_ncu,
-    comp_pin_1, comp_document_num_1, comp_score_1,
-    comp_pin_2, comp_document_num_2, comp_score_2, overall_comp_score,
-    flag_pin_is_prorated, flag_proration_sum_not_1,
-    flag_pin_is_multicard, flag_pin_is_multiland,
+    char_ncu, homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
+    flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
@@ -688,11 +621,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Calculate AVs so we can store them as separate, hidden columns for use
   # in the neighborhood breakouts pivot table
   assessment_pin_avs <- assessment_pin_w_row_ids %>%
+    arrange(nbhd_code, class_code) %>%
     mutate(
       total_av = glue::glue("=S{row_id} * 0.1"),
       av_difference = glue::glue("=(S{row_id} * 0.1) - (L{row_id} * 0.1)")
     ) %>%
     select(total_av, av_difference)
+
 
   # Calculate sales ratios, and use a formula so that they update dynamically
   # if the spreadsheet user updates the FMV
