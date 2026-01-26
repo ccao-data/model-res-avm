@@ -15,7 +15,7 @@ run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Preparing for 2025 model with 2024 data and updated sales
+run_note: Attempt 2026 baseline with corrected input data and shaps
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
