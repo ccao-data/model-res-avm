@@ -107,7 +107,7 @@ message("Pulling data from Athena")
 #   addition to this algorithmic pipeline, this field may not match up
 #   intuitively with the boolean decision in `sv_is_outlier`.
 #
-# - `sv_review` is a JSON blob storing the raw findings from sale review.
+# - `sv_review_json` is a JSON string storing the raw findings from sale review.
 #   Its schema is not guaranteed to have a consistent structure, so it's not
 #   useful for serious analysis or programming tasks. However, since the field
 #   is intended to act only as an archival record of the exact state of the
@@ -136,13 +136,8 @@ training_data <- dbGetQuery(
       sale.flag_run_id AS sv_run_id,
       CASE
         WHEN sale.has_review
-          THEN JSON_OBJECT(
-            'is_arms_length' : sale.is_arms_length,
-            'is_flip' : sale.is_flip,
-            'has_class_change' : sale.has_class_change,
-            'has_characteristic_change' : sale.has_characteristic_change
-          )
-      END AS sv_review,
+          THEN review_json
+      END AS sv_review_json,
       res.*
   FROM model.vw_card_res_input res
   INNER JOIN default.vw_pin_sale sale
