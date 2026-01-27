@@ -245,7 +245,7 @@ if (comp_enable) {
   # price and use it as the base model error
   message("Extracting weights from training data")
   training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !is_outlier) %>%
+    filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
     as_tibble()
   training_data_prepped <- recipes::bake(
     object = lgbm_final_full_recipe,

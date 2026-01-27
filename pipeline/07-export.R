@@ -398,7 +398,7 @@ if (comp_enable) {
 
   # Query and filter training data to use as a comp detail view
   training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !is_outlier)
+    filter(!ind_pin_is_multicard, !sv_is_outlier)
 } else {
   # Add NA columns for comps so that assessment_pin_merged has the same
   # shape in both conditional branches

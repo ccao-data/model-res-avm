@@ -360,7 +360,7 @@ message("Attaching recent sales to PIN-level data")
 # We want our assessed value to be as close as possible to this sale
 sales_data_ratio_study <- sales_data %>%
   # For ratio studies, we don't want to include outliers
-  filter(!is_outlier) %>%
+  filter(!sv_is_outlier) %>%
   filter(meta_year == params$assessment$data_year) %>%
   # Kludge to remove some sales that somehow appear to be for a single card
   # on a multi-card PIN. Will need to go back and hand validate these
@@ -382,14 +382,14 @@ sales_data_ratio_study <- sales_data %>%
 sales_data_two_most_recent <- sales_data %>%
   distinct(
     meta_pin, meta_year,
-    meta_sale_price, meta_sale_date, meta_sale_document_num,
-    is_outlier, outlier_reason
+    meta_sale_price, meta_sale_date, meta_sale_document_num, sv_is_outlier,
+    sv_outlier_reason
   ) %>%
   # Include outliers, since these data are used for desk review and
   # not for modeling
   rename(
-    meta_sale_is_outlier = is_outlier,
-    meta_sale_outlier_reason = outlier_reason
+    meta_sale_is_outlier = sv_is_outlier,
+    meta_sale_outlier_reason = sv_outlier_reason
   ) %>%
   group_by(meta_pin) %>%
   slice_max(meta_sale_date, n = 2) %>%
