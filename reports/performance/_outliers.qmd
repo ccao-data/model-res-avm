@@ -20,30 +20,31 @@ exclusively on these price-based factors that determine outlier status.
 ### Count by Type
 
 ```{r _outliers_type_breakdown}
-# Subset important outlier information
-training_data <- training_data %>%
+
+
+training_data_outlier_analysis <-
+  training_data %>%
   mutate(
-    outlier_reasons_to_graph = case_when(
-      sv_is_outlier & !is.na(sv_outlier_reason2) ~
-        paste0(sv_outlier_reason1, " (", sv_outlier_reason2, ")"),
-      sv_is_outlier & is.na(sv_outlier_reason2) ~ sv_outlier_reason1,
-      TRUE ~ NA_character_
+    sv_outlier_reason_simplified = case_when(
+      str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) ~
+        "Algorithm: Outlier, High price",
+      str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) ~
+        "Algorithm: Outlier, Low price",
+      TRUE ~ sv_outlier_reason
     )
   )
 
 # Determine the axis limit
-y_lim_axis_outlier_breakdown <- training_data %>%
+y_lim_axis_outlier_breakdown <- training_data_outlier_analysis %>%
   filter(sv_is_outlier) %>%
-  count(outlier_reasons_to_graph) %>%
+  count(sv_outlier_reason_simplified) %>%
   summarise(max_value = max(n)) %>%
   pull(max_value)
 
-
-training_data %>%
+training_data_outlier_analysis %>%
   filter(sv_is_outlier) %>%
-  count(outlier_reasons_to_graph) %>%
-  filter(n > 20) %>%
-  ggplot(aes(x = reorder(outlier_reasons_to_graph, -n), y = n)) +
+  count(sv_outlier_reason_simplified) %>%
+  ggplot(aes(x = reorder(sv_outlier_reason_simplified, -n), y = n)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = comma(n)), vjust = -0.5) +
   ylim(0, 1.05 * y_lim_axis_outlier_breakdown) +
@@ -54,33 +55,22 @@ training_data %>%
     axis.text.y = element_text(angle = 45, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-  )
+  ) 
 ```
+
+
 
 ### Count by Type and Year
 
 ```{r _outliers_type_breakdown_table}
-training_data %>%
+training_data_outlier_analysis %>%
   filter(sv_is_outlier) %>%
-  group_by(meta_year, outlier_reasons_to_graph) %>%
+  group_by(meta_year, sv_outlier_reason_simplified) %>%
   summarise(n = n()) %>%
   rename(Year = meta_year) %>%
   pivot_wider(
     id_cols = Year,
-    names_from = outlier_reasons_to_graph,
-    values_from = n
-  ) %>%
-  kable() %>%
-  kable_styling("striped")
-
-training_data %>%
-  filter(sv_is_outlier) %>%
-  group_by(meta_year, outlier_reasons_to_graph) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  rename(Year = meta_year) %>%
-  pivot_wider(
-    id_cols = Year,
-    names_from = outlier_reasons_to_graph,
+    names_from = sv_outlier_reason_simplified,
     values_from = n
   ) %>%
   kable() %>%
@@ -90,7 +80,7 @@ training_data %>%
 ### Percentage by Class
 
 ```{r _outliers_pct_class}
-training_data %>%
+training_data_outlier_analysis %>%
   summarise(
     percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
     .by = meta_class
@@ -117,14 +107,14 @@ training_data %>%
 ### Percentage by Township
 
 ```{r _outliers_pct_township}
-y_lim_axis_outlier_townships <- training_data %>%
+y_lim_axis_outlier_townships <- training_data_outlier_analysis %>%
   group_by(meta_township_name) %>%
   summarise(percent = mean(case_when(sv_is_outlier == TRUE ~ 1, TRUE ~ 0))) %>%
   ungroup() %>%
   slice_max(percent, n = 1) %>%
   pull(percent)
 
-training_data %>%
+training_data_outlier_analysis %>%
   summarise(
     percent = mean(case_when(sv_is_outlier ~ 1, TRUE ~ 0)),
     .by = c(meta_township_name, meta_triad_name)
