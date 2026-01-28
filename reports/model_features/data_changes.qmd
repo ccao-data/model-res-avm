@@ -135,6 +135,12 @@ count_not_matching <- card_matches_long %>%
   arrange(desc(Count))
 ```
 
+Many of our features should be exact matches but are not. For example, distance 
+to features have some minor variation due to geocoding variance.
+Because of this, all distance features have a buffer of 5 feet.
+There are also features which should not match, but we want to make sure that
+they stay relatively stable. For example, the percentage of college educated
+individuals should not change by more than 10% year over year.
 ::: {.panel-tabset}
 
 ## Count of Unmatched Values
@@ -244,35 +250,32 @@ make_card_comp_chart <- function(col_name) {
     new = c(paste0(col_name, "_new"), paste0(col_name, "_old"))
   )
 
-  # Names for  old/new cols
+  # Names for old/new cols
   old_nm <- paste0(col_name, "_old")
   new_nm <- paste0(col_name, "_new")
 
-  # Count how many times each old/new pair occurs
-  pair_counts <- chart_data_wide[
+  # One row per distinct change (old/new),
+  # with arbitrary example PIN/card + count
+  distinct_changes <- chart_data_wide[
     ,
-    .(n = .N),
+    .(
+      meta_pin = meta_pin[1],
+      meta_card_num = meta_card_num[1],
+      n = .N
+    ),
     by = c(old_nm, new_nm)
   ]
 
-  # Join counts back to the detailed table
-  chart_data_wide <- merge(
-    chart_data_wide,
-    pair_counts,
-    by = c(old_nm, new_nm),
-    all.x = TRUE
-  )
-
   order <- c("meta_pin", "meta_card_num", old_nm, new_nm, "n")
-  present <- intersect(order, names(chart_data_wide))
-  data.table::setcolorder(chart_data_wide, present)
+  present <- intersect(order, names(distinct_changes))
+  data.table::setcolorder(distinct_changes, present)
 
-  # Cap at 1,000 rows for readability with sample
-  if (nrow(chart_data_wide) > 1000L) {
-    chart_data_wide <- chart_data_wide[sample(.N, 1000L)]
+  # Cap at 1,000 distinct changes for readability
+  if (nrow(distinct_changes) > 1000L) {
+    distinct_changes <- distinct_changes[sample(.N, 1000L)]
   }
 
-  chart_data_wide[]
+  distinct_changes[]
 }
 
 
