@@ -21,15 +21,24 @@ exclusively on these price-based factors that determine outlier status.
 
 ```{r _outliers_type_breakdown}
 
-
 training_data_outlier_analysis <-
   training_data %>%
   mutate(
     sv_outlier_reason_simplified = case_when(
+      str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) &
+        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
+        "Algorithm: Outlier, High price, PTAX-flag",
+
+      str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) &
+        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
+        "Algorithm: Outlier, Low price, PTAX-flag",
+
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) ~
         "Algorithm: Outlier, High price",
+
       str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) ~
         "Algorithm: Outlier, Low price",
+
       TRUE ~ sv_outlier_reason
     )
   )
@@ -149,7 +158,10 @@ training_data_outlier_analysis %>%
 ### By Outlier Status
 
 ```{r _outliers_dist_price}
-training_data %>%
+training_data_outlier_analysis %>%
+  # Remove preoperties that don't come out of the box with sv_is_outlier
+  # classifications, such as multi-card properties
+  filter(!is.na(sv_is_outlier)) %>% 
   summarise(
     Min = min(meta_sale_price),
     Median = median(meta_sale_price),
@@ -165,7 +177,10 @@ training_data %>%
   kable() %>%
   kable_styling(full_width = TRUE)
 
-training_data %>%
+training_data_outlier_analysis %>%
+  # Remove preoperties that don't come out of the box with sv_is_outlier
+  # classifications, such as multi-card properties
+  filter(!is.na(sv_is_outlier)) %>% 
   mutate(
     Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
     Category = factor(Category, levels = c("Outlier", "Not Outlier"))
@@ -188,7 +203,7 @@ training_data %>%
 ### By Price Per Square Foot
 
 ```{r _outliers_dist_price_per_sqft}
-outliers_dist_price_per_sqft <- training_data %>%
+outliers_dist_price_per_sqft <- training_data_outlier_analysis %>%
   filter(!is.na(char_bldg_sf) & char_bldg_sf > 0) %>%
   mutate(ppsf = meta_sale_price / char_bldg_sf)
 outliers_dist_price_per_sqft %>%
@@ -230,7 +245,7 @@ outliers_dist_price_per_sqft %>%
 ### By Township
 
 ```{r _outliers_dist_township, fig.height=8, fig.width=7}
-training_data %>%
+training_data_outlier_analysis %>%
   filter(meta_triad_name == run_triad) %>%
   mutate(
     township_name = ccao::town_convert(meta_township_code),
@@ -257,7 +272,7 @@ training_data %>%
 ### By Class
 
 ```{r _outliers_dist_class, fig.height=8, fig.width=7}
-training_data %>%
+training_data_outlier_analysis %>%
   filter(
     meta_triad_name == run_triad,
     !meta_class %in% c("218", "219")
@@ -287,7 +302,7 @@ training_data %>%
 ### Ratio Comparison
 
 ```{r _outliers_ratio_comparison, fig.height=8, fig.width=7}
-outliers_ratio_comparison <- training_data %>%
+outliers_ratio_comparison <- training_data_outlier_analysis %>%
   summarise(
     median_sale_price = median(meta_sale_price),
     .by = c(sv_is_outlier, meta_township_name)
@@ -315,7 +330,7 @@ outliers_ratio_comparison %>%
   geom_bar(stat = "identity", aes(fill = above_below)) +
   coord_flip() +
   geom_text(aes(label = round(percent, 2)), size = 3.2, hjust = -0.2) +
-  scale_y_continuous(limits = c(0, 1.5)) +
+  scale_y_continuous(limits = c(0, 2)) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
@@ -336,7 +351,7 @@ outliers_ratio_comparison %>%
 ```{r _outliers_table_township_summary}
 # This object is joined to itself using different filters, which is why this
 # filtering is applied here rather than below.
-outliers_table_township_summary <- training_data %>%
+outliers_table_township_summary <- training_data_outlier_analysis %>%
   filter(meta_class != "200" & meta_triad_name == run_triad)
 
 outliers_table_township_summary <- outliers_table_township_summary %>%
@@ -346,7 +361,7 @@ outliers_table_township_summary <- outliers_table_township_summary %>%
     `Med. Sale Price` = median(meta_sale_price, na.rm = TRUE),
     `Max. Sale Price` = max(meta_sale_price, na.rm = TRUE),
     Count = n(),
-    .by = c(outlier_reasons_to_graph, meta_township_name)
+    .by = c(sv_outlier_reason_simplified, meta_township_name)
   ) %>%
   left_join(
     outliers_table_township_summary %>%
@@ -360,7 +375,7 @@ outliers_table_township_summary <- outliers_table_township_summary %>%
   mutate(across(contains("Sale"), dollar)) %>%
   relocate(meta_township_name) %>%
   dplyr::rename(
-    "Outlier Type" = outlier_reasons_to_graph,
+    "Outlier Type" = sv_outlier_reason_simplified,
     "Township Name" = meta_township_name
   ) %>%
   arrange(`Township Name`, desc(Count))
@@ -381,7 +396,7 @@ outliers_table_township_summary %>%
 ### By Outlier Type and Class
 
 ```{r _outliers_table_class_summary}
-outliers_table_class_summary <- training_data %>%
+outliers_table_class_summary <- training_data_outlier_analysis %>%
   filter(meta_class != "200" & meta_triad_name == run_triad)
 
 outliers_table_class_summary <- outliers_table_class_summary %>%
@@ -391,7 +406,7 @@ outliers_table_class_summary <- outliers_table_class_summary %>%
     `Med. Sale Price` = median(meta_sale_price, na.rm = TRUE),
     `Max. Sale Price` = max(meta_sale_price, na.rm = TRUE),
     Count = n(),
-    .by = c(outlier_reasons_to_graph, meta_class)
+    .by = c(sv_outlier_reason_simplified, meta_class)
   ) %>%
   left_join(
     outliers_table_class_summary %>%
@@ -405,7 +420,7 @@ outliers_table_class_summary <- outliers_table_class_summary %>%
   mutate(across(contains("Sale"), dollar)) %>%
   relocate(meta_class) %>%
   dplyr::rename(
-    "Outlier Type" = outlier_reasons_to_graph,
+    "Outlier Type" = sv_outlier_reason_simplified,
     "Class" = meta_class
   ) %>%
   arrange(`Class`, desc(Count))
@@ -432,7 +447,7 @@ outliers_table_class_summary %>%
 ### Share of Outliers by Decile
 
 ```{r _outliers_decile_share}
-training_data %>%
+training_data_outlier_analysis %>%
   arrange(meta_sale_price) %>%
   mutate(decile = ntile(meta_sale_price, 10)) %>%
   summarise(
