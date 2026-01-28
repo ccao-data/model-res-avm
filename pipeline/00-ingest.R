@@ -153,7 +153,7 @@ tictoc::toc()
 # included in reporting and exports for a South Tri modeling year. Because this
 # is an iasWorld data issue and can't be corrected for 2025 since it's locked
 # for editing, we've decided to hard-code this correction into the pipeline for
-# now. This code should be removed for assessment year 2027 modeling.G
+# now. This code should be removed for assessment year 2027 modeling.
 assessment_data <- assessment_data %>%
   mutate(
     meta_nbhd_code = case_when(
