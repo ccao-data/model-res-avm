@@ -36,7 +36,10 @@ training_data_outlier_analysis <-
         "Algorithm: Outlier, Low price",
       TRUE ~ sv_outlier_reason
     )
-  )
+  ) %>%
+  # This data isn't used in the training data and as such we remove it for
+  # further analysis
+  filter(!ind_pin_is_multicard)
 
 # Determine the axis limit
 y_lim_axis_outlier_breakdown <- training_data_outlier_analysis %>%
@@ -144,7 +147,11 @@ training_data_outlier_analysis %>%
   facet_wrap(vars(meta_triad_name), scales = "free_x")
 ```
 
-:::
+::
+
+
+
+
 
 ## Distributions
 
@@ -336,6 +343,179 @@ outliers_ratio_comparison %>%
 ```
 
 :::
+
+## Visualized on a map
+
+```{r}
+# TODO:
+# - make sure the same exclusion filters (multi-card, etc) are set before doing this analysis
+
+nbhd_sf <- ccao::nbhd_shp %>%
+  st_as_sf() %>%
+  st_transform(4326) %>%
+  mutate(nbhd_code = as.character(nbhd))
+
+township_sf <- ccao::town_shp %>%
+  st_as_sf() %>%
+  st_transform(4326)
+
+# 3) Summaries by (triad, nbhd)
+#    - overall outlier proportion: mean(is_outlier)
+#    - total sales: n()
+#    - reason breakdown: HTML list per nbhd
+reason_breakdown <- training_data_outlier_analysis %>%
+  filter(!is.na(meta_triad_name), !is.na(meta_nbhd_code)) %>%
+  group_by(meta_triad_name, meta_nbhd_code, sv_outlier_reason_simplified) %>%
+  summarise(n_reason = n(), .groups = "drop") %>%
+  group_by(meta_triad_name, meta_nbhd_code) %>%
+  mutate(
+    pct_of_total = n_reason / sum(n_reason),
+  ) %>%
+  arrange(desc(n_reason), .by_group = TRUE) %>%
+  summarise(
+    reason_html = paste0(
+      "<ul style='margin:0; padding-left: 18px;'>",
+      paste0(
+        "<li>",
+        htmlEscape(sv_outlier_reason_simplified),
+        ": <strong>", n_reason, "</strong> (", sprintf("%.1f%%", pct_of_total * 100), ")",
+        "</li>",
+        collapse = ""
+      ),
+      "</ul>"
+    ),
+    .groups = "drop"
+  )
+
+nbhd_summary <- training_data_outlier_analysis %>%
+  mutate(
+    meta_nbhd_code = as.character(meta_nbhd_code),
+    meta_triad_name = as.character(meta_triad_name)
+  ) %>% 
+  group_by(meta_triad_name, meta_nbhd_code) %>%
+  summarise(
+    total_sales = n(),
+    outlier_prop = mean(sv_is_outlier, na.rm = TRUE),
+    outlier_count = sum(sv_is_outlier, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  left_join(reason_breakdown, by = c("meta_triad_name", "meta_nbhd_code")) %>%
+  mutate(
+    outlier_pct_label = sprintf("%.1f%%", outlier_prop * 100),
+    outlier_count_label = comma(outlier_count),
+    total_sales_label = comma(total_sales)
+  )
+
+
+breaks <- c(0, 0.01, 0.015, 0.075, 0.10, 0.2, Inf)
+
+palette_colors <- c(
+  "#084B99", # blue
+  "#1B8FC1", # blue-green
+  "#00A65A", # green
+  "#A4C238", # yellow-green
+  "#D98B32", # orange
+  "#CC0000"  # red
+)
+
+format_pct <- function(x) {
+  ifelse(x %% 1 == 0, sprintf("%d%%", as.integer(x)), sprintf("%.1f%%", x))
+}
+
+labels <- vapply(
+  seq_len(length(breaks) - 1),
+  function(i) {
+    low <- breaks[i] * 100
+    high <- breaks[i + 1] * 100
+    if (is.infinite(high)) paste0("≥ ", format_pct(low)) else paste0(format_pct(low), " – ", format_pct(high))
+  },
+  character(1)
+)
+
+
+make_triad_map <- function(triad_name) {
+  triad_data <- nbhd_summary %>%
+    filter(meta_triad_name == triad_name)
+
+  map_data <- nbhd_sf %>%
+    left_join(triad_data, by = c("town_nbhd" = "meta_nbhd_code")) %>%
+    mutate(
+      popup_html = ifelse(
+        is.na(outlier_prop),
+        paste0(
+          "<strong>", htmlEscape(town_nbhd), " - ", htmlEscape(township_name), "</strong><br>",
+          "<em>No training data for this neighborhood in this triad.</em>"
+        ),
+        paste0(
+          "<strong>", htmlEscape(town_nbhd), " - ", htmlEscape(township_name), "</strong><br>",
+          "<strong>Outlier proportion:</strong> ", outlier_pct_label,
+          " (", outlier_count_label, " / ", total_sales_label, ")", "<br>",
+          "<strong>Reason breakdown:</strong>",
+          reason_html
+        )
+      )
+    )
+
+  pal <- colorBin(
+    palette  = palette_colors,
+    bins     = breaks,
+    domain   = map_data$outlier_prop,
+    na.color = "#bdbdbd",
+    right    = FALSE
+  )
+
+  leaflet() %>%
+    addMapPane("nbhd_pane", zIndex = 410) %>%
+    addMapPane("township_pane", zIndex = 420) %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+
+    addPolygons(
+      data = map_data,
+      fillColor = ~ pal(outlier_prop),
+      color = "white",
+      weight = 1,
+      fillOpacity = 0.7,
+      popup = ~ popup_html,
+      label = ~ lapply(popup_html, HTML),
+      highlightOptions = highlightOptions(
+        weight = 2,
+        color = "black",
+        bringToFront = TRUE
+      ),
+      options = pathOptions(pane = "nbhd_pane")
+    ) %>%
+
+    addPolygons(
+      data = township_sf,
+      fill = FALSE,
+      color = "#202020",
+      weight = 3,
+      opacity = 0.9,
+      smoothFactor = 0.5,
+      options = pathOptions(pane = "township_pane", interactive = FALSE)
+    ) %>%
+
+    addLegend(
+      position = "bottomright",
+      colors   = palette_colors,
+      labels   = labels,
+      opacity  = 0.7,
+      title    = glue("Outlier proportion ({triad_name})")
+    )
+}
+
+triads <- sort(unique(na.omit(training_data_outlier_analysis$meta_triad_name)))
+triads
+
+```
+
+```{r}
+for (t in triads) {
+  cat("\n\n### ", t, "\n\n", sep = "")
+  print(make_triad_map(t))
+}
+```
+
 
 ## Table Breakouts
 
