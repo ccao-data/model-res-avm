@@ -90,7 +90,14 @@ assessment_card_data_mc <- assessment_card_data_pred %>%
   ) %>%
   # For prorated PINs with multiple cards, take the average of the card
   # (building) across PINs. This is because the same prorated building spread
-  # across multiple PINs sometimes receives different values from the model
+  # across multiple PINs sometimes receives different values from the model.
+
+  # This stage creates average values for each tieback in a manner which is
+  # partially duplicative of what happens in stage 5. However, because other
+  # adjustments are made (townhome averaging, rounding, and land value capping),
+  # model outputs change when either stage of the duplicative code is removed.
+  # See stage 5 for more details.
+
   group_by(meta_tieback_key_pin, meta_card_num, char_land_sf) %>%
   mutate(
     pred_card_intermediate_fmv = ifelse(
@@ -211,6 +218,33 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
 # 5. Prorate and Reapportion ---------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Prorating buildings")
+
+# Prorated pins can be hard to trace through the pipeline and are affected by
+# multiple rounding and averaging stages before they reach this point.
+# Some of the complexities include:
+
+# PINs can be multi-card, and have different numbers of cards.
+# In stage 3.1, tieback PIN 05283170010000 has PINs with 2 and 3 cards,
+# and tieback PIN 01131010080000 has PINs with 1 and 2 cards.
+# We currently group by meta_tieback_key_pin, meta_card_num, and char_land_sf.
+# Values for char_land_sf can be both the same and different in each tieback
+# grouping. For example, tieback PIN 05283170010000 has 5 total cards with the
+# same SQ footage, and tieback PIN 05283170030000 has 5 total cards with two
+# separate SQ footage values. The PIN with tieback PIN 09221110050000 has
+# two cards for each PIN with the same SQ footage and and tieback PIN
+# 09263150040000 has three cards for each PIN with different SQ footage values.
+
+# They can also have capped land values in stage 4. An example of capped value
+# are tieback PINs 16012030310000 or 29071130320000
+# in run_id 2025-02-11-charming-eric.
+
+# They can also be part of town-home complexes (Stage 3.2). Town-home complexes
+# are grouped based on different characteristics, such as the number of rooms,
+# square footage, or proration rate, meaning tiebacks can be averaged in
+# separate groupings (tieback PINs 15213010030000 or 30171010230000)
+
+# Prorated PINs will also be rounded in stage 3.3, meaning the averaging that
+# occurs in this and in stage 3.1 will be operating off of different values.
 
 # Prorating is the process of dividing a building's value among multiple PINs.
 # See the steps outlined below for the process to determine a prorated value:
