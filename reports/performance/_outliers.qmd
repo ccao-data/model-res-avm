@@ -20,7 +20,6 @@ exclusively on these price-based factors that determine outlier status.
 ### Count by Type
 
 ```{r _outliers_type_breakdown}
-
 training_data_outlier_analysis <-
   training_data %>%
   mutate(
@@ -28,17 +27,13 @@ training_data_outlier_analysis <-
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) &
         str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
         "Algorithm: Outlier, High price, PTAX-flag",
-
       str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) &
         str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
         "Algorithm: Outlier, Low price, PTAX-flag",
-
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) ~
         "Algorithm: Outlier, High price",
-
       str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) ~
         "Algorithm: Outlier, Low price",
-
       TRUE ~ sv_outlier_reason
     )
   )
@@ -64,7 +59,7 @@ training_data_outlier_analysis %>%
     axis.text.y = element_text(angle = 45, hjust = 1),
     axis.title.y = element_blank(),
     axis.title.x = element_blank()
-  ) 
+  )
 ```
 
 
@@ -161,7 +156,7 @@ training_data_outlier_analysis %>%
 training_data_outlier_analysis %>%
   # Remove preoperties that don't come out of the box with sv_is_outlier
   # classifications, such as multi-card properties
-  filter(!is.na(sv_is_outlier)) %>% 
+  filter(!is.na(sv_is_outlier)) %>%
   summarise(
     Min = min(meta_sale_price),
     Median = median(meta_sale_price),
@@ -180,7 +175,7 @@ training_data_outlier_analysis %>%
 training_data_outlier_analysis %>%
   # Remove preoperties that don't come out of the box with sv_is_outlier
   # classifications, such as multi-card properties
-  filter(!is.na(sv_is_outlier)) %>% 
+  filter(!is.na(sv_is_outlier)) %>%
   mutate(
     Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
     Category = factor(Category, levels = c("Outlier", "Not Outlier"))
