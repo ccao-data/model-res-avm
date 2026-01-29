@@ -11,6 +11,28 @@ library(noctua)
 library(stringr)
 library(tidyr)
 
+# We want sub-reports to be able to be run on their own. This ensures
+# that if `model_features.qmd` isn't the report run and no param is created,
+# we create the params object from the frontmatter of the main report file
+parse_params_from_frontmatter <- function(path, defaults = NULL) {
+  fm <- rmarkdown::yaml_front_matter(path)
+
+  p <- fm$params
+
+  # Ensure a regular named list
+  p <- as.list(p)
+
+  if (!is.null(defaults)) {
+    defaults <- as.list(defaults)
+    # params override defaults
+    p <- utils::modifyList(defaults, p)
+  }
+
+  p
+}
+
+params <- parse_params_from_frontmatter("model_features.qmd")
+
 # Text sizes for small multiples
 axis_title_size <- 6
 strip_text_size <- 4
