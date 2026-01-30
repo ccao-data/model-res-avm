@@ -98,7 +98,7 @@ outlier_by_year_type %>%
   ) %>%
   kable() %>%
   kable_styling("striped") %>%
-  column_spec(2, bold = TRUE) %>%                         # Total outliers
+  column_spec(2, bold = TRUE) %>% # Total outliers
   column_spec(3, bold = TRUE, color = "#084B99")
 ```
 
@@ -402,7 +402,7 @@ nbhd_summary <- training_data_outlier_analysis %>%
   mutate(
     meta_nbhd_code = as.character(meta_nbhd_code),
     meta_triad_name = as.character(meta_triad_name)
-  ) %>% 
+  ) %>%
   group_by(meta_triad_name, meta_nbhd_code) %>%
   summarise(
     total_sales = n(),
@@ -426,7 +426,7 @@ palette_colors <- c(
   "#00A65A", # green
   "#A4C238", # yellow-green
   "#D98B32", # orange
-  "#CC0000"  # red
+  "#CC0000" # red
 )
 
 format_pct <- function(x) {
@@ -479,14 +479,13 @@ make_triad_map <- function(triad_name) {
     addMapPane("nbhd_pane", zIndex = 410) %>%
     addMapPane("township_pane", zIndex = 420) %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
-
     addPolygons(
       data = map_data,
       fillColor = ~ pal(outlier_prop),
       color = "white",
       weight = 1,
       fillOpacity = 0.7,
-      popup = ~ popup_html,
+      popup = ~popup_html,
       label = ~ lapply(popup_html, HTML),
       highlightOptions = highlightOptions(
         weight = 2,
@@ -504,7 +503,6 @@ make_triad_map <- function(triad_name) {
       smoothFactor = 0.5,
       options = pathOptions(pane = "township_pane", interactive = FALSE)
     ) %>%
-
     addLegend(
       position = "bottomright",
       colors   = palette_colors,
@@ -522,19 +520,19 @@ triads <- sort(unique(na.omit(training_data_outlier_analysis$meta_triad_name)))
 ### South
 
 ```{r}
-make_triad_map('South')
+make_triad_map("South")
 ```
 
 ### City
 
 ```{r}
-make_triad_map('City')
+make_triad_map("City")
 ```
 
 ### North
 
 ```{r}
-make_triad_map('North')
+make_triad_map("North")
 ```
 
 :::
