@@ -1,4 +1,9 @@
 ```{r}
+params <- list(
+  comp_run_id = "2025-02-11-charming-eric",
+  baseline_run_id = "2026-01-29-vigorous-tristan"
+)
+
 source("_utils.R")
 ```
 
@@ -141,6 +146,7 @@ Because of this, all distance features have a buffer of 5 feet.
 There are also features which should not match, but we want to make sure that
 they stay relatively stable. For example, the percentage of college educated
 individuals should not change by more than 10% year over year.
+
 ::: {.panel-tabset}
 
 ## Count of Unmatched Values

@@ -234,11 +234,11 @@
       "Version": "0.6.0",
       "Source": "GitHub",
       "RemoteType": "github",
-      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "assessr",
       "RemoteRef": "master",
       "RemoteSha": "82b3cca6374cc7300145e4345278329b7835086a",
+      "RemoteHost": "api.github.com",
       "Requirements": [
         "R",
         "stats"
@@ -1265,39 +1265,39 @@
     "paws.analytics": {
       "Package": "paws.analytics",
       "Version": "0.10.0",
-      "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
+      "Source": "unknown",
+      "RemoteType": "repository",
       "RemoteUrl": "https://github.com/paws-r/paws",
       "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.analytics",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "9325b775d017abfb48bab9e2aa8360d0"
+      "Hash": "132c7a1e89674f3747544772c05c2cb6"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.10.0",
-      "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
+      "Source": "unknown",
+      "RemoteType": "repository",
       "RemoteUrl": "https://github.com/paws-r/paws",
       "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.application.integration",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "cabf81b01fe2e75234b146c95f4320f2"
+      "Hash": "6e895ee23284efc2f79a01b64acd76ae"
     },
     "paws.common": {
       "Package": "paws.common",
       "Version": "0.8.6",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
+      "Repository": "CRAN",
+      "RemoteType": "repository",
       "RemoteUrl": "https://github.com/paws-r/paws",
       "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "paws.common",
       "Requirements": [
-        "R",
         "Rcpp",
         "base64enc",
         "curl",
@@ -1309,7 +1309,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "f4084af1990bfba0d7fc9c337aaf60bc"
+      "Hash": "7c199b64208466ecdcb267cfb4727ea0"
     },
     "pillar": {
       "Package": "pillar",
