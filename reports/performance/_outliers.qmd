@@ -177,9 +177,6 @@ training_data_outlier_analysis %>%
 
 ```{r _outliers_dist_price}
 training_data_outlier_analysis %>%
-  # Remove preoperties that don't come out of the box with sv_is_outlier
-  # classifications, such as multi-card properties
-  filter(!is.na(sv_is_outlier)) %>%
   summarise(
     Min = min(meta_sale_price),
     Median = median(meta_sale_price),
@@ -196,9 +193,6 @@ training_data_outlier_analysis %>%
   kable_styling(full_width = TRUE)
 
 training_data_outlier_analysis %>%
-  # Remove preoperties that don't come out of the box with sv_is_outlier
-  # classifications, such as multi-card properties
-  filter(!is.na(sv_is_outlier)) %>%
   mutate(
     Category = ifelse(sv_is_outlier, "Outlier", "Not Outlier"),
     Category = factor(Category, levels = c("Outlier", "Not Outlier"))
