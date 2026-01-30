@@ -440,8 +440,11 @@ labels <- vapply(
   function(i) {
     low <- breaks[i] * 100
     high <- breaks[i + 1] * 100
-    if (is.infinite(high)) paste0("≥ ", format_pct(low))
-    else paste0(format_pct(low), " – ", format_pct(high))
+    if (is.infinite(high)) {
+      paste0("≥ ", format_pct(low))
+    } else {
+      paste0(format_pct(low), " – ", format_pct(high))
+    }
   },
   character(1)
 )
