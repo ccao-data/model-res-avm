@@ -366,10 +366,6 @@ township_sf <- ccao::town_shp %>%
   st_as_sf() %>%
   st_transform(4326)
 
-# 3) Summaries by (triad, nbhd)
-#    - overall outlier proportion: mean(is_outlier)
-#    - total sales: n()
-#    - reason breakdown: HTML list per nbhd
 reason_breakdown <- training_data_outlier_analysis %>%
   filter(!is.na(meta_triad_name), !is.na(meta_nbhd_code)) %>%
   group_by(meta_triad_name, meta_nbhd_code, sv_outlier_reason_simplified) %>%
@@ -513,10 +509,6 @@ make_triad_map <- function(triad_name) {
       title    = glue("Outlier proportion ({triad_name})")
     )
 }
-
-triads <- sort(
-  unique(na.omit(training_data_outlier_analysis$meta_triad_name))
-)
 ```
 
 ::: {.panel-tabset}
@@ -540,7 +532,6 @@ make_triad_map("North")
 ```
 
 :::
-
 
 ## Table Breakouts
 
