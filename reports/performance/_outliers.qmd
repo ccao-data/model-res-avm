@@ -70,18 +70,36 @@ training_data_outlier_analysis %>%
 ### Count by Type and Year
 
 ```{r _outliers_type_breakdown_table}
-training_data_outlier_analysis %>%
+outlier_by_year_type <- training_data_outlier_analysis %>%
   filter(sv_is_outlier) %>%
-  group_by(meta_year, sv_outlier_reason_simplified) %>%
-  summarise(n = n()) %>%
+  count(meta_year, sv_outlier_reason_simplified, name = "n") %>%
   rename(Year = meta_year) %>%
   pivot_wider(
     id_cols = Year,
     names_from = sv_outlier_reason_simplified,
-    values_from = n
+    values_from = n,
+    values_fill = 0
+  )
+
+total_sales_by_year <- training_data_outlier_analysis %>%
+  count(meta_year, name = "total_sales") %>%
+  rename(Year = meta_year)
+
+outlier_by_year_type %>%
+  left_join(total_sales_by_year, by = "Year") %>%
+  mutate(
+    `Total outliers` = rowSums(across(where(is.numeric) & !any_of("total_sales"))),
+    `Outlier %` = `Total outliers` / total_sales
+  ) %>%
+  select(Year, `Total outliers`, `Outlier %`, everything(), -total_sales) %>%
+  mutate(
+    `Total outliers` = scales::comma(`Total outliers`),
+    `Outlier %` = scales::percent(`Outlier %`, accuracy = 0.1)
   ) %>%
   kable() %>%
-  kable_styling("striped")
+  kable_styling("striped") %>%
+  column_spec(2, bold = TRUE) %>%                         # Total outliers
+  column_spec(3, bold = TRUE, color = "#084B99")
 ```
 
 ### Percentage by Class
@@ -147,11 +165,7 @@ training_data_outlier_analysis %>%
   facet_wrap(vars(meta_triad_name), scales = "free_x")
 ```
 
-::
-
-
-
-
+:::
 
 ## Distributions
 
@@ -332,7 +346,7 @@ outliers_ratio_comparison %>%
   geom_bar(stat = "identity", aes(fill = above_below)) +
   coord_flip() +
   geom_text(aes(label = round(percent, 2)), size = 3.2, hjust = -0.2) +
-  scale_y_continuous(limits = c(0, 2)) +
+  scale_y_continuous(limits = c(0, 2.4)) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
@@ -346,10 +360,7 @@ outliers_ratio_comparison %>%
 
 ## Visualized on a map
 
-```{r}
-# TODO:
-# - make sure the same exclusion filters (multi-card, etc) are set before doing this analysis
-
+```{r _outlier_proportion_by_nbhd_on_map}
 nbhd_sf <- ccao::nbhd_shp %>%
   st_as_sf() %>%
   st_transform(4326) %>%
@@ -484,7 +495,6 @@ make_triad_map <- function(triad_name) {
       ),
       options = pathOptions(pane = "nbhd_pane")
     ) %>%
-
     addPolygons(
       data = township_sf,
       fill = FALSE,
@@ -505,16 +515,29 @@ make_triad_map <- function(triad_name) {
 }
 
 triads <- sort(unique(na.omit(training_data_outlier_analysis$meta_triad_name)))
-triads
-
 ```
+
+::: {.panel-tabset}
+
+### South
 
 ```{r}
-for (t in triads) {
-  cat("\n\n### ", t, "\n\n", sep = "")
-  print(make_triad_map(t))
-}
+make_triad_map('South')
 ```
+
+### City
+
+```{r}
+make_triad_map('City')
+```
+
+### North
+
+```{r}
+make_triad_map('North')
+```
+
+:::
 
 
 ## Table Breakouts
@@ -666,7 +689,7 @@ outlier_decile_breakout <- function(data, dec) {
     arrange(meta_sale_price) %>%
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     filter(decile == dec & sv_is_outlier == TRUE) %>%
-    group_by(outlier_reasons_to_graph) %>%
+    group_by(sv_outlier_reason_simplified) %>%
     summarise(count = n()) %>%
     ungroup() %>%
     slice_max(count, n = 1) %>%
@@ -676,9 +699,9 @@ outlier_decile_breakout <- function(data, dec) {
     arrange(meta_sale_price) %>%
     mutate(decile = ntile(meta_sale_price, 10)) %>%
     filter(decile == dec & sv_is_outlier) %>%
-    summarise(count = n(), .by = outlier_reasons_to_graph) %>%
+    summarise(count = n(), .by = sv_outlier_reason_simplified) %>%
     filter(count > 20) %>%
-    ggplot(aes(x = reorder(outlier_reasons_to_graph, count), y = count)) +
+    ggplot(aes(x = reorder(sv_outlier_reason_simplified, count), y = count)) +
     labs(
       y = "Number of Sales",
       x = "Outlier Types"
@@ -702,13 +725,13 @@ outlier_decile_breakout <- function(data, dec) {
     coord_flip()
 }
 
-outlier_decile_breakout(training_data, 10)
+outlier_decile_breakout(training_data_outlier_analysis, 10)
 ```
 
 ### Outlier Types in Bottom Decile
 
 ```{r _outliers_decile_bottom}
-outlier_decile_breakout(training_data, 1)
+outlier_decile_breakout(training_data_outlier_analysis, 1)
 ```
 
 :::
