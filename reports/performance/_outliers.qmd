@@ -88,7 +88,9 @@ total_sales_by_year <- training_data_outlier_analysis %>%
 outlier_by_year_type %>%
   left_join(total_sales_by_year, by = "Year") %>%
   mutate(
-    `Total outliers` = rowSums(across(where(is.numeric) & !any_of("total_sales"))),
+    `Total outliers` = rowSums(
+      across(where(is.numeric) & !any_of("total_sales"))
+    ),
     `Outlier %` = `Total outliers` / total_sales
   ) %>%
   select(Year, `Total outliers`, `Outlier %`, everything(), -total_sales) %>%
@@ -389,7 +391,7 @@ reason_breakdown <- training_data_outlier_analysis %>%
       paste0(
         "<li>",
         htmlEscape(sv_outlier_reason_simplified),
-        ": <strong>", n_reason, "</strong> (", sprintf("%.1f%%", pct_of_total * 100), ")",
+        ": <strong>", n_reason, "</strong> (", sprintf("%.1f%%", pct_of_total * 100), ")", # nolint
         "</li>",
         collapse = ""
       ),
@@ -438,7 +440,8 @@ labels <- vapply(
   function(i) {
     low <- breaks[i] * 100
     high <- breaks[i + 1] * 100
-    if (is.infinite(high)) paste0("≥ ", format_pct(low)) else paste0(format_pct(low), " – ", format_pct(high))
+    if (is.infinite(high)) paste0("≥ ", format_pct(low))
+    else paste0(format_pct(low), " – ", format_pct(high))
   },
   character(1)
 )
@@ -454,11 +457,13 @@ make_triad_map <- function(triad_name) {
       popup_html = ifelse(
         is.na(outlier_prop),
         paste0(
-          "<strong>", htmlEscape(town_nbhd), " - ", htmlEscape(township_name), "</strong><br>",
+          "<strong>", htmlEscape(town_nbhd), " - ",
+          htmlEscape(township_name), "</strong><br>",
           "<em>No training data for this neighborhood in this triad.</em>"
         ),
         paste0(
-          "<strong>", htmlEscape(town_nbhd), " - ", htmlEscape(township_name), "</strong><br>",
+          "<strong>", htmlEscape(town_nbhd), " - ",
+          htmlEscape(township_name), "</strong><br>",
           "<strong>Outlier proportion:</strong> ", outlier_pct_label,
           " (", outlier_count_label, " / ", total_sales_label, ")", "<br>",
           "<strong>Reason breakdown:</strong>",
@@ -512,7 +517,9 @@ make_triad_map <- function(triad_name) {
     )
 }
 
-triads <- sort(unique(na.omit(training_data_outlier_analysis$meta_triad_name)))
+triads <- sort(
+  unique(na.omit(training_data_outlier_analysis$meta_triad_name))
+)
 ```
 
 ::: {.panel-tabset}
