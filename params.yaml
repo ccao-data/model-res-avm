@@ -15,7 +15,7 @@ run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Testing 2026 baseline model with updated parameters
+run_note: Potential residential baseline with SHAP values and DVC path update
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -27,7 +27,7 @@ toggle:
   shap_enable: true
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: true
+  comp_enable: false
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to false if you are not a CCAO employee

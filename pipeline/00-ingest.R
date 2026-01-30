@@ -158,6 +158,7 @@ assessment_data <- assessment_data %>%
   mutate(
     meta_nbhd_code = case_when(
       meta_pin == "30172130150000" ~ "37061",
+      meta_pin == "15024050110000" ~ "33020",
       TRUE ~ meta_nbhd_code
     )
   )
