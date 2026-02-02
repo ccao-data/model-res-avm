@@ -134,22 +134,15 @@ if (!exists("baseline_assessment_data")) {
 # SHAPs
 
 if (!exists("baseline_shaps")) {
-  baseline_shaps <- dbGetQuery(
-    conn,
-    glue(
-      "
-    select
-      *
-    from model.shap
-    where run_id = '{params$baseline_run_id}' "
+if (!exists("baseline_shaps")) {
+  baseline_shaps <- open_dataset(
+    paste0(
+      glue("{base_model_results_url}/shap/"),
+      glue("year={baseline_year}/"),
+      glue("run_id={params$baseline_run_id}")
     )
   ) %>%
-    select(
-      meta_pin,
-      meta_card_num,
-      meta_year,
-      all_of(model_predictor_all_name)
-    ) %>%
+    collect() %>%
     left_join(
       baseline_assessment_data,
       by = c("meta_pin", "meta_card_num"),
