@@ -86,10 +86,10 @@ training_data_outlier_analysis <-
         "Algorithm: Outlier, Low price",
       TRUE ~ sv_outlier_reason
     )
-  )
-# This data isn't used in the training data and as such we remove it for
-# further analysis
-filter(!ind_pin_is_multicard)
+  ) %>% 
+  # This data isn't used in the training data and as such we remove it for
+  # further analysis
+  filter(!ind_pin_is_multicard)
 
 # Determine the axis limit
 y_lim_axis_outlier_breakdown <- training_data_outlier_analysis %>%
