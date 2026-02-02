@@ -85,7 +85,7 @@ clean_column_values <- function(df, column_name) {
 s3_data_download <- function(dvc_md5_assessment_data) {
   # Define the S3 path for assessment data
   s3_path <- paste0(
-    "s3://ccao-data-dvc-us-east-1/files/md5/",
+    "s3://ccao-data-dvc-us-east-1/model-res-avm/files/md5/",
     substr(dvc_md5_assessment_data, 1, 2), "/",
     substr(dvc_md5_assessment_data, 3, nchar(dvc_md5_assessment_data))
   )

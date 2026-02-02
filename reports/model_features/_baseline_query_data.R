@@ -1,7 +1,7 @@
 noctua_options(cache_size = 10, unload = TRUE)
 conn <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
-base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
+base_dvc_url <- "s3://ccao-data-dvc-us-east-1/model-res-avm"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
 # Model metadata
