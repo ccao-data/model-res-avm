@@ -132,8 +132,6 @@ if (!exists("baseline_assessment_data")) {
 }
 
 # SHAPs
-
-if (!exists("baseline_shaps")) {
 if (!exists("baseline_shaps")) {
   baseline_shaps <- open_dataset(
     paste0(
