@@ -75,10 +75,14 @@ training_data_outlier_analysis <-
         "Review: Flip, Algorithm: High price",
       # Reasons that are algorithm only or review only
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) &
-        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
+        str_detect(
+          sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)
+        ) ~
         "Algorithm: Outlier, High price, PTAX-flag",
       str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) &
-        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
+        str_detect(
+          sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)
+        ) ~
         "Algorithm: Outlier, Low price, PTAX-flag",
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) ~
         "Algorithm: Outlier, High price",
