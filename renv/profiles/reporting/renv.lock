@@ -1332,16 +1332,6 @@
       ],
       "Hash": "af456d7a181750812bd8b2bfedb3ea4e"
     },
-    "rappdirs": {
-      "Package": "rappdirs",
-      "Version": "0.3.3",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "5e3c5dc0b071b21fa128676560dbe94d"
-    },
     "raster": {
       "Package": "raster",
       "Version": "3.6-30",
