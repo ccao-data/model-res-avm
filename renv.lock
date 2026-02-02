@@ -1346,11 +1346,8 @@
       "Version": "0.8.6",
       "Source": "Repository",
       "Repository": "CRAN",
-      "RemoteType": "repository",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
-      "RemoteSubdir": "paws.common",
       "Requirements": [
+        "R",
         "Rcpp",
         "base64enc",
         "curl",
@@ -1362,7 +1359,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "7c199b64208466ecdcb267cfb4727ea0"
+      "Hash": "a1065af4daa842eb7eb4c720cf569e82"
     },
     "paws.compute": {
       "Package": "paws.compute",
