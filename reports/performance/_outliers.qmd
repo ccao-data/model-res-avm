@@ -51,7 +51,7 @@ training_data_outlier_analysis <-
         )
       ) ~
       "Review: Non-Arms-Length, Algorithm: High price",
-    # Review flip + algorithm price 
+    # Review flip + algorithm price
     str_detect(
       sv_outlier_reason, regex("Review:\\s*Flip", ignore_case = TRUE)
     ) &
