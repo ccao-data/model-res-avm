@@ -119,9 +119,7 @@ if (!exists("continuous_shaps")) {
 # Assessment set chars
 if (!exists("baseline_assessment_data")) {
   baseline_assessment_data <- ccao_download_model_input_data(
-    {
-      params$baseline_run_id
-    },
+      params$baseline_run_id,
     "assessment"
   ) %>%
     select(
@@ -164,9 +162,7 @@ if (!exists("baseline_shaps")) {
 # Training data
 if (!exists("baseline_training_data")) {
   baseline_training_data <- ccao_download_model_input_data(
-    {
-      params$baseline_run_id
-    },
+      params$baseline_run_id,
     "training"
   ) %>%
     select(
