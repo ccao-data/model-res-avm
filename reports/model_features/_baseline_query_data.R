@@ -77,12 +77,10 @@ if (!exists("dvc_md5_assessment_data_comp")) {
 }
 
 
-if (!exists("comp_chars")) {
-  comp_chars <- ccao_download_model_input_data(
-    {
-      params$comp_run_id
-    },
-    "char"
+if (!exists("comp_assessment")) {
+  comp_assessment <- ccao_download_model_input_data(
+    params$comp_run_id,
+    "assessment"
   ) %>%
     select(
       meta_pin,
@@ -137,14 +135,22 @@ if (!exists("baseline_assessment_data")) {
 
 # SHAPs
 if (!exists("baseline_shaps")) {
-  baseline_shaps <- open_dataset(
-    paste0(
-      glue("{base_model_results_url}/shap/"),
-      glue("year={baseline_year}/"),
-      glue("run_id={params$baseline_run_id}")
+  baseline_shaps <- dbGetQuery(
+    conn,
+    glue(
+      "
+    select
+      *
+    from model.shap
+    where run_id = '{params$baseline_run_id}' "
     )
   ) %>%
-    collect() %>%
+    select(
+      meta_pin,
+      meta_card_num,
+      meta_year,
+      all_of(model_predictor_all_name)
+    ) %>%
     left_join(
       baseline_assessment_data,
       by = c("meta_pin", "meta_card_num"),
@@ -156,7 +162,7 @@ if (!exists("baseline_shaps")) {
 
 # Training data
 if (!exists("baseline_training_data")) {
-  ccao_download_model_input_data(
+  baseline_training_data <- ccao_download_model_input_data(
     {
       params$baseline_run_id
     },
