@@ -23,64 +23,62 @@ exclusively on these price-based factors that determine outlier status.
 training_data_outlier_analysis <-
   training_data %>%
   mutate(
-    # Check for combined algorithm / analyst determinations
-    # Review Non arms length + algorithm price
-    str_detect(
-      sv_outlier_reason,
-      regex("Review:\\s*Non-Arms-Length",
-        ignore_case = TRUE
-      )
-    ) &
-      str_detect(
-        sv_outlier_reason,
-        regex(
-          "Algorithm:\\s*Low price(\\s*per\\s*square\\s*foot)?",
-          ignore_case = TRUE
-        )
-      ) ~
-      "Review: Non-Arms-Length, Algorithm: Low price",
-    str_detect(
-      sv_outlier_reason,
-      regex("Review:\\s*Non-Arms-Length", ignore_case = TRUE)
-    ) &
-      str_detect(
-        sv_outlier_reason,
-        regex(
-          "Algorithm:\\s*High price(\\s*per\\s*square\\s*foot)?",
-          ignore_case = TRUE
-        )
-      ) ~
-      "Review: Non-Arms-Length, Algorithm: High price",
-    # Review flip + algorithm price
-    str_detect(
-      sv_outlier_reason, regex("Review:\\s*Flip", ignore_case = TRUE)
-    ) &
-      str_detect(
-        sv_outlier_reason,
-        regex(
-          "Algorithm:\\s*Low price(\\s*per\\s*square\\s*foot)?",
-          ignore_case = TRUE
-        )
-      ) ~
-      "Review: Flip, Algorithm: Low price",
-    str_detect(
-      sv_outlier_reason, regex("Review:\\s*Flip", ignore_case = TRUE)
-    ) &
-      str_detect(
-        sv_outlier_reason,
-        regex(
-          "Algorithm:\\s*High price(\\s*per\\s*square\\s*foot)?",
-          ignore_case = TRUE
-        )
-      ) ~
-      "Review: Flip, Algorithm: High price",
-    # Check for outlier reasons that only rely on algorithm or review, not both
     sv_outlier_reason_simplified = case_when(
+      # Check for combined algorithm / analyst determinations
+      # Review Non arms length + algorithm price
+      str_detect(
+        sv_outlier_reason,
+        regex("Review:\\s*Non-Arms-Length", ignore_case = TRUE)
+      ) &
+        str_detect(
+          sv_outlier_reason,
+          regex(
+            "Algorithm:\\s*Low price(\\s*per\\s*square\\s*foot)?",
+            ignore_case = TRUE
+          )
+        ) ~
+        "Review: Non-Arms-Length, Algorithm: Low price",
+      str_detect(
+        sv_outlier_reason,
+        regex("Review:\\s*Non-Arms-Length", ignore_case = TRUE)
+      ) &
+        str_detect(
+          sv_outlier_reason,
+          regex(
+            "Algorithm:\\s*High price(\\s*per\\s*square\\s*foot)?",
+            ignore_case = TRUE
+          )
+        ) ~
+        "Review: Non-Arms-Length, Algorithm: High price",
+      # Review flip + algorithm price
+      str_detect(
+        sv_outlier_reason, regex("Review:\\s*Flip", ignore_case = TRUE)
+      ) &
+        str_detect(
+          sv_outlier_reason,
+          regex(
+            "Algorithm:\\s*Low price(\\s*per\\s*square\\s*foot)?",
+            ignore_case = TRUE
+          )
+        ) ~
+        "Review: Flip, Algorithm: Low price",
+      str_detect(
+        sv_outlier_reason, regex("Review:\\s*Flip", ignore_case = TRUE)
+      ) &
+        str_detect(
+          sv_outlier_reason,
+          regex(
+            "Algorithm:\\s*High price(\\s*per\\s*square\\s*foot)?",
+            ignore_case = TRUE
+          )
+        ) ~
+        "Review: Flip, Algorithm: High price",
+      # Reasons that are algorithm only or review only
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) &
-        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~ # nolint
+        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
         "Algorithm: Outlier, High price, PTAX-flag",
       str_detect(sv_outlier_reason, regex("Low price", ignore_case = TRUE)) &
-        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~ # nolint
+        str_detect(sv_outlier_reason, regex("PTAX-203 Exclusion", ignore_case = TRUE)) ~
         "Algorithm: Outlier, Low price, PTAX-flag",
       str_detect(sv_outlier_reason, regex("High price", ignore_case = TRUE)) ~
         "Algorithm: Outlier, High price",
@@ -88,10 +86,10 @@ training_data_outlier_analysis <-
         "Algorithm: Outlier, Low price",
       TRUE ~ sv_outlier_reason
     )
-  ) %>%
-  # This data isn't used in the training data and as such we remove it for
-  # further analysis
-  filter(!ind_pin_is_multicard)
+  )
+# This data isn't used in the training data and as such we remove it for
+# further analysis
+filter(!ind_pin_is_multicard)
 
 # Determine the axis limit
 y_lim_axis_outlier_breakdown <- training_data_outlier_analysis %>%
