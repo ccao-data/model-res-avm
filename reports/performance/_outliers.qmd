@@ -43,7 +43,6 @@ training_data_outlier_analysis <-
           regex("Algorithm: High price", ignore_case = TRUE)
         ) ~
         "Review: Non-Arms-Length, Algorithm: High price",
-  
       # Review Flip + algorithm price
       str_detect(
         sv_outlier_reason,
