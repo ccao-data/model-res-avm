@@ -185,16 +185,17 @@ assessment_data <- dbGetQuery(
 )
 tictoc::toc()
 
-# The neighborhood code for pin 30172130150000 is incorrect before 2026.
+# The neighborhood codes for these pins are incorrect before 2026.
 # Unfortunately this leads to a random neighborhood from the North Tri getting
 # included in reporting and exports for a South Tri modeling year. Because this
 # is an iasWorld data issue and can't be corrected for 2025 since it's locked
-# for editing, we've decided to hard-code this correction into the pipeline for
-# now. This code should be removed for assessment year 2027 modeling.
+# for editing, we've decided to hard-code these corrections into the pipeline
+# for now. This code should be removed for assessment year 2027 modeling.
 assessment_data <- assessment_data %>%
   mutate(
     meta_nbhd_code = case_when(
       meta_pin == "30172130150000" ~ "37061",
+      meta_pin == "15024050110000" ~ "33020",
       TRUE ~ meta_nbhd_code
     )
   )
