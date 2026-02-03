@@ -22,8 +22,8 @@ exclusively on these price-based factors that determine outlier status.
 ```{r _outliers_type_breakdown}
 training_data_outlier_analysis <-
   training_data %>%
-  sv_outlier_reason_simplified() <- case_when(
-    mutate(
+  mutate(
+    sv_outlier_reason_simplified = case_when(
       # Review Non-Arms-Length + algorithm price
       str_detect(
         sv_outlier_reason,
