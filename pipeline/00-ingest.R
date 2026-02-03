@@ -140,7 +140,7 @@ training_data <- dbGetQuery(
       END AS sv_review_json,
       res.*
   FROM model.vw_card_res_input res
-  INNER JOIN z_ci_jeancochrane_fixup_is_outlier_default.vw_pin_sale sale
+  INNER JOIN default.vw_pin_sale sale
       ON sale.pin = res.meta_pin
       AND sale.year = res.year
   WHERE CAST(res.year AS int)
