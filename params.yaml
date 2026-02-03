@@ -11,11 +11,11 @@
 
 # Model tag used to identify the purpose of the run. Must be one of:
 # "junk", "rejected", "test", "baseline", "candidate", "final", or "comps"
-run_type: "test"
+run_type: "baseline"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Potential residential baseline with SHAP values and DVC path update
+run_note: Potential residential baseline with SHAP values, revert DVC path
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
