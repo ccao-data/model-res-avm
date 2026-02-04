@@ -371,24 +371,14 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
   mutate(
     flag_has_recent_assessable_permit =
       as.numeric(has_recent_assessable_permit),
-    sale_recent_1_outlier_reasons = str_remove_all(ifelse(
-      sale_recent_1_is_outlier,
-      paste(
-        str_replace_na(sale_recent_1_outlier_reason1, ""),
-        str_replace_na(sale_recent_1_outlier_reason2, ""),
-        sep = ", "
-      ),
-      NA_character_
-    ), ", $"),
-    sale_recent_2_outlier_reasons = str_remove_all(ifelse(
-      sale_recent_2_is_outlier,
-      paste(
-        str_replace_na(sale_recent_2_outlier_reason1, ""),
-        str_replace_na(sale_recent_2_outlier_reason2, ""),
-        sep = ", "
-      ),
-      NA_character_
-    ), ", $")
+    sale_recent_1_outlier_reasons = str_replace_na(
+      sale_recent_1_outlier_reason,
+      ""
+    ),
+    sale_recent_2_outlier_reasons = str_replace_na(
+      sale_recent_1_outlier_reason,
+      ""
+    ),
   ) %>%
   # Select fields for output to workbook
   select(
