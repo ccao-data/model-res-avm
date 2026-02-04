@@ -273,7 +273,7 @@ flag_assessable_permits <- dbGetQuery(
   ")
 )
 
-
+training_data <- read_parquet(paths$input$training$local)
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -360,8 +360,8 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
     ),
-    homeval_link = glue(
-      "{HOMEVAL_STAGING_BASE_URL}/{assessment_year}/{pin}.html"
+    homeval_report = glue(
+      "{HOMEVAL_STAGING_BASE_URL}/{year}/{meta_pin}.html"
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
@@ -393,12 +393,11 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
     sale_ratio, valuations_note, sale_recent_1_date, sale_recent_1_price,
     sale_recent_1_outlier_reasons, sale_recent_1_document_num,
-    sale_recent_1_digest, sale_recent_2_date, sale_recent_2_price,
-    sale_recent_2_outlier_reasons, sale_recent_2_document_num,
-    sale_recent_2, digest, char_yrblt, char_beds, char_ext_wall, char_bsmt,
-    char_bsmt_fin, char_air,
-    char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
-    char_ncu, homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
+    sale_recent_2_date, sale_recent_2_price, sale_recent_2_outlier_reasons,
+    sale_recent_2_document_num, char_yrblt, char_beds, char_ext_wall, char_bsmt,
+    char_bsmt_fin, char_air, char_heat, char_total_bldg_sf, char_type_resd,
+    char_land_sf, char_apts, char_ncu,
+    homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
     flag_land_value_capped, flag_hie_num_expired,
@@ -512,39 +511,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
   style_right_align <- createStyle(halign = "right")
 
-  # Add styles to comp sheet
-  addStyle(
-    wb, comp_sheet_name,
-    style = style_price,
-    rows = comp_row_range, cols = c(3), gridExpand = TRUE
-  )
-  addStyle(
-    wb, comp_sheet_name,
-    style = style_comma,
-    rows = comp_row_range, cols = c(15, 17), gridExpand = TRUE
-  )
-  addStyle(
-    wb, comp_sheet_name,
-    style = style_right_align,
-    rows = comp_row_range, cols = 18:19, gridExpand = TRUE
-  )
-  addFilter(wb, comp_sheet_name, 4, 1:19)
-
   class(training_data_selected$meta_pin) <- c(
     class(training_data_selected$meta_pin), "formula"
   )
 
-  writeFormula(
-    wb, comp_sheet_name,
-    training_data_selected$meta_pin,
-    startRow = 5
-  )
-
-  # Write comp data to workbook
-  writeData(
-    wb, comp_sheet_name, training_data_selected,
-    startCol = 1, startRow = 5, colNames = FALSE
-  )
 
   # 5.2. PIN-Level -------------------------------------------------------------
 
