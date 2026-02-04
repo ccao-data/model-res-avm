@@ -133,7 +133,7 @@ model:
 
   # Objective/loss function minimized by LightGBM. See website for possible
   # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "rmse"
+  objective: "quantile"
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
