@@ -528,15 +528,21 @@ comps_tbl <- {
 }
 
 # Flag PINs that are in tieback cycles.
-tieback_cycle_flag <- comps_tbl %>%
+flag_proration_tieback_cycle <- comps_tbl %>%
   left_join(edges, by = "meta_pin") %>%
   group_by(comp_id) %>%
-  mutate(flag_tieback_cycle = n_distinct(meta_tieback_key_pin) > 1) %>%
+  mutate(
+    flag_proration_tieback_cycle =
+      n_distinct(meta_tieback_key_pin) > 1
+  ) %>%
   ungroup() %>%
   right_join(assessment_pin_data_sale %>%
     distinct(meta_pin), by = "meta_pin") %>% # nolintr
-  mutate(flag_tieback_cycle = coalesce(flag_tieback_cycle, FALSE)) %>%
-  distinct(meta_pin, flag_tieback_cycle)
+  mutate(flag_proration_tieback_cycle = coalesce(
+    flag_proration_tieback_cycle,
+    FALSE
+  )) %>%
+  distinct(meta_pin, flag_proration_tieback_cycle)
 
 # Flags are used to identify PINs for potential desktop review
 assessment_pin_data_final <- assessment_pin_data_sale %>%
@@ -551,8 +557,11 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
   )) %>%
   ungroup() %>%
   # Add flag for PINs which have aformentioned tieback cycles
-  left_join(tieback_cycle_flag, by = "meta_pin") %>%
-  mutate(flag_tieback_cycle = coalesce(flag_tieback_cycle, FALSE)) %>%
+  left_join(flag_proration_tieback_cycle, by = "meta_pin") %>%
+  mutate(flag_proration_tieback_cycle = coalesce(
+    flag_proration_tieback_cycle,
+    FALSE
+  )) %>%
   # Flag for capped land value
   mutate(
     flag_land_value_capped = pred_pin_final_fmv_round *
@@ -584,7 +593,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
     flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
   )
 
-rm(tieback_cycle_flag, edges, comps_tbl)
+rm(flag_proration_tieback_cycle, edges, comps_tbl)
 
 ## 7.5. Clean/Reorder/Save -----------------------------------------------------
 message("Saving final PIN-level data")

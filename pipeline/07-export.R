@@ -361,7 +361,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
       ", ", loc_property_zip
     ),
     homeval_report = glue(
-      "{HOMEVAL_STAGING_BASE_URL}/{year}/{meta_pin}.html"
+      "{HOMEVAL_STAGING_BASE_URL}/{meta_year}/{meta_pin}.html"
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
@@ -459,46 +459,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     filter(township_code == town) %>%
     select(-township_code)
 
-  ## 5.1 Comp details ----------------------------------------------------------
-
-  # Filter the training data so that we only display sales that are referenced.
-  # First, get the indexes of every sale whose comp is referenced in
-  # the PIN-level details
-  training_pin_in_comps <- training_data$meta_sale_document_num %in% (
-    assessment_pin_filtered %>%
-      select(comp_document_num_1, comp_document_num_2) %>%
-      unlist()
-  )
-  # Next, filter the training data so only referenced sales are included.
-  # This is ugly but faster than the equivalent filter() operation
-  training_data_filtered <- training_data[training_pin_in_comps, ]
-  # Select only the columns that are needed for the comps detail view
-  training_data_selected <- training_data_filtered %>%
-    select(
-      meta_pin, meta_sale_document_num, meta_sale_price,
-      meta_sale_date, char_class, meta_nbhd_code,
-      loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
-      char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
-      char_land_sf, char_apts, char_ncu
-    ) %>%
-    ccao::vars_recode(code_type = "long") %>%
-    mutate(
-      char_apts = format_char_apts(char_apts),
-      char_ncu = ifelse(char_class == "212", char_ncu, NA),
-      meta_pin = glue(
-        '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
-      "{meta_pin}")'
-      )
-    )
-
-  # It seems like Excel can only handle between-sheet links if the linked
-  # sheet name has no spaces... Perhaps there's an undocumented workaround,
-  # but for now, use a sheet name with no spaces for the comp detail view
-  comp_sheet_name <- "Comparables"
-
-  # Get range of rows in the comp data + number of header rows
-  comp_row_range <- 5:(nrow(training_data_selected) + 6)
-
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
 
@@ -511,62 +471,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
   style_right_align <- createStyle(halign = "right")
 
-  class(training_data_selected$meta_pin) <- c(
-    class(training_data_selected$meta_pin), "formula"
+  class(training_data_filtered$meta_pin) <- c(
+    class(training_data_filtered$meta_pin), "formula"
   )
 
 
   # 5.2. PIN-Level -------------------------------------------------------------
-
-  # Update PIN-level data to link to comps detail sheet
-  training_data_ids <- training_data_filtered %>%
-    tibble::rowid_to_column("comp_detail_id") %>%
-    select(meta_sale_document_num, comp_detail_id)
-
-  assessment_pin_filtered <- assessment_pin_filtered %>%
-    left_join(
-      training_data_ids,
-      by = join_by(
-        comp_document_num_1 == meta_sale_document_num
-      )
-    ) %>%
-    rename(comp_document_num_1_coord = comp_detail_id) %>%
-    left_join(
-      training_data_ids,
-      by = join_by(
-        comp_document_num_2 == meta_sale_document_num
-      )
-    ) %>%
-    rename(comp_document_num_2_coord = comp_detail_id) %>%
-    mutate(
-      across(
-        matches("_coord"),
-        ~ ifelse(
-          is.na(.x),
-          NA,
-          getCellRefs(data.frame(row = .x + 4, column = 2))
-        )
-      )
-    ) %>%
-    mutate(
-      comp_document_num_1 = ifelse(
-        is.na(comp_document_num_1_coord),
-        NA,
-        glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_1_coord}",',
-          '"{comp_document_num_1}")'
-        )
-      ),
-      comp_document_num_2 = ifelse(
-        is.na(comp_document_num_2_coord),
-        NA,
-        glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_2_coord}",',
-          '"{comp_document_num_2}")'
-        )
-      )
-    ) %>%
-    select(-ends_with("_coord"), -comp_pin_1, -comp_pin_2)
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
@@ -578,15 +488,15 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     tibble::rowid_to_column("row_id") %>%
     mutate(row_id = row_id + num_head)
 
-  # Calculate AVs so we can store them as separate, hidden columns for use
+  # Calculate MVs so we can store them as separate, hidden columns for use
   # in the neighborhood breakouts pivot table
   assessment_pin_avs <- assessment_pin_w_row_ids %>%
-    arrange(nbhd_code, class_code) %>%
+    arrange(meta_nbhd_code, meta_class) %>%
     mutate(
-      total_av = glue::glue("=S{row_id} * 0.1"),
-      av_difference = glue::glue("=(S{row_id} * 0.1) - (L{row_id} * 0.1)")
+      total_mv = glue::glue("=S{row_id}"),
+      mv_difference = glue::glue("=(S{row_id}) - (L{row_id}")
     ) %>%
-    select(total_av, av_difference)
+    select(total_mv, mv_difference)
 
 
   # Calculate sales ratios, and use a formula so that they update dynamically
@@ -608,14 +518,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   class(assessment_pin_sale_ratios$sale_ratio) <- c(
     class(assessment_pin_sale_ratios$sale_ratio), "formula"
-  )
-
-  # Make comp doc num fields formulas so Excel understands the links
-  class(assessment_pin_filtered$comp_document_num_1) <- c(
-    class(assessment_pin_filtered$comp_document_num_1), "formula"
-  )
-  class(assessment_pin_filtered$comp_document_num_2) <- c(
-    class(assessment_pin_filtered$comp_document_num_2), "formula"
   )
 
   # Generate sheet and column headers
