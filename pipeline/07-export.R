@@ -371,14 +371,20 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
   mutate(
     flag_has_recent_assessable_permit =
       as.numeric(has_recent_assessable_permit),
-    sale_recent_1_outlier_reasons = str_replace_na(
-      sale_recent_1_outlier_reason,
-      ""
+    sale_recent_1_outlier_reason = str_trim(
+      str_replace_all(
+        str_replace_na(sale_recent_1_outlier_reason, ""),
+        "Algorithm: Valid Sale",
+        ""
+      )
     ),
-    sale_recent_2_outlier_reasons = str_replace_na(
-      sale_recent_1_outlier_reason,
-      ""
-    ),
+    sale_recent_2_outlier_reason = str_trim(
+      str_replace_all(
+        str_replace_na(sale_recent_2_outlier_reason, ""),
+        "Algorithm: Valid Sale",
+        ""
+      )
+    )
   ) %>%
   # Select fields for output to workbook
   select(
@@ -392,8 +398,8 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
     sale_ratio, valuations_note, sale_recent_1_date, sale_recent_1_price,
-    sale_recent_1_outlier_reasons, sale_recent_1_document_num,
-    sale_recent_2_date, sale_recent_2_price, sale_recent_2_outlier_reasons,
+    sale_recent_1_outlier_reason, sale_recent_1_document_num,
+    sale_recent_2_date, sale_recent_2_price, sale_recent_2_outlier_reason,
     sale_recent_2_document_num, char_yrblt, char_beds, char_ext_wall, char_bsmt,
     char_bsmt_fin, char_air, char_heat, char_total_bldg_sf, char_type_resd,
     char_land_sf, char_apts, char_ncu,
@@ -454,6 +460,8 @@ assessment_card_prepped <- assessment_card %>%
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
 
+  # 5.1. Load a filter template ------------------------------------------------
+
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
@@ -471,10 +479,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
   style_right_align <- createStyle(halign = "right")
 
-  class(training_data_filtered$meta_pin) <- c(
-    class(training_data_filtered$meta_pin), "formula"
-  )
-
 
   # 5.2. PIN-Level -------------------------------------------------------------
 
@@ -482,7 +486,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:68 # Don't forget the two hidden rows at the end
+  pin_col_range <- 1:65 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -493,10 +497,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   assessment_pin_avs <- assessment_pin_w_row_ids %>%
     arrange(meta_nbhd_code, meta_class) %>%
     mutate(
-      total_mv = glue::glue("=S{row_id}"),
-      mv_difference = glue::glue("=(S{row_id}) - (L{row_id}")
+      total_av = glue::glue("=S{row_id}"),
+      av_difference = glue::glue("=(S{row_id}) - (L{row_id}")
     ) %>%
-    select(total_mv, mv_difference)
+    select(total_av, av_difference)
 
 
   # Calculate sales ratios, and use a formula so that they update dynamically
@@ -542,7 +546,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 67, 68), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 64, 65), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -557,7 +561,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 49, 51, 52), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -574,26 +578,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_right_align,
     rows = pin_row_range, cols = c(37, 46, 47), gridExpand = TRUE
   )
-  # For some reason comp links do not get autoformatted as links, possibly
-  # due to Excel not parsing within-sheet links as hyperlinks for the purposes
-  # of styling
+  # Generate the HomeVal report as a web link
   addStyle(
     wb, pin_sheet_name,
     style = style_link,
-    rows = pin_row_range, cols = c(48, 50), gridExpand = TRUE
+    rows = pin_row_range, cols = c(48), gridExpand = TRUE
   )
   addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
-  # Format comp score columns with a range of colors from low (red) to high
-  # (blue)
-  conditionalFormatting(
-    wb, pin_sheet_name,
-    cols = c(49, 51, 52),
-    rows = pin_row_range,
-    style = c("#F8696B", "#FFFFFF", "#00B0F0"),
-    rule = c(0, 0.5, 1),
-    type = "colourScale"
-  )
   # Format YoY % change column with a range of colors from low to high
   conditionalFormatting(
     wb, pin_sheet_name,
@@ -662,18 +654,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$total_av,
-    startCol = 67,
+    startCol = 64,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_avs$av_difference,
-    startCol = 68,
+    startCol = 65,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(67, 68),
+    c(64, 65),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
