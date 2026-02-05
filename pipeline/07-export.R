@@ -371,20 +371,11 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
   mutate(
     flag_has_recent_assessable_permit =
       as.numeric(has_recent_assessable_permit),
-    sale_recent_1_outlier_reason = str_trim(
-      str_replace_all(
-        str_replace_na(sale_recent_1_outlier_reason, ""),
-        "Algorithm: Valid Sale",
-        ""
-      )
-    ),
-    sale_recent_2_outlier_reason = str_trim(
-      str_replace_all(
-        str_replace_na(sale_recent_2_outlier_reason, ""),
-        "Algorithm: Valid Sale",
-        ""
-      )
-    )
+    # Only keep outlier values when the sale is marked as an outlier
+    sale_recent_1_outlier_reason =
+      if_else(sale_recent_1_is_outlier, sale_recent_1_outlier_reason, ""),
+    sale_recent_2_outlier_reason =
+      if_else(sale_recent_2_is_outlier, sale_recent_2_outlier_reason, "")
   ) %>%
   # Select fields for output to workbook
   select(
