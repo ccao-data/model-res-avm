@@ -128,6 +128,7 @@ lgbm_model <- parsnip::boost_tree(
 
     # Set the objective function. This is what lightgbm will try to minimize
     objective = params$model$objective,
+    alpha = .5,
 
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
