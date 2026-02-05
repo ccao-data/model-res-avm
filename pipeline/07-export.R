@@ -492,13 +492,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Calculate MVs so we can store them as separate, hidden columns for use
   # in the neighborhood breakouts pivot table
-  assessment_pin_avs <- assessment_pin_w_row_ids %>%
+  assessment_pin_mvs <- assessment_pin_w_row_ids %>%
     arrange(meta_nbhd_code, meta_class) %>%
     mutate(
-      total_av = glue::glue("=S{row_id}"),
-      av_difference = glue::glue("=(S{row_id}) - (L{row_id}")
+      total_mv = glue::glue("=S{row_id}"),
+      mv_difference = glue::glue("=(S{row_id}) - (L{row_id}")
     ) %>%
-    select(total_av, av_difference)
+    select(total_mv, mv_difference)
 
 
   # Calculate sales ratios, and use a formula so that they update dynamically
@@ -512,11 +512,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Mark AV fields and sales ratio fields as formulas, since these fields
   # compute values based on other fields
-  class(assessment_pin_avs$total_av) <- c(
-    class(assessment_pin_avs$total_av), "formula"
+  class(assessment_pin_mvs$total_mv) <- c(
+    class(assessment_pin_mvs$total_mv), "formula"
   )
-  class(assessment_pin_avs$av_difference) <- c(
-    class(assessment_pin_avs$av_difference), "formula"
+  class(assessment_pin_mvs$mv_difference) <- c(
+    class(assessment_pin_mvs$mv_difference), "formula"
   )
   class(assessment_pin_sale_ratios$sale_ratio) <- c(
     class(assessment_pin_sale_ratios$sale_ratio), "formula"
@@ -651,13 +651,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Write hidden formulas
   writeFormula(
     wb, pin_sheet_name,
-    assessment_pin_avs$total_av,
+    assessment_pin_mvs$total_mv,
     startCol = 64,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
-    assessment_pin_avs$av_difference,
+    assessment_pin_mvs$mv_difference,
     startCol = 65,
     startRow = 7
   )
@@ -732,7 +732,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     startCol = 5, startRow = 3, colNames = FALSE
   )
 
-  # 5.3. Save output ------------------------------------------------------------
+  # 5.3. Save output -----------------------------------------------------------
 
   # Save workbook to file based on town name
   workbook_name <- glue(
