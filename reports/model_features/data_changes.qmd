@@ -14,12 +14,12 @@ source("_baseline_query_data.R")
 ```{r changed_values_processing}
 # Build card_data with dataset label
 common_cols <- intersect(
-  names(comp_assessment),
+  names(comp_chars),
   names(baseline_assessment_data)
 )
 
 card_data <- bind_rows(
-  comp = comp_assessment %>% select(all_of(common_cols)),
+  comp = comp_chars %>% select(all_of(common_cols)),
   baseline = baseline_assessment_data %>% select(all_of(common_cols)),
   .id = "dataset" # "comp" or "baseline"
 ) %>%
