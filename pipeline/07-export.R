@@ -273,6 +273,9 @@ flag_assessable_permits <- dbGetQuery(
   ")
 )
 
+
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Prep Desk Review ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -457,8 +460,6 @@ assessment_card_prepped <- assessment_card %>%
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
 
-  # 5.1. Load a filter template ------------------------------------------------
-
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
@@ -477,7 +478,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_right_align <- createStyle(halign = "right")
 
 
-  # 5.2. PIN-Level -------------------------------------------------------------
+  # 5.1. PIN-Level -------------------------------------------------------------
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
@@ -676,7 +677,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
 
 
-  # 5.3. Card-Level ------------------------------------------------------------
+  # 5.2. Card-Level ------------------------------------------------------------
 
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
@@ -731,7 +732,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     startCol = 5, startRow = 3, colNames = FALSE
   )
 
-  # 5.4 Save output ------------------------------------------------------------
+  # 5.3. Save output ------------------------------------------------------------
 
   # Save workbook to file based on town name
   workbook_name <- glue(
