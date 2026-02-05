@@ -361,7 +361,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
       ", ", loc_property_zip
     ),
     homeval_report = glue(
-      "{HOMEVAL_STAGING_BASE_URL}/{meta_year}/{meta_pin}.html"
+      "{HOMEVAL_STAGING_BASE_URL}/{year}/{meta_pin}.html"
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
