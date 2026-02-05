@@ -9,6 +9,7 @@ Depends:
     ccao,
     conflicted,
     dplyr,
+    igraph,
     embed,
     furrr,
     git2r,
