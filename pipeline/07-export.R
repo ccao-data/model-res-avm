@@ -273,9 +273,6 @@ flag_assessable_permits <- dbGetQuery(
   ")
 )
 
-training_data <- read_parquet(paths$input$training$local)
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Prep Desk Review ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
