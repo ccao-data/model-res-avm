@@ -536,20 +536,7 @@ flag_proration_tieback_cycle <- comps_tbl %>%
       n_distinct(meta_tieback_key_pin) > 1
   ) %>%
   ungroup() %>%
-  group_by(meta_pin) %>%
-  # Coalesce pin values so any pin which is prorated and has a true value
-  # is coded as a tieback cycle. This is to ensure that for some reason a PIN
-  # has multicards with both TRUE and FALSE values, we do note create
-  # duplicates in the dataset.
-  mutate(
-    flag_proration_tieback_cycle = any(coalesce(
-      flag_proration_tieback_cycle,
-      FALSE
-    ))
-  ) %>%
-  ungroup() %>%
-  select(meta_pin, flag_proration_tieback_cycle) %>%
-  distinct(meta_pin, .keep_all = TRUE)
+  select(meta_pin, flag_proration_tieback_cycle)
 
 # Flags are used to identify PINs for potential desktop review
 assessment_pin_data_final <- assessment_pin_data_sale %>%
