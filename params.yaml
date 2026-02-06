@@ -20,11 +20,11 @@ run_note: Potential residential baseline with SHAP values, revert DVC path
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: false
+  cv_enable: true
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: true
+  shap_enable: false
 
   # Should comps be calculated for this run in the interpret stage?
   comp_enable: false
@@ -121,7 +121,7 @@ cv:
 
   # Metric used to select the "best" set of parameters from CV iterations. Must
   # be manually included the metric_set() passed to tune_bayes()
-  best_metric: "rmse"
+  best_metric: "quantile"
 
 
 # Model (Hyper)parameters ------------------------------------------------------
@@ -287,7 +287,7 @@ model:
     # WARNING: See GitLab issue #82 for critical notes about early stopping / CV
     validation_prop: 0.1
     validation_type: "random"
-    validation_metric: "rmse"
+    validation_metric: "quantile"
 
     # Custom parameters added by the CCAO's lightsnip wrapper package. Setting
     # to true will set max_depth = floor(log2(num_leaves)) + add_to_linked_depth
