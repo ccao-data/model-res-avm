@@ -562,7 +562,7 @@ different model](https://github.com/ccao-data/model-condo-avm).
 
 #### Types of Sales Excluded
 
-The key objective of the model is to fairly estimate what a home could sell for in a fair, arms-length, open-market transaction. It's important to train the model on high-quality sales that are representative of the market, and to exclude sales that are not representative. For example, a sale price of $3M for an 800 square foot home, in a community where homes of this size tend to sell between $200k - $400k, is not a representative sale. (This may indicate a flip.) If this sale was used to train the model, then the model could learn that _all_ 800 sf homes in this region are worth around $3M, and should be assessed and taxed accordingly.
+The key objective of the model is to fairly estimate what a home could sell for in a fair, arms-length, open-market transaction. It's important to train the model on high-quality sales that are representative of the market, and to exclude sales that are not representative. For example, a sale price of $3M for an 800 square foot (S.F.) home, in a community where homes of this size tend to sell between $200k - $400k, is not a representative sale. (This may indicate a flip.) If this sale was used to train the model, then the model could learn that _all_ 800 S.F. homes in this region are worth around $3M, and should be assessed and taxed accordingly. (More realistically, the the inclusion of this single outlier could increase the _average_ estimated sale of 800 S.F. homes in this community by an undetermined amount.)
 
 We accomplish these exclusions in multiple ways.
 
@@ -577,7 +577,7 @@ We accomplish these exclusions in multiple ways.
 | Back-to-back sales | The model is trained on sales of homes that haven't had a back-to-back sale of selling twice within the same year. These back-to-back sales often indicate flips, or other characteristics errors that the model should not be trained on, and are excluded. |
 | Number of PINs in the sale | The model is trained using only single-PIN sales. When one sale price is attributed to a sale of two PINs, it's not clear how much each PIN's value individually contributed to the sale price, so multi-PIN sales are excluded. | 
 | Number of buildings | The model is trained using only single-building PINs. When one sale price is attributed to a sale with two buildings, it's not clear how much each building's value individually contributed to the sale price, so multi-building sales are excluded. | 
-| Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non arms-length transactions, and are excluded from the model training. | 
+| Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non arm's-length transactions, and are excluded from the model training. | 
 | Buyer-seller attributes | The model is trained on sales between non-corporate unrelated buyers and sellers. We exclude sales between corporate affiliates, related individuals, Bank REO (Real Estate Owned), sales involving a financial institution or government agency, and sales in lieu of foreclosure. |
 
 **Analyst review.** Finally, CCAO residential analysts can manually review sales and inform us of sales that we should not use to train the model. 
@@ -678,7 +678,7 @@ accomplish this in two ways.
 
 ##### 1. Sales Validation
 
-We use a heuristics-based approach to drop non-arms-length sales, remove
+We use a heuristics-based approach to drop non-arm's-length sales, remove
 outliers, and manually flag certain suspect sales. This approach was
 developed in partnership with the [Mansueto
 Institute](https://miurban.uchicago.edu/). As of 2023, the sales
