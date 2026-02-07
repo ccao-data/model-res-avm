@@ -11,11 +11,11 @@
 
 # Model tag used to identify the purpose of the run. Must be one of:
 # "junk", "rejected", "test", "baseline", "candidate", "final", or "comps"
-run_type: "test"
+run_type: "baseline"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Preparing for 2025 model with 2024 data and updated sales
+run_note: Potential residential baseline with SHAP values, revert DVC path
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -27,7 +27,7 @@ toggle:
   shap_enable: true
 
   # Should comps be calculated for this run in the interpret stage?
-  comp_enable: true
+  comp_enable: false
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to false if you are not a CCAO employee
@@ -39,29 +39,29 @@ toggle:
 # Assessment context and dates
 assessment:
   # Year of assessment. Used to pull land rates, HIEs, and other information
-  year: "2025"
+  year: "2026"
 
   # The statutorily set "sale date" for the purpose of prediction
-  date: "2025-01-01"
+  date: "2026-01-01"
 
   # Added context for model artifacts stored in S3. Also updates the triad
   # displayed in email notifications on model completion
-  triad: "north"
+  triad: "south"
   group: "residential"
 
   # Year from which property characteristics are pulled. Usually lags the
   # assessment year by 1
-  data_year: "2024"
+  data_year: "2025"
 
   # Year used to partition data on S3. Working year in this case means
   # the year the Data Department is currently creating models for
-  working_year: "2025"
+  working_year: "2026"
 
 # Parameters used to define the input/training data
 input:
   # The min and max year of sales to use for the training data sample
-  min_sale_year: "2016"
-  max_sale_year: "2024"
+  min_sale_year: "2017"
+  max_sale_year: "2025"
 
   # Number of years back to look for count_past_n_years feature
   n_years_prior: 4
@@ -137,7 +137,7 @@ model:
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
-  seed: 2025
+  seed: 2026
   deterministic: true
   force_row_wise: true
 
@@ -376,10 +376,10 @@ pv:
 # (post-appeal) from the last reassessment and the most recent values from the
 # prior year
 ratio_study:
-  far_year: "2022"
+  far_year: "2023"
   far_stage: "board"
   far_column: "meta_2yr_pri_board_tot"
-  near_year: "2024"
+  near_year: "2025"
   near_stage: "certified"
   near_column: "meta_certified_tot"
 
@@ -418,5 +418,5 @@ comp:
 # Final run ID(s) chosen for export to Desk Review spreadsheets and iasWorld
 # upload
 export:
-  triad_code: "2"
-  run_id: "2025-02-11-charming-eric"
+  triad_code: "3"
+  run_id: "2026-02-03-compassionate-bowen"
