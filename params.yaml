@@ -310,7 +310,7 @@ model:
       # then manually set that value for non-CV runs (which don't use
       # early stopping by default)
       num_iterations: 2460
-      learning_rate: 0.0117
+      learning_rate: 0.012
 
       # Maximum number of bins for discretizing continuous features. Lower uses
       # less memory and speeds up training
@@ -321,13 +321,13 @@ model:
       num_leaves: 235
       add_to_linked_depth: 2
       feature_fraction: 0.31
-      min_gain_to_split: 0.045
+      min_gain_to_split: 0.05
       min_data_in_leaf: 8
       max_cat_threshold: 170
       min_data_per_group: 29
-      cat_smooth: 21.741
-      cat_l2: 20.882
-      lambda_l1: 0.35
+      cat_smooth: 21.7
+      cat_l2: 20.88
+      lambda_l1: 0.349
       lambda_l2: 0.038
 
     # Range of possible hyperparameter values for tuning to explore
