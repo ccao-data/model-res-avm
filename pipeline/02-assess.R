@@ -587,8 +587,6 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
     flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
   )
 
-rm(flag_proration_tieback_cycle, edges, comps_tbl)
-
 ## 7.5. Clean/Reorder/Save -----------------------------------------------------
 message("Saving final PIN-level data")
 
