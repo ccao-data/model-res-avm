@@ -1,4 +1,10 @@
 ```{r}
+params <- c(
+  list(
+    comp_run_id = "2025-02-11-charming-eric",
+    baseline_run_id = "2026-02-09-elastic-kyra"
+  )
+)
 source("_utils.R")
 ```
 

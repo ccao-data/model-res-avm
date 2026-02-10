@@ -107,7 +107,7 @@
     },
     "arrow": {
       "Package": "arrow",
-      "Version": "23.0.0",
+      "Version": "23.0.0.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -125,7 +125,7 @@
         "utils",
         "vctrs"
       ],
-      "Hash": "e94bed282e0305c7b74ddb0e2578723b"
+      "Hash": "1bff88e97bc64ecde87db553cb5b5ef4"
     },
     "askpass": {
       "Package": "askpass",
@@ -156,12 +156,12 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "assessr",
       "RemoteRef": "master",
-      "RemoteSha": "ddc5799e912eefb6caa1cc8da24e11beb7c052f6",
+      "RemoteSha": "9d52b19a1df8baf8d637d52a5a7d8565d89e2c62",
       "Requirements": [
         "R",
         "stats"
       ],
-      "Hash": "f23830de8c4b1e169fe1e44d769a6583"
+      "Hash": "dd23f84ca1e69c24299bcc7da623cdb7"
     },
     "base64enc": {
       "Package": "base64enc",
