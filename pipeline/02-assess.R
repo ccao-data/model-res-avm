@@ -517,8 +517,7 @@ message("Adding Desk Review flags")
 # Start by identifying all PINs which are prorated (have a tieback pin)
 edges <- assessment_pin_data_sale %>%
   select(meta_pin, meta_tieback_key_pin) %>%
-  filter(!is.na(meta_tieback_key_pin)) %>%
-  distinct()
+  filter(!is.na(meta_tieback_key_pin))
 
 # Create an undirected graph from the edges and find connected components.
 # If a PIN is marked as a tieback for another PIN, but does not itself have
