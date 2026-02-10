@@ -521,10 +521,10 @@ edges <- assessment_pin_data_sale %>%
   distinct()
 
 # Create an undirected graph from the edges and find connected components.
-# If a PIN is marked as a tieback for another PIN, but does not itself have a tieback,
-# `graph_from_data_frame()` will still include it in the graph, even though we filtered
-# for only PINs with tiebacks above. This is intentional, because we count this situation
-# as a tieback cycle
+# If a PIN is marked as a tieback for another PIN, but does not itself have
+# a tieback,`graph_from_data_frame()` will still include it in the graph,
+# even though we filtered for only PINs with tiebacks above.
+# This is intentional, because we count this situation as a tieback cycle
 comps_tbl <- {
   g <- graph_from_data_frame(edges, directed = FALSE)
   comps <- components(g)
