@@ -499,7 +499,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   assessment_pin_mvs <- assessment_pin_w_row_ids %>%
     mutate(
       total_mv = glue::glue("=S{row_id}"),
-      mv_difference = glue::glue("=(S{row_id}) - (L{row_id}")
+      mv_difference = glue::glue("=(S{row_id}) - (L{row_id})")
     ) %>%
     select(total_mv, mv_difference)
 
