@@ -321,7 +321,7 @@ model:
       num_leaves: 235
       add_to_linked_depth: 2
       feature_fraction: 0.31
-      min_gain_to_split: 0.05
+      min_gain_to_split: 0.045
       min_data_in_leaf: 8
       max_cat_threshold: 170
       min_data_per_group: 29
