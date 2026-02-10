@@ -510,11 +510,11 @@ assessment_pin_data_sale <- assessment_pin_data_base %>%
 
 ## 7.4. Add Flags --------------------------------------------------------------
 message("Adding Desk Review flags")
+
 # A tieback cycle is a group of prorated PINs which do not have a singular
 # tieback that they are associated with. For example PIN A has PIN B as
 # 'meta_tieback_key_pin' and PIN B has PIN A as 'meta_tieback_key_pin'.
-
-# Identify all PINs which are prorated (have a tieback pin)
+# Start by identifying all PINs which are prorated (have a tieback pin)
 edges <- assessment_pin_data_sale %>%
   select(meta_pin, meta_tieback_key_pin) %>%
   filter(!is.na(meta_tieback_key_pin)) %>%
