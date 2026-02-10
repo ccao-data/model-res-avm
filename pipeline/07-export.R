@@ -497,7 +497,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Calculate MVs so we can store them as separate, hidden columns for use
   # in the neighborhood breakouts pivot table
   assessment_pin_mvs <- assessment_pin_w_row_ids %>%
-    arrange(meta_nbhd_code, meta_class) %>%
     mutate(
       total_mv = glue::glue("=S{row_id}"),
       mv_difference = glue::glue("=(S{row_id}) - (L{row_id}")
