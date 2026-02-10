@@ -874,18 +874,29 @@
       ],
       "Hash": "6e29f1ed132b927f7d52e9fd8869f0ea"
     },
-   "igraph": {
-     "Package": "igraph",
-     "Version": "2.1.1",
-     "Source": "Repository",
-     "Repository": "CRAN",
-     "Requirements": [
-       "Matrix",
-       "R",
-       "cli",
-       "cpp11",
-       "grDevices",
-       "graphics",
+    "igraph": {
+      "Package": "igraph",
+      "Version": "2.1.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "cli",
+        "cpp11",
+        "grDevices",
+        "graphics",
+        "lifecycle",
+        "magrittr",
+        "methods",
+        "pkgconfig",
+        "rlang",
+        "stats",
+        "utils",
+        "vctrs"
+      ],
+      "Hash": "c03878b48737a0e2da3b772d7b2e22da"
+    },
     "ipred": {
       "Package": "ipred",
       "Version": "0.9-15",
