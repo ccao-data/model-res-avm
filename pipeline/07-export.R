@@ -580,12 +580,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_right_align,
     rows = pin_row_range, cols = c(37, 46, 47), gridExpand = TRUE
   )
-  # Generate the HomeVal report as a web link
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_link,
-    rows = pin_row_range, cols = c(48), gridExpand = TRUE
-  )
   addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
   # Format YoY % change column with a range of colors from low to high
@@ -629,6 +623,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     assessment_pin_filtered$meta_pin,
     startRow = 7
+  )
+  writeFormula(
+    wb, pin_sheet_name,
+    x = assessment_pin_filtered$homeval_report,
+    startCol = 48, startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
