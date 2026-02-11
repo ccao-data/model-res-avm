@@ -1359,12 +1359,9 @@
     "renv": {
       "Package": "renv",
       "Version": "1.1.5",
-      "Source": "Repository",
+      "OS_type": null,
       "Repository": "CRAN",
-      "Requirements": [
-        "utils"
-      ],
-      "Hash": "770fcbc2c4616e8fbcb187cccd46a6b1"
+      "Source": "Repository"
     },
     "repr": {
       "Package": "repr",
