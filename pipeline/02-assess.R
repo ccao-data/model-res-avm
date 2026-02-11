@@ -511,6 +511,36 @@ assessment_pin_data_sale <- assessment_pin_data_base %>%
 ## 7.4. Add Flags --------------------------------------------------------------
 message("Adding Desk Review flags")
 
+# A tieback cycle is a group of prorated PINs which do not have a singular
+# tieback that they are associated with. For example PIN A has PIN B as
+# 'meta_tieback_key_pin' and PIN B has PIN A as 'meta_tieback_key_pin'.
+# Start by identifying all PINs which are prorated (have a tieback pin)
+edges <- assessment_pin_data_sale %>%
+  select(meta_pin, meta_tieback_key_pin) %>%
+  filter(!is.na(meta_tieback_key_pin))
+
+# Create an undirected graph from the edges and find connected components.
+# If a PIN is marked as a tieback for another PIN, but does not itself have
+# a tieback,`graph_from_data_frame()` will still include it in the graph,
+# even though we filtered for only PINs with tiebacks above.
+# This is intentional, because we count this situation as a tieback cycle
+comps_tbl <- {
+  g <- graph_from_data_frame(edges, directed = FALSE)
+  comps <- components(g)
+  tibble(meta_pin = names(comps$membership), comp_id = comps$membership)
+}
+
+# Flag PINs that are in tieback cycles.
+flag_proration_tieback_cycle <- comps_tbl %>%
+  left_join(edges, by = "meta_pin") %>%
+  group_by(comp_id) %>%
+  mutate(
+    flag_proration_tieback_cycle =
+      n_distinct(meta_tieback_key_pin) > 1
+  ) %>%
+  ungroup() %>%
+  select(meta_pin, flag_proration_tieback_cycle)
+
 # Flags are used to identify PINs for potential desktop review
 assessment_pin_data_final <- assessment_pin_data_sale %>%
   # Rename existing indicators to flags
@@ -523,6 +553,12 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
     FALSE
   )) %>%
   ungroup() %>%
+  # Add flag for PINs which have aforementioned tieback cycles
+  left_join(flag_proration_tieback_cycle, by = "meta_pin") %>%
+  mutate(flag_proration_tieback_cycle = coalesce(
+    flag_proration_tieback_cycle,
+    FALSE
+  )) %>%
   # Flag for capped land value
   mutate(
     flag_land_value_capped = pred_pin_final_fmv_round *
@@ -553,7 +589,6 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
     meta_pin_num_landlines = tidyr::replace_na(meta_pin_num_landlines, 1),
     flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
   )
-
 
 ## 7.5. Clean/Reorder/Save -----------------------------------------------------
 message("Saving final PIN-level data")
