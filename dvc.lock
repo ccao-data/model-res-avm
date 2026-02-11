@@ -1008,7 +1008,7 @@ stages:
           - loc_school_elementary_district_geoid
           - loc_school_secondary_district_geoid
           - loc_school_unified_district_geoid
-        run_note: Potential residential baseline with SHAP values, revert DVC path
+        run_note: Try for final model with CV hyperparams, fixed Pace stop data, and new proration flag
         toggle:
           cv_enable: false
           shap_enable: true
