@@ -125,6 +125,17 @@
       ],
       "Hash": "ce9c35ab9ea9c6ef4e27a08868cdb32b"
     },
+    "S7": {
+      "Package": "S7",
+      "Version": "0.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "utils"
+      ],
+      "Hash": "9da85950949574264f92f91f0e23de26"
+    },
     "askpass": {
       "Package": "askpass",
       "Version": "1.2.1",
