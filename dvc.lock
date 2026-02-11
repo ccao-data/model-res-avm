@@ -1008,7 +1008,7 @@ stages:
           - loc_school_elementary_district_geoid
           - loc_school_secondary_district_geoid
           - loc_school_unified_district_geoid
-        run_note: Try for final model with CV hyperparams, fixed Pace stop data, and new proration flag
+        run_note: Potential residential baseline with SHAP values, revert DVC path
         toggle:
           cv_enable: false
           shap_enable: true
@@ -1043,7 +1043,7 @@ stages:
         assessment.year: '2026'
         export:
           triad_code: '3'
-          run_id: 2026-02-11-recursing-rob
+          run_id: 2026-02-03-compassionate-bowen
         input.max_sale_year: '2025'
         input.min_sale_year: '2017'
         ratio_study:
