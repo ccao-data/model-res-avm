@@ -267,6 +267,7 @@ if (comp_enable) {
     model      = lgbm_final_full_fit$fit,
     leaf_idx   = as.matrix(training_leaf_nodes),
     init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
+    algorithm  = params$comp$algorithm,
     outcome    = training_data$meta_sale_price
   )
 
