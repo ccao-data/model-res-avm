@@ -529,31 +529,25 @@
       "Package": "paws.analytics",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.analytics",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "ec4fb624e5532758d12b6d31a986e4f0"
+      "Hash": "7d181b30d14ef34589ca20bbb7361fde"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.application.integration",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "7422072f1f6305bc664ce093a42df33f"
+      "Hash": "6cde06aeae9f2a6f193886a7756afa7f"
     },
     "paws.common": {
       "Package": "paws.common",
-      "Version": "0.8.5",
+      "Version": "0.8.6",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -569,7 +563,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "988d9d011a6f6fe5063f0be358047ffb"
+      "Hash": "a1065af4daa842eb7eb4c720cf569e82"
     },
     "paws.compute": {
       "Package": "paws.compute",
