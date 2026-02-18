@@ -213,6 +213,19 @@ extract_tree_weights <- function(model,
   n_obs <- nrow(leaf_idx)
   n_trees <- ncol(leaf_idx)
 
+  # Validate algorithm arg
+  valid_algorithms <- c(
+    "unweighted",
+    "prediction_variance",
+    "unweighted_with_error_reduction",
+    "proportional_error_reduction"
+  )
+
+  algorithm <- rlang::arg_match(
+    algorithm,
+    values = valid_algorithms
+  )
+
   # ---------------------------------------------------------
   # unweighted (vector with 1/n_trees for each tree)
   # ---------------------------------------------------------
