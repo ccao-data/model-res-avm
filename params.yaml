@@ -412,6 +412,9 @@ ratio_study:
 comp:
   # Number of comps to generate for each PIN/card
   num_comps: 5
+  # Type of comp run to use. Possible types are unweighted,
+  # unweighted_with_error_reduction, error_reduction, and prediction_variance
+  algorithm: unweighted
 
 # Export -----------------------------------------------------------------------
 

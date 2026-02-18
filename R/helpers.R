@@ -199,12 +199,62 @@ extract_num_iterations <- function(x) {
 #   model:      Lightgbm model
 #   leaf_idx:   integer matrix [training data x trees] of leaf indices
 #   init_score: mean value of sale prices in the training data
+#   algorithm:  type of algorithm to use. Set in params.yaml. Possible types
+#               unweighted, unweighted_with_error_reduction, error_reduction,
+#               and prediction_variance
 #   outcome:    Predicted FMV values for each observation in the training data
 # Returns:
 #   weights: numeric matrix [n_obs x n_trees] where each row sums to 1
-extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
+extract_tree_weights <- function(model,
+                                 leaf_idx,
+                                 init_score = NULL,
+                                 algorithm = "unweighted",
+                                 outcome = NULL) {
   n_obs <- nrow(leaf_idx)
   n_trees <- ncol(leaf_idx)
+
+  # ---------------------------------------------------------
+  # unweighted (vector with 1/n_trees for each tree)
+  # ---------------------------------------------------------
+  if (algorithm == "unweighted") {
+    weights <- rep(1 / n_trees, n_trees)
+
+    return(weights)
+  }
+
+  # ---------------------------------------------------------
+  # prediction_variance:
+  # vector for tree weights based on variance of
+  # leaf values across data
+  # ---------------------------------------------------------
+  if (algorithm == "prediction_variance") {
+    tree_dt <- lgb.model.dt.tree(model)
+    leaf_lookup <- tree_dt[
+      !is.na(leaf_index),
+      c("tree_index", "leaf_index", "leaf_value")
+    ]
+
+    var_per_tree <- numeric(n_trees)
+
+    for (t in seq_len(n_trees)) {
+      # LightGBM is 0-indexed
+      this_tree <- subset(leaf_lookup, tree_index == (t - 1L))
+      m <- match(leaf_idx[, t], this_tree$leaf_index)
+      # incremental outputs for this tree across training rows
+      incr <- this_tree$leaf_value[m]
+      var_per_tree[t] <- stats::var(incr, na.rm = TRUE)
+    }
+
+    var_per_tree[is.na(var_per_tree)] <- 0
+    summed_variance <- sum(var_per_tree)
+    weights <- var_per_tree / summed_variance
+
+    return(weights)
+  }
+
+  # ---------------------------------------------------------
+  # Remaining algorithms require tree-based improvements to the predicted values
+  # ---------------------------------------------------------
 
   init_vec <- rep_len(as.numeric(init_score), n_obs)
 
@@ -236,11 +286,31 @@ extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
   colnames(tree_predictions) <- NULL
 
   # Absolute errors vs outcome for each prefix
+
   tree_errors <- abs(outcome - tree_predictions)
 
   # Improvement per tree = previous error - next error
   prev_err <- tree_errors[, 1:n_trees, drop = FALSE]
   next_err <- tree_errors[, 2:(n_trees + 1L), drop = FALSE]
+
+  # ---------------------------------------------------------
+  # unweighted_with_error_reduction
+  # (weights are 1/n_improving trees for trees which reduce errors, 0 otherwise)
+  # ---------------------------------------------------------
+  if (algorithm == "unweighted_with_error_reduction") {
+    improving <- prev_err > next_err
+    n_improving <- rowSums(improving)
+
+    weights <- improving / n_improving
+
+    return(weights)
+  }
+
+  # ---------------------------------------------------------
+  # proportional error reduction:
+  # weights are proportional to the reduction in error (prev_err - next_err) for
+  # improving trees, 0 otherwise
+  # ---------------------------------------------------------
   diff_in_errors <- pmax(0, prev_err - next_err)
   dim(diff_in_errors) <- dim(prev_err)
 
