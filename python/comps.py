@@ -24,7 +24,8 @@ def get_comps(
 
     Weights can be:
       - A 1-D array of shape (n_trees,) for algorithms that produce a single
-        weight per tree (e.g. "unweighted", "prediction_variance").
+        weight per tree (e.g. "unweighted", "prediction_variance"). Will be
+        reshaped to (1, n_trees) before being passed to the numba kernel.
       - A 2-D matrix of shape (n_training_obs, n_trees) for algorithms that
         produce per-observation weights (e.g. "error_reduction",
         "unweighted_with_error_reduction").
@@ -70,28 +71,24 @@ def get_comps(
     if not isinstance(weights, np.ndarray):
         weights = np.asarray(weights)
 
-    # Determine whether weights are per-tree (1-D vector) or
-    # per-observation (2-D matrix) and validate accordingly
+    # Normalize weights to a 2-D matrix so that we can use a single numba
+    # kernel for both vector and matrix weights. A 1-D vector of per-tree
+    # weights is reshaped to (1, n_trees); the numba kernel detects this
+    # shape and broadcasts the single row to all comparison observations.
     if weights.ndim == 1:
-        # Vector weights: one weight per tree, shared across all comparisons.
-        # Used by "unweighted" and "prediction_variance" algorithms.
         if weights.shape[0] != comparison_df.shape[1]:
             raise ValueError(
                 f"`weights` length {weights.shape[0]} must equal number of "
                 f"trees {comparison_df.shape[1]}"
             )
-        weights_arr = weights.astype(np.float32, copy=False)
-        use_matrix_weights = False
+        weights_matrix = weights.reshape(1, -1).astype(np.float32, copy=False)
     elif weights.ndim == 2:
-        # Matrix weights: one weight per comparison observation per tree.
-        # Used by "error_reduction" and "unweighted_with_error_reduction".
         if comparison_df.shape != weights.shape:
             raise ValueError(
                 f"`comparison_df.shape` {comparison_df.shape} must match "
                 f"`weights.shape` {weights.shape}"
             )
-        weights_arr = weights.astype(np.float32, copy=False)
-        use_matrix_weights = True
+        weights_matrix = weights.astype(np.float32, copy=False)
     else:
         raise ValueError(
             "`weights` must be a 1-D vector (n_trees,) or 2-D matrix "
@@ -127,22 +124,10 @@ def get_comps(
             flush=True,
         )
 
-        # Compute comps for each observation, dispatching to the appropriate
-        # numba kernel based on the shape of the weights
-        if use_matrix_weights:
-            comp_ids, comp_scores = _get_top_n_comps_matrix_weights(
-                observation_matrix,
-                possible_comp_matrix,
-                weights_arr,
-                num_comps,
-            )
-        else:
-            comp_ids, comp_scores = _get_top_n_comps_vector_weights(
-                observation_matrix,
-                possible_comp_matrix,
-                weights_arr,
-                num_comps,
-            )
+        # Compute comps for each observation
+        comp_ids, comp_scores = _get_top_n_comps(
+            observation_matrix, possible_comp_matrix, weights_matrix, num_comps
+        )
 
         observation_ids = observations.index.values
         for obs_idx, comp_idx, comp_score in zip(
@@ -168,77 +153,56 @@ def get_comps(
 
 
 @nb.njit(fastmath=True, parallel=True)
-def _get_top_n_comps_vector_weights(
-    leaf_node_matrix: np.ndarray,
-    comparison_leaf_node_matrix: np.ndarray,
-    weights_vector: np.ndarray,
-    num_comps: int,
-) -> typing.Tuple[np.ndarray, np.ndarray]:
-    """Compute top-N comps using a shared per-tree weight vector.
-
-    Used by algorithms like "unweighted" and "prediction_variance" where
-    the weight for a tree is the same regardless of which training
-    observation is being compared."""
-    num_observations = len(leaf_node_matrix)
-    num_possible_comparisons = len(comparison_leaf_node_matrix)
-    idx_dtype = np.int32
-    score_dtype = np.float32
-
-    all_top_n_idxs = np.full((num_observations, num_comps), -1, dtype=idx_dtype)
-    all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
-
-    for x_i in nb.prange(num_observations):
-        for y_i in range(num_possible_comparisons):
-            similarity_score = 0.0
-            for tree_idx in range(leaf_node_matrix.shape[1]):
-                if (
-                    leaf_node_matrix[x_i, tree_idx]
-                    == comparison_leaf_node_matrix[y_i, tree_idx]
-                ):
-                    similarity_score += weights_vector[tree_idx]
-
-            if similarity_score > all_top_n_scores[x_i][-1]:
-                for idx, score in enumerate(all_top_n_scores[x_i]):
-                    if similarity_score > score:
-                        insert_at_idx_and_shift(all_top_n_idxs[x_i], y_i, idx)
-                        insert_at_idx_and_shift(
-                            all_top_n_scores[x_i], similarity_score, idx
-                        )
-                        break
-
-    return all_top_n_idxs, all_top_n_scores
-
-
-@nb.njit(fastmath=True, parallel=True)
-def _get_top_n_comps_matrix_weights(
+def _get_top_n_comps(
     leaf_node_matrix: np.ndarray,
     comparison_leaf_node_matrix: np.ndarray,
     weights_matrix: np.ndarray,
     num_comps: int,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    """Compute top-N comps using a per-observation weight matrix.
+    """Helper function that takes matrices of leaf node assignments for
+    observations in a tree model, a matrix of weights for each obs/tree, and an
+    integer `num_comps`, and returns a matrix where each observation is scored
+    by similarity to observations in the comparison matrix and the top N scores
+    are returned along with the indexes of the comparison observations.
 
-    Used by algorithms like "error_reduction" and
-    "unweighted_with_error_reduction" where the weight for a tree
-    depends on which training observation (y_i) is being compared."""
+    The weights_matrix is always 2-D. If its first dimension is 1, the single
+    row of weights is broadcast to all comparison observations (i.e. tree-level
+    weights shared across all comparisons). Otherwise, each comparison
+    observation y_i uses its own row of weights."""
     num_observations = len(leaf_node_matrix)
     num_possible_comparisons = len(comparison_leaf_node_matrix)
     idx_dtype = np.int32
     score_dtype = np.float32
 
+    # Detect whether we have shared (vector-style) or per-observation weights
+    shared_weights = weights_matrix.shape[0] == 1
+
+    # Store scores and indexes in two separate arrays rather than a 3d matrix
+    # for simplicity (array of tuples does not convert to pandas properly).
+    # Indexes default to -1, which is an impossible index and so is a signal
+    # that no comp was found
     all_top_n_idxs = np.full((num_observations, num_comps), -1, dtype=idx_dtype)
     all_top_n_scores = np.zeros((num_observations, num_comps), dtype=score_dtype)
 
     for x_i in nb.prange(num_observations):
+        # TODO: We could probably speed this up by skipping comparisons we've
+        # already made; we just need to do it in a way that will have a
+        # low memory footprint
         for y_i in range(num_possible_comparisons):
             similarity_score = 0.0
+            # Use row 0 for shared weights, row y_i for per-obs weights
+            w_i = 0 if shared_weights else y_i
             for tree_idx in range(leaf_node_matrix.shape[1]):
                 if (
                     leaf_node_matrix[x_i, tree_idx]
                     == comparison_leaf_node_matrix[y_i, tree_idx]
                 ):
-                    similarity_score += weights_matrix[y_i, tree_idx]
+                    similarity_score += weights_matrix[w_i, tree_idx]
 
+            # See if the score is higher than any of the top N
+            # comps, and store it in the sorted comps array if it is.
+            # First check if the score is higher than the lowest score,
+            # since otherwise we don't need to bother iterating the scores
             if similarity_score > all_top_n_scores[x_i][-1]:
                 for idx, score in enumerate(all_top_n_scores[x_i]):
                     if similarity_score > score:
