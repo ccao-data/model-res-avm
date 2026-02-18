@@ -274,12 +274,18 @@ if (comp_enable) {
   if (length(tree_weights) == 0) {
     message("Warning: tree_weights are empty")
   }
-  if (all(rowSums(tree_weights) %in% c(0, 1))) {
-    message("Warning: tree_weights do not sum to 1 or 0 for each row")
-    message("First 5 weights:")
-    print(head(tree_weights, 5))
+  if (is.matrix(tree_weights)) {
+    if (all(rowSums(tree_weights) %in% c(0, 1))) {
+      message("Warning: tree_weights do not sum to 1 or 0 for each row")
+      message("First 5 weights:")
+      print(head(tree_weights, 5))
+    }
+  } else {
+    message(
+      "Tree weights are a vector of length ", length(tree_weights),
+      " (same weights for all training observations)"
+    )
   }
-
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects
