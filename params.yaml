@@ -412,8 +412,17 @@ ratio_study:
 comp:
   # Number of comps to generate for each PIN/card
   num_comps: 5
-  # Type of comp run to use. Possible types are unweighted,
-  # unweighted_with_error_reduction, error_reduction, and prediction_variance
+  # Algorithm used to weight trees for the comps similarity score.
+  # Valid options:
+  #   - "unweighted": Equal weight (1/n_trees) for every tree. No
+  #     observation-level variation. Returns a vector of weights.
+  #   - "unweighted_with_error_reduction": Binary 1/0 per tree per observation
+  #     (1 if tree reduces the training sale's prediction error, 0 otherwise),
+  #     then row-normalized. Returns a matrix of weights.
+  #   - "error_reduction": Proportional error reduction for training data sale per
+  #     tree, row-normalized. Returns a matrix of weights.
+  #   - "prediction_variance": Variance of each tree's leaf values across
+  #     training observations, normalized to sum to 1. Returns a vector of weights.
   algorithm: unweighted
 
 # Export -----------------------------------------------------------------------
