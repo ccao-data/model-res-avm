@@ -32,6 +32,7 @@ parse_params_from_frontmatter <- function(path, defaults = NULL) {
 }
 
 params <- parse_params_from_frontmatter("performance.qmd")
+
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
