@@ -35,7 +35,10 @@ parse_params_from_frontmatter <- function(path, defaults = NULL) {
   p
 }
 
-params <- parse_params_from_frontmatter("model_features.qmd")
+# We only want to parse the params if they are not-defined
+if (!exists("params", inherits = TRUE)) {
+  params <- parse_params_from_frontmatter("model_features.qmd")
+}
 
 # Text sizes for small multiples
 axis_title_size <- 6

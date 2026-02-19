@@ -31,7 +31,10 @@ parse_params_from_frontmatter <- function(path, defaults = NULL) {
   p
 }
 
-params <- parse_params_from_frontmatter("performance.qmd")
+# We only want to parse the params if they are not-defined
+if (!exists("params", inherits = TRUE)) {
+  params <- parse_params_from_frontmatter("performance.qmd")
+}
 
 # Load list of helper files and main libraries
 purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
