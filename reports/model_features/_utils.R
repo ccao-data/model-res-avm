@@ -13,7 +13,11 @@ library(tidyr)
 
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
-# we create the params object from the frontmatter of the main report file
+# we create the params object from the frontmatter of the main report file.
+#
+# WARNING: This function definition is a duplicate of a function with the same
+# name in `reports/_setup.R`, so if you change this function, you should
+# change that one too
 parse_params_from_frontmatter <- function(path, defaults = NULL) {
   fm <- rmarkdown::yaml_front_matter(path)
 
