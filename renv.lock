@@ -954,7 +954,7 @@
     },
     "knitr": {
       "Package": "knitr",
-      "Version": "1.49",
+      "Version": "1.50",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -966,7 +966,7 @@
         "xfun",
         "yaml"
       ],
-      "Hash": "9fcb189926d93c636dea94fbe4f44480"
+      "Hash": "5a07d8ec459d7b80bd4acca5f4a6e062"
     },
     "labeling": {
       "Package": "labeling",
@@ -1241,36 +1241,27 @@
       "Package": "paws.analytics",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
-      "RemoteSubdir": "cran/paws.analytics",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "9325b775d017abfb48bab9e2aa8360d0"
+      "Hash": "7d181b30d14ef34589ca20bbb7361fde"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
-      "RemoteSubdir": "cran/paws.application.integration",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "cabf81b01fe2e75234b146c95f4320f2"
+      "Hash": "6cde06aeae9f2a6f193886a7756afa7f"
     },
     "paws.common": {
       "Package": "paws.common",
       "Version": "0.8.6",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
-      "RemoteSubdir": "paws.common",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "Rcpp",
@@ -1284,7 +1275,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "f4084af1990bfba0d7fc9c337aaf60bc"
+      "Hash": "a1065af4daa842eb7eb4c720cf569e82"
     },
     "pillar": {
       "Package": "pillar",
@@ -1884,7 +1875,7 @@
     },
     "xfun": {
       "Package": "xfun",
-      "Version": "0.49",
+      "Version": "0.53",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1893,7 +1884,7 @@
         "stats",
         "tools"
       ],
-      "Hash": "8687398773806cfff9401a2feca96298"
+      "Hash": "1befe97a0d56060b3964e3986d408df9"
     },
     "xml2": {
       "Package": "xml2",
