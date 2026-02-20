@@ -32,7 +32,7 @@ parse_params_from_frontmatter <- function(path, defaults = NULL) {
 }
 
 # We only want to parse the params if they are not-defined
-if (!exists("params", inherits = TRUE)) {
+if (!exists("params")) {
   params <- parse_params_from_frontmatter("performance.qmd")
 }
 
