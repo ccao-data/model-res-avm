@@ -17,10 +17,18 @@ def get_comps(
     lightgbm leaf node assignments (`observation_df`) compared to a second
     dataframe of leaf node assignments (`comparison_df`).
 
-    Leaf nodes are weighted according to a tree importance matrix `weights`
-    and used to generate a similarity score. The function returns two
-    dataframes: One containing the indices of the most similar compararables
+    Leaf nodes are weighted according to a tree importance vector or matrix
+    `weights` and used to generate a similarity score. The function returns two
+    dataframes: One containing the indices of the most similar comparables
     and the other containing their corresponding similarity scores.
+
+    Weights can be:
+      - A 1-D array of shape (n_trees,) for algorithms that produce a single
+        weight per tree (e.g. "unweighted", "prediction_variance"). Will be
+        reshaped to (1, n_trees) before being passed to numba
+      - A 2-D matrix of shape (n_training_obs, n_trees) for algorithms that
+        produce per-observation weights (e.g. "error_reduction",
+        "unweighted_with_error_reduction")
 
     More details on the underlying algorithm can be found here:
     https://ccao-data.github.io/lightsnip/articles/finding-comps.html
@@ -33,7 +41,7 @@ def get_comps(
             comparables.
         weights (numpy.ndarray):
             Importance weights for leaf nodes, used to compute similarity
-            scores.
+            scores. Either 1-D (n_trees,) or 2-D (n_comparisons, n_trees).
         num_comps (int, optional):
             Number of top comparables to return for each observation.
             Default is 5.
@@ -59,15 +67,33 @@ def get_comps(
             f"({observation_df.shape[1]}) "
             f"must match `comparison_df` ({comparison_df.shape[1]})"
         )
-    if comparison_df.shape != weights.shape:
-        raise ValueError(
-            f"`comparison_df.shape` {comparison_df.shape} must match "
-            f"`weights.shape` {weights.shape}"
-        )
 
-    # Convert the weights to a numpy array so that we can take advantage of
-    # numba acceleration later on
-    weights_matrix = np.asarray(weights, dtype=np.float32)
+    if not isinstance(weights, np.ndarray):
+        weights = np.asarray(weights)
+
+    # Normalize weights to a 2-D matrix so that we can use a single numba
+    # kernel for both vector and matrix weights. A 1-D vector of per-tree
+    # weights is reshaped to (1, n_trees); the numba kernel detects this
+    # shape and broadcasts the single row to all comparison observations.
+    if weights.ndim == 1:
+        if weights.shape[0] != comparison_df.shape[1]:
+            raise ValueError(
+                f"`weights` length {weights.shape[0]} must equal number of "
+                f"trees {comparison_df.shape[1]}"
+            )
+        weights_matrix = weights.reshape(1, -1).astype(np.float32, copy=False)
+    elif weights.ndim == 2:
+        if comparison_df.shape != weights.shape:
+            raise ValueError(
+                f"`comparison_df.shape` {comparison_df.shape} must match "
+                f"`weights.shape` {weights.shape}"
+            )
+        weights_matrix = weights.astype(np.float32, copy=False)
+    else:
+        raise ValueError(
+            "`weights` must be a 1-D vector (n_trees,) or 2-D matrix "
+            f"(n_comparisons, n_trees), got {weights.ndim}-D"
+        )
 
     # Chunk the observations so that the script can periodically report progress
     observation_df["chunk"] = pd.cut(
@@ -137,11 +163,19 @@ def _get_top_n_comps(
     observations in a tree model, a matrix of weights for each obs/tree, and an
     integer `num_comps`, and returns a matrix where each observation is scored
     by similarity to observations in the comparison matrix and the top N scores
-    are returned along with the indexes of the comparison observations."""
+    are returned along with the indexes of the comparison observations.
+
+    The weights_matrix is always 2-D. If its first dimension is 1, the single
+    row of weights is broadcast to all comparison observations (i.e. tree-level
+    weights shared across all comparisons). Otherwise, each comparison
+    observation y_i uses its own row of weights."""
     num_observations = len(leaf_node_matrix)
     num_possible_comparisons = len(comparison_leaf_node_matrix)
     idx_dtype = np.int32
     score_dtype = np.float32
+
+    # Detect whether we have shared (vector-style) or per-observation weights
+    shared_weights = weights_matrix.shape[0] == 1
 
     # Store scores and indexes in two separate arrays rather than a 3d matrix
     # for simplicity (array of tuples does not convert to pandas properly).
@@ -156,12 +190,14 @@ def _get_top_n_comps(
         # low memory footprint
         for y_i in range(num_possible_comparisons):
             similarity_score = 0.0
-            for tree_idx in range(len(leaf_node_matrix[x_i])):
+            # Use row 0 for shared weights, row y_i for per-obs weights
+            w_i = 0 if shared_weights else y_i
+            for tree_idx in range(leaf_node_matrix.shape[1]):
                 if (
-                    leaf_node_matrix[x_i][tree_idx]
-                    == comparison_leaf_node_matrix[y_i][tree_idx]
+                    leaf_node_matrix[x_i, tree_idx]
+                    == comparison_leaf_node_matrix[y_i, tree_idx]
                 ):
-                    similarity_score += weights_matrix[y_i][tree_idx]
+                    similarity_score += weights_matrix[w_i, tree_idx]
 
             # See if the score is higher than any of the top N
             # comps, and store it in the sorted comps array if it is.
@@ -198,18 +234,24 @@ if __name__ == "__main__":
     num_trees = 500
     num_obs = 20001
     num_comparisons = 10000
-    mean_sale_price = 350000
-    std_deviation = 110000
 
     leaf_nodes = pd.DataFrame(np.random.randint(0, num_obs, size=[num_obs, num_trees]))
     training_leaf_nodes = pd.DataFrame(
         np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
     )
-    tree_weights = np.asarray(
+
+    # Test with matrix weights (error_reduction style)
+    tree_weights_matrix = np.asarray(
         [np.random.dirichlet(np.ones(num_trees)) for _ in range(num_comparisons)]
     )
-
     start = time.time()
-    get_comps(leaf_nodes, training_leaf_nodes, tree_weights)
+    get_comps(leaf_nodes, training_leaf_nodes, tree_weights_matrix)
     end = time.time()
-    print(f"get_comps runtime: {end - start}s")
+    print(f"get_comps (matrix weights) runtime: {end - start}s")
+
+    # Test with vector weights (unweighted / prediction_variance style)
+    tree_weights_vector = np.random.dirichlet(np.ones(num_trees))
+    start = time.time()
+    get_comps(leaf_nodes, training_leaf_nodes, tree_weights_vector)
+    end = time.time()
+    print(f"get_comps (vector weights) runtime: {end - start}s")
