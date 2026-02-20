@@ -26,7 +26,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 
 
 
-#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+?#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Loading model fit and recipe")
@@ -276,7 +276,7 @@ if (comp_enable) {
   }
   if (is.matrix(tree_weights)) {
     if (all(rowSums(tree_weights) %in% c(0, 1))) {
-      message("Warning: tree_weights do not sum to 1 or 0 for each row")
+      message("Warning: tree_weights do sum to 1 or 0 for each row")
       message("First 5 weights:")
       print(head(tree_weights, 5))
     }
