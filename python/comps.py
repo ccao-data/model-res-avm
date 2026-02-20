@@ -25,10 +25,10 @@ def get_comps(
     Weights can be:
       - A 1-D array of shape (n_trees,) for algorithms that produce a single
         weight per tree (e.g. "unweighted", "prediction_variance"). Will be
-        reshaped to (1, n_trees) before being passed to the numba kernel.
+        reshaped to (1, n_trees) before being passed to numba
       - A 2-D matrix of shape (n_training_obs, n_trees) for algorithms that
         produce per-observation weights (e.g. "error_reduction",
-        "unweighted_with_error_reduction").
+        "unweighted_with_error_reduction")
 
     More details on the underlying algorithm can be found here:
     https://ccao-data.github.io/lightsnip/articles/finding-comps.html
@@ -239,7 +239,11 @@ if __name__ == "__main__":
         np.random.randint(0, num_obs, size=[num_obs, num_trees])
     )
     training_leaf_nodes = pd.DataFrame(
-        np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
+        np.random.randint(
+          0,
+          num_comparisons,
+          size=[num_comparisons, num_trees]
+        )
     )
 
     # Test with matrix weights (error_reduction style)
