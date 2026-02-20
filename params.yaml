@@ -24,7 +24,7 @@ toggle:
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
-  shap_enable: true
+  shap_enable: false
 
   # Should comps be calculated for this run in the interpret stage?
   comp_enable: false
@@ -431,4 +431,4 @@ comp:
 # upload
 export:
   triad_code: "3"
-  run_id: "2026-02-03-compassionate-bowen"
+  run_id: "2026-02-11-recursing-rob"
