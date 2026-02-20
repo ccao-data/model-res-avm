@@ -239,11 +239,7 @@ if __name__ == "__main__":
         np.random.randint(0, num_obs, size=[num_obs, num_trees])
     )
     training_leaf_nodes = pd.DataFrame(
-        np.random.randint(
-          0,
-          num_comparisons,
-          size=[num_comparisons, num_trees]
-        )
+      np.random.randint(0, num_comparisons, size=[num_comparisons, num_trees])
     )
 
     # Test with matrix weights (error_reduction style)
