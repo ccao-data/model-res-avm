@@ -33,6 +33,10 @@ toggle:
   # to false if you are not a CCAO employee
   upload_enable: true
 
+  # Should the feature report be run, which compares the inputs to the previous
+  # year's model inputs?
+  feature_enable: false
+
 
 # Data/Ingest ------------------------------------------------------------------
 

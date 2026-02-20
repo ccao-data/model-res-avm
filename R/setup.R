@@ -88,6 +88,11 @@ upload_enable <- as.logical(Sys.getenv(
   unset = get(params_obj_name)$toggle$upload_enable
 ))
 
+feature_enable <- as.logical(Sys.getenv(
+  "FEATURE_ENABLE_OVERRIDE",
+  unset = get(params_obj_name)$toggle$feature_enable
+))
+
 # If in a CI context, use the run params passed to the workflow. Otherwise, use
 # the note included in params.yaml
 run_note <- as.character(
