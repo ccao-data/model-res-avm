@@ -319,7 +319,7 @@ extract_tree_weights <- function(model,
   }
 
   # ---------------------------------------------------------
-  # Proportional error reduction:
+  # Proportional_error_reduction:
   # Weights are proportional to the reduction in error (prev_err - next_err) for
   # improving trees, 0 otherwise. This returns a matrix with dimensions of
   # observations x trees.
