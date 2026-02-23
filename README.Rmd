@@ -31,6 +31,7 @@ This repository contains code, data, and documentation for the Cook County Asses
 | 2022        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)                            |
 | 2023        | South    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year)                            |
 | 2024        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year)                            |
+| 2025        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2025-assessment-year)                            |
 
 # Model Overview
 

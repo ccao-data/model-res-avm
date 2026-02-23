@@ -62,6 +62,7 @@ prior year models can be found at the following links:
 | 2022 | North | County-wide LightGBM model | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year) |
 | 2023 | South | County-wide LightGBM model | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year) |
 | 2024 | City | County-wide LightGBM model | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year) |
+| 2025 | North | County-wide LightGBM model | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2025-assessment-year) |
 
 # Model Overview
 
@@ -324,9 +325,6 @@ well-specified in order for a model to be accurate and useful. LightGBM
 has a large number of tunable parameters, but we tune only a small
 proportion, including:
 
-    #> Warning: package 'tidyr' was built under R version 4.5.2
-    #> Warning: package 'yaml' was built under R version 4.5.2
-
 | LightGBM Parameter | CV Search Range | Parameter Description |
 |:---|:---|:---|
 | [num_iterations](https://lightgbm.readthedocs.io/en/latest/Parameters.html#num_iterations) | 100 - 2500 | Total number of trees/iterations. Final value is dependent on CV and early stopping. |
@@ -372,8 +370,6 @@ districts](https://gitlab.com/ccao-data-science---modeling/models/ccao_res_avm/-
 and many others. The features in the table below are the ones that made
 the cut. They’re the right combination of easy to understand and impute,
 powerfully predictive, and well-behaved.
-
-    #> Warning: package 'jsonlite' was built under R version 4.5.2
 
 | Feature Name | Variable Name | Description | Category | Type | Possible Values (Encoded) | Possible Values (Semantic) |
 |:---|:---|:---|:---|:---|:---|:---|
