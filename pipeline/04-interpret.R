@@ -14,7 +14,11 @@ tictoc::tic("Interpret")
 # configures reticulate to use uv to install those dependencies. Reticulate
 # will install the dependencies when we import them. In this particular script,
 # we don't import Python dependencies directly, but rather we import the
-# comps module which then imports these dependencies
+# comps module which then imports these dependencies.
+#
+# Because the reticulate uv integration is not very sophisticated, this
+# dependency list is duplicated in `pipeline/04-interpret.R`. If you add or
+# change any dependencies in this list, make sure to change them there too
 reticulate::py_require(
   packages = c("numpy==2.2.*", "numba==0.62.*", "pandas==2.3.*"),
   python_version = "3.10"
