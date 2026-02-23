@@ -218,7 +218,7 @@ extract_tree_weights <- function(model,
     "unweighted",
     "prediction_variance",
     "unweighted_with_error_reduction",
-    "proportional_error_reduction"
+    "error_reduction"
   )
 
   algorithm <- rlang::arg_match(
