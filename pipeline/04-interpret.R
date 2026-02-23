@@ -17,7 +17,7 @@ tictoc::tic("Interpret")
 # comps module which then imports these dependencies.
 #
 # Because the reticulate uv integration is not very sophisticated, this
-# dependency list is duplicated in `pipeline/04-interpret.R`. If you add or
+# dependency list is duplicated in `python/pyproject.toml`. If you add or
 # change any dependencies in this list, make sure to change them there too
 reticulate::py_require(
   packages = c("numpy==2.2.*", "numba==0.62.*", "pandas==2.3.*"),
