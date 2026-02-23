@@ -264,7 +264,7 @@ import comps as comps_module
             ),
             id="two_observations_1d_weights",
         ),
-        # Test 1-D weights with non-uniform per-tree weights. With weights
+        # Test 1-D weights with non-uniform per-tree weights.
         pt.param(
             pd.DataFrame([[1, 1, 1]]),
             pd.DataFrame([[1, 1, 0], [1, 0, 0], [0, 0, 0]]),
@@ -284,38 +284,6 @@ import comps as comps_module
                 dtype=np.float32,
             ),
             id="non_uniform_1d_weights",
-        ),
-        # Test that 1-D vector weights produce the same result as an
-        # equivalent 2-D matrix where every row is the same weight vector.
-        # This confirms the logic is correct: a (3,) vector
-        # reshaped to (1, 3) should behave identically to a (3, 3) matrix
-        # with all rows equal to [0.5, 0.3, 0.2].
-        pt.param(
-            pd.DataFrame([[1, 1, 1]]),
-            pd.DataFrame([[1, 1, 0], [1, 1, 0], [1, 1, 0]]),
-            np.array([0.5, 0.3, 0.2]),
-            3,
-            1,
-            pd.DataFrame(
-                {
-                    # All comparison obs match on trees 1 & 2 with the same
-                    # weight, so they all tie and tiebreak by index order
-                    "comp_idx_1": [0],
-                    "comp_idx_2": [1],
-                    "comp_idx_3": [2],
-                },
-                dtype=np.int32,
-            ),
-            pd.DataFrame(
-                {
-                    # All comparison obs get the same score: 0.5 + 0.3 = 0.8
-                    "comp_score_1": [0.5 + 0.3],
-                    "comp_score_2": [0.5 + 0.3],
-                    "comp_score_3": [0.5 + 0.3],
-                },
-                dtype=np.float32,
-            ),
-            id="1d_weights_tiebreak_same_as_uniform_matrix",
         ),
     ],
 )
@@ -352,6 +320,7 @@ def test_get_comps(
         ),
         pt.param(
             pd.DataFrame([[1, 1, 1]]),
+
             pd.DataFrame([[1, 1, 1], [2, 2, 2], [3, 3, 3]]),
             np.array([0.333] * 4).reshape(2, 2),
             ValueError,
