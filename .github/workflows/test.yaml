@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         working-directory: python
         shell: bash
-        run: uv pip install .
+        run: uv pip install .[tests]
 
       - name: Run Python tests
         shell: bash
