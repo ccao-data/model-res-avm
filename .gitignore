@@ -30,7 +30,4 @@ cache/
 # Ignore scratch documents
 scratch*.*
 
-# Python files
-__pycache__
-
 /.quarto/
