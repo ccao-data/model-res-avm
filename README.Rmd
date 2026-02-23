@@ -358,7 +358,7 @@ param_tbl_fmt <- param_tbl %>%
     na.rm = TRUE
   ) %>%
   mutate(description = replace_na(description, "")) %>%
-  arrange(category)
+  arrange(category, variable_name)
 
 # Write machine-readable version of the table to file
 param_tbl_fmt %>%
