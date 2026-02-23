@@ -299,7 +299,6 @@ extract_tree_weights <- function(model,
   colnames(tree_predictions) <- NULL
 
   # Absolute errors vs outcome for each prefix
-
   tree_errors <- abs(outcome - tree_predictions)
 
   # Improvement per tree = previous error - next error
