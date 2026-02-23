@@ -874,9 +874,9 @@ the following major changes to the residential modeling codebase:
 ### [`assessment-year-2026`](https://github.com/ccao-data/model-res-avm/tree/2026-assessment-year)
 
 - Changed how complex IDs are generated for class 210 and 295
-  town/rowhomes. The new method removes grouping on class since the ID
-  generation already fuzzy matches on year built which is the only
-  difference between the classes.
+  town/rowhomes. The new method removes grouping on class since ID
+  generation already fuzzy matches on year built, the only difference
+  between the classes.
 - Greatly expanded analyst hand-review into the sales validation
   process, augmenting the preexisting algorithmic checks. Analyst
   decisions supercede any conflicting algorithmic outcomes now.
