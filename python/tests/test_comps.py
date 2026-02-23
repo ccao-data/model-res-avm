@@ -8,6 +8,8 @@ import comps as comps_module
 @pt.mark.parametrize(
     "leaf_nodes,training_leaf_nodes,tree_weights,num_comps,num_chunks,expected_comps,expected_scores",
     [
+        # Matrix weights tests:
+        # - - - - - - - - - - -
         # Simple example that tests one input observation with uniform weights
         # to make sure that the algorithm correctly prioritizes comparison
         # observations with the highest number of leaf node matches
@@ -203,6 +205,118 @@ import comps as comps_module
             ),
             id="more_possible_comps_than_num_comps",
         ),
+        # Vector weights tests:
+        # - - - - - - - - - - -
+        # Test one observation with uniform 1-D weights (vector). With a 1-D
+        # weight vector, every tree gets the same weight and that weight is
+        # broadcast identically to every comparison observation. This should
+        # produce the same results as the matrix case with identical rows.
+        pt.param(
+            pd.DataFrame([[1, 1, 1]]),
+            pd.DataFrame([[1, 1, 0], [1, 0, 0], [0, 0, 0]]),
+            np.array([0.333, 0.333, 0.333]),
+            3,
+            1,
+            pd.DataFrame(
+                {
+                    "comp_idx_1": [0],
+                    "comp_idx_2": [1],
+                    "comp_idx_3": [-1],
+                },
+                dtype=np.int32,
+            ),
+            pd.DataFrame(
+                {
+                    "comp_score_1": [0.333 * 2],
+                    "comp_score_2": [0.333 * 1],
+                    "comp_score_3": [0.333 * 0],
+                },
+                dtype=np.float32,
+            ),
+            id="one_observation_1d_weights",
+        ),
+        # Test two observations with uniform 1-D weights. The 1-D vector is
+        # used for all comparison rows, so every comparison uses the same
+        # per-tree weight. Results should mirror the 2-D uniform-weight case.
+        pt.param(
+            pd.DataFrame([[1, 1, 1], [2, 2, 2]]),
+            pd.DataFrame([[1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]]),
+            np.array([0.333, 0.333, 0.333]),
+            4,
+            1,
+            pd.DataFrame(
+                {
+                    "comp_idx_1": [0, 3],
+                    "comp_idx_2": [1, 2],
+                    "comp_idx_3": [2, 1],
+                    "comp_idx_4": [-1, -1],
+                },
+                dtype=np.int32,
+            ),
+            pd.DataFrame(
+                {
+                    "comp_score_1": [0.333 * 3] * 2,
+                    "comp_score_2": [0.333 * 2] * 2,
+                    "comp_score_3": [0.333 * 1] * 2,
+                    "comp_score_4": [0.333 * 0] * 2,
+                },
+                dtype=np.float32,
+            ),
+            id="two_observations_1d_weights",
+        ),
+        # Test 1-D weights with non-uniform per-tree weights. With weights
+        pt.param(
+            pd.DataFrame([[1, 1, 1]]),
+            pd.DataFrame([[1, 1, 0], [1, 0, 0], [0, 0, 0]]),
+            np.array([0.5, 0.3, 0.2]),
+            3,
+            1,
+            pd.DataFrame(
+                {"comp_idx_1": [0], "comp_idx_2": [1], "comp_idx_3": [-1]},
+                dtype=np.int32,
+            ),
+            pd.DataFrame(
+                {
+                    "comp_score_1": [0.5 + 0.3],
+                    "comp_score_2": [0.5],
+                    "comp_score_3": [0.0],
+                },
+                dtype=np.float32,
+            ),
+            id="non_uniform_1d_weights",
+        ),
+        # Test that 1-D vector weights produce the same result as an
+        # equivalent 2-D matrix where every row is the same weight vector.
+        # This confirms the logic is correct: a (3,) vector
+        # reshaped to (1, 3) should behave identically to a (3, 3) matrix
+        # with all rows equal to [0.5, 0.3, 0.2].
+        pt.param(
+            pd.DataFrame([[1, 1, 1]]),
+            pd.DataFrame([[1, 1, 0], [1, 1, 0], [1, 1, 0]]),
+            np.array([0.5, 0.3, 0.2]),
+            3,
+            1,
+            pd.DataFrame(
+                {
+                    # All comparison obs match on trees 1 & 2 with the same
+                    # weight, so they all tie and tiebreak by index order
+                    "comp_idx_1": [0],
+                    "comp_idx_2": [1],
+                    "comp_idx_3": [2],
+                },
+                dtype=np.int32,
+            ),
+            pd.DataFrame(
+                {
+                    # All comparison obs get the same score: 0.5 + 0.3 = 0.8
+                    "comp_score_1": [0.5 + 0.3],
+                    "comp_score_2": [0.5 + 0.3],
+                    "comp_score_3": [0.5 + 0.3],
+                },
+                dtype=np.float32,
+            ),
+            id="1d_weights_tiebreak_same_as_uniform_matrix",
+        ),
     ],
 )
 def test_get_comps(
@@ -243,6 +357,16 @@ def test_get_comps(
             ValueError,
             "`comparison_df.shape` (3, 3) must match `weights.shape` (2, 2)",
             id="comparison_weights_shapes_match",
+        ),
+        # Vector weights validation tests:
+        # 1-D weights with wrong length: 2 weights for 3 trees
+        pt.param(
+            pd.DataFrame([[1, 1, 1]]),
+            pd.DataFrame([[1, 1, 1], [2, 2, 2], [3, 3, 3]]),
+            np.array([0.333, 0.333]),
+            ValueError,
+            "`weights` length 2 must equal number of trees 3",
+            id="1d_weights_wrong_length",
         ),
     ],
 )
