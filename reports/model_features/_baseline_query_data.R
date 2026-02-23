@@ -77,6 +77,10 @@ if (!exists("dvc_md5_assessment_data_comp")) {
   dvc_md5_assessment_data_comp <- comp_metadata$dvc_md5_assessment_data
 }
 
+if (!exists("dvc_md5_training_data_comp")) {
+  dvc_md5_training_data_comp <- comp_metadata$dvc_md5_training_data
+}
+
 if (!exists("comp_chars")) {
   comp_chars <- open_dataset(
     paste0(
@@ -120,7 +124,27 @@ if (!exists("continuous_shaps")) {
   continuous_shaps <- paste0(continuous_preds, "_shap")
 }
 
-# Assessment set chars
+# Comp Assessment Set Chars
+
+if (!exists("comp_assessment_data")) {
+  comp_assessment_data <- open_dataset(
+    paste0(
+      glue("{base_dvc_url}/files/md5/"),
+      substr(dvc_md5_assessment_data_comp, 1, 2), "/",
+      substr(dvc_md5_assessment_data_comp, 3, 32)
+    )
+  ) %>%
+    select(
+      meta_pin,
+      meta_card_num,
+      meta_year,
+      meta_class,
+      all_of(model_predictor_all_name)
+    ) %>%
+    collect()
+}
+
+# Baseline Assessment Set Chars
 if (!exists("baseline_assessment_data")) {
   baseline_assessment_data <- open_dataset(
     paste0(
@@ -139,7 +163,26 @@ if (!exists("baseline_assessment_data")) {
     collect()
 }
 
-# SHAPs
+# Comp SHAPs
+if (!exists("comp_shaps")) {
+  comp_shaps <- open_dataset(
+    paste0(
+      glue("{base_model_results_url}/shap/"),
+      glue("year={assessment_year_comp}/"),
+      glue("run_id={params$comp_run_id}")
+    )
+  ) %>%
+    collect() %>%
+    left_join(
+      comp_assessment_data,
+      by = c("meta_pin", "meta_card_num"),
+      suffix = c("_shap", "")
+    ) %>%
+    # This column isn't a real SHAP, it's just an artifact of the join
+    select(-meta_year_shap)
+}
+
+# Baseline SHAPs
 if (!exists("baseline_shaps")) {
   baseline_shaps <- open_dataset(
     paste0(
@@ -158,7 +201,28 @@ if (!exists("baseline_shaps")) {
     select(-meta_year_shap)
 }
 
-# Training data
+# Comps Training Data
+if (!exists("comp_training_data")) {
+  comp_training_data <- open_dataset(
+    paste0(
+      glue("{base_dvc_url}/files/md5/"),
+      substr(dvc_md5_training_data_comp, 1, 2), "/",
+      substr(dvc_md5_training_data_comp, 3, 32)
+    )
+  ) %>%
+    select(
+      meta_pin,
+      meta_card_num,
+      meta_year,
+      meta_sale_price,
+      meta_sale_date,
+      meta_class,
+      all_of(model_predictor_all_name)
+    ) %>%
+    collect()
+}
+
+# Baseline Training Data
 if (!exists("baseline_training_data")) {
   baseline_training_data <- open_dataset(
     paste0(

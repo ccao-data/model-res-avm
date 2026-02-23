@@ -53,10 +53,22 @@ ncol_violin <- 3
 ncol_line <- 6
 
 # Function to plot a set of small multiple histograms of char values
-plot_small_multiple_histograms <- function(df, stat = "bin") {
-  df %>%
-    ggplot(aes(x = value)) +
-    geom_histogram(fill = "steelblue", stat = stat) +
+plot_small_multiple_histograms <- function(comp, baseline, stat = "bin") {
+  # Add grouping labels
+  comp <- comp %>% mutate(group = "comp")
+  baseline <- baseline %>% mutate(group = "baseline")
+
+  # Combine
+  df_all <- bind_rows(comp, baseline)
+
+  # Plot
+  df_all %>%
+    ggplot(aes(x = value, fill = group)) +
+    geom_histogram(
+      stat = stat,
+      position = "identity",
+      alpha = 0.5
+    ) +
     facet_wrap(
       ~predictor,
       scales = "free",
