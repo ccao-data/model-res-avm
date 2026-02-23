@@ -221,10 +221,12 @@ extract_tree_weights <- function(model,
     "error_reduction"
   )
 
-  algorithm <- rlang::arg_match(
-    algorithm,
-    values = valid_algorithms
-  )
+  if (!algorithm %in% valid_algorithms) {
+    stop(
+      "Invalid algorithm '", algorithm, "'. Must be one of: ",
+      paste0(valid_algorithms, collapse = ", ")
+    )
+  }
 
   # ---------------------------------------------------------
   # unweighted (vector with 1/n_trees for each tree)
