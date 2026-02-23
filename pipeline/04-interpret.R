@@ -275,6 +275,13 @@ if (comp_enable) {
       print(head(tree_weights, 5))
     }
   } else {
+    tree_weights_sum <- sum(tree_weights)
+    if (!isTRUE(all.equal(tree_weights_sum, 1))) {
+      stop(
+        "Tree weights vector does not sum to 1 (got ", tree_weights_sum, "). ",
+        "All sales would have a score of 0 if weights sum to 0."
+      )
+    }
     message(
       "Tree weights are a vector of length ", length(tree_weights),
       " (same weights for all training observations)"
