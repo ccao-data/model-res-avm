@@ -320,7 +320,6 @@ def test_get_comps(
         ),
         pt.param(
             pd.DataFrame([[1, 1, 1]]),
-
             pd.DataFrame([[1, 1, 1], [2, 2, 2], [3, 3, 3]]),
             np.array([0.333] * 4).reshape(2, 2),
             ValueError,
