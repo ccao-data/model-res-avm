@@ -18,6 +18,7 @@ Table of Contents
     - [`assessment-year-2023`](#assessment-year-2023)
     - [`assessment-year-2024`](#assessment-year-2024)
     - [`assessment-year-2025`](#assessment-year-2025)
+    - [`assessment-year-2026`](#assessment-year-2026)
 - [Ongoing Issues](#ongoing-issues)
   - [Data Quality and Integrity](#data-quality-and-integrity)
   - [Heterogeneity and Extremes](#heterogeneity-and-extremes)
@@ -869,6 +870,16 @@ the following major changes to the residential modeling codebase:
 - Modified features: distance to road now uses Illinois Department of
   Transportation street data instead of OpenStreetMap.
 - Added *lots* of additional bug fixes and minor improvements.
+
+### [`assessment-year-2026`](https://github.com/ccao-data/model-res-avm/tree/2026-assessment-year)
+
+- Changed how complex IDs are generated for class 210 and 295
+  town/rowhomes. The new method removes grouping on class since the ID
+  generation already fuzzy matches on year built which is the only
+  difference between the classes.
+- Greatly expanded analyst hand-review into the sales validation
+  process, augmenting the preexisting algorithmic checks. Analyst
+  decisions supercede any conflicting algorithmic outcomes now.
 
 # Ongoing Issues
 
