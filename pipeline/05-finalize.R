@@ -175,8 +175,8 @@ tryCatch(
     here("reports", "model_features", "model_features.qmd") %>%
       quarto_render(
         execute_params = list(
-          run_id = run_id,
-          year = params$assessment$year
+          baseline_run_id = run_id,
+          comp_run_id = "2025-02-11-charming-eric"
         )
       )
   },
