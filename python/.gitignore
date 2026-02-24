@@ -1,3 +1,4 @@
-# Ignore uv lockfile because we use requirements.txt for this project, in order
-# to make it compatible with reticulate
-uv.lock
+# Python artifacts
+__pycache__
+build/
+*.egg-info

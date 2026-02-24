@@ -3,6 +3,19 @@ name = "model-res-avm-python"
 version = "0.0.1"
 description = "Python code for the CCAO residential model AVM"
 requires-python = ">=3.10"
+# Because the reticulate uv integration is not very sophisticated, this
+# dependency list is duplicated in `pipeline/04-interpret.R`. If you add or
+# change any dependencies in this list, make sure to change them there too
+dependencies = [
+  "numpy==2.2.*",
+  "numba==0.62.*",
+  "pandas==2.3.*"
+]
+
+[project.optional-dependencies]
+tests = [
+  "pytest==8.3.*"
+]
 
 [tool.pytest.ini_options]
 minversion = "7.0.0"
