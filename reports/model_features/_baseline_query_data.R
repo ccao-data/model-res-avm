@@ -1,6 +1,6 @@
 noctua_options(cache_size = 10, unload = TRUE)
 
-conn <- dbConnect(
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   noctua::athena(),
   s3_staging_dir   = "s3://ccao-athena-results-us-east-1/",
   region_name      = "us-east-1",
@@ -13,7 +13,7 @@ base_model_results_url <- "s3://ccao-model-results-us-east-1"
 # Model metadata
 if (!exists("baseline_metadata")) {
   baseline_metadata <- dbGetQuery(
-    conn,
+    conn = AWS_ATHENA_CONN_NOCTUA,
     # This query should only ever return one row, but limit the results to 1
     # just to be defensive
     glue(
@@ -56,7 +56,7 @@ if (!exists("dvc_md5_training_data")) {
 # Model metadata
 if (!exists("comp_metadata")) {
   comp_metadata <- dbGetQuery(
-    conn,
+  conn = AWS_ATHENA_CONN_NOCTUA,
     # This query should only ever return one row, but limit the results to 1
     # just to be defensive
     glue(
