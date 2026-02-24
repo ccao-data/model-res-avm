@@ -93,6 +93,7 @@ metadata <- tibble::tibble(
   shap_enable = shap_enable,
   comp_enable = comp_enable,
   comp_num_comps = params$comp$num_comps,
+  comp_algorithm = params$comp$algorithm,
   cv_enable = cv_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,
