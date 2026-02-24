@@ -497,11 +497,13 @@ There a few caveats with this approach and with balance testing in general:
 
 In addition to the first-pass modeling done by LightGBM, the CCAO also performs a set of simple adjustments on the initial predicted values from the `assess` stage. These adjustments are internally called "post-modeling," and are responsible for correcting minor deficiencies in the initial predictions. Specifically, post-modeling will:
 
-1. Handle multi-card properties. For PINs with more than 3 cards, this means summing the estimate for each card to the PIN level, then disaggregating back to the card level. For PINs with 3 or fewer cards, the initial prediction of the _largest_ card (plus the building square footage of the remaining cards) is used as the PIN-level estimate.
+1. Handle multi-card properties. For PINs with more than 3 cards, this means summing the estimate for each card to the PIN level, then disaggregating back to the card level. For PINs with 3 or fewer cards, the initial prediction of the *largest* card (plus the building square footage of the remaining cards) is used as the PIN-level estimate. For a more detailed explanation of multi-card handling, see the [multi-card wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Multi-Card%20PINs/multi_card_explainer.md).
 
-2. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
+2. Handle prorated PINs. When a single building spans multiple PINs, each one technically contains only a portion of the structure. To ensure fair valuation, the model's estimates are adjusted so that the building’s total value is distributed proportionally across its PINs. This involves calculating an average building-only value, prorating it based on each PIN’s share, and then adding back PIN-specific land value. For more detail, see the [proration wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Proration/proration_explainer.md).
 
-3. Round PIN-level values (typically to the nearest $1,000). This is done to indicate that model values are _estimates_, not precise values.
+3. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
+
+4. Round PIN-level values (typically to the nearest \$1,000). This is done to indicate that model values are *estimates*, not precise values.
 
 These adjustments have been collectively approved by the senior leadership of the CCAO. They are designed to limit the impact of data integrity issues, prevent regressivity in assessment, and ensure that people with nearly identical properties receive the same value.
 
