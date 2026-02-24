@@ -23,19 +23,30 @@ baseline_cont_chars_assess_long <- baseline_assessment_data %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+comp_cont_chars_assess_long <- comp_assessment_data %>%
+  select(all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_assess_cont_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(baseline_cont_chars_assess_long)
 
-plot_small_multiple_histograms(baseline_cont_chars_assess_long, stat = "bin")
+plot_small_multiple_histograms(comp_cont_chars_assess_long,
+  baseline_cont_chars_assess_long,
+  stat = "bin"
+)
 ```
 
 ```{r feature_dist_assess_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_chars_assess_long)
+rm(baseline_cont_chars_assess_long, comp_cont_chars_assess_long)
 gc()
 ```
 
@@ -49,19 +60,30 @@ baseline_cont_chars_train_long <- baseline_training_data %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+comp_cont_chars_train_long <- comp_training_data %>%
+  select(all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_train_cont_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(baseline_cont_chars_train_long)
 
-plot_small_multiple_histograms(baseline_cont_chars_train_long, stat = "bin")
+plot_small_multiple_histograms(comp_cont_chars_train_long,
+  baseline_cont_chars_train_long,
+  stat = "bin"
+)
 ```
 
 ```{r feature_dist_train_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_chars_train_long)
+rm(baseline_cont_chars_train_long, comp_cont_chars_train_long)
 gc()
 ```
 
@@ -79,6 +101,25 @@ baseline_cont_shap_long <- baseline_shaps %>%
   ) %>%
   left_join(
     baseline_shaps %>%
+      select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
+      pivot_longer(
+        cols = all_of(continuous_shaps),
+        names_to = "shap_name",
+        values_to = "shap_value"
+      ) %>%
+      mutate(shap_name = str_replace(shap_name, "_shap$", "")),
+    by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
+  )
+
+comp_cont_shap_long <- comp_shaps %>%
+  select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = all_of(continuous_preds),
+    names_to = "predictor",
+    values_to = "value"
+  ) %>%
+  left_join(
+    comp_shaps %>%
       select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
       pivot_longer(
         cols = all_of(continuous_shaps),
