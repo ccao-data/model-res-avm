@@ -1,5 +1,11 @@
 noctua_options(cache_size = 10, unload = TRUE)
-conn <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
+
+conn <- dbConnect(
+  noctua::athena(),
+  s3_staging_dir   = "s3://ccao-athena-results-us-east-1/",
+  region_name      = "us-east-1",
+  rstudio_conn_tab = FALSE
+)
 
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
