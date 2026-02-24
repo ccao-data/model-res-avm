@@ -85,14 +85,18 @@ plot_small_multiple_histograms <- function(comp, baseline, stat = "bin") {
 
 # Base function for plotting small multiple violins and lines
 plot_small_multiple_base <- function(
-    df,
+    comp_df,
+    baseline_df,
     y,
     ncol,
     y_axis_label = "FMV",
     range = NULL) {
-  df %>%
-    ggplot(aes(x = value, y = .data[[y]])) +
-    geom_violin(fill = "steelblue", alpha = 0.3) +
+  comp_df$dataset <- "comp"
+  baseline_df$dataset <- "baseline"
+
+  df <- dplyr::bind_rows(comp_df, baseline_df)
+
+  ggplot(df, aes(x = value, y = .data[[y]], fill = dataset)) +
     facet_wrap(
       ~predictor,
       scales = "free",
@@ -112,24 +116,6 @@ plot_small_multiple_base <- function(
     )
 }
 
-plot_small_multiple_violins <- function(
-    df,
-    y,
-    y_axis_label = "FMV",
-    range = NULL) {
-  plot_small_multiple_base(df, y, ncol_violin, y_axis_label, range) +
-    geom_violin(fill = "steelblue", alpha = 0.3)
-}
-
-# Same as above, but produce smoothed regression lines
-plot_small_multiple_lines <- function(
-    df,
-    y,
-    y_axis_label = "FMV",
-    range = NULL) {
-  plot_small_multiple_base(df, y, ncol_line, y_axis_label, range) +
-    geom_smooth(fill = "steelblue", linewidth = 0.5)
-}
 
 # Function to compute figure height for a code chunk that is using a dataframe
 # to produce small multiples based on a `predictor` X axis. This is important
@@ -137,4 +123,36 @@ plot_small_multiple_lines <- function(
 # necessary to display all of the plots
 fig_height <- function(df, ncol = ncol_histogram) {
   return(1.5 * ceiling(length(unique(df$predictor)) / ncol))
+}
+plot_small_multiple_lines <- function(comp_df,
+                                      baseline_df,
+                                      y,
+                                      y_axis_label = "FMV",
+                                      range = NULL) {
+  plot_small_multiple_base(
+    comp_df,
+    baseline_df,
+    y,
+    col_line,
+    y_axis_label,
+    range
+  ) +
+    geom_smooth(linewidth = 0.5, se = TRUE, aes(color = dataset), fill = NA) +
+    guides(fill = "none")
+}
+plot_small_multiple_violins <- function(comp_df,
+                                        baseline_df,
+                                        y,
+                                        y_axis_label = "FMV",
+                                        range = NULL) {
+  plot_small_multiple_base(
+    comp_df,
+    baseline_df,
+    y,
+    ncol_violin,
+    y_axis_label,
+    range
+  ) +
+    geom_violin(alpha = 0.3, position = "identity") +
+    guides(color = "none")
 }

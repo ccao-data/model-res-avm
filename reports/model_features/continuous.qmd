@@ -135,16 +135,19 @@ comp_cont_shap_long <- comp_shaps %>%
 #| column: screen-inset
 #| fig-height: !expr fig_height(baseline_cont_shap_long, ncol = ncol_line)
 
-plot_small_multiple_lines(
-  baseline_cont_shap_long,
-  "shap_value",
-  y_axis_label = "SHAP Value"
-)
+if (exists("comp_cont_shap_long") && exists("baseline_cont_shap_long")) {
+  plot_small_multiple_lines(
+    comp_cont_shap_long,
+    baseline_cont_shap_long,
+    "shap_value",
+    "SHAP Value"
+  )
+}
 ```
 
 ```{r shap_dist_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_shap_long)
+rm(comp_cont_shap_long, baseline_cont_shap_long)
 gc()
 ```
