@@ -188,7 +188,10 @@ if (comp_enable) {
           filter(triad_name == tools::toTitleCase(params$assessment$triad)) %>%
           pull(township_code)
       )
-    )
+    ) %>%
+    # Temporarily restrict to a small subset of observations for the purposes
+    # of testing the new comps algorithms
+    head(10000)
 
   # Multi-card handling. For multi-card pins with 2-3 cards, we predict by
   # aggregating the bldg_sf to a single card, and using that card to predict
