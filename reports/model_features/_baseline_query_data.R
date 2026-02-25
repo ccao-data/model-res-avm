@@ -114,15 +114,24 @@ if (!exists("new_assessment_data")) {
 
 # SHAPs
 if (!exists("new_shaps")) {
-  new_shaps <- read_parquet(paths$output$shap$local) %>%
-    collect() %>%
-    left_join(
-      new_assessment_data,
-      by = c("meta_pin", "meta_card_num"),
-      suffix = c("_shap", "")
-    ) %>%
-    # This column isn't a real SHAP, it's just an artifact of the join
-    select(-meta_year_shap)
+  if (file.exists(paths$output$shap$local) && params$toggle$shap_enable) {
+    shap_df <- read_parquet(paths$output$shap$local)
+    shap_exists <- nrow(shap_df) > 0
+
+    if (shap_exists) {
+      new_shaps <- shap_df %>%
+        collect() %>%
+        left_join(
+          new_assessment_data,
+          by = c("meta_pin", "meta_card_num"),
+          suffix = c("_shap", "")
+        ) %>%
+        # This column isn't a real SHAP, it's just an artifact of the join
+        select(-meta_year_shap)
+    }
+  } else {
+    shap_exists <- FALSE
+  }
 }
 
 # Training data

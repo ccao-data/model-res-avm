@@ -70,6 +70,7 @@ gc()
 # Distribution of SHAPs (Continuous)
 
 ```{r shap_dist_cont_transform}
+#| eval: shap_exists
 new_cont_shap_long <- new_shaps %>%
   select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
   pivot_longer(
@@ -91,6 +92,7 @@ new_cont_shap_long <- new_shaps %>%
 ```
 
 ```{r shap_dist_cont_plot}
+#| eval: shap_exists
 #| column: screen-inset
 #| fig-height: !expr fig_height(baseline_cont_shap_long, ncol = ncol_line)
 
@@ -102,6 +104,7 @@ plot_small_multiple_lines(
 ```
 
 ```{r shap_dist_cont_cleanup}
+#| eval: shap_exists
 #| output: false
 
 rm(baseline_cont_shap_long)
