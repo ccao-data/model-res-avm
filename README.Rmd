@@ -31,6 +31,7 @@ This repository contains code, data, and documentation for the Cook County Asses
 | 2022        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)                            |
 | 2023        | South    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year)                            |
 | 2024        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year)                            |
+| 2025        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2025-assessment-year)                            |
 
 # Model Overview
 
@@ -357,7 +358,7 @@ param_tbl_fmt <- param_tbl %>%
     na.rm = TRUE
   ) %>%
   mutate(description = replace_na(description, "")) %>%
-  arrange(category)
+  arrange(category, variable_name)
 
 # Write machine-readable version of the table to file
 param_tbl_fmt %>%
@@ -496,11 +497,13 @@ There a few caveats with this approach and with balance testing in general:
 
 In addition to the first-pass modeling done by LightGBM, the CCAO also performs a set of simple adjustments on the initial predicted values from the `assess` stage. These adjustments are internally called "post-modeling," and are responsible for correcting minor deficiencies in the initial predictions. Specifically, post-modeling will:
 
-1. Handle multi-card properties. For PINs with more than 3 cards, this means summing the estimate for each card to the PIN level, then disaggregating back to the card level. For PINs with 3 or fewer cards, the initial prediction of the _largest_ card (plus the building square footage of the remaining cards) is used as the PIN-level estimate.
+1. Handle multi-card properties. For PINs with more than 3 cards, this means summing the estimate for each card to the PIN level, then disaggregating back to the card level. For PINs with 3 or fewer cards, the initial prediction of the *largest* card (plus the building square footage of the remaining cards) is used as the PIN-level estimate. For a more detailed explanation of multi-card handling, see the [multi-card wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Multi-Card%20PINs/multi_card_explainer.md).
 
-2. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
+2. Handle prorated PINs. When a single building spans multiple PINs, each one technically contains only a portion of the structure. To ensure fair valuation, the model's estimates are adjusted so that the building’s total value is distributed proportionally across its PINs. This involves calculating an average building-only value, prorating it based on each PIN’s share, and then adding back PIN-specific land value. For more detail, see the [proration wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Proration/proration_explainer.md).
 
-3. Round PIN-level values (typically to the nearest $1,000). This is done to indicate that model values are _estimates_, not precise values.
+3. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
+
+4. Round PIN-level values (typically to the nearest \$1,000). This is done to indicate that model values are *estimates*, not precise values.
 
 These adjustments have been collectively approved by the senior leadership of the CCAO. They are designed to limit the impact of data integrity issues, prevent regressivity in assessment, and ensure that people with nearly identical properties receive the same value.
 
@@ -563,6 +566,12 @@ This repository represents a significant departure from the old [residential mod
 * Removed features: number of schools within 1/2 mile, school ratings within 1/2 mile, homeowner exemption duration/indicator, corner lot indicator, some ACS features, airport noise indicator.
 * Modified features: distance to road now uses Illinois Department of Transportation street data instead of OpenStreetMap.
 * Added _lots_ of additional bug fixes and minor improvements.
+
+### [`assessment-year-2026`](https://github.com/ccao-data/model-res-avm/tree/2026-assessment-year)
+
+* Changed how complex IDs are generated for class 210 and 295 town/rowhomes. The new method removes grouping on class since
+ID generation already fuzzy matches on year built, the only difference between the classes.
+* Greatly expanded analyst hand-review into the sales validation process, augmenting the preexisting algorithmic checks. Analyst decisions supercede any conflicting algorithmic outcomes now.
 
 # Ongoing Issues
 
@@ -862,6 +871,15 @@ The data issue caused some sales to be omitted from the `2024-02-06-relaxed-tris
 - [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/hie_data.parquet)
 - [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/land_nbhd_rate_data.parquet)
 - [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/training_data.parquet)
+
+#### 2026
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 
