@@ -89,7 +89,7 @@ upload_enable <- as.logical(Sys.getenv(
 ))
 
 feature_enable <- as.logical(Sys.getenv(
-  "FEATURE_ENABLE_OVERRIDE",
+  "FEATURE_REPORT_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$feature_enable
 ))
 
