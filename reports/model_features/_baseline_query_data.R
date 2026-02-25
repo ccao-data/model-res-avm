@@ -31,26 +31,23 @@ if (!exists("old_metadata")) {
     conn = AWS_ATHENA_CONN_NOCTUA,
     glue(
       "
-      select
-        model.dvc_md5_assessment_data,
-        model.dvc_md5_training_data,
-        model.model_predictor_all_name,
-        model.assessment_year,
-        model.model_predictor_categorical_name
-      from model.metadata model
-      join model.final_model final
-        on model.run_id = final.run_id
-      where final.type = 'res'
-        and final.year = (
-          select max(year)
-          from model.final_model
-          where type = 'res'
-        )
-      limit 1
-      "
+    select
+      model.dvc_md5_assessment_data,
+      model.dvc_md5_training_data,
+      model.model_predictor_all_name,
+      model.assessment_year,
+      model.model_predictor_categorical_name
+    from model.metadata model
+    join model.final_model final
+      on model.run_id = final.run_id
+    where final.type = 'res'
+      and CAST(final.year AS INTEGER) = {params$assessment$year} - 1
+    limit 1
+    "
     )
   )
 }
+
 if (!exists("assessment_year_old")) {
   assessment_year_old <- old_metadata$assessment_year
 }
