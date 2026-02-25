@@ -117,13 +117,24 @@ plot_small_multiple_base <- function(
 }
 
 
-# Function to compute figure height for a code chunk that is using a dataframe
-# to produce small multiples based on a `predictor` X axis. This is important
-# to allow the small multiple container to flex vertically as much as is
-# necessary to display all of the plots
-fig_height <- function(df, ncol = ncol_histogram) {
-  return(1.5 * ceiling(length(unique(df$predictor)) / ncol))
+plot_small_multiple_violins <- function(comp_df,
+                                        baseline_df,
+                                        y,
+                                        y_axis_label = "FMV",
+                                        range = NULL) {
+  plot_small_multiple_base(
+    comp_df,
+    baseline_df,
+    y,
+    ncol_violin,
+    y_axis_label,
+    range
+  ) +
+    geom_violin(alpha = 0.3, position = "identity") +
+    guides(color = "none")
 }
+
+
 plot_small_multiple_lines <- function(comp_df,
                                       baseline_df,
                                       y,
@@ -140,19 +151,12 @@ plot_small_multiple_lines <- function(comp_df,
     geom_smooth(linewidth = 0.5, se = TRUE, aes(color = dataset), fill = NA) +
     guides(fill = "none")
 }
-plot_small_multiple_violins <- function(comp_df,
-                                        baseline_df,
-                                        y,
-                                        y_axis_label = "FMV",
-                                        range = NULL) {
-  plot_small_multiple_base(
-    comp_df,
-    baseline_df,
-    y,
-    ncol_violin,
-    y_axis_label,
-    range
-  ) +
-    geom_violin(alpha = 0.3, position = "identity") +
-    guides(color = "none")
+
+
+# Function to compute figure height for a code chunk that is using a dataframe
+# to produce small multiples based on a `predictor` X axis. This is important
+# to allow the small multiple container to flex vertically as much as is
+# necessary to display all of the plots
+fig_height <- function(df, ncol = ncol_histogram) {
+  return(1.5 * ceiling(length(unique(df$predictor)) / ncol))
 }
