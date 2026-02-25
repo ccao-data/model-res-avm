@@ -28,7 +28,7 @@ if (!exists("old_metadata")) {
   # just to be defensive. It fetches the metadata for the most recent final
   # model, which should be the one used for the comparison analysis
   old_metadata <- dbGetQuery(
-    conn,
+    conn = AWS_ATHENA_CONN_NOCTUA,
     glue(
       "
       select
@@ -59,8 +59,8 @@ if (!exists("dvc_md5_assessment_data_old")) {
   dvc_md5_assessment_data_old <- old_metadata$dvc_md5_assessment_data
 }
 
-if (!exists("old_chars")) {
-  old_chars <- open_dataset(
+if (!exists("old_assessment_data")) {
+  old_assessment_data <- open_dataset(
     paste0(
       glue("{base_dvc_url}/files/md5/"),
       substr(dvc_md5_assessment_data_old, 1, 2), "/",
