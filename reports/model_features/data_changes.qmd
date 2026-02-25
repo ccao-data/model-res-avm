@@ -224,6 +224,12 @@ make_card_comp_chart <- function(col_name) {
   # Filter to the column of interest
   chart_data_long <- unmatched_values_long[column == col_name]
 
+  # Tag rows as old/new based on dataset:
+  chart_data_long[, tag := fcase(
+    dataset == "old", "old",
+    dataset == "new", "new"
+  )]
+
   # Pivot to wide: one row per PIN/Card with old/new values
   chart_data_wide <- dcast(
     chart_data_long,
