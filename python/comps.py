@@ -97,7 +97,7 @@ def get_comps(
 
     # Avoid editing the df in-place
     observation_df = observation_df.copy()
-    
+
     # Chunk the observations so that the script can periodically report progress
     observation_df["chunk"] = pd.cut(
         observation_df.index, bins=num_chunks, labels=False
