@@ -16,7 +16,7 @@ source("_baseline_query_data.R")
 ### Assessment set
 
 ```{r feature_dist_assess_cont_transform}
-baseline_cont_chars_assess_long <- baseline_assessment_data %>%
+new_cont_chars_assess_long <- new_assessment_data %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -27,22 +27,22 @@ baseline_cont_chars_assess_long <- baseline_assessment_data %>%
 
 ```{r feature_dist_assess_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cont_chars_assess_long)
+#| fig-height: !expr fig_height(new_cont_chars_assess_long)
 
-plot_small_multiple_histograms(baseline_cont_chars_assess_long, stat = "bin")
+plot_small_multiple_histograms(new_cont_chars_assess_long, stat = "bin")
 ```
 
 ```{r feature_dist_assess_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_chars_assess_long)
+rm(new_cont_chars_assess_long)
 gc()
 ```
 
 ### Training set
 
 ```{r feature_dist_train_cont_transform}
-baseline_cont_chars_train_long <- baseline_training_data %>%
+new_cont_chars_train_long <- new_training_data %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -53,15 +53,15 @@ baseline_cont_chars_train_long <- baseline_training_data %>%
 
 ```{r feature_dist_train_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cont_chars_train_long)
+#| fig-height: !expr fig_height(new_cont_chars_train_long)
 
-plot_small_multiple_histograms(baseline_cont_chars_train_long, stat = "bin")
+plot_small_multiple_histograms(new_cont_chars_train_long, stat = "bin")
 ```
 
 ```{r feature_dist_train_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_chars_train_long)
+rm(new_cont_chars_train_long)
 gc()
 ```
 
@@ -70,7 +70,7 @@ gc()
 # Distribution of SHAPs (Continuous)
 
 ```{r shap_dist_cont_transform}
-baseline_cont_shap_long <- baseline_shaps %>%
+new_cont_shap_long <- new_shaps %>%
   select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
   pivot_longer(
     cols = all_of(continuous_preds),
@@ -78,7 +78,7 @@ baseline_cont_shap_long <- baseline_shaps %>%
     values_to = "value"
   ) %>%
   left_join(
-    baseline_shaps %>%
+    new_shaps %>%
       select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
       pivot_longer(
         cols = all_of(continuous_shaps),

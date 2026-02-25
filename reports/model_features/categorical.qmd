@@ -17,7 +17,7 @@ source("_baseline_query_data.R")
 ### Assessment set
 
 ```{r feature_dist_assess_cat_transform}
-baseline_cat_chars_assess_long <- baseline_assessment_data %>%
+new_cat_chars_assess_long <- new_assessment_data %>%
   select(all_of(categorical_preds)) %>%
   mutate(across(everything(), as.character)) %>%
   pivot_longer(
@@ -29,22 +29,22 @@ baseline_cat_chars_assess_long <- baseline_assessment_data %>%
 
 ```{r feature_dist_assess_cat_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cat_chars_assess_long)
+#| fig-height: !expr fig_height(new_cat_chars_assess_long)
 
-plot_small_multiple_histograms(baseline_cat_chars_assess_long, stat = "count")
+plot_small_multiple_histograms(new_cat_chars_assess_long, stat = "count")
 ```
 
 ```{r feature_dist_assess_cat_cleanup}
 #| output: false
 
-rm(baseline_cat_chars_assess_long)
+rm(new_cat_chars_assess_long)
 gc()
 ```
 
 ### Training set
 
 ```{r feature_dist_train_cat_transform}
-baseline_cat_chars_train_long <- baseline_training_data %>%
+new_cat_chars_train_long <- new_training_data %>%
   select(all_of(categorical_preds)) %>%
   mutate(across(everything(), as.character)) %>%
   pivot_longer(
@@ -56,15 +56,15 @@ baseline_cat_chars_train_long <- baseline_training_data %>%
 
 ```{r feature_dist_train_cat_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cat_chars_train_long)
+#| fig-height: !expr fig_height(new_cat_chars_train_long)
 
-plot_small_multiple_histograms(baseline_cat_chars_train_long, stat = "count")
+plot_small_multiple_histograms(new_cat_chars_train_long, stat = "count")
 ```
 
 ```{r feature_dist_train_cat_cleanup}
 #| output: false
 
-rm(baseline_cat_chars_train_long)
+rm(new_cat_chars_train_long)
 gc()
 ```
 
@@ -73,7 +73,7 @@ gc()
 # Distribution of SHAPs (Categorical)
 
 ```{r shap_dist_cat_transform}
-baseline_cat_shap_long <- baseline_shaps %>%
+new_cat_shap_long <- new_shaps %>%
   select(meta_pin, meta_card_num, all_of(categorical_preds)) %>%
   pivot_longer(
     cols = all_of(categorical_preds),
@@ -81,7 +81,7 @@ baseline_cat_shap_long <- baseline_shaps %>%
     values_to = "value"
   ) %>%
   left_join(
-    baseline_shaps %>%
+    new_shaps %>%
       select(meta_pin, meta_card_num, all_of(categorical_shaps)) %>%
       pivot_longer(
         cols = all_of(categorical_shaps),
@@ -95,10 +95,10 @@ baseline_cat_shap_long <- baseline_shaps %>%
 
 ```{r shap_dist_cat_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cat_shap_long, ncol = ncol_violin)
+#| fig-height: !expr fig_height(new_cat_shap_long, ncol = ncol_violin)
 
 plot_small_multiple_violins(
-  baseline_cat_shap_long,
+  new_cat_shap_long,
   "shap_value",
   y_axis_label = "SHAP Value"
 )
@@ -107,6 +107,6 @@ plot_small_multiple_violins(
 ```{r shap_dist_cat_cleanup}
 #| output: false
 
-rm(baseline_cat_shap_long)
+rm(new_cat_shap_long)
 gc()
 ```

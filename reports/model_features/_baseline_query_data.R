@@ -10,85 +10,61 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
-# Model metadata
-if (!exists("baseline_metadata")) {
-  baseline_metadata <- dbGetQuery(
-    conn = AWS_ATHENA_CONN_NOCTUA,
-    # This query should only ever return one row, but limit the results to 1
-    # just to be defensive
-    glue(
-      "
-    select
-      dvc_md5_assessment_data,
-      dvc_md5_training_data,
-      model_predictor_all_name,
-      model_predictor_categorical_name,
-      assessment_year
-    from model.metadata
-    where run_id = '{params$baseline_run_id}'
-    limit 1
-    "
-    )
-  )
-}
-
 
 if (!exists("model_predictor_all_name")) {
-  model_predictor_all_name <-
-    baseline_metadata$model_predictor_all_name %>%
+  model_predictor_all_name <- params$model$predictor$all %>%
     unlist()
 }
 
 if (!exists("model_predictor_categorical_name")) {
   model_predictor_categorical_name <-
-    baseline_metadata$model_predictor_categorical_name %>%
+    params$model$predictor$categorical %>%
     unlist()
 }
 
-if (!exists("dvc_md5_assessment_data")) {
-  dvc_md5_assessment_data <- baseline_metadata$dvc_md5_assessment_data
-}
-
-if (!exists("dvc_md5_training_data")) {
-  dvc_md5_training_data <- baseline_metadata$dvc_md5_training_data
-}
-
 # Model metadata
-if (!exists("comp_metadata")) {
-  comp_metadata <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA,
-    # This query should only ever return one row, but limit the results to 1
-    # just to be defensive
+if (!exists("old_metadata")) {
+  # This query should only ever return one row, but limit the results to 1
+  # just to be defensive. It fetches the metadata for the most recent final
+  # model, which should be the one used for the comparison analysis
+  old_metadata <- dbGetQuery(
+    conn,
     glue(
       "
-    select
-      dvc_md5_assessment_data,
-      dvc_md5_training_data,
-      model_predictor_all_name,
-      assessment_year,
-      model_predictor_categorical_name
-    from model.metadata
-    where run_id = '{params$comp_run_id}'
-    limit 1
-    "
+      select
+        model.dvc_md5_assessment_data,
+        model.dvc_md5_training_data,
+        model.model_predictor_all_name,
+        model.assessment_year,
+        model.model_predictor_categorical_name
+      from model.metadata model
+      join model.final_model final
+        on model.run_id = final.run_id
+      where final.type = 'res'
+        and final.year = (
+          select max(year)
+          from model.final_model
+          where type = 'res'
+        )
+      limit 1
+      "
     )
   )
 }
-
-if (!exists("assessment_year_comp")) {
-  assessment_year_comp <- comp_metadata$assessment_year
+if (!exists("assessment_year_old")) {
+  assessment_year_old <- old_metadata$assessment_year
 }
 
-if (!exists("dvc_md5_assessment_data_comp")) {
-  dvc_md5_assessment_data_comp <- comp_metadata$dvc_md5_assessment_data
+if (!exists("dvc_md5_assessment_data_old")) {
+  dvc_md5_assessment_data_old <- old_metadata$dvc_md5_assessment_data
 }
 
-if (!exists("comp_chars")) {
-  comp_chars <- open_dataset(
+if (!exists("old_chars")) {
+  old_chars <- open_dataset(
     paste0(
       glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_assessment_data_comp, 1, 2), "/",
-      substr(dvc_md5_assessment_data_comp, 3, 32)
+      substr(dvc_md5_assessment_data_old, 1, 2), "/",
+      substr(dvc_md5_assessment_data_old, 3, 32)
     )
   ) %>%
     select(
@@ -101,8 +77,8 @@ if (!exists("comp_chars")) {
     collect()
 }
 
-if (!exists("baseline_year")) {
-  baseline_year <- baseline_metadata$assessment_year
+if (!exists("new_year")) {
+  new_year <- params$assessment$working_year
 }
 
 # Split categorical and continuous predictors since we need to plot them
@@ -127,14 +103,8 @@ if (!exists("continuous_shaps")) {
 }
 
 # Assessment set chars
-if (!exists("baseline_assessment_data")) {
-  baseline_assessment_data <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_assessment_data, 1, 2), "/",
-      substr(dvc_md5_assessment_data, 3, 32)
-    )
-  ) %>%
+if (!exists("new_assessment_data")) {
+  new_assessment_data <- read_parquet(paths$input$assessment$local) %>%
     select(
       meta_pin,
       meta_card_num,
@@ -146,17 +116,11 @@ if (!exists("baseline_assessment_data")) {
 }
 
 # SHAPs
-if (!exists("baseline_shaps")) {
-  baseline_shaps <- open_dataset(
-    paste0(
-      glue("{base_model_results_url}/shap/"),
-      glue("year={baseline_year}/"),
-      glue("run_id={params$baseline_run_id}")
-    )
-  ) %>%
+if (!exists("new_shaps")) {
+  new_shaps <- read_parquet(paths$output$shap$local) %>%
     collect() %>%
     left_join(
-      baseline_assessment_data,
+      new_assessment_data,
       by = c("meta_pin", "meta_card_num"),
       suffix = c("_shap", "")
     ) %>%
@@ -165,14 +129,8 @@ if (!exists("baseline_shaps")) {
 }
 
 # Training data
-if (!exists("baseline_training_data")) {
-  baseline_training_data <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_training_data, 1, 2), "/",
-      substr(dvc_md5_training_data, 3, 32)
-    )
-  ) %>%
+if (!exists("new_training_data")) {
+  new_training_data <- read_parquet(paths$input$training$local) %>%
     select(
       meta_pin,
       meta_card_num,
