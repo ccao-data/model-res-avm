@@ -51,8 +51,8 @@ if (!exists("old_metadata")) {
     join model.final_model final
       on model.run_id = final.run_id
     where final.type = 'res'
-      and CAST(final.year AS INTEGER) = 2026
-    limit 1
+      and CAST(final.year AS INTEGER) = {model_params$assessment$year} - 1
+      limit 1
   ")
   )
 }
