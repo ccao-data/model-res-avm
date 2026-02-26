@@ -184,27 +184,89 @@ extract_num_iterations <- function(x) {
 }
 
 # Helper function to return weights for comps
-# Computes per-tree weights from cumulative leaf node values.
 
-# Basic Steps
-# For every observation, map its assigned leaf index in
-# each tree to the corresponding leaf value.
-# Compute the row-wise cumulative sums of these
-# leaf values (stand-in for training data predictions).
-# Calculate the absolute prediction error.
-# Compute the reduction in error.
-# Normalize these improvements so that row-weights sum to 1.
+# The `extract_tree_weights` function allows the user to return weights
+# for each tree in a LightGBM model. Based on internal testing, we currently
+# default to an unweighted value of 1 / n_trees for each tree. This returns
+# a single vector with a length of the number of trees.
 
 # Inputs:
 #   model:      Lightgbm model
 #   leaf_idx:   integer matrix [training data x trees] of leaf indices
 #   init_score: mean value of sale prices in the training data
+#   algorithm:  type of algorithm to use. Set in params.yaml. Possible types
+#               unweighted, unweighted_with_error_reduction, error_reduction,
+#               and prediction_variance
 #   outcome:    Predicted FMV values for each observation in the training data
 # Returns:
 #   weights: numeric matrix [n_obs x n_trees] where each row sums to 1
-extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
+extract_tree_weights <- function(model,
+                                 leaf_idx,
+                                 init_score = NULL,
+                                 algorithm = "unweighted",
+                                 outcome = NULL) {
   n_obs <- nrow(leaf_idx)
   n_trees <- ncol(leaf_idx)
+
+  # Validate algorithm arg
+  valid_algorithms <- c(
+    "unweighted",
+    "prediction_variance",
+    "unweighted_with_error_reduction",
+    "error_reduction"
+  )
+
+  if (!algorithm %in% valid_algorithms) {
+    stop(
+      "Invalid algorithm '", algorithm, "'. Must be one of: ",
+      paste0(valid_algorithms, collapse = ", ")
+    )
+  }
+
+  # ---------------------------------------------------------
+  # Unweighted:
+  # Vector with 1/n_trees for each tree. This is the default input.
+  # This returns a vector with the length of the number of trees.
+  # ---------------------------------------------------------
+  if (algorithm == "unweighted") {
+    weights <- rep(1 / n_trees, n_trees)
+
+    return(weights)
+  }
+
+  # ---------------------------------------------------------
+  # Prediction_variance:
+  # Vector for tree weights based on variance of leaf values across data.
+  # This returns a vector with the length of the number of trees.
+  # ---------------------------------------------------------
+  if (algorithm == "prediction_variance") {
+    tree_dt <- lgb.model.dt.tree(model)
+    leaf_lookup <- tree_dt[
+      !is.na(leaf_index),
+      c("tree_index", "leaf_index", "leaf_value")
+    ]
+
+    var_per_tree <- numeric(n_trees)
+
+    for (t in seq_len(n_trees)) {
+      # LightGBM is 0-indexed
+      this_tree <- subset(leaf_lookup, tree_index == (t - 1L))
+      m <- match(leaf_idx[, t], this_tree$leaf_index)
+      # incremental outputs for this tree across training rows
+      incr <- this_tree$leaf_value[m]
+      var_per_tree[t] <- stats::var(incr, na.rm = TRUE)
+    }
+
+    var_per_tree[is.na(var_per_tree)] <- 0
+    summed_variance <- sum(var_per_tree)
+    weights <- var_per_tree / summed_variance
+
+    return(weights)
+  }
+
+  # ---------------------------------------------------------
+  # Remaining algorithms require tree-based improvements to the predicted values
+  # ---------------------------------------------------------
 
   init_vec <- rep_len(as.numeric(init_score), n_obs)
 
@@ -241,6 +303,27 @@ extract_tree_weights <- function(model, leaf_idx, init_score, outcome) {
   # Improvement per tree = previous error - next error
   prev_err <- tree_errors[, 1:n_trees, drop = FALSE]
   next_err <- tree_errors[, 2:(n_trees + 1L), drop = FALSE]
+
+  # ---------------------------------------------------------
+  # Unweighted_with_error_reduction:
+  # Weights are 1/n_improving trees for trees which reduce errors, 0 otherwise.
+  # This returns a matrix with dimensions of observations x trees.
+  # ---------------------------------------------------------
+  if (algorithm == "unweighted_with_error_reduction") {
+    improving <- prev_err > next_err
+    n_improving <- rowSums(improving)
+
+    weights <- improving / n_improving
+
+    return(weights)
+  }
+
+  # ---------------------------------------------------------
+  # Proportional_error_reduction:
+  # Weights are proportional to the reduction in error (prev_err - next_err) for
+  # improving trees, 0 otherwise. This returns a matrix with dimensions of
+  # observations x trees.
+  # ---------------------------------------------------------
   diff_in_errors <- pmax(0, prev_err - next_err)
   dim(diff_in_errors) <- dim(prev_err)
 
