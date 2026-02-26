@@ -11,6 +11,8 @@ library(noctua)
 library(stringr)
 library(tidyr)
 
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
 # we create the params object from the frontmatter of the main report file.

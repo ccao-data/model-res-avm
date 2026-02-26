@@ -10,15 +10,26 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
+if (knitr::is_html_output() || knitr::is_latex_output()) {
+  params_obj_name <- "model_params"
+} else if (exists("params")) {
+  if (exists("run_id", where = params)) params_obj_name <- "model_params"
+} else {
+  params_obj_name <- "params"
+}
+
+assign(params_obj_name, read_yaml(here("params.yaml")))
+
+paths <- model_file_dict(model_params$run_id, model_params$year)
 
 if (!exists("model_predictor_all_name")) {
-  model_predictor_all_name <- params$model$predictor$all %>%
+  model_predictor_all_name <- model_params$model$predictor$all %>%
     unlist()
 }
 
 if (!exists("model_predictor_categorical_name")) {
   model_predictor_categorical_name <-
-    params$model$predictor$categorical %>%
+    model_params$model$predictor$categorical %>%
     unlist()
 }
 
@@ -29,8 +40,7 @@ if (!exists("old_metadata")) {
   # model, which should be the one used for the comparison analysis
   old_metadata <- dbGetQuery(
     conn = AWS_ATHENA_CONN_NOCTUA,
-    glue(
-      "
+    statement = glue::glue("
     select
       model.dvc_md5_assessment_data,
       model.dvc_md5_training_data,
@@ -41,10 +51,9 @@ if (!exists("old_metadata")) {
     join model.final_model final
       on model.run_id = final.run_id
     where final.type = 'res'
-      and CAST(final.year AS INTEGER) = {params$assessment$year} - 1
+      and CAST(final.year AS INTEGER) = 2026
     limit 1
-    "
-    )
+  ")
   )
 }
 
@@ -75,7 +84,7 @@ if (!exists("old_assessment_data")) {
 }
 
 if (!exists("new_year")) {
-  new_year <- params$assessment$working_year
+  new_year <- model_params$assessment$working_year
 }
 
 # Split categorical and continuous predictors since we need to plot them
@@ -114,7 +123,7 @@ if (!exists("new_assessment_data")) {
 
 # SHAPs
 if (!exists("new_shaps")) {
-  if (file.exists(paths$output$shap$local) && params$toggle$shap_enable) {
+  if (file.exists(paths$output$shap$local) && model_params$toggle$shap_enable) {
     shap_df <- read_parquet(paths$output$shap$local)
     shap_exists <- nrow(shap_df) > 0
 
