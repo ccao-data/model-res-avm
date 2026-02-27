@@ -4,14 +4,14 @@ library(dplyr)
 library(DT)
 library(ggplot2)
 library(glue)
+library(here)
 library(kableExtra)
 library(knitr)
 library(leaflet)
 library(noctua)
 library(stringr)
 library(tidyr)
-
-purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+library(yaml)
 
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
@@ -40,9 +40,12 @@ parse_params_from_frontmatter <- function(path, defaults = NULL) {
 # We only want to parse the params if they are not-defined
 if (!exists("params")) {
   params <- parse_params_from_frontmatter(
-    here::here("reports", "model_features", "model_features.qmd")
+    "reports", "model_features", "model_features.qmd"
   )
 }
+
+# Load list of helper files and main libraries
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
 # Text sizes for small multiples
 axis_title_size <- 6

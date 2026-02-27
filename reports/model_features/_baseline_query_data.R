@@ -123,7 +123,7 @@ if (!exists("new_assessment_data")) {
 
 # SHAPs
 if (!exists("new_shaps")) {
-  if (file.exists(paths$output$shap$local) && model_params$toggle$shap_enable) {
+  if (model_params$toggle$shap_enable) {
     shap_df <- read_parquet(paths$output$shap$local)
     shap_exists <- nrow(shap_df) > 0
 
@@ -142,6 +142,7 @@ if (!exists("new_shaps")) {
     shap_exists <- FALSE
   }
 }
+
 
 # Training data
 if (!exists("new_training_data")) {

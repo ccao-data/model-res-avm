@@ -73,8 +73,8 @@ gc()
 # Distribution of SHAPs (Categorical)
 
 ```{r shap_dist_cat_transform}
-#| eval: shap_exists
-#|
+#| eval: !expr isTRUE(shap_exists)
+
 new_cat_shap_long <- new_shaps %>%
   select(meta_pin, meta_card_num, all_of(categorical_preds)) %>%
   pivot_longer(
@@ -94,11 +94,18 @@ new_cat_shap_long <- new_shaps %>%
     by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
   )
 ```
+```{r create_fig_height_shap_cat}
+fig_height_shap <- if (exists("new_cat_shap_long")) {
+  fig_height(new_cat_shap_long, ncol = ncol_violin)
+} else {
+  4
+}
+```
 
 ```{r shap_dist_cat_plot}
-#| eval: shap_exists
+#| eval: !expr isTRUE(shap_exists)
 #| column: screen-inset
-#| fig-height: !expr fig_height(new_cat_shap_long, ncol = ncol_violin)
+#| fig-height: !expr fig_height_shap
 
 plot_small_multiple_violins(
   new_cat_shap_long,
@@ -108,9 +115,9 @@ plot_small_multiple_violins(
 ```
 
 ```{r shap_dist_cat_cleanup}
+#| eval: !expr isTRUE(shap_exists)
 #| output: false
-#| eval: shap_exists
-#|
+
 rm(new_cat_shap_long)
 gc()
 ```
