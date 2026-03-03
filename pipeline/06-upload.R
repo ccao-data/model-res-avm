@@ -239,7 +239,6 @@ if (upload_enable) {
     paths$output$report_performance$local,
     paths$output$report_performance$s3
   )
-}
 
   # Upload feature report
   aws.s3::put_object(
@@ -247,7 +246,6 @@ if (upload_enable) {
     paths$output$model_features$s3
   )
 }
-
 
 
 
