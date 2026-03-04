@@ -18,6 +18,15 @@ if (knitr::is_html_output() || knitr::is_latex_output()) {
   params_obj_name <- "params"
 }
 
+# Grab metadata to check output data <> params alignment
+metadata <- read_parquet(paths$output$metadata$local)
+if (metadata$run_id != params$run_id) {
+  stop(
+    "Local run outputs are NOT equal to the requested run_id. You ",
+    "should run model_fetch_run() to fetch model outputs from S3"
+  )
+}
+
 assign(params_obj_name, read_yaml(here("params.yaml")))
 
 paths <- model_file_dict(model_params$run_id, model_params$year)
@@ -122,27 +131,24 @@ if (!exists("new_assessment_data")) {
 }
 
 # SHAPs
-if (!exists("new_shaps")) {
-  if (model_params$toggle$shap_enable) {
-    shap_df <- read_parquet(paths$output$shap$local)
-    shap_exists <- nrow(shap_df) > 0
+if (file.exists(paths$output$shap$local) && metadata$shap_enable) {
+  shap_df <- read_parquet(paths$output$shap$local)
+  shap_exists <- nrow(shap_df) > 0
 
-    if (shap_exists) {
-      new_shaps <- shap_df %>%
-        collect() %>%
-        left_join(
-          new_assessment_data,
-          by = c("meta_pin", "meta_card_num"),
-          suffix = c("_shap", "")
-        ) %>%
-        # This column isn't a real SHAP, it's just an artifact of the join
-        select(-meta_year_shap)
-    }
-  } else {
-    shap_exists <- FALSE
+  if (shap_exists) {
+    new_shaps <- shap_df %>%
+      collect() %>%
+      left_join(
+        new_assessment_data,
+        by = c("meta_pin", "meta_card_num"),
+        suffix = c("_shap", "")
+      ) %>%
+      # This column isn't a real SHAP, it's just an artifact of the join
+      select(-meta_year_shap)
   }
+} else {
+  shap_exists <- FALSE
 }
-
 
 # Training data
 if (!exists("new_training_data")) {
