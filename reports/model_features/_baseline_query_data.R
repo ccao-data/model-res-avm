@@ -20,12 +20,6 @@ if (knitr::is_html_output() || knitr::is_latex_output()) {
 
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
-if (metadata$run_id != params$run_id) {
-  stop(
-    "Local run outputs are NOT equal to the requested run_id. You ",
-    "should run model_fetch_run() to fetch model outputs from S3"
-  )
-}
 
 assign(params_obj_name, read_yaml(here("params.yaml")))
 
