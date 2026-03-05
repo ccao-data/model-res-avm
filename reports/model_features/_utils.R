@@ -40,7 +40,7 @@ parse_params_from_frontmatter <- function(path, defaults = NULL) {
 # We only want to parse the params if they are not-defined
 if (!exists("params")) {
   params <- parse_params_from_frontmatter(
-    "reports", "model_features", "model_features.qmd"
+    here::here("reports", "model_features", "model_features.qmd")
   )
 }
 
