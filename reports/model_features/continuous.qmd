@@ -102,7 +102,7 @@ fig_height_shap <- if (exists("baseline_cont_shap_long")) {
 ```
 
 ```{r shap_dist_cont_plot}
-#| eval: !expr exists("baseline_cont_shap_long")
+#| eval: !expr isTRUE(shap_exists)
 #| column: screen-inset
 #| fig-height: !expr fig_height_shap
 
