@@ -4,12 +4,14 @@ library(dplyr)
 library(DT)
 library(ggplot2)
 library(glue)
+library(here)
 library(kableExtra)
 library(knitr)
 library(leaflet)
 library(noctua)
 library(stringr)
 library(tidyr)
+library(yaml)
 
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
@@ -41,6 +43,9 @@ if (!exists("params")) {
     here::here("reports", "model_features", "model_features.qmd")
   )
 }
+
+# Load list of helper files and main libraries
+purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
 
 # Text sizes for small multiples
 axis_title_size <- 6

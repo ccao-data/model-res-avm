@@ -51,6 +51,11 @@ on:
         description: Calculate SHAP values
         default: false
         required: true
+      feature_enable:
+        type: boolean
+        description: Run feature report
+        default: false
+        required: true
       repro_ingest:
         type: boolean
         description: Run ingest stage before running model
@@ -105,6 +110,7 @@ jobs:
         CV_ENABLE_OVERRIDE=${{ inputs.cv_enable }}
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
+        FEATURE_REPORT_ENABLE_OVERRIDE=${{ inputs.feature_enable }}
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}

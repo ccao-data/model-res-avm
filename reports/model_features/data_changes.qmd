@@ -13,12 +13,12 @@ source("_baseline_query_data.R")
 
 ```{r changed_values_processing}
 # Build card_data with dataset label
-common_cols <- intersect(names(comp_chars), names(baseline_assessment_data))
+common_cols <- intersect(names(old_assessment_data), names(new_assessment_data))
 
 card_data <- bind_rows(
-  comp = comp_chars %>% select(all_of(common_cols)),
-  baseline = baseline_assessment_data %>% select(all_of(common_cols)),
-  .id = "dataset" # "comp" or "baseline"
+  old = old_assessment_data %>% select(all_of(common_cols)),
+  new = new_assessment_data %>% select(all_of(common_cols)),
+  .id = "dataset" # "new" or "old"
 ) %>%
   group_by(meta_pin, meta_card_num) %>%
   # keep only PIN-card combos appearing in both datasets
@@ -185,8 +185,8 @@ changes_summary <- unmatched_values_long %>%
   # Rename comp and baseline to new and old for readability
   group_by(column, meta_pin, meta_card_num) %>%
   summarise(
-    old_value = value[dataset == "comp"][1],
-    new_value = value[dataset == "baseline"][1],
+    old_value = value[dataset == "old"][1],
+    new_value = value[dataset == "new"][1],
     .groups = "drop"
   ) %>%
   # Count specific old -> new change occurrences
@@ -226,8 +226,8 @@ make_card_comp_chart <- function(col_name) {
 
   # Tag rows as old/new based on dataset:
   chart_data_long[, tag := fcase(
-    dataset == "comp", "old",
-    dataset == "baseline", "new"
+    dataset == "old", "old",
+    dataset == "new", "new"
   )]
 
   # Pivot to wide: one row per PIN/Card with old/new values
