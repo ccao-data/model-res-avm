@@ -229,14 +229,12 @@ rm(AWS_ATHENA_CONN_NOCTUA)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Home Improvement Exemptions -----------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-message("Adding HIE data to training and assessment sets")
+message("Adding HIE data to training set")
 
 # HIEs need to be combined with the training data such that the training data
 # uses the characteristics at the time of sale, rather than the un-updated
 # characteristics used for assessment. See GitHub wiki for more information:
 # https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md # nolint
-
-## 4.1. Training Data ----------------------------------------------------------
 
 # Convert legacy data to sparse representation with 1 active row per HIE year.
 # NOTE: ONLY join to non-multicard PINs, since HIEs cannot be matched when there
@@ -277,50 +275,6 @@ training_data_w_hie <- training_data %>%
     char_porch = recode(char_porch, "3" = "0")
   ) %>%
   relocate(hie_num_active, .before = meta_cdu)
-
-
-## 4.2. Assessment Data --------------------------------------------------------
-
-# For assessment data, we want to include ONLY the HIEs that expire in the
-# assessment year
-hie_data_assessment_sparse <- hie_data %>%
-  filter(hie_last_year_active == as.numeric(params$assessment$year) - 1) %>%
-  ccao::chars_sparsify(
-    pin_col = pin,
-    year_col = year,
-    town_col = qu_town,
-    upload_date_col = qu_upload_date,
-    additive_source = any_of(chars_cols$add$source),
-    replacement_source = any_of(chars_cols$replace$source)
-  ) %>%
-  mutate(
-    ind_pin_is_multicard = FALSE,
-    year = as.character(year)
-  )
-
-# Update assessment data with any expiring HIEs. Add a field for the number
-# of HIEs expired for each PIN
-assessment_data_w_hie <- assessment_data %>%
-  mutate(across(
-    all_of(ccao::chars_cols$add$target),
-    ~ recode_column_type(.x, cur_column())
-  )) %>%
-  left_join(
-    hie_data_assessment_sparse,
-    by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
-  ) %>%
-  mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
-  ccao::chars_update(
-    additive_target = any_of(chars_cols$add$target),
-    replacement_target = any_of(chars_cols$replace$target)
-  ) %>%
-  select(-starts_with("qu_")) %>%
-  mutate(
-    hie_num_active = replace_na(hie_num_active, 0),
-    char_porch = recode(char_porch, "3" = "0")
-  ) %>%
-  rename(hie_num_expired = hie_num_active) %>%
-  relocate(hie_num_expired, .before = meta_cdu)
 
 
 
@@ -458,7 +412,7 @@ training_data_clean <- training_data_w_hie %>%
 # Clean the assessment data. This is the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
 # time variables and identifying complexes
-assessment_data_clean <- assessment_data_w_hie %>%
+assessment_data_clean <- assessment_data %>%
   ccao::vars_recode(cols = starts_with("char_"), code_type = "code") %>%
   ccao::vars_recode(
     cols = all_of("char_apts"),
@@ -550,7 +504,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
-  relocate(starts_with("meta_sale_"), .after = hie_num_expired) %>%
+  relocate(starts_with("meta_sale_"), .before = meta_cdu) %>%
   as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 
