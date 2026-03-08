@@ -48,8 +48,11 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install system dependencies
-        run: sudo apt-get install libgit2-dev
+      # GitHub's base Ubuntu image already has most of the system
+      # dependencies that we need to install R dependencies for the model,
+      # but it's missing a handful of them
+      - name: Install additional system dependencies needed for R packages
+        run: sudo apt-get install libgit2-dev libglpk-dev
         shell: bash
 
       - name: Disable renv sandbox to speed up install time

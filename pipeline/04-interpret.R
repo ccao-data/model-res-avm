@@ -14,7 +14,11 @@ tictoc::tic("Interpret")
 # configures reticulate to use uv to install those dependencies. Reticulate
 # will install the dependencies when we import them. In this particular script,
 # we don't import Python dependencies directly, but rather we import the
-# comps module which then imports these dependencies
+# comps module which then imports these dependencies.
+#
+# Because the reticulate uv integration is not very sophisticated, this
+# dependency list is duplicated in `python/pyproject.toml`. If you add or
+# change any dependencies in this list, make sure to change them there too
 reticulate::py_require(
   packages = c("numpy==2.2.*", "numba==0.62.*", "pandas==2.3.*"),
   python_version = "3.10"
@@ -22,8 +26,6 @@ reticulate::py_require(
 
 # Load libraries, helpers, and recipes from files
 purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -151,8 +153,6 @@ if (shap_enable) {
 }
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Calculate Feature Importance ----------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -170,8 +170,6 @@ lightgbm::lgb.importance(lgbm_final_full_fit$fit) %>%
   )) %>%
   rename_with(~ paste0(.x, "_value"), gain:frequency) %>%
   write_parquet(paths$output$feature_importance$local)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -267,18 +265,32 @@ if (comp_enable) {
     model      = lgbm_final_full_fit$fit,
     leaf_idx   = as.matrix(training_leaf_nodes),
     init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
+    algorithm  = params$comp$algorithm,
     outcome    = training_data$meta_sale_price
   )
 
   if (length(tree_weights) == 0) {
     message("Warning: tree_weights are empty")
   }
-  if (all(rowSums(tree_weights) %in% c(0, 1))) {
-    message("Warning: tree_weights do not sum to 1 or 0 for each row")
-    message("First 5 weights:")
-    print(head(tree_weights, 5))
+  if (is.matrix(tree_weights)) {
+    if (!all(rowSums(tree_weights) %in% c(0, 1))) {
+      message("Warning: tree_weights do not sum to 1 or 0 for each row")
+      message("First 5 weights:")
+      print(head(tree_weights, 5))
+    }
+  } else {
+    tree_weights_sum <- sum(tree_weights)
+    if (!isTRUE(all.equal(tree_weights_sum, 1))) {
+      stop(
+        "Tree weights vector does not sum to 1 (got ", tree_weights_sum, "). ",
+        "All sales would have a score of 0 if weights sum to 0."
+      )
+    }
+    message(
+      "Tree weights are a vector of length ", length(tree_weights),
+      " (same weights for all training observations)"
+    )
   }
-
 
   # Make sure that the leaf node tibbles are all integers, which is what
   # the comps algorithm expects

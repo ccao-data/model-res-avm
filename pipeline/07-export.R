@@ -2,6 +2,13 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# Set this to the base of the HomeVal staging URL, with no trailing slash.
+# We'll use this URL to populate the HomeVal link in the output workbooks.
+# We don't publish the staging URL in public code because we often deploy
+# provisional values to staging, and we don't want users to find the staging
+# app and assume the values are final
+HOMEVAL_STAGING_BASE_URL <- "https://example.com"
+
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
 
@@ -348,76 +355,15 @@ assessment_pin_w_land <- assessment_pin_w_card_chars %>%
   filter(!is.na(pred_pin_final_fmv_land)) %>%
   mutate(across(ends_with("_date"), as_date))
 
-if (comp_enable) {
-  message("Pulling comp data from Athena")
-  # We don't know how many comp_score_{x} columns there are, and selecting
-  # columns via wildcard in SQL is complicated, so just query everything and
-  # then select the necessary columns in R
-  comps <- dbGetQuery(
-    conn = AWS_ATHENA_CONN_NOCTUA, glue("
-    SELECT *
-    FROM model.comp
-    WHERE run_id = '{params$export$run_id}'
-    ")
-  ) %>%
-    mutate(
-      overall_comp_score = select(., starts_with("comp_score_")) %>%
-        rowMeans(na.rm = TRUE)
-    ) %>%
-    select(
-      pin, overall_comp_score,
-      comp_pin_1, comp_document_num_1, comp_score_1,
-      comp_pin_2, comp_document_num_2, comp_score_2
-    )
-
-  # Merge comp data into assessment data. Start with single-card PINs, where
-  # the comps for the card are the same as the comps for the parcel
-  assessment_pin_single_card <- assessment_pin_w_land %>%
-    filter(meta_pin_num_cards == 1 | is.na(meta_pin_num_cards)) %>%
-    left_join(comps, by = join_by(meta_pin == pin))
-
-  # In cases where the PIN has multiple cards, choose the highest-performing
-  # comps across all cards as the top two. This is necessary because comps are
-  # defined at the card level and not the parcel level.
-  # To start, group the comps by PIN and select the comps with the top
-  # overall_score. This is ugly datatable code but it is much faster than the
-  # dplyr version using group_by and slice_max
-  comps_by_top_score <- comps[
-    comps[, .I[overall_comp_score == max(overall_comp_score)], by = pin]$V1
-  ] %>%
-    distinct()
-  # Next, join the PIN-level data to the top-scoring comps
-  assessment_pin_multicard <- assessment_pin_w_land %>%
-    filter(meta_pin_num_cards > 1) %>%
-    left_join(comps_by_top_score, by = join_by(meta_pin == pin))
-  # Finally, combine both single and multicard PINs
-  assessment_pin_merged <- bind_rows(
-    assessment_pin_single_card, assessment_pin_multicard
-  ) %>%
-    arrange(meta_pin)
-
-  # Query and filter training data to use as a comp detail view
-  training_data <- read_parquet(paths$input$training$local) %>%
-    filter(!ind_pin_is_multicard, !sv_is_outlier)
-} else {
-  # Add NA columns for comps so that assessment_pin_merged has the same
-  # shape in both conditional branches
-  assessment_pin_merged <- assessment_pin_merged %>%
-    cbind(
-      tibble(
-        overall_comp_score = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_pin_1 = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_score_1 = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_pin_2 = rep(NA, each = nrow(assessment_pin_merged)),
-        comp_score_2 = rep(NA, each = nrow(assessment_pin_merged)),
-      )
-    )
-  training_data <- tibble()
+# Make sure to set the homeval link to the correct link rather than the example
+# at the top of the script.
+if (identical(HOMEVAL_STAGING_BASE_URL, "https://example.com")) {
+  stop("HOMEVAL_STAGING_BASE_URL is still set to example.com.")
 }
 
 # Prep data with a few additional columns + put everything in the right
 # order for DR sheets
-assessment_pin_prepped <- assessment_pin_merged %>%
+assessment_pin_prepped <- assessment_pin_w_land %>%
   mutate(
     prior_near_land_rate = round(prior_near_land / char_land_sf, 2),
     prior_near_bldg_rate = round(prior_near_bldg / char_total_bldg_sf, 2),
@@ -427,6 +373,9 @@ assessment_pin_prepped <- assessment_pin_merged %>%
       ", ", loc_property_city, " ", loc_property_state,
       ", ", loc_property_zip
     ),
+    homeval_report = glue(
+      '=HYPERLINK("{HOMEVAL_STAGING_BASE_URL}/{year}/{meta_pin}.html")'
+    ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
     sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
@@ -435,14 +384,11 @@ assessment_pin_prepped <- assessment_pin_merged %>%
   mutate(
     flag_has_recent_assessable_permit =
       as.numeric(has_recent_assessable_permit),
-    sale_recent_1_outlier_reasons = str_replace_na(
-      sale_recent_1_outlier_reason,
-      ""
-    ),
-    sale_recent_2_outlier_reasons = str_replace_na(
-      sale_recent_1_outlier_reason,
-      ""
-    ),
+    # Only keep outlier values when the sale is marked as an outlier
+    sale_recent_1_outlier_reason =
+      if_else(sale_recent_1_is_outlier, sale_recent_1_outlier_reason, ""),
+    sale_recent_2_outlier_reason =
+      if_else(sale_recent_2_is_outlier, sale_recent_2_outlier_reason, "")
   ) %>%
   # Select fields for output to workbook
   select(
@@ -455,18 +401,14 @@ assessment_pin_prepped <- assessment_pin_merged %>%
     pred_pin_final_fmv_round, land_rate_per_sqft, pred_pin_land_rate_effective,
     pred_pin_bldg_rate_effective, pred_pin_land_pct_total,
     prior_near_yoy_change_nom, prior_near_yoy_change_pct,
-    sale_ratio, valuations_note,
-    sale_recent_1_date, sale_recent_1_price,
-    sale_recent_1_outlier_reasons, sale_recent_1_document_num,
-    sale_recent_2_date, sale_recent_2_price,
-    sale_recent_2_outlier_reasons, sale_recent_2_document_num,
-    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
-    char_heat, char_total_bldg_sf, char_type_resd, char_land_sf, char_apts,
-    char_ncu,
-    comp_pin_1, comp_document_num_1, comp_score_1,
-    comp_pin_2, comp_document_num_2, comp_score_2, overall_comp_score,
-    flag_pin_is_prorated, flag_proration_sum_not_1,
-    flag_pin_is_multicard, flag_pin_is_multiland,
+    sale_ratio, valuations_note, sale_recent_1_date, sale_recent_1_price,
+    sale_recent_1_outlier_reason, sale_recent_1_document_num,
+    sale_recent_2_date, sale_recent_2_price, sale_recent_2_outlier_reason,
+    sale_recent_2_document_num, char_yrblt, char_beds, char_ext_wall, char_bsmt,
+    char_bsmt_fin, char_air, char_heat, char_total_bldg_sf, char_type_resd,
+    char_land_sf, char_apts, char_ncu,
+    homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
+    flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
     flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
@@ -527,46 +469,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     filter(township_code == town) %>%
     select(-township_code)
 
-  ## 5.1 Comp details ----------------------------------------------------------
-
-  # Filter the training data so that we only display sales that are referenced.
-  # First, get the indexes of every sale whose comp is referenced in
-  # the PIN-level details
-  training_pin_in_comps <- training_data$meta_sale_document_num %in% (
-    assessment_pin_filtered %>%
-      select(comp_document_num_1, comp_document_num_2) %>%
-      unlist()
-  )
-  # Next, filter the training data so only referenced sales are included.
-  # This is ugly but faster than the equivalent filter() operation
-  training_data_filtered <- training_data[training_pin_in_comps, ]
-  # Select only the columns that are needed for the comps detail view
-  training_data_selected <- training_data_filtered %>%
-    select(
-      meta_pin, meta_sale_document_num, meta_sale_price,
-      meta_sale_date, char_class, meta_nbhd_code,
-      loc_property_address, char_yrblt, char_beds, char_ext_wall, char_bsmt,
-      char_bsmt_fin, char_air, char_heat, char_bldg_sf, char_type_resd,
-      char_land_sf, char_apts, char_ncu
-    ) %>%
-    ccao::vars_recode(code_type = "long") %>%
-    mutate(
-      char_apts = format_char_apts(char_apts),
-      char_ncu = ifelse(char_class == "212", char_ncu, NA),
-      meta_pin = glue(
-        '=HYPERLINK("https://www.cookcountyassessor.com/pin/{meta_pin}",
-      "{meta_pin}")'
-      )
-    )
-
-  # It seems like Excel can only handle between-sheet links if the linked
-  # sheet name has no spaces... Perhaps there's an undocumented workaround,
-  # but for now, use a sheet name with no spaces for the comp detail view
-  comp_sheet_name <- "Comparables"
-
-  # Get range of rows in the comp data + number of header rows
-  comp_row_range <- 5:(nrow(training_data_selected) + 6)
-
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
 
@@ -579,110 +481,28 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
   style_right_align <- createStyle(halign = "right")
 
-  # Add styles to comp sheet
-  addStyle(
-    wb, comp_sheet_name,
-    style = style_price,
-    rows = comp_row_range, cols = c(3), gridExpand = TRUE
-  )
-  addStyle(
-    wb, comp_sheet_name,
-    style = style_comma,
-    rows = comp_row_range, cols = c(15, 17), gridExpand = TRUE
-  )
-  addStyle(
-    wb, comp_sheet_name,
-    style = style_right_align,
-    rows = comp_row_range, cols = 18:19, gridExpand = TRUE
-  )
-  addFilter(wb, comp_sheet_name, 4, 1:19)
 
-  class(training_data_selected$meta_pin) <- c(
-    class(training_data_selected$meta_pin), "formula"
-  )
-
-  writeFormula(
-    wb, comp_sheet_name,
-    training_data_selected$meta_pin,
-    startRow = 5
-  )
-
-  # Write comp data to workbook
-  writeData(
-    wb, comp_sheet_name, training_data_selected,
-    startCol = 1, startRow = 5, colNames = FALSE
-  )
-
-  # 5.2. PIN-Level -------------------------------------------------------------
-
-  # Update PIN-level data to link to comps detail sheet
-  training_data_ids <- training_data_filtered %>%
-    tibble::rowid_to_column("comp_detail_id") %>%
-    select(meta_sale_document_num, comp_detail_id)
-
-  assessment_pin_filtered <- assessment_pin_filtered %>%
-    left_join(
-      training_data_ids,
-      by = join_by(
-        comp_document_num_1 == meta_sale_document_num
-      )
-    ) %>%
-    rename(comp_document_num_1_coord = comp_detail_id) %>%
-    left_join(
-      training_data_ids,
-      by = join_by(
-        comp_document_num_2 == meta_sale_document_num
-      )
-    ) %>%
-    rename(comp_document_num_2_coord = comp_detail_id) %>%
-    mutate(
-      across(
-        matches("_coord"),
-        ~ ifelse(
-          is.na(.x),
-          NA,
-          getCellRefs(data.frame(row = .x + 4, column = 2))
-        )
-      )
-    ) %>%
-    mutate(
-      comp_document_num_1 = ifelse(
-        is.na(comp_document_num_1_coord),
-        NA,
-        glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_1_coord}",',
-          '"{comp_document_num_1}")'
-        )
-      ),
-      comp_document_num_2 = ifelse(
-        is.na(comp_document_num_2_coord),
-        NA,
-        glue::glue(
-          '=HYPERLINK("#{comp_sheet_name}!{comp_document_num_2_coord}",',
-          '"{comp_document_num_2}")'
-        )
-      )
-    ) %>%
-    select(-ends_with("_coord"), -comp_pin_1, -comp_pin_2)
+  # 5.1. PIN-Level -------------------------------------------------------------
 
   # Get range of rows in the PIN data + number of header rows
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:68 # Don't forget the two hidden rows at the end
+  pin_col_range <- 1:65 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
     mutate(row_id = row_id + num_head)
 
-  # Calculate AVs so we can store them as separate, hidden columns for use
+  # Calculate MVs so we can store them as separate, hidden columns for use
   # in the neighborhood breakouts pivot table
-  assessment_pin_avs <- assessment_pin_w_row_ids %>%
+  assessment_pin_mvs <- assessment_pin_w_row_ids %>%
     mutate(
-      total_av = glue::glue("=S{row_id} * 0.1"),
-      av_difference = glue::glue("=(S{row_id} * 0.1) - (L{row_id} * 0.1)")
+      total_mv = glue::glue("=S{row_id}"),
+      mv_difference = glue::glue("=(S{row_id}) - (L{row_id})")
     ) %>%
-    select(total_av, av_difference)
+    select(total_mv, mv_difference)
+
 
   # Calculate sales ratios, and use a formula so that they update dynamically
   # if the spreadsheet user updates the FMV
@@ -695,22 +515,14 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Mark AV fields and sales ratio fields as formulas, since these fields
   # compute values based on other fields
-  class(assessment_pin_avs$total_av) <- c(
-    class(assessment_pin_avs$total_av), "formula"
+  class(assessment_pin_mvs$total_mv) <- c(
+    class(assessment_pin_mvs$total_mv), "formula"
   )
-  class(assessment_pin_avs$av_difference) <- c(
-    class(assessment_pin_avs$av_difference), "formula"
+  class(assessment_pin_mvs$mv_difference) <- c(
+    class(assessment_pin_mvs$mv_difference), "formula"
   )
   class(assessment_pin_sale_ratios$sale_ratio) <- c(
     class(assessment_pin_sale_ratios$sale_ratio), "formula"
-  )
-
-  # Make comp doc num fields formulas so Excel understands the links
-  class(assessment_pin_filtered$comp_document_num_1) <- c(
-    class(assessment_pin_filtered$comp_document_num_1), "formula"
-  )
-  class(assessment_pin_filtered$comp_document_num_2) <- c(
-    class(assessment_pin_filtered$comp_document_num_2), "formula"
   )
 
   # Generate sheet and column headers
@@ -735,7 +547,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 67, 68), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 64, 65), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -750,7 +562,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   addStyle(
     wb, pin_sheet_name,
     style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25, 49, 51, 52), gridExpand = TRUE
+    rows = pin_row_range, cols = c(9, 15, 23, 25), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -767,26 +579,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     style = style_right_align,
     rows = pin_row_range, cols = c(37, 46, 47), gridExpand = TRUE
   )
-  # For some reason comp links do not get autoformatted as links, possibly
-  # due to Excel not parsing within-sheet links as hyperlinks for the purposes
-  # of styling
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_link,
-    rows = pin_row_range, cols = c(48, 50), gridExpand = TRUE
-  )
   addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
-  # Format comp score columns with a range of colors from low (red) to high
-  # (blue)
-  conditionalFormatting(
-    wb, pin_sheet_name,
-    cols = c(49, 51, 52),
-    rows = pin_row_range,
-    style = c("#F8696B", "#FFFFFF", "#00B0F0"),
-    rule = c(0, 0.5, 1),
-    type = "colourScale"
-  )
   # Format YoY % change column with a range of colors from low to high
   conditionalFormatting(
     wb, pin_sheet_name,
@@ -831,6 +625,11 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   writeFormula(
     wb, pin_sheet_name,
+    x = assessment_pin_filtered$homeval_report,
+    startCol = 48, startRow = 7
+  )
+  writeFormula(
+    wb, pin_sheet_name,
     assessment_pin_sale_ratios$sale_ratio,
     startCol = 26, startRow = 7
   )
@@ -854,19 +653,19 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Write hidden formulas
   writeFormula(
     wb, pin_sheet_name,
-    assessment_pin_avs$total_av,
-    startCol = 67,
+    assessment_pin_mvs$total_mv,
+    startCol = 64,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
-    assessment_pin_avs$av_difference,
-    startCol = 68,
+    assessment_pin_mvs$mv_difference,
+    startCol = 65,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(67, 68),
+    c(64, 65),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
@@ -880,7 +679,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
 
 
-  # 5.3. Card-Level ------------------------------------------------------------
+  # 5.2. Card-Level ------------------------------------------------------------
 
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
@@ -935,7 +734,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     startCol = 5, startRow = 3, colNames = FALSE
   )
 
-  # 5.4 Save output ------------------------------------------------------------
+  # 5.3. Save output -----------------------------------------------------------
 
   # Save workbook to file based on town name
   workbook_name <- glue(
