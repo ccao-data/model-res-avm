@@ -87,6 +87,20 @@ input:
       yrblt: 4
       dist_ft: 250
 
+  # Parameters for running the pipeline with a stratified subset of training
+  # data. Useful for faster development iterations. The subset is stratified
+  # by year, township, and class to maintain representation across categories
+  subset:
+    # Whether to use a subset of the training data instead of the full dataset
+    enable: true
+
+    # Fraction of the training data to keep (between 0 and 1). Within each
+    # stratum (year x township x class), at least 1 row is always retained
+    fraction: 0.25
+
+    # Random seed for reproducible subsetting
+    seed: 2026
+
 
 # Cross-validation -------------------------------------------------------------
 
