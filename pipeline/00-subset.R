@@ -16,9 +16,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # 2. Create Subset -------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-subset_enable <- params$input$subset$enable
-
-if (subset_enable) {
+if (params$input$subset$enable) {
   message(
     "Creating stratified training data subset ",
     "(fraction: ", params$input$subset$fraction, ")"

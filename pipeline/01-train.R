@@ -32,8 +32,7 @@ message("Preparing model training data")
 # buildings, they are typically higher than a "normal" sale and must be removed
 
 # Use the stratified subset when subset mode is enabled, otherwise use full data
-subset_enable <- params$input$subset$enable
-training_input_path <- if (subset_enable) {
+training_input_path <- if (params$input$subset$enable) {
   message("Using stratified training data subset")
   paths$input$training_subset$local
 } else {
