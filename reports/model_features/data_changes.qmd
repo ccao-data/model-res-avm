@@ -13,11 +13,11 @@ source("_baseline_query_data.R")
 
 ```{r changed_values_processing}
 # Build card_data with dataset label
-common_cols <- intersect(names(old_assessment_data), names(new_assessment_data))
+common_cols <- intersect(names(assessment_data_old), names(assessment_data_new))
 
 card_data <- bind_rows(
-  old = old_assessment_data %>% select(all_of(common_cols)),
-  new = new_assessment_data %>% select(all_of(common_cols)),
+  old = assessment_data_old %>% select(all_of(common_cols)),
+  new = assessment_data_new %>% select(all_of(common_cols)),
   .id = "dataset" # "new" or "old"
 ) %>%
   group_by(meta_pin, meta_card_num) %>%
@@ -185,12 +185,12 @@ changes_summary <- unmatched_values_long %>%
   # Rename comp and baseline to new and old for readability
   group_by(column, meta_pin, meta_card_num) %>%
   summarise(
-    old_value = value[dataset == "old"][1],
-    new_value = value[dataset == "new"][1],
+    value_old = value[dataset == "old"][1],
+    value_new = value[dataset == "new"][1],
     .groups = "drop"
   ) %>%
   # Count specific old -> new change occurrences
-  group_by(column, old_value, new_value) %>%
+  group_by(column, value_old, value_new) %>%
   summarise(
     n = n(),
     .groups = "drop"
@@ -198,7 +198,7 @@ changes_summary <- unmatched_values_long %>%
   # Number of unique changes for that column
   group_by(column) %>%
   mutate(
-    N_unique_changes = n_distinct(paste0(old_value, "->", new_value))
+    N_unique_changes = n_distinct(paste0(value_old, "->", value_new))
   ) %>%
   ungroup()
 
@@ -245,25 +245,25 @@ make_card_comp_chart <- function(col_name) {
   )
 
   # Names for  old/new cols
-  old_nm <- paste0(col_name, "_old")
-  new_nm <- paste0(col_name, "_new")
+  nm_old <- paste0(col_name, "_old")
+  nm_new <- paste0(col_name, "_new")
 
   # Count how many times each old/new pair occurs
   pair_counts <- chart_data_wide[
     ,
     .(n = .N),
-    by = c(old_nm, new_nm)
+    by = c(nm_old, nm_new)
   ]
 
   # Join counts back to the detailed table
   chart_data_wide <- merge(
     chart_data_wide,
     pair_counts,
-    by = c(old_nm, new_nm),
+    by = c(nm_old, nm_new),
     all.x = TRUE
   )
 
-  order <- c("meta_pin", "meta_card_num", old_nm, new_nm, "n")
+  order <- c("meta_pin", "meta_card_num", nm_old, nm_new, "n")
   present <- intersect(order, names(chart_data_wide))
   data.table::setcolorder(chart_data_wide, present)
 

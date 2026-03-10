@@ -10,13 +10,7 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
-if (knitr::is_html_output() || knitr::is_latex_output()) {
-  params_obj_name <- "model_params"
-} else if (exists("params")) {
-  if (exists("run_id", where = params)) params_obj_name <- "model_params"
-} else {
-  params_obj_name <- "params"
-}
+params_obj_name <- "model_params"
 
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
@@ -37,11 +31,11 @@ if (!exists("model_predictor_categorical_name")) {
 }
 
 # Model metadata
-if (!exists("old_metadata")) {
+if (!exists("metadata_old")) {
   # This query should only ever return one row, but limit the results to 1
   # just to be defensive. It fetches the metadata for the most recent final
   # model, which should be the one used for the comparison analysis
-  old_metadata <- dbGetQuery(
+  metadata_old <- dbGetQuery(
     conn = AWS_ATHENA_CONN_NOCTUA,
     statement = glue::glue("
     select
@@ -61,15 +55,15 @@ if (!exists("old_metadata")) {
 }
 
 if (!exists("assessment_year_old")) {
-  assessment_year_old <- old_metadata$assessment_year
+  assessment_year_old <- metadata_old$assessment_year
 }
 
 if (!exists("dvc_md5_assessment_data_old")) {
-  dvc_md5_assessment_data_old <- old_metadata$dvc_md5_assessment_data
+  dvc_md5_assessment_data_old <- metadata_old$dvc_md5_assessment_data
 }
 
-if (!exists("old_assessment_data")) {
-  old_assessment_data <- open_dataset(
+if (!exists("assessment_data_old")) {
+  assessment_data_old <- open_dataset(
     paste0(
       glue("{base_dvc_url}/files/md5/"),
       substr(dvc_md5_assessment_data_old, 1, 2), "/",
@@ -86,8 +80,8 @@ if (!exists("old_assessment_data")) {
     collect()
 }
 
-if (!exists("new_year")) {
-  new_year <- model_params$assessment$working_year
+if (!exists("year_new")) {
+  year_new <- model_params$assessment$working_year
 }
 
 # Split categorical and continuous predictors since we need to plot them
@@ -112,8 +106,8 @@ if (!exists("continuous_shaps")) {
 }
 
 # Assessment set chars
-if (!exists("new_assessment_data")) {
-  new_assessment_data <- read_parquet(paths$input$assessment$local) %>%
+if (!exists("assessment_data_new")) {
+  assessment_data_new <- read_parquet(paths$input$assessment$local) %>%
     select(
       meta_pin,
       meta_card_num,
@@ -130,10 +124,10 @@ if (file.exists(paths$output$shap$local) && metadata$shap_enable) {
   shap_exists <- nrow(shap_df) > 0
 
   if (shap_exists) {
-    new_shaps <- shap_df %>%
+    shaps_new <- shap_df %>%
       collect() %>%
       left_join(
-        new_assessment_data,
+        assessment_data_new,
         by = c("meta_pin", "meta_card_num"),
         suffix = c("_shap", "")
       ) %>%
@@ -146,7 +140,7 @@ if (file.exists(paths$output$shap$local) && metadata$shap_enable) {
 
 # Training data
 if (!exists("new_training_data")) {
-  new_training_data <- read_parquet(paths$input$training$local) %>%
+  training_data_new <- read_parquet(paths$input$training$local) %>%
     select(
       meta_pin,
       meta_card_num,

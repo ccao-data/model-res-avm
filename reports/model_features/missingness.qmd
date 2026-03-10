@@ -23,7 +23,7 @@ missingness_cols <- model_predictor_all_name
 ```{r missing_by_class_assess_transform}
 #| cache: true
 
-missing_assess_class <- new_assessment_data %>%
+missing_assess_class <- assessment_data_new %>%
   select(all_of(c("meta_class", missingness_cols))) %>%
   group_by(meta_class) %>%
   summarize(across(everything(), ~ mean(is.na(.)),
@@ -64,7 +64,7 @@ missing_assess_class %>%
 ```{r missing_by_class_train_transform}
 #| cache: true
 
-missing_train_class <- new_training_data %>%
+missing_train_class <- training_data_new %>%
   select(all_of(c("meta_class", missingness_cols))) %>%
   group_by(meta_class) %>%
   summarize(across(everything(), ~ mean(is.na(.)),
@@ -105,10 +105,10 @@ missing_train_class %>%
 ```{r missing_by_time_transform}
 #| cache: true
 
-missing_time <- new_assessment_data %>%
+missing_time <- assessment_data_new %>%
   select(all_of(missingness_cols)) %>%
   bind_rows(
-    new_training_data %>%
+    training_data_new %>%
       select(all_of(missingness_cols))
   ) %>%
   group_by(time_sale_year) %>%

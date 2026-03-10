@@ -44,8 +44,7 @@ if (!exists("params")) {
   )
 }
 
-# Load list of helper files and main libraries
-purrr::walk(list.files(here::here("R"), "\\.R$", full.names = TRUE), source)
+paths <- model_file_dict()
 
 # Text sizes for small multiples
 axis_title_size <- 6

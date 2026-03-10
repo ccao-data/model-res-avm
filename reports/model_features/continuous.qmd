@@ -16,7 +16,7 @@ source("_baseline_query_data.R")
 ### Assessment set
 
 ```{r feature_dist_assess_cont_transform}
-new_cont_chars_assess_long <- new_assessment_data %>%
+cont_chars_assess_long_new <- assessment_data_new %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -27,22 +27,22 @@ new_cont_chars_assess_long <- new_assessment_data %>%
 
 ```{r feature_dist_assess_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(new_cont_chars_assess_long)
+#| fig-height: !expr fig_height(cont_chars_assess_long_new)
 
-plot_small_multiple_histograms(new_cont_chars_assess_long, stat = "bin")
+plot_small_multiple_histograms(cont_chars_assess_long_new, stat = "bin")
 ```
 
 ```{r feature_dist_assess_cont_cleanup}
 #| output: false
 
-rm(new_cont_chars_assess_long)
+rm(cont_chars_assess_long_new)
 gc()
 ```
 
 ### Training set
 
 ```{r feature_dist_train_cont_transform}
-new_cont_chars_train_long <- new_training_data %>%
+cont_chars_train_long_new <- training_data_new %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -53,15 +53,15 @@ new_cont_chars_train_long <- new_training_data %>%
 
 ```{r feature_dist_train_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(new_cont_chars_train_long)
+#| fig-height: !expr fig_height(cont_chars_train_long_new)
 
-plot_small_multiple_histograms(new_cont_chars_train_long, stat = "bin")
+plot_small_multiple_histograms(cont_chars_train_long_new, stat = "bin")
 ```
 
 ```{r feature_dist_train_cont_cleanup}
 #| output: false
 
-rm(new_cont_chars_train_long)
+rm(cont_chars_train_long_new)
 gc()
 ```
 
@@ -72,7 +72,7 @@ gc()
 ```{r shap_dist_cont_transform}
 #| eval: !expr isTRUE(shap_exists)
 
-new_cont_shap_long <- new_shaps %>%
+cont_shap_long_new <- shaps_new %>%
   select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
   pivot_longer(
     cols = all_of(continuous_preds),
@@ -80,7 +80,7 @@ new_cont_shap_long <- new_shaps %>%
     values_to = "value"
   ) %>%
   left_join(
-    new_shaps %>%
+    shaps_new %>%
       select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
       pivot_longer(
         cols = all_of(continuous_shaps),
@@ -94,8 +94,8 @@ new_cont_shap_long <- new_shaps %>%
 
 
 ```{r create_fig_height_shap_cont}
-fig_height_shap <- if (exists("baseline_cont_shap_long")) {
-  fig_height(baseline_cont_shap_long, ncol = ncol_line)
+fig_height_shap <- if (exists("cont_shap_long_old")) {
+  fig_height(cont_shap_long_old, ncol = ncol_line)
 } else {
   4
 }
@@ -107,7 +107,7 @@ fig_height_shap <- if (exists("baseline_cont_shap_long")) {
 #| fig-height: !expr fig_height_shap
 
 plot_small_multiple_lines(
-  new_cont_shap_long,
+  cont_shap_long_new,
   "shap_value",
   y_axis_label = "SHAP Value"
 )
@@ -117,6 +117,6 @@ plot_small_multiple_lines(
 #| eval: !expr isTRUE(shap_exists)
 #| output: false
 
-rm(new_cont_shap_long)
+rm(cont_shap_long_new)
 gc()
 ```

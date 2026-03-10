@@ -1,6 +1,6 @@
 ---
 title: "Model QC"
-subtitle: |
+subtitle: "Run ID: `r params$run_id`"
 date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 execute:
   echo: false
