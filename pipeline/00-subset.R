@@ -16,9 +16,7 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 # 2. Create Subset -------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-subset_enable <- as.logical(
-  Sys.getenv("SUBSET_ENABLE_OVERRIDE", unset = params$input$subset$enable)
-)
+subset_enable <- params$input$subset$enable
 
 if (subset_enable) {
   message(
