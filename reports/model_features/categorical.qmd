@@ -100,6 +100,9 @@ fig_height_shap <- if (exists("cat_shap_long_new")) {
 } else {
   4
 }
+if (!exists("fig_height_shap_cont")) {
+  print("No SHAP values were created for this model run")
+}
 ```
 
 ```{r shap_dist_cat_plot}
