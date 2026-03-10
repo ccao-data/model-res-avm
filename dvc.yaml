@@ -17,14 +17,15 @@ stages:
     - input/land_nbhd_rate_data.parquet
     - input/training_data.parquet
 
+    frozen: true
   subset:
     cmd: Rscript pipeline/00-subset.R
     desc: >
       Create a stratified subset of the training data for faster development
       iterations. When disabled, writes an empty stub file.
     deps:
-    - pipeline/00-subset.R
     - input/training_data.parquet
+    - pipeline/00-subset.R
     params:
     - input.subset
     outs:
@@ -183,27 +184,26 @@ stages:
       outputs prior to upload and attach a unique run ID. This step requires
       access to the CCAO Data AWS account, and so is assumed to be internal-only
     deps:
-    - output/assessment_card/model_assessment_card.parquet
-    - output/assessment_pin/model_assessment_pin.parquet
-    - output/comp/model_comp.parquet
-    - output/feature_importance/model_feature_importance.parquet
-    - output/metadata/model_metadata.parquet
+    - pipeline/06-upload.R
     - output/parameter_final/model_parameter_final.parquet
     - output/parameter_range/model_parameter_range.parquet
     - output/parameter_search/model_parameter_search.parquet
-    - output/performance/model_performance_assessment.parquet
-    - output/performance/model_performance_test.parquet
-    - output/performance_quantile/model_performance_quantile_assessment.parquet
-    - output/performance_quantile/model_performance_quantile_test.parquet
-    - output/shap/model_shap.parquet
-    - output/test_card/model_test_card.parquet
-    - output/timing/model_timing.parquet
     - output/workflow/fit/model_workflow_fit.zip
     - output/workflow/recipe/model_workflow_recipe.rds
-    - pipeline/06-upload.R
+    - output/test_card/model_test_card.parquet
+    - output/assessment_card/model_assessment_card.parquet
+    - output/assessment_pin/model_assessment_pin.parquet
+    - output/performance/model_performance_test.parquet
+    - output/performance_quantile/model_performance_quantile_test.parquet
+    - output/performance/model_performance_assessment.parquet
+    - output/performance_quantile/model_performance_quantile_assessment.parquet
+    - output/shap/model_shap.parquet
+    - output/comp/model_comp.parquet
+    - output/feature_importance/model_feature_importance.parquet
+    - output/metadata/model_metadata.parquet
+    - output/timing/model_timing.parquet
     - reports/performance/performance.html
 
-    frozen: true
   export:
     cmd: Rscript pipeline/07-export.R
     desc: >
@@ -214,8 +214,8 @@ stages:
     - pipeline/07-export.R
     params:
     - assessment.year
-    - export
-    - input.max_sale_year
     - input.min_sale_year
+    - input.max_sale_year
     - ratio_study
+    - export
     frozen: true
