@@ -2,9 +2,6 @@
 # 1. Setup ---------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# NOTE: See DESCRIPTION for library dependencies and R/setup.R for
-# variables used in each pipeline stage
-
 # Start the stage timer
 tictoc::tic.clearlog()
 tictoc::tic("Subset")
