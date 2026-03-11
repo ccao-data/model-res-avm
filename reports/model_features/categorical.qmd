@@ -94,15 +94,19 @@ cat_shap_long_new <- shaps_new %>%
     by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
   )
 ```
+
 ```{r create_fig_height_shap_cat}
 fig_height_shap <- if (exists("cat_shap_long_new")) {
   fig_height(cat_shap_long_new, ncol = ncol_violin)
 } else {
   4
 }
-if (!exists("fig_height_shap_cont")) {
-  print("No SHAP values were created for this model run")
-}
+```
+
+```{r print_text_shap_cat}
+#| eval: !expr isFALSE(shap_exists)
+
+print("No SHAP values were created for this model run")
 ```
 
 ```{r shap_dist_cat_plot}

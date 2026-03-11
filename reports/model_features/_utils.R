@@ -48,54 +48,8 @@ if (!exists("params")) {
 
 # list of file names, local paths,
 # and mirrored S3 location URIs from file_dict.csv
-model_file_dict <- function(run_id = NULL, year = NULL) {
-  env <- environment()
-  wd <- here::here()
-  suppressPackageStartupMessages(library(magrittr))
+source(here::here("R", "helpers.R"))
 
-  if (!is.null(run_id)) {
-    if (run_id == "") {
-      stop("run_id cannot be an empty string")
-    } else if (!stringr::str_detect(run_id, "^[a-z0-9]+(?:[-][a-z0-9]+)*$")) {
-      stop("run_id must contain only alphanumeric characters and hyphens")
-    } else if (!stringr::str_detect(run_id, "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z]*-[a-z]*")) { # nolint
-      stop("run_id must be in the format YYYY-MM-DD-<adjective>-<person>")
-    }
-  }
-
-  if (!is.null(year)) {
-    if (year == "") {
-      stop("year cannot be an empty string")
-    } else if (!stringr::str_detect(year, "^[0-9]{4}$")) {
-      stop("year must be a four-digit number")
-    } else if (is.numeric(year)) {
-      stop("year must be a string")
-    }
-  }
-
-  # Convert flat dictionary file to nested list
-  dict <- read.csv(
-    here::here("misc", "file_dict.csv"),
-    colClasses = c("character", "character", "numeric", rep("character", 9)),
-    na.strings = ""
-  ) %>%
-    dplyr::mutate(
-      s3 = as.character(purrr::map_if(
-        path_s3, ~ !is.na(.x), glue::glue,
-        .envir = env, .na = NULL, .null = NA_character_
-      )),
-      s3 = ifelse(!is.na(s3), file.path(paste0("s3://", s3_bucket), s3), NA),
-      local = ifelse(!is.na(path_local), file.path(wd, path_local), NA)
-    ) %>%
-    dplyr::select(type, name, s3, local) %>%
-    split(., .$type) %>%
-    purrr::map(., ~ split(.x, .x$name, drop = TRUE)) %>%
-    purrr::map(., ~ purrr::map(.x, function(x) {
-      as.list(x)[!is.na(x) & names(x) %in% c("s3", "local")]
-    }))
-
-  return(dict)
-}
 paths <- model_file_dict()
 
 # Text sizes for small multiples
