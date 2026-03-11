@@ -99,13 +99,10 @@ fig_height_shap <- if (exists("cont_shap_long_new")) {
 } else {
   4
 }
-```
 
-
-```{r print_text_shap_cont}
-#| eval: !expr isFALSE(shap_exists)
-
-print("No SHAP values were created for this model run")
+if (!shap_exists) {
+  print("SHAP data does not exist for this run. Skipping SHAP plots.")
+}
 ```
 
 ```{r shap_dist_cont_plot}
