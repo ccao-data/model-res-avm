@@ -120,16 +120,20 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   sum_fns_list <- list(
     min         = \(x) min(x, na.rm = TRUE),
     q25         = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
+    mean        = \(x) mean(x, na.rm = TRUE),
     median      = \(x) median(x, na.rm = TRUE),
     q75         = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
     max         = \(x) max(x, na.rm = TRUE)
+    sd          = \(x) sd(x, na.rm = TRUE)
   )
   sum_sqft_fns_list <- list(
     min         = \(x, y) min(x / y, na.rm = TRUE),
     q25         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.25),
     median      = \(x, y) median(x / y, na.rm = TRUE),
+    mean        = \(x, y) mean(x / y, na.rm = TRUE),
     q75         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.75),
     max         = \(x, y) max(x / y, na.rm = TRUE)
+    sd          = \(x, y) sd(x / y, na.rm = TRUE)
   )
   yoy_fns_list <- list(
     min         = \(x, y) min((x - y) / y, na.rm = TRUE),
