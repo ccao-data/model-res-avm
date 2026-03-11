@@ -94,8 +94,7 @@ input:
     # Whether to use a subset of the training data instead of the full dataset
     enable: false
 
-    # Fraction of the training data to keep (between 0 and 1). Within each
-    # stratum (year x township x class), at least 1 row is always retained
+    # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
 
     # Random seed for reproducible subsetting
