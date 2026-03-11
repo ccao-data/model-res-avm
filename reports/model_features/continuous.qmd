@@ -94,8 +94,8 @@ cont_shap_long_new <- shaps_new %>%
 
 
 ```{r create_fig_height_shap_cont}
-fig_height_shap <- if (exists("cont_shap_long_old")) {
-  fig_height(cont_shap_long_old, ncol = ncol_line)
+fig_height_shap <- if (exists("cont_shap_long_new")) {
+  fig_height(cont_shap_long_new, ncol = ncol_line)
 } else {
   4
 }
