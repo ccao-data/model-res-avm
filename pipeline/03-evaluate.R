@@ -132,7 +132,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     median      = \(x, y) median(x / y, na.rm = TRUE),
     mean        = \(x, y) mean(x / y, na.rm = TRUE),
     q75         = \(x, y) quantile(x / y, na.rm = TRUE, probs = 0.75),
-    max         = \(x, y) max(x / y, na.rm = TRUE)
+    max         = \(x, y) max(x / y, na.rm = TRUE),
     sd          = \(x, y) sd(x / y, na.rm = TRUE)
   )
   yoy_fns_list <- list(
