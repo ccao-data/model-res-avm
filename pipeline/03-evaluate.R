@@ -123,7 +123,7 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     mean        = \(x) mean(x, na.rm = TRUE),
     median      = \(x) median(x, na.rm = TRUE),
     q75         = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
-    max         = \(x) max(x, na.rm = TRUE)
+    max         = \(x) max(x, na.rm = TRUE),
     sd          = \(x) sd(x, na.rm = TRUE)
   )
   sum_sqft_fns_list <- list(
