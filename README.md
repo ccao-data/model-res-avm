@@ -605,9 +605,11 @@ We accomplish these exclusions in multiple ways:
 | Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non-arm’s-length transactions, and are excluded from the model training. |
 | Buyer-seller attributes | The model is trained on sales between non-corporate unrelated buyers and sellers. We exclude sales between corporate affiliates, related individuals, Bank REO (Real Estate Owned), sales involving a financial institution or government agency, and sales in lieu of foreclosure. |
 
-- **Analyst review.** Finally, CCAO residential analysts can manually
-  review sales and inform us of sales that we should not use to train
-  the model.
+**Analyst review.** Finally, CCAO residential analysts can manually
+review sales and inform us of sales that we should not use to train the
+model. Currently, the only sales we exclude due to analyst review are
+sales of homes for which an analyst finds that the square footage or age
+are significantly incorrect in our data
 
 ##### Using `training_data`
 
