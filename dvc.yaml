@@ -16,20 +16,9 @@ stages:
     - input/hie_data.parquet
     - input/land_nbhd_rate_data.parquet
     - input/training_data.parquet
+    - input/training_data_subset.parquet
 
     frozen: true
-  subset:
-    cmd: Rscript pipeline/00-subset.R
-    desc: >
-      Create a stratified subset of the training data for faster development
-      iterations. When disabled, writes an empty stub file.
-    deps:
-    - input/training_data.parquet
-    - pipeline/00-subset.R
-    params:
-    - input.subset
-    outs:
-    - input/training_data_subset.parquet
 
   train:
     cmd: Rscript pipeline/01-train.R

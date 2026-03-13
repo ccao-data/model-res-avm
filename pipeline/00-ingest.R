@@ -452,6 +452,41 @@ training_data_clean <- training_data_w_hie %>%
   as_tibble() %>%
   write_parquet(paths$input$training$local)
 
+# Write a subsample for faster training if desired
+if (params$input$subset$enable) {
+
+  set.seed(params$model$seed)
+
+  message(
+    "Creating stratified training data subset ",
+    "(fraction: ", params$input$subset$fraction, ")"
+  )
+
+  # Stratified sample: within each year x township x class group, keep at
+  # least 1 row and otherwise sample the configured fraction
+  training_data_subset <- training_data_clean %>%
+    group_by(time_sale_year, meta_township_code, meta_class) %>%
+    group_modify(~ {
+      n_sample <- max(1L, ceiling(nrow(.x) * params$input$subset$fraction))
+      slice_sample(.x, n = n_sample)
+    }) %>%
+    ungroup() %>%
+    write_parquet(paths$input$training_subset$local)
+
+  message(
+    "Subset: ", nrow(training_data_subset), " / ", nrow(training_data),
+    " rows (", round(nrow(training_data_subset) / nrow(training_data) * 100, 1), "%)"
+  )
+
+} else {
+  message("Subset mode disabled, writing schema-only stub")
+
+  # Write an empty parquet with the same schema so DVC outputs are satisfied
+  training_data_clean %>%
+    slice_head(n = 0) %>%
+    write_parquet(paths$input$training_subset$local)
+}
+
 
 ## 5.2. Assessment Data --------------------------------------------------------
 

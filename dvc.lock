@@ -571,8 +571,7 @@ stages:
       hash: md5
       md5: 6fc44c1106f7de8e748a181eeb6d6293
       size: 8268396
-    - path: 
-        output/performance_quantile/model_performance_quantile_assessment.parquet
+    - path: output/performance_quantile/model_performance_quantile_assessment.parquet
       hash: md5
       md5: f564709946dce23414192cc63bd96f63
       size: 981499
@@ -1009,8 +1008,7 @@ stages:
           - loc_school_elementary_district_geoid
           - loc_school_secondary_district_geoid
           - loc_school_unified_district_geoid
-        run_note: Potential residential baseline with SHAP values, revert DVC 
-          path
+        run_note: Potential residential baseline with SHAP values, revert DVC path
         toggle:
           cv_enable: false
           shap_enable: false
@@ -1113,8 +1111,7 @@ stages:
       hash: md5
       md5: 6fc44c1106f7de8e748a181eeb6d6293
       size: 8268396
-    - path: 
-        output/performance_quantile/model_performance_quantile_assessment.parquet
+    - path: output/performance_quantile/model_performance_quantile_assessment.parquet
       hash: md5
       md5: f564709946dce23414192cc63bd96f63
       size: 981499
@@ -1150,25 +1147,3 @@ stages:
       hash: md5
       md5: e794eac32c0b949984f2f2064917b094
       size: 41312311
-  subset:
-    cmd: Rscript pipeline/00-subset.R
-    deps:
-    - path: input/training_data.parquet
-      hash: md5
-      md5: 37dd32ac6eefdc40a50e6f06b932b708
-      size: 197770598
-    - path: pipeline/00-subset.R
-      hash: md5
-      md5: c6a17e601565e441cace71f61ec18006
-      size: 1885
-    params:
-      params.yaml:
-        input.subset:
-          enable: false
-          fraction: 0.25
-          seed: 2026
-    outs:
-    - path: input/training_data_subset.parquet
-      hash: md5
-      md5: 75b6a4013d0d15adc952e8ec7312de4b
-      size: 40728

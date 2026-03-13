@@ -97,9 +97,6 @@ input:
     # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
 
-    # Random seed for reproducible subsetting
-    seed: 2026
-
 
 # Cross-validation -------------------------------------------------------------
 
