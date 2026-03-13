@@ -193,6 +193,10 @@ if (feature_report_enable) {
 } else {
   message("Skipping feature report generation:
           feature_report_enable is not enabled")
+  # Create an empty file if model_features is not enabled
+  sink(paths$output$model_features$local)
+  cat("Feature report skipped because feature_report_enable is FALSE")
+  sink()
 }
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
