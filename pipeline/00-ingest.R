@@ -454,7 +454,6 @@ training_data_clean <- training_data_w_hie %>%
 
 # Write a subsample for faster training if desired
 if (params$input$subset$enable) {
-
   set.seed(params$model$seed)
 
   message(
@@ -477,7 +476,6 @@ if (params$input$subset$enable) {
     "Subset: ", nrow(training_data_subset), " / ", nrow(training_data),
     " rows (", round(nrow(training_data_subset) / nrow(training_data) * 100, 1), "%)"
   )
-
 } else {
   message("Subset mode disabled, writing schema-only stub")
 
