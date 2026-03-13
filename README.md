@@ -609,7 +609,7 @@ We accomplish these exclusions in multiple ways:
 review sales and inform us of sales that we should not use to train the
 model. Currently, the only sales we exclude due to analyst review are
 sales of homes for which an analyst finds that the square footage or age
-are significantly incorrect in our data
+are significantly incorrect in our data.
 
 ##### Using `training_data`
 
