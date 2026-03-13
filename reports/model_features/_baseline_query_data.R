@@ -117,9 +117,11 @@ if (!exists("assessment_data_new")) {
 }
 
 # SHAPs
-if (!exists("new_shaps") &&
-  file.exists(paths$output$shap$local) && # nolintr
-  metadata$shap_enable) {
+if (
+  !exists("shaps_new") &&
+    file.exists(paths$output$shap$local) &&
+    metadata$shap_enable
+) {
   shap_df <- read_parquet(paths$output$shap$local)
   shap_exists <- nrow(shap_df) > 0
 
