@@ -160,6 +160,8 @@ stages:
         cache: false
     - reports/performance/performance.html:
         cache: false
+    - reports/model_features/model_features.html:
+        cache: false
 
   upload:
     cmd: Rscript pipeline/06-upload.R
