@@ -164,36 +164,36 @@ tryCatch(
 )
 
 ## 3.2. Model Features Report --------------------------------------------------
-
-tryCatch(
-  {
-    suppressPackageStartupMessages({
-      library(quarto)
-    })
-
-    message("Generating model features report")
-
-    here("reports", "model_features", "model_features.qmd") %>%
-      quarto_render(
-        execute_params = list(
-          run_id = run_id
+if (feature_report_enable) {
+  tryCatch(
+    {
+      suppressPackageStartupMessages({
+        library(quarto)
+      })
+      message("Generating model features report")
+      here("reports", "model_features", "model_features.qmd") %>%
+        quarto_render(
+          execute_params = list(
+            run_id = run_id
+          )
         )
-      )
-  },
-  error = function(func) {
-    message("Encountered error during report generation:")
-    message(conditionMessage(func))
-
-    # Save an empty report so that this pipeline step produces the required
-    # output even in cases of failure
-    message("Saving an empty report file in order to continue execution")
-    sink(paths$output$model_features$local)
-    cat("Encountered error in report generation:\n\n")
-    cat(conditionMessage(func))
-    sink()
-  }
-)
-
+    },
+    error = function(func) {
+      message("Encountered error during report generation:")
+      message(conditionMessage(func))
+      # Save an empty report so that this pipeline step produces the required
+      # output even in cases of failure
+      message("Saving an empty report file in order to continue execution")
+      sink(paths$output$model_features$local)
+      cat("Encountered error in report generation:\n\n")
+      cat(conditionMessage(func))
+      sink()
+    }
+  )
+} else {
+  message("Skipping feature report generation:
+          feature_report_enable is not enabled")
+}
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Save Timings --------------------------------------------------------------

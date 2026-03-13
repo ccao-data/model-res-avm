@@ -241,10 +241,13 @@ if (upload_enable) {
   )
 
   # Upload feature report
-  aws.s3::put_object(
-    paths$output$report_model_features$local,
-    paths$output$report_model_features$s3
-  )
+  if (feature_report_enable) {
+    message("Uploading feature report")
+    aws.s3::put_object(
+      paths$output$report_model_features$local,
+      paths$output$report_model_features$s3
+    )
+  }
 }
 
 
