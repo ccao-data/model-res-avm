@@ -35,7 +35,7 @@ toggle:
 
   # Should the feature report be run, which compares the inputs to the previous
   # year's model inputs?
-  feature_enable: false
+  feature_report_enable: false
 
 
 # Data/Ingest ------------------------------------------------------------------
