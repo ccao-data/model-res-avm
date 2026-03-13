@@ -474,7 +474,7 @@ if (params$input$subset$enable) {
 
   message(
     "Subset: ", nrow(training_data_subset), " / ", nrow(training_data),
-    " rows (", round(nrow(training_data_subset) / nrow(training_data) * 100, 1), "%)"
+    " rows (", round(nrow(training_data_subset) / nrow(training_data) * 100, 1), "%)" # nolint
   )
 } else {
   message("Subset mode disabled, writing schema-only stub")
