@@ -50,6 +50,19 @@ if (!exists("params")) {
 # and mirrored S3 location URIs from file_dict.csv
 source(here::here("R", "helpers.R"))
 
+# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = "
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+")
+
+ignore_sigpipes()
+
 paths <- model_file_dict()
 
 # Text sizes for small multiples
