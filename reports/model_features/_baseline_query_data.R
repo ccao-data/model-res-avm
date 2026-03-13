@@ -10,12 +10,10 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
-params_obj_name <- "model_params"
-
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
 
-assign(params_obj_name, read_yaml(here("params.yaml")))
+model_params <- read_yaml(here("params.yaml"))
 
 paths <- model_file_dict(model_params$run_id, model_params$year)
 
