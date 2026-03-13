@@ -16,8 +16,10 @@ stages:
     - input/hie_data.parquet
     - input/land_nbhd_rate_data.parquet
     - input/training_data.parquet
+    - input/training_data_subset.parquet
 
     frozen: true
+
   train:
     cmd: Rscript pipeline/01-train.R
     desc: >
@@ -26,8 +28,10 @@ stages:
     deps:
     - pipeline/01-train.R
     - input/training_data.parquet
+    - input/training_data_subset.parquet
     params:
     - cv
+    - input.subset
     - model.engine
     - model.hyperparameter
     - model.objective
