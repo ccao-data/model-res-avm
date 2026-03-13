@@ -47,7 +47,8 @@ if (!exists("metadata_old")) {
       on model.run_id = final.run_id
     where final.type = 'res'
       and CAST(final.year AS INTEGER) = {model_params$assessment$year} - 1
-      limit 1
+    order by final.date_finalized desc
+    limit 1
   ")
   )
 }
