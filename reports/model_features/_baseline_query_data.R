@@ -30,9 +30,14 @@ if (!exists("model_predictor_categorical_name")) {
 
 # Model metadata
 if (!exists("metadata_old")) {
-  # This query should only ever return one row, but limit the results to 1
-  # just to be defensive. It fetches the metadata for the most recent final
-  # model, which should be the one used for the comparison analysis
+# Fetch the metadata for the most recent final model, which should be the one
+# we use for the comparison analysis.
+#
+# Since it's possible for there to be multiple final models in a given year,
+# each one for a different set of townships, this query needs to decide how
+# to choose between multiple final models. We follow the naive heuristic of
+# ordering by model finalization date and selecting the model that we finalized
+# most recently
   metadata_old <- dbGetQuery(
     conn = AWS_ATHENA_CONN_NOCTUA,
     statement = glue::glue("
