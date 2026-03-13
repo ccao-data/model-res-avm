@@ -79,7 +79,7 @@ if (!exists("assessment_data_old")) {
 }
 
 if (!exists("year_new")) {
-  year_new <- model_params$assessment$working_year
+  year_new <- model_params$assessment$year
 }
 
 # Split categorical and continuous predictors since we need to plot them
