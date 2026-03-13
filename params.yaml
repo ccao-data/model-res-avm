@@ -92,7 +92,7 @@ input:
   # by year, township, and class to maintain representation across categories
   subset:
     # Whether to use a subset of the training data instead of the full dataset
-    enable: false
+    enable: true
 
     # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
