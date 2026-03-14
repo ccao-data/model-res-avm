@@ -411,6 +411,34 @@ test %>%
   as_tibble() %>%
   write_parquet(paths$output$test_card$local)
 
+# predict on training_set, to use for evaluating overfitting
+train %>%
+  mutate(
+    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, train)$.pred,
+    pred_card_initial_fmv_lin = exp(predict(
+      lin_wflow_final_fit,
+      train %>% mutate(meta_sale_price = log(meta_sale_price))
+    )$.pred)
+  ) %>%
+  select(
+    meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
+    all_of(params$ratio_study$geographies), char_bldg_sf,
+    all_of(c(
+      "prior_far_tot" = params$ratio_study$far_column,
+      "prior_near_tot" = params$ratio_study$near_column
+    )),
+    pred_card_initial_fmv, pred_card_initial_fmv_lin,
+    meta_sale_price, meta_sale_date, meta_sale_document_num
+  ) %>%
+  # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential
+  mutate(
+    prior_far_tot = prior_far_tot * 10,
+    prior_near_tot = prior_near_tot * 10
+  ) %>%
+  as_tibble() %>%
+  write_parquet(paths$output$train_card$local)
+
+
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
 # lightgbm is picky about how its model objects are stored on disk

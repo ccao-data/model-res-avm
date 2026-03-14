@@ -48,6 +48,8 @@ message("Loading evaluation data")
 # recent 10% of sales and already includes predictions. This data will NOT
 # include multicard sales, so the unit of observation is PINs (1 PIN per row)
 test_data_card <- read_parquet(paths$output$test_card$local)
+# Load train card: 90% of earliest sales- used to test for overfitting
+train_data_card <- read_parquet(paths$output$train_card$local)
 
 # Load the assessment results from the previous stage. This will include every
 # residential PIN that needs a value. It WILL include multicard properties
@@ -417,7 +419,81 @@ pwalk(
 )
 
 
-## 4.2. Assessment Set ---------------------------------------------------------
+#4.2 Training Set-----------------------------------
+#  Same as test set, but using training data to enable train vs. test
+   # performance comparison and overfitting detection
+message("Calculating training aggregate performance statistics")
+pwalk(
+  list(
+    rlang::quos(pred_card_initial_fmv, pred_card_initial_fmv_lin),
+    list(
+      paths$output$performance_train$local,
+      paths$output$performance_train_linear$local
+    )
+  ),
+  function(pred, path) {
+    future_pmap(
+      geographies_list,
+      function(geo, cls) {
+        gen_agg_stats(
+          data = train_data_card,
+          truth = meta_sale_price,
+          estimate = !!pred,
+          bldg_sqft = char_bldg_sf,
+          rsn_col = prior_near_tot,
+          rsf_col = prior_far_tot,
+          triad = meta_triad_code,
+          geography = !!geo,
+          class = !!cls,
+          col_dict = col_rename_dict,
+          min_n = params$ratio_study$min_n_sales
+        )
+      },
+      .options = furrr_options(seed = TRUE, stdout = FALSE),
+      .progress = FALSE
+    ) %>%
+      purrr::list_rbind() %>%
+      write_parquet(path)
+  }
+)
+
+
+message("Calculating training set quantile statistics")
+pwalk(
+  list(
+    rlang::quos(pred_card_initial_fmv, pred_card_initial_fmv_lin),
+    list(
+      paths$output$performance_quantile_train$local,
+      paths$output$performance_quantile_train_linear$local
+    )
+  ),
+  function(pred, path) {
+    future_pmap(
+      geographies_list_quantile,
+      function(geo, cls, qnt) {
+        gen_agg_stats_quantile(
+          data = train_data_card,
+          truth = meta_sale_price,
+          estimate = !!pred,
+          rsn_col = prior_near_tot,
+          rsf_col = prior_far_tot,
+          triad = meta_triad_code,
+          geography = !!geo,
+          class = !!cls,
+          col_dict = col_rename_dict,
+          num_quantile = qnt
+        )
+      },
+      .options = furrr_options(seed = TRUE, stdout = FALSE),
+      .progress = FALSE
+    ) %>%
+      purrr::list_rbind() %>%
+      write_parquet(path)
+  }
+)
+
+
+## 4.3. Assessment Set ---------------------------------------------------------
 
 # Do the same thing for the assessment set. This will have accurate property
 # counts and proportions, since it also includes unsold properties
