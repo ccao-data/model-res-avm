@@ -16,7 +16,7 @@ source("_baseline_query_data.R")
 ### Assessment set
 
 ```{r feature_dist_assess_cont_transform}
-baseline_cont_chars_assess_long <- baseline_assessment_data %>%
+cont_chars_assess_long_new <- assessment_data_new %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -27,22 +27,22 @@ baseline_cont_chars_assess_long <- baseline_assessment_data %>%
 
 ```{r feature_dist_assess_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cont_chars_assess_long)
+#| fig-height: !expr fig_height(cont_chars_assess_long_new)
 
-plot_small_multiple_histograms(baseline_cont_chars_assess_long, stat = "bin")
+plot_small_multiple_histograms(cont_chars_assess_long_new, stat = "bin")
 ```
 
 ```{r feature_dist_assess_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_chars_assess_long)
+rm(cont_chars_assess_long_new)
 gc()
 ```
 
 ### Training set
 
 ```{r feature_dist_train_cont_transform}
-baseline_cont_chars_train_long <- baseline_training_data %>%
+cont_chars_train_long_new <- training_data_new %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -53,15 +53,15 @@ baseline_cont_chars_train_long <- baseline_training_data %>%
 
 ```{r feature_dist_train_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cont_chars_train_long)
+#| fig-height: !expr fig_height(cont_chars_train_long_new)
 
-plot_small_multiple_histograms(baseline_cont_chars_train_long, stat = "bin")
+plot_small_multiple_histograms(cont_chars_train_long_new, stat = "bin")
 ```
 
 ```{r feature_dist_train_cont_cleanup}
 #| output: false
 
-rm(baseline_cont_chars_train_long)
+rm(cont_chars_train_long_new)
 gc()
 ```
 
@@ -70,7 +70,9 @@ gc()
 # Distribution of SHAPs (Continuous)
 
 ```{r shap_dist_cont_transform}
-baseline_cont_shap_long <- baseline_shaps %>%
+#| eval: !expr isTRUE(shap_exists)
+
+cont_shap_long_new <- shaps_new %>%
   select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
   pivot_longer(
     cols = all_of(continuous_preds),
@@ -78,7 +80,7 @@ baseline_cont_shap_long <- baseline_shaps %>%
     values_to = "value"
   ) %>%
   left_join(
-    baseline_shaps %>%
+    shaps_new %>%
       select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
       pivot_longer(
         cols = all_of(continuous_shaps),
@@ -90,20 +92,35 @@ baseline_cont_shap_long <- baseline_shaps %>%
   )
 ```
 
+
+```{r create_fig_height_shap_cont}
+fig_height_shap <- if (exists("cont_shap_long_new")) {
+  fig_height(cont_shap_long_new, ncol = ncol_line)
+} else {
+  4
+}
+
+if (!shap_exists) {
+  print("SHAP data does not exist for this run. Skipping SHAP plots.")
+}
+```
+
 ```{r shap_dist_cont_plot}
+#| eval: !expr isTRUE(shap_exists)
 #| column: screen-inset
-#| fig-height: !expr fig_height(baseline_cont_shap_long, ncol = ncol_line)
+#| fig-height: !expr fig_height_shap
 
 plot_small_multiple_lines(
-  baseline_cont_shap_long,
+  cont_shap_long_new,
   "shap_value",
   y_axis_label = "SHAP Value"
 )
 ```
 
 ```{r shap_dist_cont_cleanup}
+#| eval: !expr isTRUE(shap_exists)
 #| output: false
 
-rm(baseline_cont_shap_long)
+rm(cont_shap_long_new)
 gc()
 ```

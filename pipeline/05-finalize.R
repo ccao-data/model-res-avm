@@ -130,7 +130,7 @@ metadata <- tibble::tibble(
 
 ## 3.1. Performance Report -----------------------------------------------------
 
-# Wrap this block in an error handler so that the pipeline continues execution
+# Wrap these blocks in an error handler so that the pipeline continues execution
 # even if report generation fails. This is important because the report file is
 # defined separately, so this script can't be sure that it is error-free
 tryCatch(
@@ -163,8 +163,38 @@ tryCatch(
   }
 )
 
-
-
+## 3.2. Model Features Report --------------------------------------------------
+if (!isTRUE(feature_report_enable)) {
+  message("feature_report_enable is FALSE — skipping report generation")
+  sink(paths$output$report_model_features$local)
+  cat("Report generation skipped: feature_report_enable is FALSE\n")
+  sink()
+} else {
+  tryCatch(
+    {
+      suppressPackageStartupMessages({
+        library(quarto)
+      })
+      message("Generating model_feature report")
+      here("reports", "model_feature", "model_feature.qmd") %>%
+        quarto_render(
+          execute_params = list(
+            run_id = run_id,
+            year = params$assessment$year
+          )
+        )
+    },
+    error = function(func) {
+      message("Encountered error during report generation:")
+      message(conditionMessage(func))
+      message("Saving an empty report file in order to continue execution")
+      sink(paths$output$report_model_features$local)
+      cat("Encountered error in report generation:\n\n")
+      cat(conditionMessage(func))
+      sink()
+    }
+  )
+}
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Save Timings --------------------------------------------------------------
