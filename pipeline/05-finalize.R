@@ -166,7 +166,7 @@ tryCatch(
 ## 3.2. Model Features Report --------------------------------------------------
 if (!isTRUE(feature_report_enable)) {
   message("feature_report_enable is FALSE — skipping report generation")
-  sink(paths$output$model_feature$local)
+  sink(paths$output$report_model_features$local)
   cat("Report generation skipped: feature_report_enable is FALSE\n")
   sink()
 } else {
@@ -188,7 +188,7 @@ if (!isTRUE(feature_report_enable)) {
       message("Encountered error during report generation:")
       message(conditionMessage(func))
       message("Saving an empty report file in order to continue execution")
-      sink(paths$output$model_feature$local)
+      sink(paths$output$report_model_features$local)
       cat("Encountered error in report generation:\n\n")
       cat(conditionMessage(func))
       sink()
