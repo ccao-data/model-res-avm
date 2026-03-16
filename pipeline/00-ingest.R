@@ -256,6 +256,7 @@ hie_data_training_sparse <- hie_data %>%
 # Merge the HIE data with the training data, updating/adding to training data
 # characteristics
 training_data_w_hie <- training_data %>%
+  select(-starts_with("hie_")) %>%
   mutate(across(
     all_of(ccao::chars_cols$add$target),
     ~ recode_column_type(.x, cur_column())
@@ -504,7 +505,7 @@ assessment_data_clean <- assessment_data %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
-  relocate(starts_with("meta_sale_"), .before = meta_cdu) %>%
+  relocate(starts_with("meta_sale_"), .after = hie_num_expiring) %>%
   as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 
