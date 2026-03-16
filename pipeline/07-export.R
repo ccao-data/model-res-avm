@@ -411,6 +411,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
     flag_land_value_capped,
+    flag_hie_num_expiring,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
     flag_char_missing_critical_value, flag_has_recent_assessable_permit
