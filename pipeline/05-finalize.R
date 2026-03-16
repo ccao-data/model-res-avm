@@ -176,7 +176,7 @@ if (!isTRUE(feature_report_enable)) {
         library(quarto)
       })
       message("Generating model_feature report")
-      here("reports", "model_feature", "model_feature.qmd") %>%
+      here("reports", "model_features", "model_features.qmd") %>%
         quarto_render(
           execute_params = list(
             run_id = run_id,
