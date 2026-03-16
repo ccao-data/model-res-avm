@@ -164,6 +164,7 @@ tryCatch(
 )
 
 ## 3.2. Model Features Report --------------------------------------------------
+# Don't run the model feature report if it is not enabled
 if (!isTRUE(feature_report_enable)) {
   message("feature_report_enable is FALSE — skipping report generation")
   sink(paths$output$report_model_features$local)
