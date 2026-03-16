@@ -120,8 +120,8 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
   sum_fns_list <- list(
     min         = \(x) min(x, na.rm = TRUE),
     q25         = \(x) quantile(x, na.rm = TRUE, probs = 0.25),
-    mean        = \(x) mean(x, na.rm = TRUE),
     median      = \(x) median(x, na.rm = TRUE),
+    mean        = \(x) mean(x, na.rm = TRUE),
     q75         = \(x) quantile(x, na.rm = TRUE, probs = 0.75),
     max         = \(x) max(x, na.rm = TRUE),
     sd          = \(x) sd(x, na.rm = TRUE)
