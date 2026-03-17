@@ -91,6 +91,7 @@ metadata <- tibble::tibble(
   ratio_study_near_column = params$ratio_study$near_column,
   ratio_study_num_quantile = list(params$ratio_study$num_quantile),
   shap_enable = shap_enable,
+  comp_algorithm = params$comp$algorithm,
   comp_enable = comp_enable,
   comp_num_comps = params$comp$num_comps,
   cv_enable = cv_enable,
@@ -129,7 +130,7 @@ metadata <- tibble::tibble(
 
 ## 3.1. Performance Report -----------------------------------------------------
 
-# Wrap this block in an error handler so that the pipeline continues execution
+# Wrap these blocks in an error handler so that the pipeline continues execution
 # even if report generation fails. This is important because the report file is
 # defined separately, so this script can't be sure that it is error-free
 tryCatch(
@@ -161,6 +162,41 @@ tryCatch(
     sink()
   }
 )
+
+## 3.2. Model Features Report --------------------------------------------------
+# Don't run the model feature report if it is not enabled
+if (!isTRUE(feature_report_enable)) {
+  message("feature_report_enable is FALSE — skipping report generation")
+  sink(paths$output$report_model_features$local)
+  cat("Report generation skipped: feature_report_enable is FALSE\n")
+  sink()
+} else {
+  tryCatch(
+    {
+      suppressPackageStartupMessages({
+        library(quarto)
+      })
+      message("Generating model_feature report")
+      here("reports", "model_features", "model_features.qmd") %>%
+        quarto_render(
+          execute_params = list(
+            run_id = run_id
+          )
+        )
+    },
+    error = function(func) {
+      message("Encountered error during report generation:")
+      message(conditionMessage(func))
+      # Save an empty report so that this pipeline step produces the required
+      # output even in cases of failure
+      message("Saving an empty report file in order to continue execution")
+      sink(paths$output$report_model_features$local)
+      cat("Encountered error in report generation:\n\n")
+      cat(conditionMessage(func))
+      sink()
+    }
+  )
+}
 
 
 

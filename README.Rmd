@@ -31,6 +31,7 @@ This repository contains code, data, and documentation for the Cook County Asses
 | 2022        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2022-assessment-year)                            |
 | 2023        | South    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2023-assessment-year)                            |
 | 2024        | City     | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2024-assessment-year)                            |
+| 2025        | North    | County-wide LightGBM model                  | R (Tidyverse / Tidymodels) | [Link](https://github.com/ccao-data/model-res-avm/tree/2025-assessment-year)                            |
 
 # Model Overview
 
@@ -357,7 +358,7 @@ param_tbl_fmt <- param_tbl %>%
     na.rm = TRUE
   ) %>%
   mutate(description = replace_na(description, "")) %>%
-  arrange(category)
+  arrange(category, variable_name)
 
 # Write machine-readable version of the table to file
 param_tbl_fmt %>%
@@ -424,6 +425,28 @@ The model uses two primary data sets that are constructed by the [ingest stage](
 * [`assessment_data`](#getting-data) - Includes all residential properties (sold and unsold) which need assessed values. This is the data the final model is used on. Its approximate size is 1.1 million rows with 100 features.
 
 These data sets contain only *residential single- and multi-family properties*. Single-family includes property [classes](https://prodassets.cookcountyassessor.com/s3fs-public/form_documents/classcode.pdf) 202, 203, 204, 205, 206, 207, 208, 209, 210, 234, 278, and 295. Multi-family includes property classes 211 and 212. Bed and breakfast properties (class 218 and 219) are considered single-family for the sake of modeling, but are typically valued later by hand. Other residential properties, such as condominiums (class 299 and 399) are valued [using a different model](https://github.com/ccao-data/model-condo-avm).
+
+#### Types of Sales Excluded
+
+The key objective of the model is to fairly estimate what a home could sell for in a fair, arm's-length, open-market transaction. It's important to train the model on high-quality sales that are representative of the market, and to exclude sales that are not representative. For example, a sale price of $3M for an 800 square foot (S.F.) home, in a community where homes of this size tend to sell between $200k - $400k, is not a representative sale. (This may indicate a flip.) If this sale was used to train the model, then the model could learn that _all_ 800 S.F. homes in this region are worth around $3M, and should be assessed and taxed accordingly. (More realistically, the inclusion of this single outlier could increase the _average_ estimated sale of 800 S.F. homes in this community by an undetermined amount.)
+
+We accomplish these exclusions in multiple ways:
+
+- **Excluding sales with prices that are statistical outliers.**  A "statistical outlier" is a sale price that is statistically higher or lower than sale prices of other similar homes, such as our hypothetical $3M example above. Often, these price outliers tend to indicate substantial characteristics errors.  This outlier aproach was developed in partnership with the [Mansueto Institute](https://miurban.uchicago.edu/). See the sales validation code at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val). 
+
+- **Excluding sales based on other transaction data.** In addition to removing sales because they have sale prices that are statistically high or low, other transaction features are useful for identifying sales that should be removed from the model. They are:
+
+| Transaction feature | How transaction feature is used |
+| --------------------- | ---------------------------------------------------------------------------------------- | 
+| Sale price | The model is trained only on sale prices > $10k. Many sale prices below this amount are, for example, deeded parking spots rather than houses. | 
+| Year of sale | Only sales from the last 9 years are used to train the model. This provides a sufficient amount of transaction data for accurate training and prediction, without including price information that is extremely out-of-date. |
+| Back-to-back sales | We currently remove any back-to-back sales (sales of the same PIN within the same year) that sell for the same price in both sales (as this likely indicates something awry) - we are investigating whether or not to include back-to-back sales of differing prices, but currently include them. |
+| Number of PINs in the sale | The model is trained using only single-PIN sales. When one sale price is attributed to a sale of two PINs, it's not clear how much each PIN's value individually contributed to the sale price, so multi-PIN sales are excluded. | 
+| Number of buildings | The model is trained using only single-building PINs. When one sale price is attributed to a sale with two buildings, it's not clear how much each building's value individually contributed to the sale price, so multi-building sales are excluded. | 
+| Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non-arm's-length transactions, and are excluded from the model training. | 
+| Buyer-seller attributes | The model is trained on sales between non-corporate unrelated buyers and sellers. We exclude sales between corporate affiliates, related individuals, Bank REO (Real Estate Owned), sales involving a financial institution or government agency, and sales in lieu of foreclosure. |
+
+**Analyst review.** Finally, CCAO residential analysts can manually review sales and inform us of sales that we should not use to train the model. Currently, the only sales we exclude due to analyst review are sales of homes for which an analyst finds that the square footage or age are significantly incorrect in our data.
 
 ##### Using `training_data`
 
@@ -496,11 +519,13 @@ There a few caveats with this approach and with balance testing in general:
 
 In addition to the first-pass modeling done by LightGBM, the CCAO also performs a set of simple adjustments on the initial predicted values from the `assess` stage. These adjustments are internally called "post-modeling," and are responsible for correcting minor deficiencies in the initial predictions. Specifically, post-modeling will:
 
-1. Handle multi-card properties. For PINs with more than 3 cards, this means summing the estimate for each card to the PIN level, then disaggregating back to the card level. For PINs with 3 or fewer cards, the initial prediction of the _largest_ card (plus the building square footage of the remaining cards) is used as the PIN-level estimate.
+1. Handle multi-card properties. For PINs with more than 3 cards, this means summing the estimate for each card to the PIN level, then disaggregating back to the card level. For PINs with 3 or fewer cards, the initial prediction of the *largest* card (plus the building square footage of the remaining cards) is used as the PIN-level estimate. For a more detailed explanation of multi-card handling, see the [multi-card wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Multi-Card%20PINs/multi_card_explainer.md).
 
-2. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
+2. Handle prorated PINs. When a single building spans multiple PINs, each one technically contains only a portion of the structure. To ensure fair valuation, the model's estimates are adjusted so that the building’s total value is distributed proportionally across its PINs. This involves calculating an average building-only value, prorating it based on each PIN’s share, and then adding back PIN-specific land value. For more detail, see the [proration wiki entry](https://github.com/ccao-data/wiki/blob/master/Residential/Proration/proration_explainer.md).
 
-3. Round PIN-level values (typically to the nearest $1,000). This is done to indicate that model values are _estimates_, not precise values.
+3. Ensure that nearly identical properties are identically valued. For some property classes, such as 210 and 295s, we manually adjust values such that all identical properties in the same complex receive the same predicted value. This is accomplished by replacing individual predicted values with the average predicted value for the complex.
+
+4. Round PIN-level values (typically to the nearest \$1,000). This is done to indicate that model values are *estimates*, not precise values.
 
 These adjustments have been collectively approved by the senior leadership of the CCAO. They are designed to limit the impact of data integrity issues, prevent regressivity in assessment, and ensure that people with nearly identical properties receive the same value.
 
@@ -563,6 +588,12 @@ This repository represents a significant departure from the old [residential mod
 * Removed features: number of schools within 1/2 mile, school ratings within 1/2 mile, homeowner exemption duration/indicator, corner lot indicator, some ACS features, airport noise indicator.
 * Modified features: distance to road now uses Illinois Department of Transportation street data instead of OpenStreetMap.
 * Added _lots_ of additional bug fixes and minor improvements.
+
+### [`assessment-year-2026`](https://github.com/ccao-data/model-res-avm/tree/2026-assessment-year)
+
+* Changed how complex IDs are generated for class 210 and 295 town/rowhomes. The new method removes grouping on class since
+ID generation already fuzzy matches on year built, the only difference between the classes.
+* Greatly expanded analyst hand-review into the sales validation process, augmenting the preexisting algorithmic checks. Analyst decisions supercede any conflicting algorithmic outcomes now.
 
 # Ongoing Issues
 
@@ -862,6 +893,15 @@ The data issue caused some sales to be omitted from the `2024-02-06-relaxed-tris
 - [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/hie_data.parquet)
 - [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/land_nbhd_rate_data.parquet)
 - [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2025/training_data.parquet)
+
+#### 2026
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data Portal](https://datacatalog.cookcountyil.gov/).
 

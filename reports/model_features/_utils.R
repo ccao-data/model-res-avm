@@ -4,12 +4,16 @@ library(dplyr)
 library(DT)
 library(ggplot2)
 library(glue)
+library(here)
 library(kableExtra)
 library(knitr)
 library(leaflet)
 library(noctua)
 library(stringr)
 library(tidyr)
+library(yaml)
+
+conflicted::conflicts_prefer(glue::glue, dplyr::filter)
 
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
@@ -41,6 +45,25 @@ if (!exists("params")) {
     here::here("reports", "model_features", "model_features.qmd")
   )
 }
+
+# list of file names, local paths,
+# and mirrored S3 location URIs from file_dict.csv
+source(here::here("R", "helpers.R"))
+
+# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = "
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+")
+
+ignore_sigpipes()
+
+paths <- model_file_dict()
 
 # Text sizes for small multiples
 axis_title_size <- 6
