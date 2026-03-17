@@ -15,8 +15,6 @@ metadata <- read_parquet(paths$output$metadata$local)
 
 model_params <- read_yaml(here("params.yaml"))
 
-paths <- model_file_dict(model_params$run_id, model_params$year)
-
 if (!exists("model_predictor_all_name")) {
   model_predictor_all_name <- model_params$model$predictor$all %>%
     unlist()
@@ -42,6 +40,7 @@ if (!exists("metadata_old")) {
     conn = AWS_ATHENA_CONN_NOCTUA,
     statement = glue::glue("
     select
+      final.run_id,
       model.dvc_md5_assessment_data,
       model.dvc_md5_training_data,
       model.model_predictor_all_name,
@@ -58,6 +57,8 @@ if (!exists("metadata_old")) {
   )
 }
 
+# Get assessment data for both old and new datasets
+
 if (!exists("assessment_year_old")) {
   assessment_year_old <- metadata_old$assessment_year
 }
@@ -65,6 +66,7 @@ if (!exists("assessment_year_old")) {
 if (!exists("dvc_md5_assessment_data_old")) {
   dvc_md5_assessment_data_old <- metadata_old$dvc_md5_assessment_data
 }
+
 
 if (!exists("assessment_data_old")) {
   assessment_data_old <- open_dataset(
@@ -79,7 +81,7 @@ if (!exists("assessment_data_old")) {
       meta_card_num,
       meta_year,
       meta_class,
-      any_of(model_predictor_all_name)
+      all_of(model_predictor_all_name)
     ) %>%
     collect()
 }
@@ -109,7 +111,7 @@ if (!exists("continuous_shaps")) {
   continuous_shaps <- paste0(continuous_preds, "_shap")
 }
 
-# Assessment set chars
+# Get assessment set chars for new and old data
 if (!exists("assessment_data_new")) {
   assessment_data_new <- read_parquet(paths$input$assessment$local) %>%
     select(
@@ -122,7 +124,23 @@ if (!exists("assessment_data_new")) {
     collect()
 }
 
-# SHAPs
+assessment_data_old <- open_dataset(
+  paste0(
+    glue("{base_dvc_url}/files/md5/"),
+    substr(dvc_md5_assessment_data_old, 1, 2), "/",
+    substr(dvc_md5_assessment_data_old, 3, 32)
+  )
+) %>%
+  select(
+    meta_pin,
+    meta_card_num,
+    meta_year,
+    meta_class,
+    all_of(model_predictor_all_name)
+  ) %>%
+  collect()
+
+# Get SHAPs for new and old data
 if (
   !exists("shaps_new") &&
     file.exists(paths$output$shap$local) &&
@@ -146,9 +164,54 @@ if (
   shap_exists <- FALSE
 }
 
+if (!exists("shaps_old")) {
+  shap_old_df <- open_dataset(
+    paste0(
+      glue("{base_model_results_url}/shap/"),
+      glue("year={assessment_year_old}/"),
+      glue("run_id={metadata_old$run_id}")
+    )
+  ) %>%
+    collect()
+  shap_old_exists <- nrow(shap_old_df) > 0
+  if (shap_old_exists) {
+    shaps_old <- shap_old_df %>%
+      left_join(
+        assessment_data_old,
+        by = c("meta_pin", "meta_card_num"),
+        suffix = c("_shap", "")
+      ) %>%
+      select(-meta_year_shap)
+  }
+} else {
+  shap_old_exists <- FALSE
+}
+
+
+# Get training data for new and old data
 # Training data
-if (!exists("new_training_data")) {
+if (!exists("training_data_new")) {
   training_data_new <- read_parquet(paths$input$training$local) %>%
+    select(
+      meta_pin,
+      meta_card_num,
+      meta_year,
+      meta_sale_price,
+      meta_sale_date,
+      meta_class,
+      all_of(model_predictor_all_name)
+    ) %>%
+    collect()
+}
+
+if (!exists("training_data_old")) {
+  training_data_old <- open_dataset(
+    paste0(
+      glue("{base_dvc_url}/files/md5/"),
+      substr(metadata_old$dvc_md5_training_data, 1, 2), "/",
+      substr(metadata_old$dvc_md5_training_data, 3, 32)
+    )
+  ) %>%
     select(
       meta_pin,
       meta_card_num,
