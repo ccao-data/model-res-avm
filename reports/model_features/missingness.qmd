@@ -23,7 +23,7 @@ missingness_cols <- model_predictor_all_name
 ```{r missing_by_class_assess_transform}
 #| cache: true
 
-baseline_missing_assess_class <- baseline_assessment_data %>%
+missing_assess_class <- assessment_data_new %>%
   select(all_of(c("meta_class", missingness_cols))) %>%
   group_by(meta_class) %>%
   summarize(across(everything(), ~ mean(is.na(.)),
@@ -33,26 +33,7 @@ baseline_missing_assess_class <- baseline_assessment_data %>%
     cols = starts_with("pct_na_"),
     names_to = "predictor",
     values_to = "pct_na"
-  ) %>%
-  mutate(dataset = "baseline")
-
-comp_missing_assess_class <- comp_assessment_data %>%
-  select(all_of(c("meta_class", missingness_cols))) %>%
-  group_by(meta_class) %>%
-  summarize(across(everything(), ~ mean(is.na(.)),
-    .names = "pct_na_{.col}"
-  )) %>%
-  pivot_longer(
-    cols = starts_with("pct_na_"),
-    names_to = "predictor",
-    values_to = "pct_na"
-  ) %>%
-  mutate(dataset = "comp")
-
-missing_assess_class <- bind_rows(
-  baseline_missing_assess_class,
-  comp_missing_assess_class
-)
+  )
 ```
 
 ```{r missing_by_class_assess_plot}
@@ -62,13 +43,13 @@ missing_assess_class <- bind_rows(
 
 missing_assess_class %>%
   ggplot(aes(meta_class, pct_na)) +
-  geom_col(aes(fill = dataset), alpha = 0.5, position = "identity") +
+  geom_col(fill = "steelblue") +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_y_continuous(
     limits = c(0, 1),
     labels = scales::label_percent(accuracy = 0.01)
   ) +
-  labs(x = "Class", y = "% Missing", fill = NULL) +
+  labs(x = "Class", y = "% Missing") +
   theme_minimal() +
   theme(
     strip.text = element_text(size = strip_text_size),
@@ -83,7 +64,7 @@ missing_assess_class %>%
 ```{r missing_by_class_train_transform}
 #| cache: true
 
-baseline_missing_train_class <- baseline_training_data %>%
+missing_train_class <- training_data_new %>%
   select(all_of(c("meta_class", missingness_cols))) %>%
   group_by(meta_class) %>%
   summarize(across(everything(), ~ mean(is.na(.)),
@@ -93,26 +74,7 @@ baseline_missing_train_class <- baseline_training_data %>%
     cols = starts_with("pct_na_"),
     names_to = "predictor",
     values_to = "pct_na"
-  ) %>%
-  mutate(dataset = "baseline")
-
-comp_missing_train_class <- comp_training_data %>%
-  select(all_of(c("meta_class", missingness_cols))) %>%
-  group_by(meta_class) %>%
-  summarize(across(everything(), ~ mean(is.na(.)),
-    .names = "pct_na_{.col}"
-  )) %>%
-  pivot_longer(
-    cols = starts_with("pct_na_"),
-    names_to = "predictor",
-    values_to = "pct_na"
-  ) %>%
-  mutate(dataset = "comp")
-
-missing_train_class <- bind_rows(
-  baseline_missing_train_class,
-  comp_missing_train_class
-)
+  )
 ```
 
 ```{r missing_by_class_train_plot}
@@ -122,13 +84,13 @@ missing_train_class <- bind_rows(
 
 missing_train_class %>%
   ggplot(aes(meta_class, pct_na)) +
-  geom_col(aes(fill = dataset), alpha = 0.5, position = "identity") +
+  geom_col(fill = "steelblue") +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_y_continuous(
     limits = c(0, 1),
     labels = scales::label_percent(accuracy = 0.01)
   ) +
-  labs(x = "Class", y = "% Missing", fill = NULL) +
+  labs(x = "Class", y = "% Missing") +
   theme_minimal() +
   theme(
     strip.text = element_text(size = strip_text_size),
@@ -143,60 +105,21 @@ missing_train_class %>%
 ```{r missing_by_time_transform}
 #| cache: true
 
-baseline_missing_time <- bind_rows(
-  baseline_assessment_data %>%
-    select(any_of(c("time_sale_year", missingness_cols))),
-  baseline_training_data %>%
-    select(any_of(c("time_sale_year", missingness_cols)))
-) %>%
-  group_by(time_sale_year) %>%
-  summarize(
-    across(
-      all_of(setdiff(missingness_cols, "time_sale_year")),
-      ~ mean(is.na(.)),
-      .names = "pct_na_{.col}"
-    ),
-    .groups = "drop"
+missing_time <- assessment_data_new %>%
+  select(all_of(missingness_cols)) %>%
+  bind_rows(
+    training_data_new %>%
+      select(all_of(missingness_cols))
   ) %>%
+  group_by(time_sale_year) %>%
+  summarize(across(everything(), ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
   pivot_longer(
     cols = starts_with("pct_na_"),
     names_to = "predictor",
     values_to = "pct_na"
-  ) %>%
-  mutate(
-    predictor = sub("^pct_na_", "", predictor),
-    dataset = "baseline"
   )
-
-comp_missing_time <- bind_rows(
-  comp_assessment_data %>%
-    select(any_of(c("time_sale_year", missingness_cols))),
-  comp_training_data %>%
-    select(any_of(c("time_sale_year", missingness_cols)))
-) %>%
-  group_by(time_sale_year) %>%
-  summarize(
-    across(
-      all_of(setdiff(missingness_cols, "time_sale_year")),
-      ~ mean(is.na(.)),
-      .names = "pct_na_{.col}"
-    ),
-    .groups = "drop"
-  ) %>%
-  pivot_longer(
-    cols = starts_with("pct_na_"),
-    names_to = "predictor",
-    values_to = "pct_na"
-  ) %>%
-  mutate(
-    predictor = sub("^pct_na_", "", predictor),
-    dataset = "comp"
-  )
-
-missing_time <- bind_rows(
-  baseline_missing_time,
-  comp_missing_time
-)
 ```
 
 ```{r missing_by_time_assess_plot}
@@ -206,14 +129,14 @@ missing_time <- bind_rows(
 
 missing_time %>%
   ggplot(aes(time_sale_year, pct_na)) +
-  geom_col(aes(fill = dataset), alpha = 0.5, position = "identity") +
+  geom_col(fill = "steelblue") +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_x_continuous(breaks = function(x) unique(missing_time$time_sale_year)) +
   scale_y_continuous(
     limits = c(0, 1),
     labels = scales::label_percent(accuracy = 0.01)
   ) +
-  labs(x = "Year", y = "% Missing", fill = NULL) +
+  labs(x = "Year", y = "% Missing") +
   theme_minimal() +
   theme(
     strip.text = element_text(size = strip_text_size),
@@ -226,11 +149,7 @@ missing_time %>%
 ```{r missing_by_time_cleanup}
 #| output: false
 
-rm(
-  baseline_missing_assess_class, comp_missing_assess_class,
-  missing_assess_class, baseline_missing_train_class, comp_missing_train_class,
-  missing_train_class, baseline_missing_time, comp_missing_time, missing_time
-)
+rm(missing_assess_class, missing_train_class, missing_time)
 gc()
 ```
 
