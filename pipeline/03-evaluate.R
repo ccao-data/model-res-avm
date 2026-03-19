@@ -419,9 +419,9 @@ pwalk(
 )
 
 
-#4.2 Training Set-----------------------------------
+# 4.2 Training Set-----------------------------------
 #  Same as test set, but using training data to enable train vs. test
-   # performance comparison and overfitting detection
+# performance comparison and overfitting detection
 message("Calculating training aggregate performance statistics")
 pwalk(
   list(
