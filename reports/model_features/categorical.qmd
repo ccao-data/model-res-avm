@@ -25,19 +25,31 @@ cat_chars_assess_long_new <- assessment_data_new %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+cat_chars_assess_long_old <- assessment_data_old %>%
+  select(all_of(categorical_preds)) %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_assess_cat_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(cat_chars_assess_long_new)
 
-plot_small_multiple_histograms(cat_chars_assess_long_new, stat = "count")
+plot_small_multiple_histograms(cat_chars_assess_long_new,
+  cat_chars_assess_long_old,
+  stat = "count"
+)
 ```
 
 ```{r feature_dist_assess_cat_cleanup}
 #| output: false
 
-rm(cat_chars_assess_long_new)
+rm(cat_chars_assess_long_new, cat_chars_assess_long_old)
 gc()
 ```
 
@@ -52,19 +64,31 @@ cat_chars_train_long_new <- training_data_new %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+cat_chars_train_long_old <- training_data_old %>%
+  select(all_of(categorical_preds)) %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_train_cat_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(cat_chars_train_long_new)
 
-plot_small_multiple_histograms(cat_chars_train_long_new, stat = "count")
+plot_small_multiple_histograms(cat_chars_train_long_old,
+  cat_chars_train_long_new,
+  stat = "count"
+)
 ```
 
 ```{r feature_dist_train_cat_cleanup}
 #| output: false
 
-rm(cat_chars_train_long_new)
+rm(cat_chars_train_long_new, cat_chars_train_long_old)
 gc()
 ```
 

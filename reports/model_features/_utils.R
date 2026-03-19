@@ -76,13 +76,18 @@ ncol_violin <- 3
 ncol_line <- 6
 
 # Function to plot a set of small multiple histograms of char values
-plot_small_multiple_histograms <- function(comp, baseline, stat = "bin") {
+plot_small_multiple_histograms <- function(new, old = NULL, stat = "bin") {
   # Add grouping labels
-  comp <- comp %>% mutate(group = "comp")
-  baseline <- baseline %>% mutate(group = "baseline")
+  new <- new %>% mutate(group = "new")
 
-  # Combine
-  df_all <- bind_rows(comp, baseline)
+  if (!is.null(old)) {
+    old <- old %>% mutate(group = "old")
+    df_all <- bind_rows(old, new)
+    alpha_val <- 0.5
+  } else {
+    df_all <- new
+    alpha_val <- 1
+  }
 
   # Plot
   df_all %>%
@@ -90,7 +95,7 @@ plot_small_multiple_histograms <- function(comp, baseline, stat = "bin") {
     geom_histogram(
       stat = stat,
       position = "identity",
-      alpha = 0.5
+      alpha = alpha_val
     ) +
     facet_wrap(
       ~predictor,
@@ -108,16 +113,22 @@ plot_small_multiple_histograms <- function(comp, baseline, stat = "bin") {
 
 # Base function for plotting small multiple violins and lines
 plot_small_multiple_base <- function(
-    comp_df,
-    baseline_df,
+    new_df,
+    old_df = NULL,
     y,
     ncol,
     y_axis_label = "FMV",
     range = NULL) {
-  comp_df$dataset <- "comp"
-  baseline_df$dataset <- "baseline"
+  new_df$dataset <- "new"
 
-  df <- dplyr::bind_rows(comp_df, baseline_df)
+  if (!is.null(old_df)) {
+    old_df$dataset <- "old"
+    df <- dplyr::bind_rows(old_df, new_df)
+    alpha_val <- 0.3
+  } else {
+    df <- new_df
+    alpha_val <- 1
+  }
 
   ggplot(df, aes(x = value, y = .data[[y]], fill = dataset)) +
     facet_wrap(
@@ -139,33 +150,33 @@ plot_small_multiple_base <- function(
     )
 }
 
-
-plot_small_multiple_violins <- function(comp_df,
-                                        baseline_df,
+plot_small_multiple_violins <- function(new_df,
+                                        old_df = NULL,
                                         y,
                                         y_axis_label = "FMV",
                                         range = NULL) {
+  alpha_val <- if (is.null(old_df)) 1 else 0.3
+
   plot_small_multiple_base(
-    comp_df,
-    baseline_df,
+    new_df,
+    old_df,
     y,
     ncol_violin,
     y_axis_label,
     range
   ) +
-    geom_violin(alpha = 0.3, position = "identity") +
+    geom_violin(alpha = alpha_val, position = "identity") +
     guides(color = "none")
 }
 
-
-plot_small_multiple_lines <- function(comp_df,
-                                      baseline_df,
+plot_small_multiple_lines <- function(new_df,
+                                      old_df = NULL,
                                       y,
                                       y_axis_label = "FMV",
                                       range = NULL) {
   plot_small_multiple_base(
-    comp_df,
-    baseline_df,
+    new_df,
+    old_df,
     y,
     col_line,
     y_axis_label,
@@ -174,7 +185,6 @@ plot_small_multiple_lines <- function(comp_df,
     geom_smooth(linewidth = 0.5, se = TRUE, aes(color = dataset), fill = NA) +
     guides(fill = "none")
 }
-
 
 # Function to compute figure height for a code chunk that is using a dataframe
 # to produce small multiples based on a `predictor` X axis. This is important

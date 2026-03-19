@@ -123,22 +123,23 @@ if (!exists("assessment_data_new")) {
     ) %>%
     collect()
 }
-
-assessment_data_old <- open_dataset(
-  paste0(
-    glue("{base_dvc_url}/files/md5/"),
-    substr(dvc_md5_assessment_data_old, 1, 2), "/",
-    substr(dvc_md5_assessment_data_old, 3, 32)
-  )
-) %>%
-  select(
-    meta_pin,
-    meta_card_num,
-    meta_year,
-    meta_class,
-    all_of(model_predictor_all_name)
+if (!exists("assessment_data_old")) {
+  assessment_data_old <- open_dataset(
+    paste0(
+      glue("{base_dvc_url}/files/md5/"),
+      substr(dvc_md5_assessment_data_old, 1, 2), "/",
+      substr(dvc_md5_assessment_data_old, 3, 32)
+    )
   ) %>%
-  collect()
+    select(
+      meta_pin,
+      meta_card_num,
+      meta_year,
+      meta_class,
+      all_of(model_predictor_all_name)
+    ) %>%
+    collect()
+}
 
 # Get SHAPs for new and old data
 if (
@@ -164,31 +165,7 @@ if (
   shap_exists <- FALSE
 }
 
-if (!exists("shaps_old")) {
-  shap_old_df <- open_dataset(
-    paste0(
-      glue("{base_model_results_url}/shap/"),
-      glue("year={assessment_year_old}/"),
-      glue("run_id={metadata_old$run_id}")
-    )
-  ) %>%
-    collect()
-  shap_old_exists <- nrow(shap_old_df) > 0
-  if (shap_old_exists) {
-    shaps_old <- shap_old_df %>%
-      left_join(
-        assessment_data_old,
-        by = c("meta_pin", "meta_card_num"),
-        suffix = c("_shap", "")
-      ) %>%
-      select(-meta_year_shap)
-  }
-} else {
-  shap_old_exists <- FALSE
-}
-
-
-# Get training data for new and old data
+# Get new and old training data
 # Training data
 if (!exists("training_data_new")) {
   training_data_new <- read_parquet(paths$input$training$local) %>%
