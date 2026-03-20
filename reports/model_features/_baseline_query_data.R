@@ -56,7 +56,6 @@ if (!exists("metadata_old")) {
     conn = AWS_ATHENA_CONN_NOCTUA,
     statement = glue::glue("
     select
-      final.run_id,
       model.dvc_md5_assessment_data,
       model.dvc_md5_training_data,
       model.model_predictor_all_name,
@@ -88,7 +87,7 @@ if (!exists("assessment_data_new")) {
       meta_card_num,
       meta_year,
       meta_class,
-      all_of(model_predictor_all_name)
+      any_of(model_predictor_all_name)
     ) %>%
     collect()
 }
