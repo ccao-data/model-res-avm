@@ -178,7 +178,7 @@ plot_small_multiple_lines <- function(new_df,
     new_df,
     old_df,
     y,
-    col_line,
+    ncol_line,
     y_axis_label,
     range
   ) +

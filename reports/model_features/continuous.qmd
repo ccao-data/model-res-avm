@@ -133,6 +133,7 @@ if (!shap_exists) {
 
 plot_small_multiple_lines(
   cont_shap_long_new,
+  NULL,
   "shap_value",
   y_axis_label = "SHAP Value"
 )

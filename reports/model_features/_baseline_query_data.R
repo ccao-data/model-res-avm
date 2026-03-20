@@ -10,6 +10,8 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
 base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
+# Metadata and predictor naming ------------------------------------------------
+
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
 
@@ -24,6 +26,20 @@ if (!exists("model_predictor_categorical_name")) {
   model_predictor_categorical_name <-
     model_params$model$predictor$categorical %>%
     unlist()
+}
+
+
+# Split categorical and continuous predictors since we need to plot them
+# differently (e.g. count vs. bin histograms, respectively)
+if (!exists("categorical_preds")) {
+  categorical_preds <- model_predictor_categorical_name
+}
+
+if (!exists("continuous_preds")) {
+  continuous_preds <- setdiff(
+    model_predictor_all_name,
+    model_predictor_categorical_name
+  )
 }
 
 # Model metadata
@@ -57,58 +73,11 @@ if (!exists("metadata_old")) {
   )
 }
 
+# Assessment Data --------------------------------------------------------------
+
 # Get assessment data for both old and new datasets
-
-if (!exists("assessment_year_old")) {
-  assessment_year_old <- metadata_old$assessment_year
-}
-
 if (!exists("dvc_md5_assessment_data_old")) {
   dvc_md5_assessment_data_old <- metadata_old$dvc_md5_assessment_data
-}
-
-
-if (!exists("assessment_data_old")) {
-  assessment_data_old <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_assessment_data_old, 1, 2), "/",
-      substr(dvc_md5_assessment_data_old, 3, 32)
-    )
-  ) %>%
-    select(
-      meta_pin,
-      meta_card_num,
-      meta_year,
-      meta_class,
-      any_of(model_predictor_all_name)
-    ) %>%
-    collect()
-}
-
-if (!exists("year_new")) {
-  year_new <- model_params$assessment$year
-}
-
-# Split categorical and continuous predictors since we need to plot them
-# differently (e.g. count vs. bin histograms, respectively)
-if (!exists("categorical_preds")) {
-  categorical_preds <- model_predictor_categorical_name
-}
-
-if (!exists("continuous_preds")) {
-  continuous_preds <- setdiff(
-    model_predictor_all_name,
-    model_predictor_categorical_name
-  )
-}
-
-if (!exists("categorical_shaps")) {
-  categorical_shaps <- paste0(categorical_preds, "_shap")
-}
-
-if (!exists("continuous_shaps")) {
-  continuous_shaps <- paste0(continuous_preds, "_shap")
 }
 
 # Get assessment set chars for new and old data
@@ -141,7 +110,9 @@ if (!exists("assessment_data_old")) {
     collect()
 }
 
-# Get SHAPs for new and old data
+# SHAPs ------------------------------------------------------------------------
+
+# Get SHAPs for new data (we don't use old)
 if (
   !exists("shaps_new") &&
     file.exists(paths$output$shap$local) &&
@@ -165,10 +136,26 @@ if (
   shap_exists <- FALSE
 }
 
+# We use a different naming nomenclature for our joins in later joins
+if (!exists("categorical_shaps")) {
+  categorical_shaps <- paste0(categorical_preds, "_shap")
+}
+
+if (!exists("continuous_shaps")) {
+  continuous_shaps <- paste0(continuous_preds, "_shap")
+}
+
+# Training Data ----------------------------------------------------------------
+
 # Get new and old training data
-# Training data
-if (!exists("training_data_new")) {
-  training_data_new <- read_parquet(paths$input$training$local) %>%
+if (!exists("training_data_old")) {
+  training_data_old <- open_dataset(
+    paste0(
+      glue("{base_dvc_url}/files/md5/"),
+      substr(metadata_old$dvc_md5_training_data, 1, 2), "/",
+      substr(metadata_old$dvc_md5_training_data, 3, 32)
+    )
+  ) %>%
     select(
       meta_pin,
       meta_card_num,
@@ -181,14 +168,8 @@ if (!exists("training_data_new")) {
     collect()
 }
 
-if (!exists("training_data_old")) {
-  training_data_old <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(metadata_old$dvc_md5_training_data, 1, 2), "/",
-      substr(metadata_old$dvc_md5_training_data, 3, 32)
-    )
-  ) %>%
+if (!exists("training_data_new")) {
+  training_data_new <- read_parquet(paths$input$training$local) %>%
     select(
       meta_pin,
       meta_card_num,
