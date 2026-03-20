@@ -259,6 +259,10 @@ make_card_comp_chart <- function(col_name) {
   order <- c("meta_pin", "meta_card_num", nm_old, nm_new, "n")
   present <- intersect(order, names(pair_counts))
   data.table::setcolorder(pair_counts, present)
+  # Cap at 1,000 rows for readability with sample
+  if (nrow(pair_counts) > 1000L) {
+    pair_counts <- pair_counts[sample(.N, 1000L)]
+  }
   pair_counts[]
 }
 
