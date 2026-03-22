@@ -53,7 +53,7 @@ gc()
 ### Training set
 
 ```{r feature_dist_train_cont_transform}
-cont_chars_assess_long_old <- training_data_old %>%
+cont_chars_train_long_old <- training_data_old %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
