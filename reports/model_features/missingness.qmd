@@ -162,7 +162,7 @@ missing_time_old <- bind_rows(
   training_data_old %>% select(all_of(c("time_sale_year", missingness_cols)))
 ) %>%
   group_by(time_sale_year) %>%
-  summarize(across(everything() ~ mean(is.na(.)), .names = "pct_na_{.col}")) %>%
+  summarize(across(everything(), ~ mean(is.na(.)), .names = "pct_na_{.col}")) %>%
   pivot_longer(
     cols = starts_with("pct_na_"),
     names_to = "predictor", values_to = "pct_na"
