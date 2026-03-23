@@ -15,8 +15,6 @@ base_model_results_url <- "s3://ccao-model-results-us-east-1"
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
 
-paths <- model_file_dict(model_params$run_id, model_params$year)
-
 if (metadata$run_id != params$run_id) {
   stop(
     "Local run outputs are NOT equal to the requested run_id. You ",
@@ -25,6 +23,8 @@ if (metadata$run_id != params$run_id) {
 }
 
 model_params <- read_yaml(here("params.yaml"))
+
+paths <- model_file_dict(model_params$run_id, model_params$year)
 
 if (!exists("model_predictor_all_name")) {
   model_predictor_all_name <- model_params$model$predictor$all %>%
