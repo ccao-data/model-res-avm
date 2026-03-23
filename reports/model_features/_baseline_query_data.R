@@ -121,27 +121,27 @@ if (!exists("assessment_data_old")) {
 # SHAPs ------------------------------------------------------------------------
 
 # Get SHAPs for new data (we don't use old SHAPs)
-if (
-  !exists("shaps_new") &&
+if (!exists("shaps_new")) {
+  if (
     file.exists(paths$output$shap$local) &&
-    metadata$shap_enable
-) {
-  shap_df <- read_parquet(paths$output$shap$local)
-  shap_exists <- nrow(shap_df) > 0
+      metadata$shap_enable
+  ) {
+    shap_df <- read_parquet(paths$output$shap$local)
+    shap_exists <- nrow(shap_df) > 0
 
-  if (shap_exists) {
-    shaps_new <- shap_df %>%
-      collect() %>%
-      left_join(
-        assessment_data_new,
-        by = c("meta_pin", "meta_card_num"),
-        suffix = c("_shap", "")
-      ) %>%
-      # This column isn't a real SHAP, it's just an artifact of the join
-      select(-meta_year_shap)
+    if (shap_exists) {
+      shaps_new <- shap_df %>%
+        collect() %>%
+        left_join(
+          assessment_data_new,
+          by = c("meta_pin", "meta_card_num"),
+          suffix = c("_shap", "")
+        ) %>%
+        select(-meta_year_shap)
+    }
+  } else {
+    shap_exists <- FALSE
   }
-} else {
-  shap_exists <- FALSE
 }
 
 # We use a different naming nomenclature for our columns in later joins
