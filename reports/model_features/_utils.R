@@ -63,6 +63,8 @@ cpp11::cpp_source(code = "
 
 ignore_sigpipes()
 
+paths <- model_file_dict()
+
 # Text sizes for small multiples
 axis_title_size <- 6
 strip_text_size <- 4
