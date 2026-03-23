@@ -60,7 +60,7 @@ missing_assess_class <- bind_rows(
 
 missing_assess_class %>%
   ggplot(aes(meta_class, pct_na, fill = dataset)) +
-  geom_col(position = "dodge", alpha = 0.8) +
+  geom_col(position = "identity", alpha = 0.5) +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_y_continuous(
     limits = c(0, 1),
@@ -121,7 +121,7 @@ missing_train_class <- bind_rows(
 
 missing_train_class %>%
   ggplot(aes(meta_class, pct_na, fill = dataset)) +
-  geom_col(position = "dodge", alpha = 0.8) +
+  geom_col(position = "identity", alpha = 0.5) +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_y_continuous(
     limits = c(0, 1),
@@ -162,7 +162,10 @@ missing_time_old <- bind_rows(
   training_data_old %>% select(all_of(c("time_sale_year", missingness_cols)))
 ) %>%
   group_by(time_sale_year) %>%
-  summarize(across(everything(), ~ mean(is.na(.)), .names = "pct_na_{.col}")) %>%
+  summarize(across(everything(),
+    ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
   pivot_longer(
     cols = starts_with("pct_na_"),
     names_to = "predictor", values_to = "pct_na"
@@ -179,7 +182,7 @@ missing_time <- bind_rows(missing_time_old, missing_time_new)
 
 missing_time %>%
   ggplot(aes(time_sale_year, pct_na, fill = dataset)) +
-  geom_col(position = "dodge", alpha = 0.8) +
+  geom_col(position = "identity", alpha = 0.5) +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_x_continuous(breaks = function(x) unique(missing_time$time_sale_year)) +
   scale_y_continuous(
