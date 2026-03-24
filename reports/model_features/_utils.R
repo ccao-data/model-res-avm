@@ -78,10 +78,9 @@ ncol_line <- 6
 # Function to plot a set of small multiple histograms of char values
 plot_small_multiple_histograms <- function(new, old = NULL, stat = "bin") {
   # Add grouping labels
-  new <- new %>% mutate(group = "new")
-
+  new <- new %>% mutate(data = "new")
   if (!is.null(old)) {
-    old <- old %>% mutate(group = "old")
+    old <- old %>% mutate(data = "old")
     df_all <- bind_rows(old, new)
     alpha_val <- 0.5
   } else {
@@ -91,7 +90,7 @@ plot_small_multiple_histograms <- function(new, old = NULL, stat = "bin") {
 
   # Plot
   df_all %>%
-    ggplot(aes(x = value, fill = group)) +
+    ggplot(aes(x = value, fill = data)) +
     geom_histogram(
       stat = stat,
       position = "identity",
@@ -119,18 +118,16 @@ plot_small_multiple_base <- function(
     ncol,
     y_axis_label = "FMV",
     range = NULL) {
-  new_df$dataset <- "new"
-
+  new_df$data <- "new"
   if (!is.null(old_df)) {
-    old_df$dataset <- "old"
+    old_df$data <- "old"
     df <- dplyr::bind_rows(old_df, new_df)
     alpha_val <- 0.3
   } else {
     df <- new_df
     alpha_val <- 1
   }
-
-  ggplot(df, aes(x = value, y = .data[[y]], fill = dataset)) +
+  ggplot(df, aes(x = value, y = .data[[y]], fill = data)) +
     facet_wrap(
       ~predictor,
       scales = "free",
@@ -182,7 +179,7 @@ plot_small_multiple_lines <- function(new_df,
     y_axis_label,
     range
   ) +
-    geom_smooth(linewidth = 0.5, se = TRUE, aes(color = dataset), fill = NA) +
+    geom_smooth(linewidth = 0.5, se = TRUE, aes(color = data), fill = NA) +
     guides(fill = "none")
 }
 
