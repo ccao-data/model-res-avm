@@ -5,8 +5,8 @@ stages:
     deps:
     - path: pipeline/00-ingest.R
       hash: md5
-      md5: 2910a605fa1f9166a85c5450ceb39b5d
-      size: 26686
+      md5: 2ea6c434d10ceb6a643d46ce667f16ee
+      size: 24591
     params:
       params.yaml:
         assessment:
@@ -40,32 +40,28 @@ stages:
     outs:
     - path: input/assessment_data.parquet
       hash: md5
-      md5: f9107f69c82d77064298d426941337b3
-      size: 418346362
+      md5: 5b0a120f7f3d95445745d5e3297a4075
+      size: 418209570
     - path: input/char_data.parquet
       hash: md5
-      md5: 58f693436aedcf379af34d66e083af15
-      size: 842602515
+      md5: 37f47d72c4766d4d3cac5030807298c1
+      size: 842291794
     - path: input/complex_id_data.parquet
       hash: md5
-      md5: 4aa8be353bb736941e6f8895aacc2768
-      size: 705380
+      md5: 76e9f52c86182ee15432c2214e9f3491
+      size: 704133
     - path: input/hie_data.parquet
       hash: md5
-      md5: 66bb4d0f514b619de8e50f3c8aa15773
-      size: 1926130
+      md5: f1123b31fc61bc14945da0e97b68f898
+      size: 1919710
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
       md5: cb489a55f638d90898a06976b2a9bda9
       size: 5709
     - path: input/training_data.parquet
       hash: md5
-      md5: a37715a5a6cca2d328d4e9b1fec411af
-      size: 198758377
-    - path: input/training_data_subset.parquet
-      hash: md5
-      md5: 0b0af6062c6e7c73fe4f1261678f0f32
-      size: 55562611
+      md5: 5e495ff4718475327ee56a9be51658bc
+      size: 198779158
   train:
     cmd: Rscript pipeline/01-train.R
     deps:
