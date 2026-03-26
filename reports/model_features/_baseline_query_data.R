@@ -113,7 +113,7 @@ if (!exists("assessment_data_old")) {
       meta_card_num,
       meta_year,
       meta_class,
-      all_of(model_predictor_all_name)
+      any_of(model_predictor_all_name)
     ) %>%
     collect()
 }
