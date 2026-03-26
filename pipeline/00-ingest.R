@@ -256,6 +256,9 @@ hie_data_training_sparse <- hie_data %>%
 # Merge the HIE data with the training data, updating/adding to training data
 # characteristics
 training_data_w_hie <- training_data %>%
+  # We need to drop the HIE columns from the intial pull since they are produced
+  # by the the current iasWorld HIE scheme and will be inaccurate for the
+  # training data. They can be used for the assessment data.
   select(-starts_with("hie_")) %>%
   mutate(across(
     all_of(ccao::chars_cols$add$target),
