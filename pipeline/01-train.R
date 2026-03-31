@@ -382,13 +382,10 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Finalizing and saving trained model")
 
-# Get predictions on the test set using the training data model. These
-# predictions are used to evaluate model performance on the unseen test set.
-# Keep only the variables necessary for evaluation
-
-# Further, predict on training_set, to use for evaluating overfitting
-
-
+# Get predictions on both the test and training set using the training data
+# model. These predictions are used to evaluate model performance on the unseen
+# test set and to evaluate overfitting. Keep only the variables necessary for
+# evaluation
 walk2(
   list(test, train),
   list(paths$output$test_card$local, paths$output$train_card$local),
