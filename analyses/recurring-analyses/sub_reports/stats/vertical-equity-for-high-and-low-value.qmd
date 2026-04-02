@@ -1,0 +1,245 @@
+---
+title: "Vertical Equity for High and Low Values"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc_float: true
+    fig-align: center
+    fontsize: 12pt
+---
+
+This report looks at the top and bottom 5 percent of properties (grouped by township) and provide ratio stats as well as a map of their ratios.
+
+```{r}
+library(DBI)
+library(dplyr)
+library(ccao)
+library(glue)
+library(leaflet)
+library(noctua)
+library(plotly)
+```
+
+
+```{r}
+noctua_options(cache_size = 10, unload = FALSE)
+
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
+```
+
+```{r}
+vertical_equity_data <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
+  SELECT loc_longitude,
+         loc_latitude,
+         run_id,
+         sale_ratio_study_price,
+         pred_pin_final_fmv_round,
+         meta_township_code
+  FROM model.assessment_pin
+  WHERE run_id IN ('{params$run_id$run_id}', '{params$run_id$run_id_old}')
+  "))
+
+vertical_equity_data %>%
+  filter(!is.na(sale_ratio_study_price), !is.na(pred_pin_final_fmv_round)) %>%
+  group_by(run_id, meta_township_code) %>%
+  mutate(
+    price_group = case_when(
+      sale_ratio_study_price <= quantile(sale_ratio_study_price, 0.05,
+        na.rm = TRUE
+      ) ~ "Bottom 5%",
+      sale_ratio_study_price >= quantile(sale_ratio_study_price, 0.95,
+        na.rm = TRUE
+      ) ~ "Top 5%",
+      TRUE ~ "Middle"
+    )
+  ) %>%
+  filter(price_group != "Middle") %>%
+  group_by(run_id, price_group) %>%
+  reframe(
+    cod = ccao::ccao_cod(pred_pin_final_fmv_round / sale_ratio_study_price)$COD,
+    prd = ccao::ccao_prd(pred_pin_final_fmv_round, sale_ratio_study_price)$PRD,
+    prb = ccao::ccao_prb(pred_pin_final_fmv_round, sale_ratio_study_price)$PRB,
+    n = n()
+  ) %>%
+  DT::datatable(
+    options = list(
+      pageLength = 25,
+      scrollX = TRUE,
+      order = list(list(0, "asc"), list(1, "asc"))
+    ),
+    rownames = FALSE,
+    colnames = c(
+      "Run ID" = "run_id",
+      "Group" = "price_group",
+      "COD" = "cod",
+      "PRD" = "prd",
+      "PRB" = "prb",
+      "N" = "n"
+    )
+  ) %>%
+  DT::formatRound(columns = c("COD", "PRD", "PRB"), digits = 3)
+```
+
+```{r echo=FALSE}
+# Prepare map data
+map_data <- vertical_equity_data %>%
+  filter(
+    !is.na(sale_ratio_study_price),
+    !is.na(loc_latitude),
+    !is.na(loc_longitude)
+  ) %>%
+  group_by(run_id) %>%
+  mutate(
+    price_group = case_when(
+      sale_ratio_study_price <= quantile(sale_ratio_study_price, 0.05,
+        na.rm = TRUE
+      ) ~ "Bottom 5%",
+      sale_ratio_study_price >= quantile(sale_ratio_study_price, 0.95,
+        na.rm = TRUE
+      ) ~ "Top 5%",
+      TRUE ~ "Middle"
+    )
+  ) %>%
+  filter(price_group != "Middle") %>%
+  ungroup() %>%
+  mutate(
+    ratio = pred_pin_final_fmv_round / sale_ratio_study_price,
+    ratio_clamped = pmin(pmax(ratio, 0.8), 1.2),
+    marker_color = scales::col_numeric(
+      palette = c("#2166ac", "#f7f7f7", "#d6604d"),
+      domain = c(0.8, 1.2)
+    )(ratio_clamped)
+  )
+
+run_ids <- sort(unique(map_data$run_id))
+run_old <- run_ids[1]
+run_new <- run_ids[2]
+
+make_map <- function(price_grp) {
+  d_old <- map_data %>% filter(price_group == price_grp, run_id == run_old)
+  d_new <- map_data %>% filter(price_group == price_grp, run_id == run_new)
+
+  plot_ly() %>%
+    add_trace(
+      data = d_old,
+      type = "scattermapbox",
+      lat = ~loc_latitude,
+      lon = ~loc_longitude,
+      mode = "markers",
+      marker = list(
+        size = 8,
+        color = ~marker_color,
+        opacity = 0.8
+      ),
+      text = ~ paste0(
+        "Run: ", run_id, "<br>",
+        "Group: ", price_group, "<br>",
+        "Predicted FMV: $",
+        format(pred_pin_final_fmv_round, big.mark = ","), "<br>",
+        "Sale Price: $",
+        format(sale_ratio_study_price, big.mark = ","), "<br>",
+        "Ratio: ", round(ratio, 3)
+      ),
+      hoverinfo = "text",
+      name = run_old
+    ) %>%
+    add_trace(
+      data = d_new,
+      type = "scattermapbox",
+      lat = ~loc_latitude,
+      lon = ~loc_longitude,
+      mode = "markers",
+      marker = list(
+        size = 8,
+        color = ~marker_color,
+        opacity = 0.8
+      ),
+      text = ~ paste0(
+        "Run: ", run_id, "<br>",
+        "Group: ", price_group, "<br>",
+        "Predicted FMV: $", format(pred_pin_final_fmv_round,
+          big.mark = ","
+        ), "<br>",
+        "Sale Price: $", format(sale_ratio_study_price,
+          big.mark = ","
+        ), "<br>",
+        "Ratio: ", round(ratio, 3)
+      ),
+      hoverinfo = "text",
+      name = run_new
+    ) %>%
+    add_trace(
+      type = "scattermapbox",
+      lat = list(mean(map_data$loc_latitude, na.rm = TRUE)),
+      lon = list(mean(map_data$loc_longitude, na.rm = TRUE)),
+      mode = "markers",
+      marker = list(
+        size = 0,
+        color = list(0.8, 1.2),
+        colorscale = list(
+          c(0, "#2166ac"),
+          c(0.5, "#f7f7f7"),
+          c(1, "#d6604d")
+        ),
+        cmin = 0.8,
+        cmax = 1.2,
+        showscale = TRUE,
+        colorbar = list(title = "Pred / Sale Price")
+      ),
+      hoverinfo = "skip",
+      showlegend = FALSE
+    ) %>%
+    layout(
+      mapbox = list(
+        style = "open-street-map",
+        zoom = 9,
+        center = list(
+          lat = mean(map_data$loc_latitude, na.rm = TRUE),
+          lon = mean(map_data$loc_longitude, na.rm = TRUE)
+        )
+      ),
+      legend = list(
+        title = list(text = "<b>Run ID</b>"),
+        orientation = "h",
+        x = 0,
+        y = -0.05
+      ),
+      title = price_grp,
+      margin = list(t = 40)
+    )
+}
+
+map_bottom <- make_map("Bottom 5%")
+map_top <- make_map("Top 5%")
+```
+
+::: {.panel-tabset}
+
+## Bottom 5%
+```{r echo=FALSE}
+map_bottom
+```
+
+## Top 5%
+```{r echo=FALSE}
+map_top
+```
+
+:::
+
+## Top 5%
+```{r echo=FALSE}
+map_top
+```
+
+:::
+
+## Top 5%
+```{r echo=FALSE}
+map_top
+```
+
+:::

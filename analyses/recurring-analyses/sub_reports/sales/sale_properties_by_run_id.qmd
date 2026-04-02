@@ -1,0 +1,50 @@
+---
+title: "Sale Properties by Run ID"
+format: html
+---
+
+This report shows the distribution of key characteristics (as defined by highest shap values) for different run ids.
+
+```{r}
+library(DBI)
+library(ccao)
+library(dplyr)
+library(ggplot2)
+library(noctua)
+library(tidyr)
+```
+
+```{r}
+noctua_options(cache_size = 10, unload = FALSE)
+
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
+```
+
+```{r}
+top10_cols <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
+  SELECT * FROM model.shap
+  WHERE run_id IN ('{params$run_id$run_id}', '{params$run_id$run_id_old}')
+")) |>
+  select(-pred_card_shap_baseline_fmv, -starts_with("time")) |>
+  summarise(across(where(is.numeric), ~ mean(abs(.)))) |>
+  pivot_longer(everything(), names_to = "column", values_to = "mean_abs") |>
+  slice_max(mean_abs, n = 10) |>
+  pull(column) |>
+  as.list()
+```
+
+```{r}
+sales <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
+  SELECT pin, is_outlier, year, is_multisale
+  FROM default.vw_pin_sale"))
+
+characteristics <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
+  SELECT pin, pin_is_multicard, {paste(top10_cols, collapse = ', ')}
+  FROM default.vw_card_res_char")) %>%
+  filter(pin_is_multicard == FALSE)
+
+sales_with_characteristics <- sales %>%
+  inner_join(characteristics, by = c("pin", "year"))
+```
