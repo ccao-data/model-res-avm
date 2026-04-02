@@ -12,6 +12,9 @@ base_model_results_url <- "s3://ccao-model-results-us-east-1"
 
 # Metadata and predictor naming ------------------------------------------------
 
+# We use an new vs old nomenclature to differentiate data from the current
+# model run (new) to a model run that we want to compare it to (old).
+
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
 
@@ -96,6 +99,7 @@ if (!exists("assessment_data_new")) {
       meta_card_num,
       meta_year,
       meta_class,
+      # We use any of since predictors can change year over year
       any_of(model_predictor_all_name)
     ) %>%
     collect()
@@ -171,7 +175,7 @@ if (!exists("training_data_old")) {
       meta_sale_price,
       meta_sale_date,
       meta_class,
-      all_of(model_predictor_all_name)
+      any_of(model_predictor_all_name)
     ) %>%
     collect()
 }
