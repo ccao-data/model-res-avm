@@ -4,6 +4,7 @@ execute:
   warning: false
 format:
   html:
+    page-layout: full
     embed-resources: true
     toc: true
     toc_float: true
@@ -19,7 +20,7 @@ editor: source
 params <- yaml::read_yaml(here::here("params.yaml"))
 ```
 
-<!-- {{< include sub_reports/sales/sale_properties_by_run_id.qmd >}} -->
+{{< include sub_reports/sales/sale_properties_by_run_id.qmd >}}
 
 {{< include sub_reports/stats/vertical-equity-for-high-and-low-value.qmd >}}
 

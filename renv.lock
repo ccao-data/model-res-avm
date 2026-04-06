@@ -363,11 +363,11 @@
       "Version": "1.3.1",
       "Source": "GitHub",
       "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
       "RemoteSha": "18e12ca5115741924a58b0be6b4055f480f22a2d",
-      "RemoteHost": "api.github.com",
       "Requirements": [
         "R",
         "assessr",
@@ -720,7 +720,7 @@
       "Package": "ggplot2",
       "Version": "4.0.2",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "S7",
@@ -1240,8 +1240,7 @@
     "paws.analytics": {
       "Package": "paws.analytics",
       "Version": "0.10.0",
-      "Source": "Repository",
-      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
+      "Source": "unknown",
       "Requirements": [
         "paws.common"
       ],
@@ -1250,8 +1249,7 @@
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.10.0",
-      "Source": "Repository",
-      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
+      "Source": "unknown",
       "Requirements": [
         "paws.common"
       ],
@@ -1262,8 +1260,11 @@
       "Version": "0.8.6",
       "Source": "Repository",
       "Repository": "CRAN",
+      "RemoteType": "repository",
+      "RemoteUrl": "https://github.com/paws-r/paws",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
+      "RemoteSubdir": "paws.common",
       "Requirements": [
-        "R",
         "Rcpp",
         "base64enc",
         "curl",
@@ -1275,7 +1276,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "a1065af4daa842eb7eb4c720cf569e82"
+      "Hash": "7c199b64208466ecdcb267cfb4727ea0"
     },
     "pillar": {
       "Package": "pillar",
@@ -1508,7 +1509,7 @@
       "Package": "scales",
       "Version": "1.4.0",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "R6",

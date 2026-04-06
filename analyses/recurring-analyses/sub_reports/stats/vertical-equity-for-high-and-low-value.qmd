@@ -1,15 +1,6 @@
----
-title: "Vertical Equity for High and Low Values"
-format:
-  html:
-    embed-resources: true
-    toc: true
-    toc_float: true
-    fig-align: center
-    fontsize: 12pt
----
 
-This report looks at the top and bottom 5 percent of properties (grouped by township) and provide ratio stats as well as a map of their ratios.
+# Vertical Equity for High and Low Values
+This report looks at the top and bottom 5 percent of properties (grouped by township). It provides ratio stats as well as a map the property level predicted / sale ratio.
 
 ```{r}
 library(DBI)
@@ -222,20 +213,6 @@ map_top <- make_map("Top 5%")
 ```{r echo=FALSE}
 map_bottom
 ```
-
-## Top 5%
-```{r echo=FALSE}
-map_top
-```
-
-:::
-
-## Top 5%
-```{r echo=FALSE}
-map_top
-```
-
-:::
 
 ## Top 5%
 ```{r echo=FALSE}

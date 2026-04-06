@@ -1,16 +1,15 @@
----
-title: "Sale Properties by Run ID"
-format: html
----
 
-This report shows the distribution of key characteristics (as defined by highest shap values) for different run ids.
+# Sale Properties by Run ID
+This report shows the distribution of key characteristics for sales in each year (as defined by highest shap values).
 
 ```{r}
 library(DBI)
 library(ccao)
 library(dplyr)
 library(ggplot2)
+library(htmltools)
 library(noctua)
+library(plotly)
 library(tidyr)
 ```
 
@@ -36,15 +35,102 @@ top10_cols <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
 ```
 
 ```{r}
+min_year <- as.integer(substr(params$run_id$run_id_old, 1, 4)) - 10
+max_year <- as.integer(substr(params$run_id$run_id, 1, 4))
+
 sales <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
-  SELECT pin, is_outlier, year, is_multisale
-  FROM default.vw_pin_sale"))
+  SELECT pin, is_outlier, class, year, is_multisale
+  FROM default.vw_pin_sale
+  WHERE year BETWEEN '{min_year}' AND '{max_year}'")) %>%
+  filter(is_multisale == FALSE)
 
 characteristics <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
-  SELECT pin, pin_is_multicard, {paste(top10_cols, collapse = ', ')}
-  FROM default.vw_card_res_char")) %>%
-  filter(pin_is_multicard == FALSE)
+  SELECT meta_pin,
+  ind_pin_is_multicard,
+  {paste(top10_cols, collapse = ', ')}, year
+  FROM model.vw_card_res_input
+  WHERE year BETWEEN '{min_year}' AND '{max_year}'")) %>%
+  filter(ind_pin_is_multicard == FALSE)
+
+categorical_from_metadata <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, glue::glue("
+  SELECT model_predictor_categorical_name
+  FROM model.metadata
+  WHERE run_id = '{params$run_id$run_id}'
+")) %>%
+  pull(model_predictor_categorical_name) %>%
+  gsub("\\[|\\]", "", .) %>%
+  strsplit(", ") %>%
+  unlist() %>%
+  trimws()
+
+char_cols <- unlist(top10_cols)
+categorical_cols <- intersect(char_cols, categorical_from_metadata)
+continuous_cols <- setdiff(char_cols, categorical_cols)
 
 sales_with_characteristics <- sales %>%
-  inner_join(characteristics, by = c("pin", "year"))
+  inner_join(characteristics, by = c("pin" = "meta_pin", "year"))
 ```
+```{r}
+# Continuous: box plots over time
+plots_continuous <- lapply(continuous_cols, function(col) {
+  df <- sales_with_characteristics %>%
+    select(year, value = all_of(col)) %>%
+    filter(!is.na(value))
+
+  plot_ly(df,
+    x = ~ factor(year), y = ~value, type = "box",
+    name = col
+  ) %>%
+    layout(
+      title = col,
+      xaxis = list(title = "Year"),
+      yaxis = list(title = "Value")
+    )
+})
+
+# Categorical: stacked bar proportions over time
+plots_categorical <- lapply(categorical_cols, function(col) {
+  df <- sales_with_characteristics %>%
+    select(year, value = all_of(col)) %>%
+    filter(!is.na(value)) %>%
+    count(year, value) %>%
+    group_by(year) %>%
+    mutate(prop = n / sum(n))
+
+  plot_ly(df,
+    x = ~ factor(year), y = ~prop, color = ~ factor(value),
+    type = "bar"
+  ) %>%
+    layout(
+      title = col,
+      barmode = "stack",
+      xaxis = list(title = "Year"),
+      yaxis = list(title = "Proportion", tickformat = ".0%")
+    )
+})
+```
+```{r results='asis'}
+all_plots <- list(
+  continuous = plots_continuous,
+  categorical = plots_categorical
+)
+all_names <- c(continuous_cols, categorical_cols)
+all_plots_flat <- c(plots_continuous, plots_categorical)
+
+# Open tabset
+cat("::: {.panel-tabset}\n\n")
+
+for (i in seq_along(all_plots_flat)) {
+  # Tab header
+  cat("##", all_names[i], "\n\n")
+
+  # Render the plotly widget inline
+  print(htmltools::tagList(all_plots_flat[[i]]))
+
+  cat("\n\n")
+}
+
+# Close tabset
+cat(":::\n")
+```
+
