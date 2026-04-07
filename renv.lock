@@ -16,17 +16,6 @@
       "Repository": "CRAN",
       "Hash": "468d9a03ba57f22ebde50060fd13ba9f"
     },
-    "DBI": {
-      "Package": "DBI",
-      "Version": "1.2.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "methods"
-      ],
-      "Hash": "065ae649b05f1ff66bb0c793107508f5"
-    },
     "DiceDesign": {
       "Package": "DiceDesign",
       "Version": "1.10",
@@ -260,12 +249,12 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "assessr",
       "RemoteRef": "master",
-      "RemoteSha": "9d52b19a1df8baf8d637d52a5a7d8565d89e2c62",
+      "RemoteSha": "82b3cca6374cc7300145e4345278329b7835086a",
       "Requirements": [
         "R",
         "stats"
       ],
-      "Hash": "dd23f84ca1e69c24299bcc7da623cdb7"
+      "Hash": "8150134e9077ee9edd809ac873d268f9"
     },
     "aws.ec2metadata": {
       "Package": "aws.ec2metadata",
@@ -378,19 +367,16 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "dceec8db0c4879b651fcd94ec7ad665e7f4ce2d9",
+      "RemoteSha": "18e12ca5115741924a58b0be6b4055f480f22a2d",
       "Requirements": [
         "R",
-        "arrow",
         "assessr",
         "dplyr",
-        "glue",
         "magrittr",
-        "noctua",
         "rlang",
         "tidyr"
       ],
-      "Hash": "4bbdcc8fcadf6b1c8a97aece2b19f76a"
+      "Hash": "c4c334d304550bbf4736eee6a4f15592"
     },
     "class": {
       "Package": "class",
@@ -734,7 +720,7 @@
       "Package": "ggplot2",
       "Version": "4.0.2",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
       "Requirements": [
         "R",
         "S7",
@@ -1190,23 +1176,6 @@
       ],
       "Hash": "c955edf99ff24a32e96bd0a22645af60"
     },
-    "noctua": {
-      "Package": "noctua",
-      "Version": "2.6.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "DBI",
-        "R",
-        "data.table",
-        "methods",
-        "paws",
-        "stats",
-        "utils",
-        "uuid"
-      ],
-      "Hash": "15471c0eaafcb7f2a4dabc983ea71112"
-    },
     "numDeriv": {
       "Package": "numDeriv",
       "Version": "2016.8-1.1",
@@ -1268,33 +1237,11 @@
       ],
       "Hash": "ace928adf616e06ece817d970faa2d03"
     },
-    "paws": {
-      "Package": "paws",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.analytics",
-        "paws.application.integration",
-        "paws.common",
-        "paws.compute",
-        "paws.cost.management",
-        "paws.customer.engagement",
-        "paws.database",
-        "paws.developer.tools",
-        "paws.end.user.computing",
-        "paws.machine.learning",
-        "paws.management",
-        "paws.networking",
-        "paws.security.identity",
-        "paws.storage"
-      ],
-      "Hash": "694342c0b4f1a09ea666861bc140cd46"
-    },
     "paws.analytics": {
       "Package": "paws.analytics",
       "Version": "0.10.0",
-      "Source": "unknown",
+      "Source": "Repository",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
@@ -1303,7 +1250,8 @@
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.10.0",
-      "Source": "unknown",
+      "Source": "Repository",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
@@ -1314,11 +1262,8 @@
       "Version": "0.8.6",
       "Source": "Repository",
       "Repository": "CRAN",
-      "RemoteType": "repository",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
-      "RemoteSubdir": "paws.common",
       "Requirements": [
+        "R",
         "Rcpp",
         "base64enc",
         "curl",
@@ -1330,117 +1275,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "7c199b64208466ecdcb267cfb4727ea0"
-    },
-    "paws.compute": {
-      "Package": "paws.compute",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "b6f7689860e23aad2722a15790999bc9"
-    },
-    "paws.cost.management": {
-      "Package": "paws.cost.management",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "cbf7124973cff04a96c5dc75d380ba2a"
-    },
-    "paws.customer.engagement": {
-      "Package": "paws.customer.engagement",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "f6ffb43e3600734f4407fdb2624a2f8a"
-    },
-    "paws.database": {
-      "Package": "paws.database",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "aeebf8b9c74940263f873492fd2206f3"
-    },
-    "paws.developer.tools": {
-      "Package": "paws.developer.tools",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "162420e68b0d68235893e3a85255e08b"
-    },
-    "paws.end.user.computing": {
-      "Package": "paws.end.user.computing",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "33c2424c8606acae8064af2dc1c2f017"
-    },
-    "paws.machine.learning": {
-      "Package": "paws.machine.learning",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "925b45f2b6ee221271d8cf25f7a5f1f7"
-    },
-    "paws.management": {
-      "Package": "paws.management",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "a4720ad47b2f3073370ec0c18de1cbf5"
-    },
-    "paws.networking": {
-      "Package": "paws.networking",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "da9b0f0c9663cb049be40b4aaf1b9af6"
-    },
-    "paws.security.identity": {
-      "Package": "paws.security.identity",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "8544aa9e403357d7af332d86126f0b85"
-    },
-    "paws.storage": {
-      "Package": "paws.storage",
-      "Version": "0.9.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "paws.common"
-      ],
-      "Hash": "e6735db72fe328ce12c044c95cf325cb"
+      "Hash": "a1065af4daa842eb7eb4c720cf569e82"
     },
     "pillar": {
       "Package": "pillar",
@@ -1673,7 +1508,7 @@
       "Package": "scales",
       "Version": "1.4.0",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
       "Requirements": [
         "R",
         "R6",
@@ -1953,16 +1788,6 @@
         "R"
       ],
       "Hash": "62b65c52671e6665f803ff02954446e9"
-    },
-    "uuid": {
-      "Package": "uuid",
-      "Version": "1.2-1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "34e965e62a41fcafb1ca60e9b142085b"
     },
     "uwot": {
       "Package": "uwot",
