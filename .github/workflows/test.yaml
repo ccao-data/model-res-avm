@@ -35,6 +35,11 @@ jobs:
         shell: bash
         run: uv pip install .[tests]
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
       - name: Run Python tests
         shell: bash
         working-directory: python
