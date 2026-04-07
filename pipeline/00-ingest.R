@@ -526,7 +526,7 @@ assessment_data_clean <- assessment_data %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
-  relocate(starts_with("meta_sale_"), .after = hie_num_expiring) %>%
+  relocate(starts_with("meta_sale_"), .before = meta_cdu) %>%
   as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 

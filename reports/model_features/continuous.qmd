@@ -23,25 +23,44 @@ cont_chars_assess_long_new <- assessment_data_new %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+cont_chars_assess_long_old <- assessment_data_old %>%
+  select(all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_assess_cont_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(cont_chars_assess_long_new)
 
-plot_small_multiple_histograms(cont_chars_assess_long_new, stat = "bin")
+plot_small_multiple_histograms(cont_chars_assess_long_old,
+  cont_chars_assess_long_new,
+  stat = "bin"
+)
 ```
 
 ```{r feature_dist_assess_cont_cleanup}
 #| output: false
 
-rm(cont_chars_assess_long_new)
+rm(cont_chars_assess_long_old, cont_chars_assess_long_new)
 gc()
 ```
 
 ### Training set
 
 ```{r feature_dist_train_cont_transform}
+cont_chars_train_long_old <- training_data_old %>%
+  select(all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
+
 cont_chars_train_long_new <- training_data_new %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
@@ -55,7 +74,10 @@ cont_chars_train_long_new <- training_data_new %>%
 #| column: screen-inset
 #| fig-height: !expr fig_height(cont_chars_train_long_new)
 
-plot_small_multiple_histograms(cont_chars_train_long_new, stat = "bin")
+plot_small_multiple_histograms(cont_chars_train_long_old,
+  cont_chars_train_long_new,
+  stat = "bin"
+)
 ```
 
 ```{r feature_dist_train_cont_cleanup}
@@ -70,26 +92,26 @@ gc()
 # Distribution of SHAPs (Continuous)
 
 ```{r shap_dist_cont_transform}
-#| eval: !expr isTRUE(shap_exists)
-
-cont_shap_long_new <- shaps_new %>%
-  select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
-  pivot_longer(
-    cols = all_of(continuous_preds),
-    names_to = "predictor",
-    values_to = "value"
-  ) %>%
-  left_join(
-    shaps_new %>%
-      select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
-      pivot_longer(
-        cols = all_of(continuous_shaps),
-        names_to = "shap_name",
-        values_to = "shap_value"
-      ) %>%
-      mutate(shap_name = str_replace(shap_name, "_shap$", "")),
-    by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
-  )
+if (shap_exists) {
+  cont_shap_long_new <- shaps_new %>%
+    select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
+    pivot_longer(
+      cols = all_of(continuous_preds),
+      names_to = "predictor",
+      values_to = "value"
+    ) %>%
+    left_join(
+      shaps_new %>%
+        select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
+        pivot_longer(
+          cols = all_of(continuous_shaps),
+          names_to = "shap_name",
+          values_to = "shap_value"
+        ) %>%
+        mutate(shap_name = str_replace(shap_name, "_shap$", "")),
+      by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
+    )
+}
 ```
 
 
@@ -106,21 +128,24 @@ if (!shap_exists) {
 ```
 
 ```{r shap_dist_cont_plot}
-#| eval: !expr isTRUE(shap_exists)
 #| column: screen-inset
 #| fig-height: !expr fig_height_shap
 
-plot_small_multiple_lines(
-  cont_shap_long_new,
-  "shap_value",
-  y_axis_label = "SHAP Value"
-)
+if (shap_exists) {
+  plot_small_multiple_lines(
+    cont_shap_long_new,
+    NULL,
+    "shap_value",
+    y_axis_label = "SHAP Value"
+  )
+}
 ```
 
 ```{r shap_dist_cont_cleanup}
-#| eval: !expr isTRUE(shap_exists)
 #| output: false
 
-rm(cont_shap_long_new)
+if (exists("cont_shap_long_new")) {
+  rm(cont_shap_long_new)
+}
 gc()
 ```

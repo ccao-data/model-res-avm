@@ -25,19 +25,31 @@ cat_chars_assess_long_new <- assessment_data_new %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+cat_chars_assess_long_old <- assessment_data_old %>%
+  select(all_of(categorical_preds)) %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_assess_cat_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(cat_chars_assess_long_new)
 
-plot_small_multiple_histograms(cat_chars_assess_long_new, stat = "count")
+plot_small_multiple_histograms(cat_chars_assess_long_new,
+  cat_chars_assess_long_old,
+  stat = "count"
+)
 ```
 
 ```{r feature_dist_assess_cat_cleanup}
 #| output: false
 
-rm(cat_chars_assess_long_new)
+rm(cat_chars_assess_long_new, cat_chars_assess_long_old)
 gc()
 ```
 
@@ -52,19 +64,31 @@ cat_chars_train_long_new <- training_data_new %>%
     names_to = "predictor",
     values_to = "value"
   )
+
+cat_chars_train_long_old <- training_data_old %>%
+  select(all_of(categorical_preds)) %>%
+  mutate(across(everything(), as.character)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "predictor",
+    values_to = "value"
+  )
 ```
 
 ```{r feature_dist_train_cat_plot}
 #| column: screen-inset
 #| fig-height: !expr fig_height(cat_chars_train_long_new)
 
-plot_small_multiple_histograms(cat_chars_train_long_new, stat = "count")
+plot_small_multiple_histograms(cat_chars_train_long_old,
+  cat_chars_train_long_new,
+  stat = "count"
+)
 ```
 
 ```{r feature_dist_train_cat_cleanup}
 #| output: false
 
-rm(cat_chars_train_long_new)
+rm(cat_chars_train_long_new, cat_chars_train_long_old)
 gc()
 ```
 
@@ -73,26 +97,26 @@ gc()
 # Distribution of SHAPs (Categorical)
 
 ```{r shap_dist_cat_transform}
-#| eval: !expr isTRUE(shap_exists)
-
-cat_shap_long_new <- shaps_new %>%
-  select(meta_pin, meta_card_num, all_of(categorical_preds)) %>%
-  pivot_longer(
-    cols = all_of(categorical_preds),
-    names_to = "predictor",
-    values_to = "value"
-  ) %>%
-  left_join(
-    shaps_new %>%
-      select(meta_pin, meta_card_num, all_of(categorical_shaps)) %>%
-      pivot_longer(
-        cols = all_of(categorical_shaps),
-        names_to = "shap_name",
-        values_to = "shap_value"
-      ) %>%
-      mutate(shap_name = str_replace(shap_name, "_shap$", "")),
-    by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
-  )
+if (shap_exists) {
+  cat_shap_long_new <- shaps_new %>%
+    select(meta_pin, meta_card_num, all_of(categorical_preds)) %>%
+    pivot_longer(
+      cols = all_of(categorical_preds),
+      names_to = "predictor",
+      values_to = "value"
+    ) %>%
+    left_join(
+      shaps_new %>%
+        select(meta_pin, meta_card_num, all_of(categorical_shaps)) %>%
+        pivot_longer(
+          cols = all_of(categorical_shaps),
+          names_to = "shap_name",
+          values_to = "shap_value"
+        ) %>%
+        mutate(shap_name = str_replace(shap_name, "_shap$", "")),
+      by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
+    )
+}
 ```
 
 ```{r create_fig_height_shap_cat}
@@ -108,21 +132,25 @@ if (!shap_exists) {
 ```
 
 ```{r shap_dist_cat_plot}
-#| eval: !expr isTRUE(shap_exists)
 #| column: screen-inset
 #| fig-height: !expr fig_height_shap
 
-plot_small_multiple_violins(
-  cat_shap_long_new,
-  "shap_value",
-  y_axis_label = "SHAP Value"
-)
+if (shap_exists) {
+  plot_small_multiple_violins(
+    cat_shap_long_new,
+    NULL,
+    "shap_value",
+    y_axis_label = "SHAP Value"
+  )
+}
 ```
 
 ```{r shap_dist_cat_cleanup}
-#| eval: !expr isTRUE(shap_exists)
 #| output: false
 
-rm(cat_shap_long_new)
+if (exists("cat_shap_long_new")) {
+  rm(cat_shap_long_new)
+}
+
 gc()
 ```
