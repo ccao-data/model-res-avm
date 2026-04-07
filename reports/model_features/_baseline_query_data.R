@@ -82,11 +82,6 @@ if (!exists("metadata_old")) {
 
 # Assessment Data --------------------------------------------------------------
 
-# Get assessment data for both old and new datasets
-if (!exists("dvc_md5_assessment_data_old")) {
-  dvc_md5_assessment_data_old <- metadata_old$dvc_md5_assessment_data
-}
-
 # Get assessment set chars for new and old data
 if (!exists("assessment_data_new")) {
   assessment_data_new <- ccao_download_model_input_data(
