@@ -48,7 +48,7 @@ message("Loading evaluation data")
 # recent 10% of sales and already includes predictions. This data will NOT
 # include multicard sales, so the unit of observation is PINs (1 PIN per row)
 test_data_card <- read_parquet(paths$output$test_card$local)
-# Load train card: 90% of earliest sales- used to test for overfitting
+# Load train card: 90% of earliest sales - used to test for overfitting
 train_data_card <- read_parquet(paths$output$train_card$local)
 
 # Load the assessment results from the previous stage. This will include every
