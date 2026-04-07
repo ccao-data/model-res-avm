@@ -249,12 +249,12 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "assessr",
       "RemoteRef": "master",
-      "RemoteSha": "82b3cca6374cc7300145e4345278329b7835086a",
+      "RemoteSha": "9d52b19a1df8baf8d637d52a5a7d8565d89e2c62",
       "Requirements": [
         "R",
         "stats"
       ],
-      "Hash": "8150134e9077ee9edd809ac873d268f9"
+      "Hash": "dd23f84ca1e69c24299bcc7da623cdb7"
     },
     "aws.ec2metadata": {
       "Package": "aws.ec2metadata",
@@ -367,16 +367,19 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "18e12ca5115741924a58b0be6b4055f480f22a2d",
+      "RemoteSha": "dceec8db0c4879b651fcd94ec7ad665e7f4ce2d9",
       "Requirements": [
         "R",
+        "arrow",
         "assessr",
         "dplyr",
+        "glue",
         "magrittr",
+        "noctua",
         "rlang",
         "tidyr"
       ],
-      "Hash": "c4c334d304550bbf4736eee6a4f15592"
+      "Hash": "4bbdcc8fcadf6b1c8a97aece2b19f76a"
     },
     "class": {
       "Package": "class",
