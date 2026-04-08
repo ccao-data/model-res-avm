@@ -2,6 +2,7 @@
 execute:
   echo: false
   warning: false
+  results: asis
 format:
   html:
     page-layout: full
@@ -20,7 +21,9 @@ editor: source
 params <- yaml::read_yaml(here::here("params.yaml"))
 ```
 
-{{< include sub_reports/sales/sale_properties_by_run_id.qmd >}}
+{{< include sub_reports/sales/sales_val.qmd >}}
 
 {{< include sub_reports/stats/vertical-equity-for-high-and-low-value.qmd >}}
+
+{{< include sub_reports/features/feature_qc.qmd >}}
 

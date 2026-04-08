@@ -1,0 +1,123 @@
+# Feature Quality Control
+
+Data department often gets told that properties with a certain characteristic are not having estimated values that accurately reflect their values. This report provides a basic investigation of these properties.
+
+```{r}
+library(DT)
+library(DBI)
+library(ccao)
+library(RColorBrewer)
+library(dplyr)
+library(leaflet)
+library(noctua)
+
+noctua_options(cache_size = 10, unload = FALSE)
+
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(),
+  rstudio_conn_tab = FALSE
+)
+```
+
+## Ratio Stats for Features based on threshold of `r params$threshold`
+
+```{r ratio_stats_report_cleaning, results='asis'}
+# --- Params ---
+run_ids <- params$run_id$run_id
+features <- params$features
+threshold <- params$threshold
+
+# Derive years from run_id
+run_year <- as.integer(substr(run_ids[1], 1, 4))
+sale_year <- as.character(run_year - 1)
+input_year <- sale_year
+
+# Build run_id IN clause
+run_id_str <- paste0("'", run_ids, "'", collapse = ", ")
+
+# Build feature columns for SELECT
+feature_cols <- paste(paste0("input.", features), collapse = ",\n    ")
+
+# --- Query ---
+query <- glue::glue("
+  WITH latest_sales AS (
+    SELECT *
+    FROM (
+      SELECT
+        pin,
+        CAST(sale_price AS int) AS sale_price,
+        ROW_NUMBER() OVER (PARTITION BY pin ORDER BY sale_date DESC) AS rn
+      FROM default.vw_pin_sale
+      WHERE year = '{sale_year}'
+        AND NOT is_multisale
+        AND NOT sale_filter_deed_type
+        AND NOT sale_filter_less_than_10k
+        AND NOT sale_filter_same_sale_within_365
+    ) t
+    WHERE rn = 1
+  )
+  SELECT
+    ap.meta_pin AS pin,
+    ap.meta_class AS class,
+    ap.meta_nbhd_code AS nbhd_code,
+    ap.pred_pin_final_fmv,
+    s.sale_price,
+    {feature_cols}
+  FROM model.assessment_pin ap
+  LEFT JOIN latest_sales s
+    ON ap.meta_pin = s.pin
+  LEFT JOIN model.vw_pin_shared_input AS input
+    ON CAST(ap.meta_pin AS VARCHAR) = CAST(input.meta_pin AS VARCHAR)
+    AND input.meta_year = '{input_year}'
+  WHERE ap.run_id IN ({run_id_str})
+")
+
+# --- Fetch & compute ratio ---
+values <- dbGetQuery(AWS_ATHENA_CONN_NOCTUA, query) %>%
+  mutate(ratio = pred_pin_final_fmv / sale_price) %>%
+  filter(!is.na(sale_price))
+
+# --- Stats function ---
+compute_stats <- function(df, label) {
+  tibble::tibble(
+    group        = label,
+    prb          = ccao::ccao_prb(df$sale_price, df$pred_pin_final_fmv)[1],
+    prd          = ccao::ccao_prd(df$sale_price, df$pred_pin_final_fmv)[1],
+    cod          = ccao::ccao_cod(df$sale_price / df$pred_pin_final_fmv)[1],
+    median_ratio = median(df$ratio)
+  )
+}
+```
+
+
+```{r ratio_stats_report, results='asis'}
+# --- Render tabset ---
+cat("::: {.panel-tabset}\n\n")
+
+for (feat in features) {
+  cat(glue::glue("## {feat}\n\n"))
+
+  near <- values %>%
+    filter(
+      !is.na(.data[[feat]]), .data[[feat]] < threshold,
+      !is.na(sale_price), !is.na(pred_pin_final_fmv)
+    )
+  far <- values %>%
+    filter(
+      !is.na(.data[[feat]]), .data[[feat]] >= threshold,
+      !is.na(sale_price), !is.na(pred_pin_final_fmv)
+    )
+
+  results <- bind_rows(
+    compute_stats(near, glue::glue("Near (< {threshold})")),
+    compute_stats(far, glue::glue("Far (>= {threshold})"))
+  )
+
+  print(
+    datatable(results, rownames = FALSE, options = list(pageLength = 5)) %>%
+      formatRound(columns = c("prb", "prd", "cod", "median_ratio"), digits = 3)
+  )
+
+  cat("\n\n")
+}
+cat(":::\n")
+```
