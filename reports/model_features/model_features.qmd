@@ -12,6 +12,8 @@ params:
   run_id: "2026-02-11-recursing-rob"
 ---
 
+# This report will error if it is missing valid data for `_old` data.
+
 {{< include data_changes.qmd >}}
 
 {{< include continuous.qmd >}}

@@ -17,13 +17,11 @@ missingness_cols <- model_predictor_all_name
 ```
 
 ::: {.panel-tabset}
-
 ## By class (assessment set)
-
 ```{r missing_by_class_assess_transform}
 #| cache: true
 
-missing_assess_class <- assessment_data_new %>%
+missing_assess_class_new <- assessment_data_new %>%
   select(all_of(c("meta_class", missingness_cols))) %>%
   group_by(meta_class) %>%
   summarize(across(everything(), ~ mean(is.na(.)),
@@ -33,7 +31,26 @@ missing_assess_class <- assessment_data_new %>%
     cols = starts_with("pct_na_"),
     names_to = "predictor",
     values_to = "pct_na"
-  )
+  ) %>%
+  mutate(dataset = "new")
+
+missing_assess_class_old <- assessment_data_old %>%
+  select(all_of(c("meta_class", missingness_cols))) %>%
+  group_by(meta_class) %>%
+  summarize(across(everything(),
+    ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("pct_na_"),
+    names_to = "predictor", values_to = "pct_na"
+  ) %>%
+  mutate(dataset = "old")
+
+missing_assess_class <- bind_rows(
+  missing_assess_class_old,
+  missing_assess_class_new
+)
 ```
 
 ```{r missing_by_class_assess_plot}
@@ -42,8 +59,8 @@ missing_assess_class <- assessment_data_new %>%
 #| fig-height: !expr fig_height(missing_assess_class, ncol = 5)
 
 missing_assess_class %>%
-  ggplot(aes(meta_class, pct_na)) +
-  geom_col(fill = "steelblue") +
+  ggplot(aes(meta_class, pct_na, fill = dataset)) +
+  geom_col(position = "identity", alpha = 0.5) +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_y_continuous(
     limits = c(0, 1),
@@ -64,17 +81,37 @@ missing_assess_class %>%
 ```{r missing_by_class_train_transform}
 #| cache: true
 
-missing_train_class <- training_data_new %>%
+missing_train_class_new <- training_data_new %>%
   select(all_of(c("meta_class", missingness_cols))) %>%
   group_by(meta_class) %>%
-  summarize(across(everything(), ~ mean(is.na(.)),
+  summarize(across(everything(),
+    ~ mean(is.na(.)),
     .names = "pct_na_{.col}"
   )) %>%
   pivot_longer(
     cols = starts_with("pct_na_"),
     names_to = "predictor",
     values_to = "pct_na"
-  )
+  ) %>%
+  mutate(dataset = "new")
+
+missing_train_class_old <- training_data_old %>%
+  select(all_of(c("meta_class", missingness_cols))) %>%
+  group_by(meta_class) %>%
+  summarize(across(everything(),
+    ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("pct_na_"),
+    names_to = "predictor", values_to = "pct_na"
+  ) %>%
+  mutate(dataset = "old")
+
+missing_train_class <- bind_rows(
+  missing_train_class_old,
+  missing_train_class_new
+)
 ```
 
 ```{r missing_by_class_train_plot}
@@ -83,8 +120,8 @@ missing_train_class <- training_data_new %>%
 #| fig-height: !expr fig_height(missing_train_class, ncol = 5)
 
 missing_train_class %>%
-  ggplot(aes(meta_class, pct_na)) +
-  geom_col(fill = "steelblue") +
+  ggplot(aes(meta_class, pct_na, fill = dataset)) +
+  geom_col(position = "identity", alpha = 0.5) +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_y_continuous(
     limits = c(0, 1),
@@ -105,21 +142,37 @@ missing_train_class %>%
 ```{r missing_by_time_transform}
 #| cache: true
 
-missing_time <- assessment_data_new %>%
-  select(all_of(missingness_cols)) %>%
-  bind_rows(
-    training_data_new %>%
-      select(all_of(missingness_cols))
-  ) %>%
+missing_time_new <- bind_rows(
+  assessment_data_new %>% select(all_of(c("time_sale_year", missingness_cols))),
+  training_data_new %>% select(all_of(c("time_sale_year", missingness_cols)))
+) %>%
   group_by(time_sale_year) %>%
-  summarize(across(everything(), ~ mean(is.na(.)),
+  summarize(across(everything(),
+    ~ mean(is.na(.)),
     .names = "pct_na_{.col}"
   )) %>%
   pivot_longer(
     cols = starts_with("pct_na_"),
-    names_to = "predictor",
-    values_to = "pct_na"
-  )
+    names_to = "predictor", values_to = "pct_na"
+  ) %>%
+  mutate(dataset = "new")
+
+missing_time_old <- bind_rows(
+  assessment_data_old %>% select(all_of(c("time_sale_year", missingness_cols))),
+  training_data_old %>% select(all_of(c("time_sale_year", missingness_cols)))
+) %>%
+  group_by(time_sale_year) %>%
+  summarize(across(everything(),
+    ~ mean(is.na(.)),
+    .names = "pct_na_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("pct_na_"),
+    names_to = "predictor", values_to = "pct_na"
+  ) %>%
+  mutate(dataset = "old")
+
+missing_time <- bind_rows(missing_time_old, missing_time_new)
 ```
 
 ```{r missing_by_time_assess_plot}
@@ -128,8 +181,8 @@ missing_time <- assessment_data_new %>%
 #| fig-height: !expr fig_height(missing_time, ncol = 5)
 
 missing_time %>%
-  ggplot(aes(time_sale_year, pct_na)) +
-  geom_col(fill = "steelblue") +
+  ggplot(aes(time_sale_year, pct_na, fill = dataset)) +
+  geom_col(position = "identity", alpha = 0.5) +
   facet_wrap(~predictor, scales = "free", ncol = 5) +
   scale_x_continuous(breaks = function(x) unique(missing_time$time_sale_year)) +
   scale_y_continuous(
