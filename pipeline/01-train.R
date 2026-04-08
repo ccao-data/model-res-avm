@@ -34,6 +34,15 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
+# Store the original sale prices before log-transforming. The LightGBM model
+# trains on log(price) for better performance on the skewed price distribution,
+# but all predictions are exponentiated back to raw dollars before being saved
+training_data_full <- training_data_full %>%
+  mutate(
+    meta_sale_price_original = meta_sale_price,
+    meta_sale_price = log(meta_sale_price)
+  )
+
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
@@ -62,10 +71,10 @@ train_recipe <- model_main_recipe(
 message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
-# and feature interactions
+# and feature interactions. training_data_full already has log-transformed
+# meta_sale_price, so no additional transform is needed here
 lin_recipe <- model_lin_recipe(
-  data = training_data_full %>%
-    mutate(meta_sale_price = log(meta_sale_price)),
+  data = training_data_full,
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -82,9 +91,9 @@ lin_wflow <- workflow() %>%
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
-# Fit the linear model on the training data
+# Fit the linear model on the training data (already log-transformed)
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
+  fit(data = train)
 
 
 
@@ -387,11 +396,17 @@ message("Finalizing and saving trained model")
 # Keep only the variables necessary for evaluation
 test %>%
   mutate(
-    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
+    # Exponentiate LightGBM predictions back to raw dollar scale since the
+    # model was trained on log(price)
+    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred),
+    # Linear model is also trained on log(price) via the training data
+    # transform, so exponentiate its predictions as well
     pred_card_initial_fmv_lin = exp(predict(
       lin_wflow_final_fit,
-      test %>% mutate(meta_sale_price = log(meta_sale_price))
-    )$.pred)
+      test
+    )$.pred),
+    # Restore the original sale price for evaluation metrics
+    meta_sale_price = meta_sale_price_original
   ) %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
