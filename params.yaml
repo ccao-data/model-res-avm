@@ -11,11 +11,11 @@
 
 # Model tag used to identify the purpose of the run. Must be one of:
 # "junk", "rejected", "test", "baseline", "candidate", "final", or "comps"
-run_type: "baseline"
+run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Potential residential baseline with SHAP values, revert DVC path
+run_note: Test cov term    
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -135,9 +135,13 @@ cv:
 model:
   engine: "lightgbm"
 
-  # Objective/loss function minimized by LightGBM. See website for possible
-  # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "rmse"
+  # Objective/loss function minimized by LightGBM. Standard LightGBM names
+  # like "rmse" / "regression" / "regression_l1" pass straight through. The
+  # special value "mse_cov" selects lightsnip's custom MSE + rho * Cov(r, y)^2
+  # objective (a soft vertical-equity penalty); when used, set
+  # `model.parameter.mse_cov_rho` below to control the penalty weight.
+  # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
+  objective: "mse_cov"
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
@@ -301,6 +305,12 @@ model:
     # During CV, the number of iterations to go without improvement before
     # stopping training. Early stopping is deactivated when NULL
     stop_iter: 50
+
+    # Penalty weight (rho) for the lightsnip "mse_cov" custom objective.
+    # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
+    # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
+    # strongly, encouraging vertical equity at some cost to point accuracy.
+    mse_cov_rho: 3
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled

@@ -135,8 +135,12 @@ lgbm_model <- parsnip::boost_tree(
     num_threads = num_threads,
     verbose = params$model$verbose,
 
-    # Set the objective function. This is what lightgbm will try to minimize
+    # Set the objective function. This is what lightgbm will try to minimize.
+    # When set to "mse_cov", lightsnip swaps in a custom MSE + rho*Cov(r,y)^2
+    # objective and uses `mse_cov_rho` (below) as the penalty weight. For
+    # standard LightGBM objectives the rho value is silently ignored.
     objective = params$model$objective,
+    mse_cov_rho = params$model$parameter$mse_cov_rho,
 
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
