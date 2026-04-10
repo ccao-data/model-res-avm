@@ -1064,8 +1064,8 @@
       "RemoteType": "github",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "master",
-      "RemoteSha": "2720ad973c990ad64ac7e6bb632389ff9f2a2675",
+      "RemoteRef": "test-new-obj-function",
+      "RemoteSha": "f228237f4595cb15c8ff5482d06d116595e4ec16",
       "RemoteHost": "api.github.com",
       "Requirements": [
         "butcher",
