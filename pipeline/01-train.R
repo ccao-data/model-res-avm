@@ -382,34 +382,43 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Finalizing and saving trained model")
 
-# Get predictions on the test set using the training data model. These
-# predictions are used to evaluate model performance on the unseen test set.
-# Keep only the variables necessary for evaluation
-test %>%
-  mutate(
-    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
-    pred_card_initial_fmv_lin = exp(predict(
-      lin_wflow_final_fit,
-      test %>% mutate(meta_sale_price = log(meta_sale_price))
-    )$.pred)
-  ) %>%
-  select(
-    meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
-    all_of(params$ratio_study$geographies), char_bldg_sf,
-    all_of(c(
-      "prior_far_tot" = params$ratio_study$far_column,
-      "prior_near_tot" = params$ratio_study$near_column
-    )),
-    pred_card_initial_fmv, pred_card_initial_fmv_lin,
-    meta_sale_price, meta_sale_date, meta_sale_document_num
-  ) %>%
-  # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential
-  mutate(
-    prior_far_tot = prior_far_tot * 10,
-    prior_near_tot = prior_near_tot * 10
-  ) %>%
-  as_tibble() %>%
-  write_parquet(paths$output$test_card$local)
+# Get predictions on both the test and training set using the training data
+# model. These predictions are used to evaluate model performance on the unseen
+# test set and to evaluate overfitting. Keep only the variables necessary for
+# evaluation
+walk2(
+  list(test, train),
+  list(paths$output$test_card$local, paths$output$train_card$local),
+  \(data, path) {
+    data %>%
+      mutate(
+        pred_card_initial_fmv = predict(lgbm_wflow_final_fit, data)$.pred,
+        pred_card_initial_fmv_lin = exp(predict(
+          lin_wflow_final_fit,
+          data %>% mutate(meta_sale_price = log(meta_sale_price))
+        )$.pred)
+      ) %>%
+      select(
+        meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
+        all_of(params$ratio_study$geographies), char_bldg_sf,
+        all_of(c(
+          "prior_far_tot" = params$ratio_study$far_column,
+          "prior_near_tot" = params$ratio_study$near_column
+        )),
+        pred_card_initial_fmv, pred_card_initial_fmv_lin,
+        meta_sale_price, meta_sale_date, meta_sale_document_num
+      ) %>%
+      # Prior year values are AV, not FMV.
+      # Multiply by 10 to get FMV for residential
+      mutate(
+        prior_far_tot = prior_far_tot * 10,
+        prior_near_tot = prior_near_tot * 10
+      ) %>%
+      as_tibble() %>%
+      write_parquet(path)
+  }
+)
+
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since
