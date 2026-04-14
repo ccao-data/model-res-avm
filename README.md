@@ -684,8 +684,8 @@ actually used by the model itself. They include:
   that allows slightly dissimilar characteristics.
 - [`hie_data`](#getting-data) - Home improvement exemption data used to
   evaluate whether the pipeline correctly updates card-level
-  characteristics triggered by the expiration of home improvement
-  exemptions.
+  characteristics triggered by the expiration of [home improvement
+  exemptions](https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md).
 - [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values
   for class 210 and 295 units. Provided by the Valuations department.
   Not always used, so may be unavailable or 0 rows for certain years.
@@ -1392,10 +1392,12 @@ Uploaded Parquet files are converted into the following Athena tables:
 | parameter_range | parameter | year, run_id, parameter_name | Range of hyperparameters searched during CV tuning |
 | parameter_search | model cv fold | year, run_id, configuration, fold_id | Tidymodels tuning output from cross-validation |
 | performance | geography \[by class\] | year, run_id, stage, geography_type, geography_id, by_class, class | Peformance metrics (optionally) broken out by class for different levels of geography |
+| performance | geography \[by class\] | year, run_id, stage, geography_type, geography_id, by_class, class | Performance metrics (optionally) broken out by class for different levels of geography |
 | performance_quantile | geography \[by class\] by quantile | year, run_id, stage, geography_type, geography_id, by_class, class, quantile | Performance metrics by quantile within class and geography |
 | shap | card | year, run_id, township_code, meta_pin, meta_card_num | SHAP values for each feature for each card in the assessment data |
 | test_card | card | year, meta_pin, meta_card_num | Test set predictions at the card level |
 | timing | model run | year, run_id | Finalized time elapsed for each stage of the run |
+| train_card | card | year, meta_pin, meta_card_num | Training set predictions at the card level |
 
 ## Getting Data
 
