@@ -2,6 +2,22 @@
 source("../_setup.R")
 ```
 
+```{r _subset_warning, results='asis'}
+if (isTRUE(metadata$input_subset_enable)) {
+  cat(paste0(
+    "\n\n::: {.callout-warning}\n",
+    "## Subset Mode Active\n\n",
+    "This model was trained on a **",
+    scales::percent(metadata$input_subset_fraction, accuracy = 1),
+    " stratified subset** of the training data. ",
+    "Test set performance metrics are based on the subset and may not ",
+    "reflect full model performance. Assessment set performance uses the ",
+    "full assessment data.\n",
+    ":::\n\n"
+  ))
+}
+```
+
 # Model
 
 The following document describes performance for ```r metadata$run_id```, a ```r model_parameter_final$engine``` model built to re-assess the ```r metadata$assessment_triad``` triad in ```r metadata$assessment_year```. The document uses four sets of data to measure performance:
