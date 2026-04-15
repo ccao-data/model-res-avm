@@ -34,6 +34,9 @@ stages:
               bldg_sf: 25
               yrblt: 4
               dist_ft: 250
+          subset:
+            enable: false
+            fraction: 0.25
     outs:
     - path: input/assessment_data.parquet
       hash: md5
@@ -53,7 +56,7 @@ stages:
       size: 1917237
     - path: input/land_nbhd_rate_data.parquet
       hash: md5
-      md5: b4cfaf3d4a35c250990752024a88f3bb
+      md5: cb489a55f638d90898a06976b2a9bda9
       size: 5709
     - path: input/training_data.parquet
       hash: md5
@@ -571,7 +574,8 @@ stages:
       hash: md5
       md5: 6fc44c1106f7de8e748a181eeb6d6293
       size: 8268396
-    - path: output/performance_quantile/model_performance_quantile_assessment.parquet
+    - path: 
+        output/performance_quantile/model_performance_quantile_assessment.parquet
       hash: md5
       md5: f564709946dce23414192cc63bd96f63
       size: 981499
@@ -1008,7 +1012,8 @@ stages:
           - loc_school_elementary_district_geoid
           - loc_school_secondary_district_geoid
           - loc_school_unified_district_geoid
-        run_note: Potential residential baseline with SHAP values, revert DVC path
+        run_note: Potential residential baseline with SHAP values, revert DVC 
+          path
         toggle:
           cv_enable: false
           shap_enable: false
@@ -1111,7 +1116,8 @@ stages:
       hash: md5
       md5: 6fc44c1106f7de8e748a181eeb6d6293
       size: 8268396
-    - path: output/performance_quantile/model_performance_quantile_assessment.parquet
+    - path: 
+        output/performance_quantile/model_performance_quantile_assessment.parquet
       hash: md5
       md5: f564709946dce23414192cc63bd96f63
       size: 981499

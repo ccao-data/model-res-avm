@@ -80,6 +80,13 @@ if (!exists("metadata_old")) {
   )
 }
 
+# Include an error if for some reason we do not get valid old metadata
+if (is.null(metadata_old) || nrow(metadata_old) == 0) {
+  stop(
+    "Missing prior year data for comparison."
+  )
+}
+
 # Assessment Data --------------------------------------------------------------
 
 # Get assessment set chars for new and old data
