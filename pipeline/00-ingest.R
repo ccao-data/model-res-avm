@@ -406,6 +406,24 @@ training_data_clean <- training_data_w_hie %>%
   as_tibble() %>%
   write_parquet(paths$input$training$local)
 
+# Reproducible via the model seed and the subset fraction params tracked by DVC
+if (params$input$subset$enable) {
+  set.seed(params$model$seed)
+
+  message(
+    "Creating stratified training data subset ",
+    "(fraction: ", params$input$subset$fraction, ")"
+  )
+
+  training_data_clean %>%
+    group_by(time_sale_year, meta_township_code, meta_class) %>%
+    group_modify(~ {
+      n_sample <- max(1L, ceiling(nrow(.x) * params$input$subset$fraction))
+      slice_sample(.x, n = n_sample)
+    }) %>%
+    ungroup() %>%
+    write_parquet(paths$input$training$local)
+}
 
 ## 5.2. Assessment Data --------------------------------------------------------
 
