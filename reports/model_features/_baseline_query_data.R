@@ -67,8 +67,6 @@ if (!exists("metadata_old")) {
     select
       final.run_id
     from model.metadata model
-    join model.final_model final
-      on model.run_id = final.run_id
     where final.type = 'res'
       and CAST(final.year AS INTEGER) = {model_params$assessment$year} - 1
     order by final.date_finalized desc
