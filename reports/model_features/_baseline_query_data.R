@@ -66,7 +66,7 @@ if (!exists("metadata_old")) {
     statement = glue::glue("
     select
       final.run_id
-    from model.metadata model
+    from model.final_model final
     where final.type = 'res'
       and CAST(final.year AS INTEGER) = {model_params$assessment$year} - 1
     order by final.date_finalized desc
