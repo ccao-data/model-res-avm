@@ -12,6 +12,9 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 # We use an new vs old nomenclature to differentiate data from the current
 # model run (new) to a model run that we want to compare it to (old).
 
+model_params <- read_yaml(here("params.yaml"))
+paths <- model_file_dict(model_params$run_id, model_params$year)
+
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
 
@@ -21,10 +24,6 @@ if (metadata$run_id != params$run_id) {
     "should run model_fetch_run() to fetch model outputs from S3"
   )
 }
-
-model_params <- read_yaml(here("params.yaml"))
-
-paths <- model_file_dict(model_params$run_id, model_params$year)
 
 if (!exists("model_predictor_all_name")) {
   model_predictor_all_name <- model_params$model$predictor$all %>%
