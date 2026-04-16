@@ -65,10 +65,10 @@ if (!exists("metadata_old")) {
     conn = AWS_ATHENA_CONN_NOCTUA,
     statement = glue::glue("
     select
-      model.run_id,
-      model.model_predictor_all_name,
-      model.assessment_year,
-      model.model_predictor_categorical_name
+      final.run_id,
+      final.model_predictor_all_name,
+      final.assessment_year,
+      final.model_predictor_categorical_name
     from model.metadata model
     join model.final_model final
       on model.run_id = final.run_id
