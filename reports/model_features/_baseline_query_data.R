@@ -85,10 +85,7 @@ if (is.null(metadata_old) || nrow(metadata_old) == 0) {
 
 # Get assessment set chars for new and old data
 if (!exists("assessment_data_new")) {
-  assessment_data_new <- ccao_download_model_input_data(
-    params$run_id,
-    "assessment"
-  ) %>%
+  assessment_data_new <- read_parquet(paths$input$assessment$local) %>%
     select(
       meta_pin,
       meta_card_num,
