@@ -432,18 +432,18 @@ The key objective of the model is to fairly estimate what a home could sell for 
 
 We accomplish these exclusions in multiple ways:
 
-- **Excluding sales with prices that are statistical outliers.**  A "statistical outlier" is a sale price that is statistically higher or lower than sale prices of other similar homes, such as our hypothetical $3M example above. Often, these price outliers tend to indicate substantial characteristics errors.  This outlier aproach was developed in partnership with the [Mansueto Institute](https://miurban.uchicago.edu/). See the sales validation code at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val). 
+- **Excluding sales with prices that are statistical outliers.**  A "statistical outlier" is a sale price that is statistically higher or lower than sale prices of other similar homes, such as our hypothetical $3M example above. Often, these price outliers tend to indicate substantial characteristics errors.  This outlier aproach was developed in partnership with the [Mansueto Institute](https://miurban.uchicago.edu/). See the sales validation code at [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
 
 - **Excluding sales based on other transaction data.** In addition to removing sales because they have sale prices that are statistically high or low, other transaction features are useful for identifying sales that should be removed from the model. They are:
 
 | Transaction feature | How transaction feature is used |
-| --------------------- | ---------------------------------------------------------------------------------------- | 
-| Sale price | The model is trained only on sale prices > $10k. Many sale prices below this amount are, for example, deeded parking spots rather than houses. | 
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| Sale price | The model is trained only on sale prices > $10k. Many sale prices below this amount are, for example, deeded parking spots rather than houses. |
 | Year of sale | Only sales from the last 9 years are used to train the model. This provides a sufficient amount of transaction data for accurate training and prediction, without including price information that is extremely out-of-date. |
 | Back-to-back sales | We currently remove any back-to-back sales (sales of the same PIN within the same year) that sell for the same price in both sales (as this likely indicates something awry) - we are investigating whether or not to include back-to-back sales of differing prices, but currently include them. |
-| Number of PINs in the sale | The model is trained using only single-PIN sales. When one sale price is attributed to a sale of two PINs, it's not clear how much each PIN's value individually contributed to the sale price, so multi-PIN sales are excluded. | 
-| Number of buildings | The model is trained using only single-building PINs. When one sale price is attributed to a sale with two buildings, it's not clear how much each building's value individually contributed to the sale price, so multi-building sales are excluded. | 
-| Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non-arm's-length transactions, and are excluded from the model training. | 
+| Number of PINs in the sale | The model is trained using only single-PIN sales. When one sale price is attributed to a sale of two PINs, it's not clear how much each PIN's value individually contributed to the sale price, so multi-PIN sales are excluded. |
+| Number of buildings | The model is trained using only single-building PINs. When one sale price is attributed to a sale with two buildings, it's not clear how much each building's value individually contributed to the sale price, so multi-building sales are excluded. |
+| Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non-arm's-length transactions, and are excluded from the model training. |
 | Buyer-seller attributes | The model is trained on sales between non-corporate unrelated buyers and sellers. We exclude sales between corporate affiliates, related individuals, Bank REO (Real Estate Owned), sales involving a financial institution or government agency, and sales in lieu of foreclosure. |
 
 **Analyst review.** Finally, CCAO residential analysts can manually review sales and inform us of sales that we should not use to train the model. Currently, the only sales we exclude due to analyst review are sales of homes for which an analyst finds that the square footage or age are significantly incorrect in our data.
@@ -488,7 +488,7 @@ The pipeline also uses a few secondary data sets in the valuation process. These
 
 * [`char_data`](#getting-data) - The complete `assessment_data` set as well as the same data for the previous year. This data is used for automated model performance reporting rather than valuation.
 * [`complex_id_data`](#getting-data) - Complex identifiers for class 210 and 295 town/rowhomes. Intended to group like units together to ensure that nearly identical units in close proximity receive the same assessed value. This is accomplished with a "fuzzy grouping" strategy that allows slightly dissimilar characteristics.
-* [`hie_data`](#getting-data) - Home improvement exemption data used to evaluate whether the pipeline correctly updates card-level characteristics triggered by the expiration of home improvement exemptions.
+* [`hie_data`](#getting-data) - Home improvement exemption data used to evaluate whether the pipeline correctly updates card-level characteristics triggered by the expiration of [home improvement exemptions](https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md).
 * [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values for class 210 and 295 units. Provided by the Valuations department. Not always used, so may be unavailable or 0 rows for certain years.
 * [`land_nbhd_rate_data`](#getting-data) - Fixed $/sqft land rates by assessor neighborhood for residential property classes except 210 and 295. Provided by the Valuations department.
 
