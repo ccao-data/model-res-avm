@@ -357,10 +357,20 @@ def test_get_comps_raises_on_invalid_inputs(
         pt.param([2, 3, 4, 5, 0], 1, 0, [1, 2, 3, 4, 5], id="insert_start"),
         pt.param([1, 2, 3, 4, 0], 5, 4, [1, 2, 3, 4, 5], id="insert_end"),
         pt.param([0], 1, 0, [1], id="insert_single_element"),
-        pt.param([], 1, 0, [], id="insert_empty_array"),
-        pt.param([1, 2, 3, 4, 5], 6, 10, [1, 2, 3, 4, 5], id="insert_out_of_bounds"),
     ],
 )
 def test_insert_at_idx_and_shift(arr, elem, idx, expected):
     result = comps_module.insert_at_idx_and_shift(np.array(arr), elem, idx)
     np.testing.assert_array_equal(result, np.array(expected))
+
+
+@pt.mark.parametrize(
+    "arr, elem, idx",
+    [
+        pt.param([], 1, 0, id="insert_empty_array"),
+        pt.param([1, 2, 3, 4, 5], 6, 10, id="insert_out_of_bounds"),
+    ],
+)
+def test_insert_at_idx_and_shift_raises_on_out_of_bounds(arr, elem, idx):
+    with pt.raises(IndexError):
+        comps_module.insert_at_idx_and_shift(np.array(arr), elem, idx)
