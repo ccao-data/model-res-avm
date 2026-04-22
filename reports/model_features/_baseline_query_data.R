@@ -93,8 +93,7 @@ if (!exists("assessment_data_new")) {
       meta_class,
       # We use any of since predictors can change year over year
       any_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
 
 if (!exists("assessment_data_old")) {
@@ -108,8 +107,7 @@ if (!exists("assessment_data_old")) {
       meta_year,
       meta_class,
       any_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
 
 # SHAPs ------------------------------------------------------------------------
@@ -125,7 +123,6 @@ if (!exists("shaps_new")) {
 
     if (shap_exists) {
       shaps_new <- shap_df %>%
-        collect() %>%
         left_join(
           assessment_data_new,
           by = c("meta_pin", "meta_card_num"),
@@ -163,8 +160,7 @@ if (!exists("training_data_old")) {
       meta_sale_date,
       meta_class,
       any_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
 
 if (!exists("training_data_new")) {
@@ -177,6 +173,5 @@ if (!exists("training_data_new")) {
       meta_sale_date,
       meta_class,
       all_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
