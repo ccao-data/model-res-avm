@@ -372,5 +372,5 @@ def test_insert_at_idx_and_shift(arr, elem, idx, expected):
     ],
 )
 def test_insert_at_idx_and_shift_raises_on_out_of_bounds(arr, elem, idx):
-    with pt.raises(IndexError, match="idx is out of bounds for arr"):
+    with pt.raises(IndexError, match="idxs is out of bounds for arr"):
         comps_module.insert_at_idx_and_shift(np.array(arr), elem, idx)
