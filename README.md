@@ -1391,7 +1391,6 @@ Uploaded Parquet files are converted into the following Athena tables:
 | parameter_final | model run | year, run_id | Chosen set of hyperparameters for each run |
 | parameter_range | parameter | year, run_id, parameter_name | Range of hyperparameters searched during CV tuning |
 | parameter_search | model cv fold | year, run_id, configuration, fold_id | Tidymodels tuning output from cross-validation |
-| performance | geography \[by class\] | year, run_id, stage, geography_type, geography_id, by_class, class | Peformance metrics (optionally) broken out by class for different levels of geography |
 | performance | geography \[by class\] | year, run_id, stage, geography_type, geography_id, by_class, class | Performance metrics (optionally) broken out by class for different levels of geography |
 | performance_quantile | geography \[by class\] by quantile | year, run_id, stage, geography_type, geography_id, by_class, class, quantile | Performance metrics by quantile within class and geography |
 | shap | card | year, run_id, township_code, meta_pin, meta_card_num | SHAP values for each feature for each card in the assessment data |
