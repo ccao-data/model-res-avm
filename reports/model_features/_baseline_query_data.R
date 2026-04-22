@@ -7,13 +7,13 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
   rstudio_conn_tab = FALSE
 )
 
-base_dvc_url <- "s3://ccao-data-dvc-us-east-1"
-base_model_results_url <- "s3://ccao-model-results-us-east-1"
-
 # Metadata and predictor naming ------------------------------------------------
 
 # We use an new vs old nomenclature to differentiate data from the current
 # model run (new) to a model run that we want to compare it to (old).
+
+model_params <- read_yaml(here("params.yaml"))
+paths <- model_file_dict(model_params$run_id, model_params$year)
 
 # Grab metadata to check output data <> params alignment
 metadata <- read_parquet(paths$output$metadata$local)
@@ -24,10 +24,6 @@ if (metadata$run_id != params$run_id) {
     "should run model_fetch_run() to fetch model outputs from S3"
   )
 }
-
-model_params <- read_yaml(here("params.yaml"))
-
-paths <- model_file_dict(model_params$run_id, model_params$year)
 
 if (!exists("model_predictor_all_name")) {
   model_predictor_all_name <- model_params$model$predictor$all %>%
@@ -68,14 +64,8 @@ if (!exists("metadata_old")) {
     conn = AWS_ATHENA_CONN_NOCTUA,
     statement = glue::glue("
     select
-      model.dvc_md5_assessment_data,
-      model.dvc_md5_training_data,
-      model.model_predictor_all_name,
-      model.assessment_year,
-      model.model_predictor_categorical_name
-    from model.metadata model
-    join model.final_model final
-      on model.run_id = final.run_id
+      final.run_id
+    from model.final_model final
     where final.type = 'res'
       and CAST(final.year AS INTEGER) = {model_params$assessment$year} - 1
     order by final.date_finalized desc
@@ -84,12 +74,14 @@ if (!exists("metadata_old")) {
   )
 }
 
-# Assessment Data --------------------------------------------------------------
-
-# Get assessment data for both old and new datasets
-if (!exists("dvc_md5_assessment_data_old")) {
-  dvc_md5_assessment_data_old <- metadata_old$dvc_md5_assessment_data
+# Include an error if for some reason we do not get valid old metadata
+if (is.null(metadata_old) || nrow(metadata_old) == 0) {
+  stop(
+    "Missing prior year data for comparison."
+  )
 }
+
+# Assessment Data --------------------------------------------------------------
 
 # Get assessment set chars for new and old data
 if (!exists("assessment_data_new")) {
@@ -101,16 +93,13 @@ if (!exists("assessment_data_new")) {
       meta_class,
       # We use any of since predictors can change year over year
       any_of(model_predictor_all_name)
-    ) %>%
-    collect()
-}
-if (!exists("assessment_data_old")) {
-  assessment_data_old <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(dvc_md5_assessment_data_old, 1, 2), "/",
-      substr(dvc_md5_assessment_data_old, 3, 32)
     )
+}
+
+if (!exists("assessment_data_old")) {
+  assessment_data_old <- ccao_download_model_input_data(
+    metadata_old$run_id,
+    "assessment"
   ) %>%
     select(
       meta_pin,
@@ -118,8 +107,7 @@ if (!exists("assessment_data_old")) {
       meta_year,
       meta_class,
       any_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
 
 # SHAPs ------------------------------------------------------------------------
@@ -135,7 +123,6 @@ if (!exists("shaps_new")) {
 
     if (shap_exists) {
       shaps_new <- shap_df %>%
-        collect() %>%
         left_join(
           assessment_data_new,
           by = c("meta_pin", "meta_card_num"),
@@ -161,12 +148,9 @@ if (!exists("continuous_shaps")) {
 
 # Get new and old training data
 if (!exists("training_data_old")) {
-  training_data_old <- open_dataset(
-    paste0(
-      glue("{base_dvc_url}/files/md5/"),
-      substr(metadata_old$dvc_md5_training_data, 1, 2), "/",
-      substr(metadata_old$dvc_md5_training_data, 3, 32)
-    )
+  training_data_old <- ccao_download_model_input_data(
+    metadata_old$run_id,
+    "training"
   ) %>%
     select(
       meta_pin,
@@ -176,8 +160,7 @@ if (!exists("training_data_old")) {
       meta_sale_date,
       meta_class,
       any_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
 
 if (!exists("training_data_new")) {
@@ -190,6 +173,5 @@ if (!exists("training_data_new")) {
       meta_sale_date,
       meta_class,
       all_of(model_predictor_all_name)
-    ) %>%
-    collect()
+    )
 }
