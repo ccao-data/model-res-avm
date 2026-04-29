@@ -33,7 +33,7 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
 - [ ] Run ETL scripts to get new feature data.
   - Key data arrival dates are **January** for Census data and **December** for Parcel data.
 - [ ] Complete the [Checklist](https://cookcounty.sharepoint.com/:x:/r/sites/Data-Assessor/_layouts/15/Doc.aspx?sourcedoc=%7BF4732426-8A8E-4C63-9211-89E12C9AB1E4%7D&file=2026%20Modeling%20Data%20Refresh.xlsx&action=default&mobileredirect=true) for ingest / refresh
-  - After completing the data refresh, make sure to run the model feature report to ensure nothing unexpected has happened. See below.
+  - After completing the data refresh, make sure to run the model feature report to ensure nothing unexpected has happened.
 - [ ] Update the [Land rates](https://github.com/ccao-data/data-architecture/blob/5dcb6dc79b42ae1bc4a834bcd28ea851e525256f/etl/scripts-ccao-data-warehouse-us-east-1/ccao/ccao-land-land_nbhd_rate.R) ETL script to account for new land rates
 
 
@@ -43,9 +43,9 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
 
 - [ ] Meet with stakeholders and agree on delivery dates for any needed data (listed below) and our key deliverable (the model output and associated email) as well as any intermittent deliverables (sales). – **November**
 - [ ] Check in with Res-Val to see if there are any requested changes to the desk review workbook. – **November**
-- [ ] IasWorld Sales – **January** – Director of Special Valuations
-- [ ] Sale Review – **December** – Valuations Sale Review manager
-- [ ] Land Rates – **January** – Chief Management Officer
+- [ ] IasWorld Sales – Director of Special Valuations – **January**
+- [ ] Sale Review– Valuations Sale Review manager – **December** 
+- [ ] Land Rates – Chief Management Officer – **January**
 
 ### Condo specifics
 
@@ -57,7 +57,7 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
 
 ## Res Model
 
-- [ ] Create a model template issue which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
+- [ ] Create a milestone which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
 - [ ] Update `Params.yaml` in the following locations:
   - **Assessment**
     - Year
@@ -69,7 +69,7 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
     - Min_sale_year
     - Max_sale_year
   - **Model**
-    - Seed (doesn't matter but seems to increment with year)
+    - Seed (doesn't matter, just as a legacy practice)
   - **Ratio_study**
     - Far_year
     - Near_year
@@ -80,7 +80,7 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
 
 ## Condo Model
 
-- [ ] Create a model template issue which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
+- [ ] Create a milestone which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-condo-avm/milestone/1).
 - [ ] Update `Params.yaml` in the following locations:
   - **Assessment**
     - Year
@@ -92,11 +92,11 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
     - Min_sale_year
     - Max_sale_year
   - **Model**
-    - Seed (doesn't matter but seems to increment with year)
+    - Seed (doesn't matter, just as a legacy practice)
   - **Ratio_study**
     - Far_year
     - Near_year
-- [ ] Run [model_feature report](https://github.com/ccao-data/model-res-avm/blob/master/reports/model_features/model_features.qmd) via GitHub Actions.
+- [ ] Run [model_feature report](https://github.com/ccao-data/model-condo-avm/blob/master/reports/model_features/model_features.qmd) via GitHub Actions.
   - Pay attention to any changes to or from NA values and key features such as schools, location (neighborhood, x-y coordinates), and characteristics (sq footage, rooms)
 - [ ] Run the model and update DVC hashes to represent the newly ingested data. This must be done with a local run rather than GitHub Actions. This involves both pushing the DVC changes through `dvc push` as well as noting the changed values in the `params.yaml` file. See this pull request for updated [params](https://github.com/ccao-data/model-condo-avm/pull/125/changes).
 
