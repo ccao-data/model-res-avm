@@ -1,12 +1,109 @@
 ---
-name: Finalize annual model
-about: Necessary steps to take to finalize an annual model
-title: Finalize annual model
+name: Annual model checklist
+about: steps take for pre - development - post modeling
+title: Annual model checklist
 labels: ''
 assignees: ''
 ---
 
-# Checklist
+# Pre-Modeling
+
+Each modeling season's folder has a planning doc. For one example see this: [Planning Docs](https://cookcounty.sharepoint.com/:f:/r/sites/Data-Assessor/Shared%20Documents/General/2026%20Initial%20Model%20Values/Planning%20Docs?csf=1&web=1&e=7IHmu4)
+
+These stages should be completed before modeling season begins.
+
+## Model Agnostic
+
+- [ ] Update Sales-Val to reflect any changes in Sales – This should be done before we have access to the complete set of sales.
+- [ ] Run an initial sales val run in November. Use this run to create a task list of issues that should be remedied before modeling season. Examples include:
+  - [ ] Are the SD bounds and geography areas sensible?
+  - [ ] Are we excluding too many sales in specific geographic regions?
+- [ ] If valuations has capacity for our ongoing sale review collaboration:
+  - [ ] Reiterate importance of exact data input so that our [transformation script](https://github.com/ccao-data/data-architecture/blob/master/etl/scripts-ccao-data-warehouse-us-east-1/sale/sale-flag_review.R) functions properly
+  - [ ] Determine which sales to send. In 2025 we opted for current triad, current year sales and we ranked the sales based on algorithmic sales vals' standard deviation numbers. Whichever sales had the highest SD distance from the mean (per township) were prioritized for review
+  - [ ] Set a deadline for them to return whatever they can review to us
+  - [ ] Ingest sale review labels into our data lake
+- [ ] Make sure sales are as up to date as possible — ultimately will need sales through the end of the year. The final necessary sales typically arrive by mid January. If we don't get sales by this date, we will have trouble delivering the model on time.
+  - Stakeholder/point of contact: Valuations Sale Review manager
+
+### Data Ingest / Refresh
+
+The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/etl/README.md) provides guidance on how to run the ETL scripts.
+
+- [ ] Run ETL scripts to get new feature data.
+  - Key data arrival dates are **January** for Census data and **December** for Parcel data.
+- [ ] Complete the [Checklist](https://cookcounty.sharepoint.com/:x:/r/sites/Data-Assessor/_layouts/15/Doc.aspx?sourcedoc=%7BF4732426-8A8E-4C63-9211-89E12C9AB1E4%7D&file=2026%20Modeling%20Data%20Refresh.xlsx&action=default&mobileredirect=true) for ingest / refresh
+  - After completing the data refresh, make sure to run the model feature report to ensure nothing unexpected has happened. See below.
+- [ ] Update the [Land rates](https://github.com/ccao-data/data-architecture/blob/5dcb6dc79b42ae1bc4a834bcd28ea851e525256f/etl/scripts-ccao-data-warehouse-us-east-1/ccao/ccao-land-land_nbhd_rate.R) ETL script to account for new land rates
+
+
+**Internal data requests:**
+
+> Example: [ResModeling_2026Deadlines.pptx](https://cookcounty.sharepoint.com/:p:/r/sites/Data-Assessor/Shared%20Documents/General/2026%20Initial%20Model%20Values/Planning%20Docs/ResModeling_2026Deadlines.pptx?d=w9ad2102166bd4b94a1c6615837346ba5&csf=1&web=1&e=rMPn6d)
+
+- [ ] Meet with stakeholders and agree on delivery dates for any needed data (listed below) and our key deliverable (the model output and associated email) as well as any intermittent deliverables (sales). – **November**
+- [ ] Check in with Res-Val to see if there are any requested changes to the desk review workbook. – **November**
+- [ ] IasWorld Sales – **January** – Director of Special Valuations
+- [ ] Sale Review – **December** – Valuations Sale Review manager
+- [ ] Land Rates – **January** – Chief Management Officer
+
+### Condo specifics
+
+- [ ] September condo chars update:
+  - [ ] Develop a list of condo unit chars that we suggest Data Integrity should update. Good units to update have missing data or data that is suspected to be incorrect (e.g., statistically low square footage). See: [enterprise-intelligence/issues/330](https://github.com/ccao-data/enterprise-intelligence/issues/330)
+  - [ ] Ingest the spreadsheet returned by Data Integrity: [data-architecture/issues/920](https://github.com/ccao-data/data-architecture/issues/920)
+  - Note: Not sure if this is technically mission critical, as the model will run correctly with old unit chars that can be forward-filled.
+
+
+## Res Model
+
+- [ ] Create a model template issue which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
+- [ ] Update `Params.yaml` in the following locations:
+  - **Assessment**
+    - Year
+    - Date
+    - Triad
+    - Data_year
+    - Working_year
+  - **Input**
+    - Min_sale_year
+    - Max_sale_year
+  - **Model**
+    - Seed (doesn't matter but seems to increment with year)
+  - **Ratio_study**
+    - Far_year
+    - Near_year
+- [ ] Run [model_feature report](https://github.com/ccao-data/model-res-avm/blob/master/reports/model_features/model_features.qmd) via GitHub Actions.
+  - Pay attention to any changes to or from NA values and key features such as schools, location (neighborhood, x-y coordinates), and characteristics (sq footage, rooms)
+- [ ] Run the model and update DVC hashes to represent the newly ingested data. This must be done with a local run rather than GitHub Actions. This involves both pushing the DVC changes through `dvc push` as well as noting the changed values in the `params.yaml` file. See this pull request for updated [params](https://github.com/ccao-data/model-condo-avm/pull/125/changes).
+
+
+## Condo Model
+
+- [ ] Create a model template issue which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
+- [ ] Update `Params.yaml` in the following locations:
+  - **Assessment**
+    - Year
+    - Date
+    - Triad
+    - Data_year
+    - Working_year
+  - **Input**
+    - Min_sale_year
+    - Max_sale_year
+  - **Model**
+    - Seed (doesn't matter but seems to increment with year)
+  - **Ratio_study**
+    - Far_year
+    - Near_year
+- [ ] Run [model_feature report](https://github.com/ccao-data/model-res-avm/blob/master/reports/model_features/model_features.qmd) via GitHub Actions.
+  - Pay attention to any changes to or from NA values and key features such as schools, location (neighborhood, x-y coordinates), and characteristics (sq footage, rooms)
+- [ ] Run the model and update DVC hashes to represent the newly ingested data. This must be done with a local run rather than GitHub Actions. This involves both pushing the DVC changes through `dvc push` as well as noting the changed values in the `params.yaml` file. See this pull request for updated [params](https://github.com/ccao-data/model-condo-avm/pull/125/changes).
+
+
+---
+
+# Post- Modeling Checklist
 
 ## High priority
 
