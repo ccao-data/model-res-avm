@@ -43,6 +43,7 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
     split(., .$type) %>%
     purrr::map(., ~ split(.x, .x$name, drop = TRUE)) %>%
     purrr::map(., ~ purrr::map(.x, function(x) {
+      # Only return the s3 and local paths, and drop any NA values
       as.list(x)[!is.na(x) & names(x) %in% c("s3", "local")]
     }))
 
