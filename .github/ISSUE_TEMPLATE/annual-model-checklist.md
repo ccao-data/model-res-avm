@@ -41,7 +41,7 @@ The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/
 
 > Example: [ResModeling_2026Deadlines.pptx](https://cookcounty.sharepoint.com/:p:/r/sites/Data-Assessor/Shared%20Documents/General/2026%20Initial%20Model%20Values/Planning%20Docs/ResModeling_2026Deadlines.pptx?d=w9ad2102166bd4b94a1c6615837346ba5&csf=1&web=1&e=rMPn6d)
 
-- [ ] Meet with stakeholders and agree on delivery dates for any needed data (listed below) and our key deliverable (the model output and associated email) as well as any intermittent deliverables (sales). – **November**
+- [ ] Meet with stakeholders and agree on delivery dates for any data that we need (sales, reviewed sales, land rates) and our key deliverable (the model output and associated email) as well as any intermittent deliverables (sales for review). – **November**
 - [ ] Check in with Res-Val to see if there are any requested changes to the desk review workbook. – **November**
 - [ ] IasWorld Sales – Director of Special Valuations – **January**
 - [ ] Sale Review– Valuations Sale Review manager – **December** 
