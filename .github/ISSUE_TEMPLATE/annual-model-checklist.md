@@ -6,9 +6,9 @@ labels: ''
 assignees: ''
 ---
 
-# Pre-Modeling
-
 Each modeling season's folder has a planning doc. For one example see this: [Planning Docs](https://cookcounty.sharepoint.com/:f:/r/sites/Data-Assessor/Shared%20Documents/General/2026%20Initial%20Model%20Values/Planning%20Docs?csf=1&web=1&e=7IHmu4)
+
+# Pre-Modeling
 
 These stages should be completed before modeling season begins.
 
