@@ -50,7 +50,7 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   return(dict)
 }
 
-# Get a vector of S3 paths to the artifacts for a given model run
+# Get a vector of S3 paths to the output artifacts for a given model run
 model_get_s3_artifacts_for_run <- function(run_id, year) {
   # Get paths of all run objects based on the file dictionary
   paths <- model_file_dict(run_id, year)
