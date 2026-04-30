@@ -46,12 +46,11 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 - [ ] Sale Review– Valuations Sale Review manager – **December** 
 - [ ] Land Rates – Chief Management Officer – **January**
 
-### Condo specifics
+### Condo specific data requests
 
 - [ ] September condo chars update:
   - [ ] Develop a list of condo unit chars that we suggest Data Integrity should update. Good units to update have missing data or data that is suspected to be incorrect (e.g., statistically low square footage). See: [enterprise-intelligence/issues/330](https://github.com/ccao-data/enterprise-intelligence/issues/330)
   - [ ] Ingest the spreadsheet returned by Data Integrity: [data-architecture/issues/920](https://github.com/ccao-data/data-architecture/issues/920)
-  - Note: Not sure if this is technically mission critical, as the model will run correctly with old unit chars that can be forward-filled.
 
 
 ## Res Model
