@@ -14,10 +14,9 @@ These stages should be completed before modeling season begins.
 
 ## Model Agnostic
 
-- [ ] Update Sales-Val to reflect any changes in Sales – This should be done before we have access to the complete set of sales.
 - [ ] Run an initial sales val run in November. Use this run to create a task list of issues that should be remedied before modeling season. Examples include:
   - [ ] Are the SD bounds and geography areas sensible?
-  - [ ] Are we excluding too many sales in specific geographic regions?
+  - [ ] Are we excluding too many sales overall or in specific geographic regions?
 - [ ] If valuations has capacity for our ongoing sale review collaboration:
   - [ ] Reiterate importance of exact data input so that our [transformation script](https://github.com/ccao-data/data-architecture/blob/master/etl/scripts-ccao-data-warehouse-us-east-1/sale/sale-flag_review.R) functions properly
   - [ ] Determine which sales to send. In 2025 we opted for current triad, current year sales and we ranked the sales based on algorithmic sales vals' standard deviation numbers. Whichever sales had the highest SD distance from the mean (per township) were prioritized for review
@@ -60,19 +59,19 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 - [ ] Create a milestone which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
 - [ ] Update `Params.yaml` in the following locations:
   - **Assessment**
-    - Year
-    - Date
-    - Triad
-    - Data_year
-    - Working_year
+    - `year`
+    - `date`
+    - `triad`
+    - `data_year`
+    - `working_year`
   - **Input**
-    - Min_sale_year
-    - Max_sale_year
+    - `min_sale_year`
+    - `max_sale_year`
   - **Model**
-    - Seed (doesn't matter, just as a legacy practice)
+    - `seed` (doesn't matter, just as a legacy practice)
   - **Ratio_study**
-    - Far_year
-    - Near_year
+    - `far_year`
+    - `near_year`
 - [ ] Run [model_feature report](https://github.com/ccao-data/model-res-avm/blob/master/reports/model_features/model_features.qmd) via GitHub Actions.
   - Pay attention to any changes to or from NA values and key features such as schools, location (neighborhood, x-y coordinates), and characteristics (sq footage, rooms)
 - [ ] Run the model and update DVC hashes to represent the newly ingested data. This must be done with a local run rather than GitHub Actions. This involves both pushing the DVC changes through `dvc push` as well as noting the changed values in the `params.yaml` file. See this pull request for updated [params](https://github.com/ccao-data/model-condo-avm/pull/125/changes).
@@ -83,19 +82,19 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 - [ ] Create a milestone which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-condo-avm/milestone/1).
 - [ ] Update `Params.yaml` in the following locations:
   - **Assessment**
-    - Year
-    - Date
-    - Triad
-    - Data_year
-    - Working_year
+    - `year`
+    - `date`
+    - `triad`
+    - `data_year`
+    - `working_year`
   - **Input**
-    - Min_sale_year
-    - Max_sale_year
+    - `min_sale_year`
+    - `max_sale_year`
   - **Model**
-    - Seed (doesn't matter, just as a legacy practice)
+    - `seed` (doesn't matter, just as a legacy practice)
   - **Ratio_study**
-    - Far_year
-    - Near_year
+    - `far_year`
+    - `near_year`
 - [ ] Run [model_feature report](https://github.com/ccao-data/model-condo-avm/blob/master/reports/model_features/model_features.qmd) via GitHub Actions.
   - Pay attention to any changes to or from NA values and key features such as schools, location (neighborhood, x-y coordinates), and characteristics (sq footage, rooms)
 - [ ] Run the model and update DVC hashes to represent the newly ingested data. This must be done with a local run rather than GitHub Actions. This involves both pushing the DVC changes through `dvc push` as well as noting the changed values in the `params.yaml` file. See this pull request for updated [params](https://github.com/ccao-data/model-condo-avm/pull/125/changes).
@@ -107,7 +106,7 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 
 ## High priority
 
-High priority tasks must be complete before the model deadlines:
+High priority tasks must be completed before the model deadlines:
 
 ### Res model
 
