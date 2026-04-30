@@ -56,19 +56,23 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
     .by = meta_pin
   ) %>%
   mutate(
-    # Exponentiate predictions back to raw dollar scale since the model was
-    # trained on log(price)
-    pred_card_initial_fmv = exp(predict(
+    pred_card_initial_fmv = predict(
       lgbm_final_full_fit,
       new_data = bake(
         lgbm_final_full_recipe,
         new_data = .,
         all_predictors()
       )
-    )$.pred),
+    )$.pred,
     char_bldg_sf = og_char_bldg_sf
   ) %>%
   select(-og_char_bldg_sf)
+
+# Exponentiate predictions back to raw dollar scale
+if (log_transform_enable) {
+  assessment_card_data_pred <- assessment_card_data_pred %>%
+    mutate(pred_card_initial_fmv = exp(pred_card_initial_fmv))
+}
 
 
 

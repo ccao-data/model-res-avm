@@ -34,14 +34,14 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
-# Store the original sale prices before log-transforming. The LightGBM model
-# trains on log(price) for better performance on the skewed price distribution,
-# but all predictions are exponentiated back to raw dollars before being saved
-training_data_full <- training_data_full %>%
-  mutate(
-    meta_sale_price_original = meta_sale_price,
-    meta_sale_price = log(meta_sale_price)
-  )
+# Log-transform sale prices for LightGBM; stash originals for evaluation
+if (log_transform_enable) {
+  training_data_full <- training_data_full %>%
+    mutate(
+      meta_sale_price_original = meta_sale_price,
+      meta_sale_price = log(meta_sale_price)
+    )
+}
 
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
@@ -71,10 +71,14 @@ train_recipe <- model_main_recipe(
 message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
-# and feature interactions. training_data_full already has log-transformed
-# meta_sale_price, so no additional transform is needed here
+# and feature interactions. Linear baseline always fits on log(price);
+# apply here if global transform is off
 lin_recipe <- model_lin_recipe(
-  data = training_data_full,
+  data = if (log_transform_enable) {
+    training_data_full
+  } else {
+    training_data_full %>% mutate(meta_sale_price = log(meta_sale_price))
+  },
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -91,9 +95,13 @@ lin_wflow <- workflow() %>%
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
-# Fit the linear model on the training data (already log-transformed)
+# Fit linear baseline; apply log transform to train if global transform is off
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train)
+  fit(data = if (log_transform_enable) {
+    train
+  } else {
+    train %>% mutate(meta_sale_price = log(meta_sale_price))
+  })
 
 
 
@@ -398,20 +406,30 @@ message("Finalizing and saving trained model")
 # Get predictions on the test set using the training data model. These
 # predictions are used to evaluate model performance on the unseen test set.
 # Keep only the variables necessary for evaluation
-test %>%
+test_preds <- test %>%
   mutate(
-    # Exponentiate LightGBM predictions back to raw dollar scale since the
-    # model was trained on log(price)
-    pred_card_initial_fmv = exp(predict(lgbm_wflow_final_fit, test)$.pred),
-    # Linear model is also trained on log(price) via the training data
-    # transform, so exponentiate its predictions as well
+    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
+    # Linear baseline fits on log(price); pass log-scaled data if global transform is off
     pred_card_initial_fmv_lin = exp(predict(
       lin_wflow_final_fit,
-      test
-    )$.pred),
-    # Restore the original sale price for evaluation metrics
-    meta_sale_price = meta_sale_price_original
-  ) %>%
+      if (log_transform_enable) {
+        test
+      } else {
+        test %>% mutate(meta_sale_price = log(meta_sale_price))
+      }
+    )$.pred)
+  )
+
+# Exponentiate LightGBM predictions and restore original sale price
+if (log_transform_enable) {
+  test_preds <- test_preds %>%
+    mutate(
+      pred_card_initial_fmv = exp(pred_card_initial_fmv),
+      meta_sale_price = meta_sale_price_original
+    )
+}
+
+test_preds %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
     all_of(params$ratio_study$geographies), char_bldg_sf,

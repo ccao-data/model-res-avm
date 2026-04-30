@@ -37,6 +37,10 @@ toggle:
   # year's model inputs?
   feature_report_enable: false
 
+  # Log-transform `meta_sale_price` for LightGBM; predictions are
+  # exp()-scaled back. Linear baseline always uses log(price).
+  log_transform_enable: true
+
 
 # Data/Ingest ------------------------------------------------------------------
 
