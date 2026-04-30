@@ -28,7 +28,7 @@ These stages should be completed before modeling season begins.
 
 ### Data Ingest / Refresh
 
-The following [wiki](https://github.com/ccao-data/data-architecture/blob/master/etl/README.md) provides guidance on how to run the ETL scripts.
+The following [readme](https://github.com/ccao-data/data-architecture/blob/master/etl/README.md) provides guidance on how to run the ETL scripts.
 
 - [ ] Run ETL scripts to get new feature data.
   - Key data arrival dates are **January** for Census data and **December** for Parcel data.
