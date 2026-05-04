@@ -14,7 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 tests = [
-  "pytest==8.3.*"
+  "pytest==9.0.*"
 ]
 
 [tool.pytest.ini_options]
