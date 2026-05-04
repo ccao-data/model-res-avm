@@ -16,7 +16,7 @@ These stages should be completed before modeling season begins.
 
 - [ ] Run an initial sales val run in November. Use this run to create a task list of issues that should be remedied before modeling season. Examples include:
   - [ ] Are the SD bounds and geography areas sensible?
-  - [ ] Are we excluding too many sales overall or in specific geographic regions?
+  - [ ] Are we excluding too many sales overall or in specific geographies?
 - [ ] If valuations has capacity for our ongoing sale review collaboration:
   - [ ] Reiterate importance of exact data input so that our [transformation script](https://github.com/ccao-data/data-architecture/blob/master/etl/scripts-ccao-data-warehouse-us-east-1/sale/sale-flag_review.R) functions properly
   - [ ] Determine which sales to send. In 2025 we opted for current triad, current year sales and we ranked the sales based on algorithmic sales vals' standard deviation numbers. Whichever sales had the highest SD distance from the mean (per township) were prioritized for review
