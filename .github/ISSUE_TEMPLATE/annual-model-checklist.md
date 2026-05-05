@@ -50,6 +50,7 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 ### Condo specific data requests
 
 September condo chars update:
+
   - [ ] Develop a list of condo unit chars that we suggest Data Integrity should update. Good units to update have missing data or data that is suspected to be incorrect (e.g., statistically low square footage). See: [enterprise-intelligence/issues/330](https://github.com/ccao-data/enterprise-intelligence/issues/330)
   - [ ] Ingest the spreadsheet returned by Data Integrity: [data-architecture/issues/920](https://github.com/ccao-data/data-architecture/issues/920)
 
