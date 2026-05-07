@@ -173,7 +173,7 @@ if (upload_enable) {
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test_linear$s3)
 
-  # Upload train performance
+  # Upload training set performance
   message("Uploading training set evaluation")
   read_parquet(paths$output$performance_train$local) %>%
     mutate(run_id = !!run_id) %>%
