@@ -5,31 +5,37 @@ source("../_setup.R")
 ```{r}
 test_stats <- model_performance_test %>%
   filter(
-    run_id == metadata$run_id,
     geography_type == "triad_code",
     triad_code == run_triad_code,
     by_class == FALSE
   ) %>%
-  select(rmse, mdape, mae, starts_with("sale_fmv_"), starts_with("estimate_fmv_"))
+  select(
+    rmse, mdape, mae, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  )
 
 train_stats <- model_performance_train %>%
   filter(
-    run_id == metadata$run_id,
     geography_type == "triad_code",
     triad_code == run_triad_code,
     by_class == FALSE
   ) %>%
-  select(rmse, mdape, mae, starts_with("sale_fmv_"), starts_with("estimate_fmv_"))
+  select(
+    rmse, mdape, mae, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  )
 
-  train_test_comparison_tbl <- dplyr::bind_rows(list("train" = train_stats,"test" = test_stats), .id = "split")
+train_test_comparison_tbl <- dplyr::bind_rows(list(
+  "train" = train_stats, "test" = test_stats
+), .id = "split")
 ```
 
 
 ```{r}
- train_test_comparison_tbl %>%
-   kable(
-     digits = 3,
-     format.args = list(big.mark = ","),
-     caption = "Train vs. Test Set Performance Comparison"
-   )
+train_test_comparison_tbl %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Train vs. Test Set Performance Comparison"
+  )
 ```
