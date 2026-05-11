@@ -1,4 +1,6 @@
-# Model-Res-AVM Documentation
+# Model-Res-AVM Issue Documentation
+
+The Data Department has implemented and tested numerous improvements to the model-res-avm repository across modeling, infrastructure, reporting, and feature engineering. Not all tests and experiments have been incorporated into the final model. This document serves as a historical record of what has been explored, what was adopted, and what was set aside.
 
 | Question / Goal | Issue | Findings / Output | Theme | Date |
 | --- | --- | --- | --- | --- |
