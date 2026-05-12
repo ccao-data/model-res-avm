@@ -1,5 +1,10 @@
 ```{r _train_test_setup_script}
 source("../_setup.R")
+
+if (!exists("model_performance_train")) {
+  model_performance_train <-
+    arrow::read_parquet(paths$output$performance_train$local)
+}
 ```
 
 ```{r}
