@@ -37,16 +37,23 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
-train <- training_data_full
+split_data <- initial_time_split(
+  data = training_data_full,
+  prop = params$cv$split_prop
+)
+test <- testing(split_data)
+train <- training(split_data)
 
-# Sample 10% grouped by township and sale year/month → becomes test
+# Sample 5% of training data grouped by township and sale year/month,
+# and add to test set
 train_sample <- train %>%
   group_by(meta_township_code, time_sale_year, time_sale_month_of_year) %>%
-  slice_sample(prop = 0.1) %>%
+  slice_sample(prop = 0.05) %>%
   ungroup()
 
-test <- train_sample
+test <- bind_rows(test, train_sample)
 train <- anti_join(train, train_sample, by = names(train_sample))
+
 
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
