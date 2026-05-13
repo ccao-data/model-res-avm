@@ -48,7 +48,7 @@ train <- training(split_data)
 # and add to test set
 train_sample <- train %>%
   group_by(meta_township_code, time_sale_year, time_sale_month_of_year) %>%
-  slice_sample(prop = 0.05) %>%
+  slice_sample(prop = 0.1) %>%
   ungroup()
 
 test <- bind_rows(test, train_sample)
