@@ -44,6 +44,16 @@ split_data <- initial_time_split(
 test <- testing(split_data)
 train <- training(split_data)
 
+# Sample 5% of training data grouped by township and sale year/month,
+# and add to test set
+train_sample <- train %>%
+  group_by(meta_township_code, time_sale_year, time_sale_month_of_year) %>%
+  slice_sample(prop = 0.05) %>%
+  ungroup()
+
+test <- bind_rows(test, train_sample)
+train <- anti_join(train, train_sample, by = names(train_sample))
+
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
