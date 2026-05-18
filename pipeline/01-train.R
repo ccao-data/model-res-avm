@@ -47,12 +47,12 @@ train <- training(split_data)
 # Add a stratified test set which is only included if the value is not set to 0
 # This will take a random selection of sales grouped by township,
 # month, and year and add them to `test`.
-if (params$cv$stratified_test_set != 0) {
+if (params$test_set$stratified_prop != 0) {
   test <- bind_rows(
     test,
     train %>%
       group_by(meta_township_code, time_sale_year, time_sale_month_of_year) %>%
-      slice_sample(prop = params$cv$stratified_test_set) %>%
+      slice_sample(prop = test_set$stratified_prop) %>%
       ungroup()
   )
   train <- anti_join(train, test, by = names(train))
