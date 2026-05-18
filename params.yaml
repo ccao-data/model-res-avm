@@ -110,6 +110,11 @@ cv:
   # 0.9 means the most recent 10% of sales are used as a test set
   split_prop: 0.9
 
+  # The stratified test set selects a random percentage of sales, grouped by
+  # township, year, and month to add to the test set. If this is set to 0,
+  # it has not impact on the pipeline.
+  stratified_test_set: 0
+
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
   # time, with each chunk/period calculated automatically
