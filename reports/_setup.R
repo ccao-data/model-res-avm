@@ -235,7 +235,9 @@ m_test_split_prop <- scales::percent(
   1 - metadata$cv_split_prop,
   accuracy = 0.01
 )
-
+m_test_split_stratified_prop <- scales::percent(
+  metadata$input_additional_test_set_stratified_prop
+)
 m_train_min_date <- min(training_data$meta_sale_date)
 m_train_max_date <- max(training_data$meta_sale_date)
 m_train_n_sales <- training_data %>%
