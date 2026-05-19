@@ -104,7 +104,7 @@ input:
   # A stratified test set selects a random percentage of sales, grouped by
   # township, year, and month to add to the test set. If this is set to 0,
   # it has not impact on the pipeline.
-  test_set:
+  additional_test_set:
     stratified_prop: 5
 
 

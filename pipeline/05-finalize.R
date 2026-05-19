@@ -85,7 +85,8 @@ metadata <- tibble::tibble(
   input_sale_validation_dev_bounds = list(
     params$input$sale_validation$dev_bounds
   ),
-  input_test_set_stratified_prop = params$test_set$stratified_prop,
+  input_additional_test_set_stratified_prop =
+    params$input$additional_test_set$stratified_prop,
   ratio_study_far_year = params$ratio_study$far_year,
   ratio_study_far_stage = params$ratio_study$far_stage,
   ratio_study_far_column = params$ratio_study$far_column,
