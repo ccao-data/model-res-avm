@@ -314,7 +314,7 @@ model:
     # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
     # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
     # strongly, encouraging vertical equity at some cost to point accuracy.
-    mse_cov_rho: 3
+    mse_cov_rho: 1
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
