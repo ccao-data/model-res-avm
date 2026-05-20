@@ -359,5 +359,3 @@ if (upload_enable) {
     )
   }
 }
-
-message(paste("Upload Stage Completed for Run:", metadata$run_id))
