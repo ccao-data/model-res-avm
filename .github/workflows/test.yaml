@@ -7,7 +7,7 @@ name: test
 
 env:
   PYTHONUNBUFFERED: "1"
-  UV_SYSTEM_PYTHON: 1
+  UV_FROZEN: 1
 
 jobs:
   test:
@@ -33,9 +33,9 @@ jobs:
       - name: Install dependencies
         working-directory: python
         shell: bash
-        run: uv pip install .[tests]
+        run: uv sync --extra tests
 
       - name: Run Python tests
         shell: bash
         working-directory: python
-        run: pytest
+        run: uv run pytest
