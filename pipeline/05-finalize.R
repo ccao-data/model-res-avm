@@ -30,6 +30,7 @@ run_id <- ccao::ccao_generate_id()
 
 # Print run_id so that we can find it in aws logs
 message(paste("run_id =", run_id))
+
 # Get the current timestamp for when the run ended
 run_end_timestamp <- lubridate::now()
 
