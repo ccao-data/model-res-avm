@@ -99,7 +99,7 @@ input:
     enable: true
 
     # Fraction of the training data to keep (between 0 and 1)
-    fraction: 0.1
+    fraction: 0.25
 
 
 # Cross-validation -------------------------------------------------------------
