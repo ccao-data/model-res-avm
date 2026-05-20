@@ -313,7 +313,7 @@ model:
     # Penalty weight (rho) for the lightsnip "mse_cov" custom objective.
     # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
     # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
-    # strongly, encouraging vertical equity at some cost to point accuracy.
+    # strongly
     mse_cov_rho: 1
 
   hyperparameter:
