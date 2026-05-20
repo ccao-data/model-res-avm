@@ -52,7 +52,7 @@ train_test_comparison_tbl %>%
   select(
     split, rmse, mdape, mae,
     sale_fmv_mean, sale_fmv_sd,
-    estimate_fmv_mean, estimate_fmv_median
+    estimate_fmv_mean, estimate_fmv_sd
   ) %>%
   kable(
     digits = 3,
