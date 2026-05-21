@@ -85,8 +85,6 @@ metadata <- tibble::tibble(
   input_sale_validation_dev_bounds = list(
     params$input$sale_validation$dev_bounds
   ),
-  input_additional_test_set_stratified_prop =
-    params$input$additional_test_set$stratified_prop,
   ratio_study_far_year = params$ratio_study$far_year,
   ratio_study_far_stage = params$ratio_study$far_stage,
   ratio_study_far_column = params$ratio_study$far_column,
@@ -104,6 +102,7 @@ metadata <- tibble::tibble(
   cv_initial_set = params$cv$initial_set,
   cv_max_iterations = params$cv$max_iterations,
   cv_no_improve = params$cv$no_improve,
+  cv_stratified_prop = params$cv$stratified_prop,
   cv_split_prop = params$cv$split_prop,
   cv_best_metric = params$cv$best_metric,
   pv_land_pct_of_total_cap = params$pv$land_pct_of_total_cap,
