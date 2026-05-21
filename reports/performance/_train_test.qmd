@@ -1,0 +1,89 @@
+# Triad-Level Machine Learning Metrics
+
+This section compares model performance metrics at the triad level between the
+**training set** (the data the model learned from) and the **test set** (a
+held-out sample the model never saw during training). Large gaps between train
+and test metrics — particularly for RMSE, MDAPE, or MAE — may indicate
+overfitting, where the model has memorized the training data rather than
+learning generalizable patterns. The sale price and prediction distributions
+are included to confirm that both splits are drawn from similar underlying
+price ranges.
+
+```{r _train_test_setup_script}
+source("../_setup.R")
+
+if (!exists("model_performance_train")) {
+  model_performance_train <-
+    arrow::read_parquet(paths$output$performance_train$local)
+}
+```
+
+```{r}
+test_stats <- model_performance_test %>%
+  filter(
+    geography_type == "triad_code",
+    triad_code == run_triad_code,
+    by_class == FALSE
+  ) %>%
+  select(
+    rmse, mdape, mae, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  )
+
+train_stats <- model_performance_train %>%
+  filter(
+    geography_type == "triad_code",
+    triad_code == run_triad_code,
+    by_class == FALSE
+  ) %>%
+  select(
+    rmse, mdape, mae, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  )
+
+train_test_comparison_tbl <- dplyr::bind_rows(list(
+  "train" = train_stats, "test" = test_stats
+), .id = "split")
+```
+
+
+```{r}
+train_test_comparison_tbl %>%
+  select(
+    split, rmse, mdape, mae,
+    sale_fmv_mean, sale_fmv_sd,
+    estimate_fmv_mean, estimate_fmv_sd
+  ) %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Train vs. Test Set Performance Metrics"
+  )
+```
+
+```{r}
+train_test_comparison_tbl %>%
+  select(
+    split,
+    sale_fmv_min, sale_fmv_q25, sale_fmv_median, sale_fmv_q75, sale_fmv_max
+  ) %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Actual Sale Price Distributions, for Reference"
+  )
+```
+
+```{r}
+train_test_comparison_tbl %>%
+  select(
+    split,
+    estimate_fmv_min, estimate_fmv_q25, estimate_fmv_median,
+    estimate_fmv_q75, estimate_fmv_max
+  ) %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Predicted Value Distributions, for Reference"
+  )
+```
