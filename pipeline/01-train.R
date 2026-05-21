@@ -47,14 +47,20 @@ train <- training(split_data)
 # Add a stratified test set which is only included if the value is not set to 0
 # This will take a random selection of sales grouped by township,
 # month, and year and add them to `test`.
-if (params$input$additional_test_set$stratified_prop != 0) {
-  stratified_sample <- train %>%
-    group_by(meta_township_code, time_sale_year, time_sale_month_of_year) %>%
-    slice_sample(prop = params$input$additional_test_set$stratified_prop) %>%
-    ungroup()
+if (params$cv$stratified_prop != 0) {
+  strat_split <- train %>%
+    mutate(.strat = interaction(
+      meta_township_code, time_sale_year, time_sale_month_of_year,
+      drop = TRUE
+    )) %>%
+    initial_split(
+      prop = 1 - params$cv$stratified_prop,
+      strata = .strat
+    )
 
+  train <- training(strat_split) %>% select(-.strat)
+  stratified_sample <- testing(strat_split) %>% select(-.strat)
   test <- bind_rows(test, stratified_sample)
-  train <- anti_join(train, stratified_sample, by = "meta_sale_document_num")
 }
 
 # Create a recipe for the training data which removes non-predictor columns and
