@@ -112,7 +112,7 @@ cv:
 
   # A stratified test set selects a random percentage of sales, grouped by
   # township, year, and month to add to the test set. If this is set to 0,
-  # it has not impact on the pipeline.
+  # it has no impact on the pipeline.
   stratified_prop: .05
 
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
