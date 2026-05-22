@@ -33,6 +33,7 @@ jobs:
       - name: Setup R
         uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e
         with:
+          r-version: renv
           use-public-rspm: true
 
       # GitHub's base Ubuntu image already has most of the system
