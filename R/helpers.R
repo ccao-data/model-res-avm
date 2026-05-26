@@ -43,17 +43,18 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
     split(., .$type) %>%
     purrr::map(., ~ split(.x, .x$name, drop = TRUE)) %>%
     purrr::map(., ~ purrr::map(.x, function(x) {
+      # Only return the s3 and local paths, and drop any NA values
       as.list(x)[!is.na(x) & names(x) %in% c("s3", "local")]
     }))
 
   return(dict)
 }
 
-# Get a vector of S3 paths to the artifacts for a given model run
+# Get a vector of S3 paths to the output artifacts for a given model run
 model_get_s3_artifacts_for_run <- function(run_id, year) {
   # Get paths of all run objects based on the file dictionary
   paths <- model_file_dict(run_id, year)
-  s3_objs <- grep("s3://", unlist(paths), value = TRUE)
+  s3_objs <- grep("s3://", unlist(paths$output), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
   # First get anything partitioned only by year
@@ -132,7 +133,7 @@ model_fetch_run <- function(run_id, year) {
   tictoc::tic(paste0("Fetched run: ", run_id))
 
   paths <- model_file_dict(run_id, year)
-  s3_objs <- grep("s3://", unlist(paths), value = TRUE)
+  s3_objs <- grep("s3://", unlist(paths$output), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
   for (path in paths$output) {
