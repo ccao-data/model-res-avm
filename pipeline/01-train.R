@@ -56,10 +56,10 @@ if (params$cv$stratified_prop != 0) {
     initial_split(
       prop = 1 - params$cv$stratified_prop,
       strata = .strat
-    )
+    )  %>% select(-.strat)
 
-  train <- training(strat_split) %>% select(-.strat)
-  stratified_sample <- testing(strat_split) %>% select(-.strat)
+  train <- training(strat_split)
+  stratified_sample <- testing(strat_split)
   test <- bind_rows(test, stratified_sample)
 }
 
