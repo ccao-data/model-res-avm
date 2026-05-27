@@ -70,7 +70,7 @@ train_test_comparison_tbl %>%
   kable(
     digits = 3,
     format.args = list(big.mark = ","),
-    caption = "Actual Sale Price Distributions, for Reference"
+    caption = "Actual Sale Price Distributions"
   )
 ```
 
@@ -84,6 +84,6 @@ train_test_comparison_tbl %>%
   kable(
     digits = 3,
     format.args = list(big.mark = ","),
-    caption = "Predicted Value Distributions, for Reference"
+    caption = "Predicted Value Distributions"
   )
 ```
