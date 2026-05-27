@@ -51,10 +51,19 @@ train_test_comparison_tbl %>%
     sale_fmv_mean, sale_fmv_sd,
     estimate_fmv_mean, estimate_fmv_sd
   ) %>%
+  mutate(across(c(
+    rmse, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  ), scales::dollar)) %>%
   kable(
     digits = 3,
     format.args = list(big.mark = ","),
-    caption = "Train vs. Test Set Performance Metrics"
+    caption = "Train vs. Test Set Performance Metrics",
+    col.names = c(
+      "Split", "RMSE", "MdAPE", "MAE",
+      "Mean Sale Price", "SD Sale Price",
+      "Mean Estimate", "SD Estimate"
+    )
   )
 ```
 
@@ -64,10 +73,12 @@ train_test_comparison_tbl %>%
     split,
     sale_fmv_min, sale_fmv_q25, sale_fmv_median, sale_fmv_q75, sale_fmv_max
   ) %>%
+  mutate(across(starts_with("sale_fmv_"), scales::dollar)) %>%
   kable(
     digits = 3,
     format.args = list(big.mark = ","),
-    caption = "Actual Sale Price Distributions"
+    caption = "Actual Sale Price Distributions",
+    col.names = c("Split", "Min", "Q1", "Median", "Q3", "Max")
   )
 ```
 
@@ -78,9 +89,11 @@ train_test_comparison_tbl %>%
     estimate_fmv_min, estimate_fmv_q25, estimate_fmv_median,
     estimate_fmv_q75, estimate_fmv_max
   ) %>%
+  mutate(across(starts_with("estimate_fmv_"), scales::dollar)) %>%
   kable(
     digits = 3,
     format.args = list(big.mark = ","),
-    caption = "Predicted Value Distributions"
+    caption = "Predicted Sale Price Distributions",
+    col.names = c("Split", "Min", "Q1", "Median", "Q3", "Max")
   )
 ```
