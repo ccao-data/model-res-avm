@@ -15,7 +15,11 @@ current_date <- as.POSIXct(Sys.Date())
 current_month <- current_date %>% format("%m")
 current_year <- current_date %>% format("%Y")
 
-year <- if (current_month < "05") {
+# The following heuristic determines the current upcoming assessment cycle year:
+#
+#   * From September to December (post assessment), `year` = next year
+#   * From January to August (during assessment), `year` = current year
+year <- if (current_month < "09") {
   current_year
 } else {
   as.character(as.numeric(current_year) + 1)
