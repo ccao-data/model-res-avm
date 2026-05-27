@@ -156,6 +156,10 @@ if (!exists("model_performance_test")) {
   model_performance_test <-
     arrow::read_parquet(paths$output$performance_test$local)
 }
+if (!exists("model_performance_train")) {
+  model_performance_train <-
+    arrow::read_parquet(paths$output$performance_train$local)
+}
 if (!exists("model_performance_test_linear")) {
   model_performance_test_linear <-
     arrow::read_parquet(paths$output$performance_test_linear$local)

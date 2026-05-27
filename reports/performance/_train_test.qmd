@@ -9,13 +9,10 @@ learning generalizable patterns. The sale price and prediction distributions
 are included to confirm that both splits are drawn from similar underlying
 price ranges.
 
+**Note** Consistent with the rest of this report, we report these splits at the triad level, even though the model was trained on county-wide data.  We do this, as we are most concerned with whether or not we have generalized appropriately (not-overfit) at the triad-level.
+
 ```{r _train_test_setup_script}
 source("../_setup.R")
-
-if (!exists("model_performance_train")) {
-  model_performance_train <-
-    arrow::read_parquet(paths$output$performance_train$local)
-}
 ```
 
 ```{r}
