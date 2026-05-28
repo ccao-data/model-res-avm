@@ -28,6 +28,9 @@ message("Saving run metadata")
 # identifier for in perpetuity. See ?ccao_generate_id for details
 run_id <- ccao::ccao_generate_id()
 
+# Print run_id so that we can find it in aws logs
+message(paste("run_id =", run_id))
+
 # Get the current timestamp for when the run ended
 run_end_timestamp <- lubridate::now()
 
@@ -102,6 +105,7 @@ metadata <- tibble::tibble(
   cv_initial_set = params$cv$initial_set,
   cv_max_iterations = params$cv$max_iterations,
   cv_no_improve = params$cv$no_improve,
+  cv_stratified_prop = params$cv$stratified_prop,
   cv_split_prop = params$cv$split_prop,
   cv_best_metric = params$cv$best_metric,
   pv_land_pct_of_total_cap = params$pv$land_pct_of_total_cap,
