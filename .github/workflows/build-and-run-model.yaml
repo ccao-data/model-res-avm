@@ -94,8 +94,8 @@ jobs:
     with:
       ref: copilot/upgrade-github-actions
       command: ${{ needs.parse-command.outputs.command }}
-      backend: "fargate"
-      vcpu: "1.0"
+      backend: "ec2"
+      vcpu: "1"
       memory: "4096"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
