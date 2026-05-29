@@ -90,12 +90,13 @@ jobs:
       # required in order to allow the reusable called workflow to push to
       # GitHub Container Registry
       packages: write
-    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@main
+    uses: ccao-data/actions/.github/workflows/build-and-run-batch-job.yaml@copilot/upgrade-github-actions
     with:
+      ref: copilot/upgrade-github-actions
       command: ${{ needs.parse-command.outputs.command }}
-      backend: "ec2"
-      vcpu: "40"
-      memory: "158000"
+      backend: "fargate"
+      vcpu: "1.0"
+      memory: "4096"
       # Maximum pipeline runtime. This is slightly below 6 hours, which
       # is the maximum length of any single GitHub Actions job
       role-duration-seconds: 21000
