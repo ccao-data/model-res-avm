@@ -155,8 +155,6 @@ model:
 
   # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
   # exp()-scaled back to dollars. The linear baseline always uses log(price).
-  # Like `objective`, this defines model structure rather than toggling a
-  # pipeline feature on/off, so it lives here rather than under `toggle`.
   log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force
