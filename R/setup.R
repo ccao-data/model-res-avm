@@ -93,10 +93,6 @@ feature_report_enable <- as.logical(Sys.getenv(
   unset = get(params_obj_name)$toggle$feature_report_enable
 ))
 
-log_transform_enable <- as.logical(
-  get(params_obj_name)$toggle$log_transform_enable
-)
-
 # If in a CI context, use the run params passed to the workflow. Otherwise, use
 # the note included in params.yaml
 run_note <- as.character(
@@ -119,6 +115,12 @@ if (!run_type %in% possible_run_types) {
   )
 }
 rm(possible_run_types)
+
+# Whether to log-transform the sale price target before fitting. Defines model
+# structure (see `model.log_sale_price` in params.yaml), not a pipeline toggle
+log_transform_enable <- as.logical(
+  get(params_obj_name)$model$log_sale_price
+)
 
 # Check to see if LightGBM early stopping is enabled based on engine parameters
 early_stopping_enable <-

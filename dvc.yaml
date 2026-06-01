@@ -30,6 +30,7 @@ stages:
     - cv
     - model.engine
     - model.hyperparameter
+    - model.log_sale_price
     - model.objective
     - model.parameter
     - model.predictor
@@ -37,7 +38,6 @@ stages:
     - model.verbose
     - ratio_study
     - toggle.cv_enable
-    - toggle.log_transform_enable
     outs:
     - output/intermediate/timing/model_timing_train.parquet:
         cache: false
@@ -75,7 +75,7 @@ stages:
     - pv
     - ratio_study
     - model.predictor.all
-    - toggle.log_transform_enable
+    - model.log_sale_price
     outs:
     - output/assessment_card/model_assessment_card.parquet:
         cache: false

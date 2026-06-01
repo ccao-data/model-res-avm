@@ -37,10 +37,6 @@ toggle:
   # year's model inputs?
   feature_report_enable: false
 
-  # Log-transform `meta_sale_price` for LightGBM; predictions are
-  # exp()-scaled back. Linear baseline always uses log(price).
-  log_transform_enable: true
-
 
 # Data/Ingest ------------------------------------------------------------------
 
@@ -156,6 +152,12 @@ model:
   # `model.parameter.mse_cov_rho` below to control the penalty weight.
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
   objective: "mse_cov"
+
+  # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
+  # exp()-scaled back to dollars. The linear baseline always uses log(price).
+  # Like `objective`, this defines model structure rather than toggling a
+  # pipeline feature on/off, so it lives here rather than under `toggle`.
+  log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
