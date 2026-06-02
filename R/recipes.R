@@ -13,10 +13,15 @@
 #' @param id_vars Character vector of ID variables. These can be kept in "baked"
 #'   data without being treated as predictors.
 #'
+#' @param log_outcome Logical. If TRUE, log-transform the outcome
+#'   (`meta_sale_price`) inside the recipe via step_log(skip = TRUE), so the
+#'   transform runs during prep()/fit() but is skipped at bake()/predict() time.
+#'
 #' @return A recipe object that can be used to clean model input data.
 #'
-model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
-  recipe(data) %>%
+model_main_recipe <- function(data, pred_vars, cat_vars, id_vars,
+                              log_outcome = FALSE) {
+  main_recipe <- recipe(data) %>%
     # Set the role of each variable in the input data
     update_role(meta_sale_price, new_role = "outcome") %>%
     update_role(all_of(pred_vars), new_role = "predictor") %>%
@@ -35,6 +40,17 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
       all_of(cat_vars), -has_role("ID"),
       strict = TRUE, zero_based = TRUE
     )
+
+  # Log-transform the outcome inside the recipe when enabled. skip = TRUE so the
+  # step runs during prep()/fit() (the model trains on log price) but is skipped
+  # at bake()/predict() time, where new data has no sale price. Predictions
+  # therefore come back on the log scale -- see to_dollars() for the inverse
+  if (log_outcome) {
+    main_recipe <- main_recipe %>%
+      step_log(meta_sale_price, skip = TRUE)
+  }
+
+  main_recipe
 }
 
 
@@ -64,6 +80,11 @@ model_lin_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
+    # Log-transform the outcome; the linear baseline always fits on log(price).
+    # skip = TRUE so it runs during prep()/fit() but not bake()/predict().
+    # Placed before step_lencode_glm() so its supervised encodings learn against
+    # log(price). Predictions are exp()-ed back to dollars by the caller
+    step_log(meta_sale_price, skip = TRUE) %>%
     # Drop extra location predictors that aren't school district
     step_rm(
       starts_with("loc_"),

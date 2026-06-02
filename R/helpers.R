@@ -422,6 +422,12 @@ mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
   out
 }
 
+# Convert model predictions from the log-dollar scale back to raw dollars when
+# the global log-sale-price transform is enabled; a no-op otherwise
+to_dollars <- function(x, log_enabled = log_transform_enable) {
+  if (log_enabled) exp(x) else x
+}
+
 # Modified rolling origin forecast split function. Splits the training data into
 # N separate time windows, each of which can overlap by N months. Also splits
 # out a validation set from each windows for Tidymodels / LightGBM.
