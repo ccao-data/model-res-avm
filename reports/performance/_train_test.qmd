@@ -298,68 +298,79 @@ plot_metric <- function(metric_col, y_label, y_format = ".3f") {
     ) %>%
     htmlwidgets::onRender(toggle_trend_js)
 }
+plot_vol_metric <- function(
+    metric_col,
+    y_label,
+    y_format = ".3f",
+    dollar = FALSE,
+    loess_span = 0.75) {
+  y_tick_format <- if (dollar) "$,.0f" else y_format
 
-plot_vol_metric <- function(metric_col,
-                            y_label,
-                            y_format = ".3f", dollar = FALSE) {
-  p <- plot_ly()
+  df <- sets[[which(sapply(sets, `[[`, "label") == "Test")]]$metrics
+  color <- sets[[which(sapply(sets, `[[`, "label") == "Test")]]$total_color
 
-  for (s in sets) {
-    # Train has no township metrics, so skip the scatter/trend for it
-    if (is.null(s$metrics)) next
+  df <- df %>%
+    arrange(volume_pct) %>%
+    mutate(trend = tryCatch(
+      predict(loess(
+        as.formula(paste0("`", metric_col, "` ~ volume_pct")),
+        span = loess_span, na.action = na.exclude
+      )),
+      error = function(e) {
+        warning("loess failed: ", conditionMessage(e))
+        rep(NA_real_, nrow(.))
+      }
+    ))
 
-    df <- s$metrics %>%
-      arrange(volume_pct) %>%
-      mutate(trend = predict(loess(
-        as.formula(paste0(metric_col, " ~ volume_pct")),
-        span = 0.75, na.action = na.exclude
-      )))
-
-    hover_val <- if (dollar) {
-      paste0("~paste0(township,
-      '<br>', format(month_year, '%b %Y'), '<br>n = ', n,
-        '<br>Volume: ', round(volume_pct, 2), '%',
-        '<br>", y_label, ": $', scales::comma(round(", metric_col, ", 0)))")
-    } else {
-      paste0("~paste0(township, '<br>',
-      format(month_year, '%b %Y'), '<br>n = ', n,
-        '<br>Volume: ', round(volume_pct, 2), '%',
-        '<br>", y_label, ": ', round(", metric_col, ", 3))")
-    }
-
-    p <- p %>%
-      add_trace(
-        data = df,
-        x = ~volume_pct, y = as.formula(paste0("~", metric_col)),
-        name = s$label, legendgroup = s$label,
-        size = ~n, sizes = c(5, 40),
-        text = as.formula(hover_val), hoverinfo = "text",
-        type = "scatter", mode = "markers",
-        marker = list(opacity = 0.6, color = s$total_color)
-      ) %>%
-      add_lines(
-        data = arrange(df, volume_pct),
-        x = ~volume_pct, y = ~trend,
-        name = s$label, legendgroup = s$label,
-        line = list(color = s$total_color, width = 2),
-        showlegend = FALSE, hoverinfo = "skip"
-      )
+  hover <- if (dollar) {
+    as.formula(paste0(
+      "~paste0(township, '<br>', format(month_year, '%b %Y'),
+      '<br>n = ', n,
+      '<br>Volume: ', round(volume_pct, 2), '%',
+      '<br>", y_label, ": $', scales::comma(round(`", metric_col, "`, 0)))"
+    ))
+  } else {
+    as.formula(paste0(
+      "~paste0(township, '<br>', format(month_year, '%b %Y'),
+      '<br>n = ', n,
+      '<br>Volume: ', round(volume_pct, 2), '%',
+      '<br>", y_label, ": ', round(`", metric_col, "`, 3))"
+    ))
   }
 
-  p %>%
+  plot_ly() %>%
+    add_trace(
+      data      = df,
+      x         = ~volume_pct,
+      y         = as.formula(paste0("~`", metric_col, "`")),
+      name      = "Test",
+      size      = ~n,
+      sizes     = c(5, 40),
+      text      = hover,
+      hoverinfo = "text",
+      type      = "scatter",
+      mode      = "markers",
+      marker    = list(opacity = 0.6, color = color)
+    ) %>%
+    add_lines(
+      data = df,
+      x = ~volume_pct,
+      y = ~trend,
+      name = "Test (trend)",
+      line = list(color = color, width = 2),
+      showlegend = FALSE,
+      hoverinfo = "skip"
+    ) %>%
     plotly::layout(
       title = list(
-        text = paste0(
-          "Sales volume vs ",
-          y_label, " by township-month"
-        ),
+        text = paste0("Sales volume vs ", y_label, " by township-month"),
         font = list(size = 14)
       ),
       xaxis = list(
-        title = "Sales as % of township housing stock",
+        title      = "Sales as % of township housing stock",
         tickformat = ".2f"
       ),
-      yaxis = list(title = y_label, tickformat = y_format),
+      yaxis = list(title = y_label, tickformat = y_tick_format),
       legend = list(orientation = "h", x = 0, y = -0.2)
     )
 }
