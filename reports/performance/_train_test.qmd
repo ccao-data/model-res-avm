@@ -288,7 +288,7 @@ plot_metric <- function(metric_col, y_label, y_format = ".3f") {
   }
 
   p %>%
-    layout(
+    plotly::layout(
       title     = list(text = y_label, font = list(size = 14)),
       xaxis     = list(title = "Sale date", tickformat = "%b %Y"),
       yaxis     = list(title = y_label, tickformat = y_format),
@@ -347,7 +347,7 @@ plot_vol_metric <- function(metric_col,
   }
 
   p %>%
-    layout(
+    plotly::layout(
       title = list(
         text = paste0(
           "Sales volume vs ",
