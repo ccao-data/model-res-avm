@@ -488,11 +488,45 @@ assessment_data_clean <- assessment_data %>%
       distinct() %>%
       summarise(
         # Subtract 1 from the count of prior sales. The reasoning here is
-        # difficult, but basically: in the training data, this feature only has
-        # a count > 0 conditional on multiple sales. In the assessment data, if
-        # we count the lien date as a sale, the "multiple sales" conditional
-        # isn't technically true. Therefore, we subtract 1 from the count to
-        # make the feature consistent between the training and assessment data
+        # difficult, but basically: We include this feature in the model because
+        # we believe there are unobservable differences between parcels that
+        # have recently sold multiple times compared to parcels that have _not_
+        # recently sold multiple times, insofar as multiple recent sales is a
+        # sign of recent renovation. As a result, we want the model to know
+        # about multiple recent sales, because then it can learn to approximate
+        # these unobservable differences.
+        #
+        # However, there is a key theoretical difference between the training
+        # data and the assessment set: Observations in the training data
+        # represent real-world sales, while observations in the assessment set
+        # represent _hypothetical_ sales. If we assume there are unobservable
+        # differences between parcels with multiple recent sales and parcels
+        # with one or no recent sales, then the naive (unadjusted) version of
+        # this recent sale count will incorrectly associate parcels in the
+        # assessment set that have not recently sold multiple times with
+        # observations in the training set that _have_ sold multiple times.
+        #
+        # This effect is easiest to see in the case of parcels with one recent
+        # sale: If a training observation has one recent sale, then the parcel
+        # has actually recently sold _twice_, including the training observation
+        # itself, and the sale price will likely capture the unobservable
+        # difference that is correlated with two recent sales. An assessment
+        # observation with one recent sale, on the other hand, has actually
+        # only sold once, so it should not exhibit the same price behavior as
+        # parcels that have recently sold twice. This effect extends to
+        # increasing numbers of sales, under the assumption that there is
+        # information contained in each additional sale within the window of
+        # time.
+        #
+        # An alternative way of accounting for this difference between the
+        # training data and the assessment set might be to count the training
+        # observation as a recent sale when we construct the feature in the
+        # training data. Then we could perform a naive count over the
+        # assessment set and the two data sets would have comparable values for
+        # this feature. However, doing it this way would cause the training data
+        # to contain no observations with zero recent sales. So we adjust the
+        # assessment set instead, even though it's a confusing intuitive way of
+        # resolving the issue
         meta_sale_count_past_n_years = as.numeric(
           pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
