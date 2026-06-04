@@ -7,17 +7,17 @@ name: test
 
 env:
   PYTHONUNBUFFERED: "1"
-  UV_SYSTEM_PYTHON: 1
+  UV_FROZEN: 1
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
           cache-suffix: pytest
@@ -26,16 +26,16 @@ jobs:
             python/uv.lock
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: 3.12
 
       - name: Install dependencies
         working-directory: python
         shell: bash
-        run: uv pip install .[tests]
+        run: uv sync --extra tests
 
       - name: Run Python tests
         shell: bash
         working-directory: python
-        run: pytest
+        run: uv run pytest
