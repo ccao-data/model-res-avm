@@ -11,7 +11,7 @@ The Data Department has implemented and tested numerous improvements to the mode
 | 🟣 Model Features | Experiments testing new or modified input features and predictors. |
 | 🔴 Comps | Experiments related to the comparable sales (comps) pipeline and tree-weighting algorithm. |
 
-| Question / Goal | Issue | Findings / Output | Theme | Date |
+| Question / Goal | Issue | Findings / Output | Theme | Date Closed |
 | --- | --- | --- | --- | --- |
 | Should `bonsai` (the official Tidymodels/parsnip shim for LightGBM) replace `Lightsnip`? | [#16](https://github.com/ccao-data/model-res-avm/issues/16) | `{bonsai}` is promising but not ready for adoption — it lacks advanced LightGBM hyperparameters and early stopping. Sticking with `Lightsnip`. | 🔵 Model Architecture | 2023-12-05 |
 | Test a City of Chicago–only model (using expanded city-specific data and only City triad sales) and compare performance to city-only ratios from county-wide models. | [#28](https://github.com/ccao-data/model-res-avm/issues/28) | Tested two configurations (Chicago-only sales; Chicago-only sales + large cross-validation). No change in performance in either case. | 🔵 Model Architecture | 2024-01-18 |
