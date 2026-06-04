@@ -104,40 +104,17 @@ housing_stock <- assessment_pin %>%
   summarise(total_units = n_distinct(meta_pin), .groups = "drop") %>%
   mutate(meta_township_code = as.character(meta_township_code))
 
-train_values <- training_data %>%
-  select(
-    meta_sale_price, meta_sale_date, meta_pin, sv_is_outlier,
-    ind_pin_is_multicard
-  ) %>%
-  filter(sv_is_outlier == FALSE, ind_pin_is_multicard == FALSE) %>%
-  left_join(
-    assessment_card %>%
-      group_by(meta_pin) %>%
-      filter(n() == 1) %>%
-      ungroup() %>%
-      select(meta_pin, meta_township_code, pred_card_initial_fmv),
-    by = "meta_pin"
-  )
-
-compute_metrics <- function(df, pred_col, units_col) {
-  township_lookup <- df %>%
-    distinct(meta_township_code) %>%
+compute_metrics <- function(df, pred_col) {
+  df %>%
     mutate(
       meta_township_code = as.character(meta_township_code),
-      township           = ccao::town_convert(meta_township_code)
-    )
-
-  df %>%
-    mutate(meta_township_code = as.character(meta_township_code)) %>%
-    left_join(housing_stock, by = "meta_township_code") %>%
-    left_join(township_lookup, by = "meta_township_code") %>%
-    mutate(
-      .pred      = .data[[pred_col]],
-      .units     = .data[[units_col]],
-      ratio      = .pred / meta_sale_price,
-      month_year = floor_date(as.Date(meta_sale_date), "month")
+      township           = ccao::town_convert(meta_township_code),
+      .pred              = .data[[pred_col]],
+      ratio              = .pred / meta_sale_price,
+      month_year         = floor_date(as.Date(meta_sale_date), "month")
     ) %>%
-    group_by(month_year, township, meta_township_code, .units) %>%
+    left_join(housing_stock, by = "meta_township_code") %>%
+    group_by(month_year, township, meta_township_code, total_units) %>%
     summarise(
       median_ratio = median(ratio, na.rm = TRUE),
       rmse = sqrt(mean((.pred - meta_sale_price)^2, na.rm = TRUE)),
@@ -149,19 +126,7 @@ compute_metrics <- function(df, pred_col, units_col) {
     ) %>%
     mutate(
       month_num  = as.numeric(month_year),
-      volume_pct = (n / .units) * 100
-    )
-}
-
-compute_total <- function(metrics) {
-  metrics %>%
-    group_by(month_year, month_num) %>%
-    summarise(
-      median_ratio = median(median_ratio, na.rm = TRUE),
-      rmse         = sqrt(mean(rmse^2, na.rm = TRUE)),
-      mape         = mean(mape, na.rm = TRUE),
-      n            = sum(n),
-      .groups      = "drop"
+      volume_pct = (n / total_units) * 100
     )
 }
 
@@ -186,141 +151,124 @@ compute_total_from_raw <- function(df, pred_col) {
 }
 
 metrics_test <- compute_metrics(test_card,
-  pred_col = "pred_card_initial_fmv",
-  units_col = "total_units"
-)
-total_train <- compute_total_from_raw(train_values,
   pred_col = "pred_card_initial_fmv"
 )
-
-sets <- list(
-  list(
-    metrics = metrics_test, total = compute_total(metrics_test),
-    label = "Test", total_color = "#2980b9"
-  ),
-  list(
-    metrics = NULL, total = total_train, label = "Train",
-    total_color = "#e74c3c"
-  )
+total_test <- compute_total_from_raw(test_card,
+  pred_col = "pred_card_initial_fmv"
 )
-
-# ── Helpers
-add_trendline <- function(p, df, metric_col, color, name, visible = TRUE) {
-  df_fit <- filter(df, !is.na(.data[[metric_col]]))
-  if (nrow(df_fit) < 3) {
-    return(p)
-  }
-  df_fit$trend <- predict(loess(
-    as.formula(paste0(metric_col, " ~ month_num")),
-    data = df_fit, span = 0.75
-  ))
-  add_trace(p,
-    data = df_fit, x = ~month_year, y = ~trend,
-    name = paste0(name, " (trend)"), type = "scatter", mode = "lines",
-    line = list(color = color, width = 1.5, dash = "dash"),
-    showlegend = FALSE, visible = visible, hoverinfo = "skip"
-  )
-}
-
-toggle_trend_js <- "
-  function(el, x) {
-    el.on('plotly_legendclick', function(data) {
-      var idx = data.curveNumber;
-      if (idx % 2 !== 0) return false;
-      var trendIdx = idx + 1;
-      if (trendIdx >= el.data.length) return;
-      var newVis = (el.data[idx].visible === true ||
-      el.data[idx].visible === undefined) ? 'legendonly' : true;
-      Plotly.restyle(el, { visible: newVis }, [trendIdx]);
-    });
-  }
-"
+total_train <- compute_total_from_raw(train_card,
+  pred_col = "pred_card_initial_fmv"
+)
 
 ratio_line <- list(
   type = "line", xref = "paper", x0 = 0, x1 = 1,
   y0 = 1, y1 = 1, line = list(color = "red", width = 1.5, dash = "dash")
 )
 
-plot_metric <- function(metric_col, y_label, y_format = ".3f") {
+plot_metric <- function(metric_col, y_label) {
+  y_format <- switch(metric_col,
+    rmse = ",.0f",
+    mape = ".1f",
+    ".3f"
+  )
   shapes <- if (metric_col == "median_ratio") list(ratio_line) else list()
-  p <- plot_ly()
 
+  sets <- list(
+    list(data = total_test, label = "Test", color = "#2980b9"),
+    list(data = total_train, label = "Train", color = "#e74c3c")
+  )
+
+  twps <- unique(metrics_test$township)
+  twp_colors <- scales::hue_pal()(length(twps))
+
+  p <- plot_ly()
   for (s in sets) {
+    df_fit <- filter(s$data, !is.na(.data[[metric_col]]))
+    if (nrow(df_fit) >= 3) {
+      df_fit$trend <- predict(loess(
+        as.formula(paste0(metric_col, " ~ month_num")),
+        data = df_fit, span = 0.75
+      ))
+    }
     p <- p %>%
       add_trace(
-        data = s$total, x = ~month_year,
+        data = s$data, x = ~month_year,
         y = as.formula(paste0("~", metric_col)),
         name = paste0(s$label, " (total)"), type = "scatter",
         mode = "lines+markers",
-        line = list(color = s$total_color, width = 3, dash = "dot"),
-        marker = list(color = s$total_color, size = 7, symbol = "diamond")
-      ) %>%
-      add_trendline(
-        s$total, metric_col, s$total_color,
-        paste0(s$label, " (total)")
+        legendgroup = s$label,
+        line = list(color = s$color, width = 3, dash = "dot"),
+        marker = list(color = s$color, size = 7, symbol = "diamond")
       )
-
-    # Township breakdown only for test set
-    if (!is.null(s$metrics)) {
-      twps <- unique(s$metrics$township)
-      twp_colors <- scales::hue_pal()(length(twps))
-
-      for (i in seq_along(twps)) {
-        d <- filter(s$metrics, township == twps[i])
-        p <- p %>%
-          add_trace(
-            data = d, x = ~month_year, y = as.formula(paste0("~", metric_col)),
-            name = paste0(s$label, " - ", twps[i]), type = "scatter",
-            mode = "lines+markers",
-            line = list(color = twp_colors[i], width = 2),
-            marker = list(color = twp_colors[i], size = 5),
-            visible = "legendonly"
-          ) %>%
-          add_trendline(d, metric_col, twp_colors[i],
-            paste0(
-              s$label, " - ",
-              twps[i]
-            ),
-            visible = "legendonly"
-          )
-      }
+    if (nrow(df_fit) >= 3) {
+      p <- p %>% add_trace(
+        data = df_fit, x = ~month_year, y = ~trend,
+        name = paste0(s$label, " (trend)"), type = "scatter", mode = "lines",
+        legendgroup = s$label,
+        line = list(color = s$color, width = 1.5, dash = "dash"),
+        showlegend = FALSE, hoverinfo = "skip"
+      )
     }
   }
 
-  p %>%
-    plotly::layout(
-      title     = list(text = y_label, font = list(size = 14)),
-      xaxis     = list(title = "Sale date", tickformat = "%b %Y"),
-      yaxis     = list(title = y_label, tickformat = y_format),
-      hovermode = "x unified",
-      legend    = list(orientation = "v", x = 1.02, y = 1),
-      shapes    = shapes
-    ) %>%
-    htmlwidgets::onRender(toggle_trend_js)
+  for (i in seq_along(twps)) {
+    d <- filter(metrics_test, township == twps[i])
+    d_fit <- filter(d, !is.na(.data[[metric_col]]))
+    if (nrow(d_fit) >= 3) {
+      d_fit$trend <- predict(loess(
+        as.formula(paste0(metric_col, " ~ month_num")),
+        data = d_fit, span = 0.75
+      ))
+    }
+    p <- p %>%
+      add_trace(
+        data = d, x = ~month_year, y = as.formula(paste0("~", metric_col)),
+        name = twps[i], type = "scatter", mode = "lines+markers",
+        legendgroup = twps[i],
+        line = list(color = twp_colors[i], width = 2),
+        marker = list(color = twp_colors[i], size = 5),
+        visible = "legendonly"
+      )
+    if (nrow(d_fit) >= 3) {
+      p <- p %>% add_trace(
+        data = d_fit, x = ~month_year, y = ~trend,
+        name = twps[i], type = "scatter", mode = "lines",
+        legendgroup = twps[i],
+        line = list(color = twp_colors[i], width = 1, dash = "dash"),
+        showlegend = FALSE, visible = "legendonly", hoverinfo = "skip"
+      )
+    }
+  }
+
+  p %>% plotly::layout(
+    title     = list(text = y_label, font = list(size = 14)),
+    xaxis     = list(title = "Sale date", tickformat = "%b %Y"),
+    yaxis     = list(title = y_label, tickformat = y_format),
+    hovermode = "x unified",
+    legend    = list(orientation = "v", x = 1.02, y = 1),
+    shapes    = shapes
+  )
 }
+
 plot_vol_metric <- function(
-    metric_col,
-    y_label,
-    y_format = ".3f",
-    dollar = FALSE,
-    loess_span = 0.75) {
-  y_tick_format <- if (dollar) "$,.0f" else y_format
+    metric_col, y_label,
+    dollar = FALSE, loess_span = 0.75) {
+  y_format <- if (dollar) {
+    "$,.0f"
+  } else {
+    switch(metric_col,
+      mape = ".1f",
+      ".3f"
+    )
+  }
+  color <- "#2980b9"
 
-  df <- sets[[which(sapply(sets, `[[`, "label") == "Test")]]$metrics
-  color <- sets[[which(sapply(sets, `[[`, "label") == "Test")]]$total_color
-
-  df <- df %>%
+  df <- metrics_test %>%
     arrange(volume_pct) %>%
-    mutate(trend = tryCatch(
-      predict(loess(
-        as.formula(paste0("`", metric_col, "` ~ volume_pct")),
-        span = loess_span, na.action = na.exclude
-      )),
-      error = function(e) {
-        warning("loess failed: ", conditionMessage(e))
-        rep(NA_real_, nrow(.))
-      }
-    ))
+    mutate(trend = predict(loess(
+      as.formula(paste0("`", metric_col, "` ~ volume_pct")),
+      span = loess_span, na.action = na.exclude
+    )))
 
   hover <- if (dollar) {
     as.formula(paste0(
@@ -340,26 +288,18 @@ plot_vol_metric <- function(
 
   plot_ly() %>%
     add_trace(
-      data      = df,
-      x         = ~volume_pct,
-      y         = as.formula(paste0("~`", metric_col, "`")),
-      name      = "Test",
-      size      = ~n,
-      sizes     = c(5, 40),
-      text      = hover,
-      hoverinfo = "text",
-      type      = "scatter",
-      mode      = "markers",
-      marker    = list(opacity = 0.6, color = color)
+      data = df, x = ~volume_pct,
+      y = as.formula(paste0("~`", metric_col, "`")),
+      name = "Test", size = ~n, sizes = c(5, 40),
+      text = hover, hoverinfo = "text",
+      type = "scatter", mode = "markers",
+      marker = list(opacity = 0.6, color = color)
     ) %>%
     add_lines(
-      data = df,
-      x = ~volume_pct,
-      y = ~trend,
+      data = df, x = ~volume_pct, y = ~trend,
       name = "Test (trend)",
       line = list(color = color, width = 2),
-      showlegend = FALSE,
-      hoverinfo = "skip"
+      showlegend = FALSE, hoverinfo = "skip"
     ) %>%
     plotly::layout(
       title = list(
@@ -367,10 +307,10 @@ plot_vol_metric <- function(
         font = list(size = 14)
       ),
       xaxis = list(
-        title      = "Sales as % of township housing stock",
+        title = "Sales as % of township housing stock",
         tickformat = ".2f"
       ),
-      yaxis = list(title = y_label, tickformat = y_tick_format),
+      yaxis = list(title = y_label, tickformat = y_format),
       legend = list(orientation = "h", x = 0, y = -0.2)
     )
 }
@@ -382,17 +322,17 @@ plot_vol_metric <- function(
 
 ### Median Ratio
 ```{r}
-plot_metric("median_ratio", "Median Ratio", ".3f")
+plot_metric("median_ratio", "Median Ratio")
 ```
 
 ### RMSE
 ```{r}
-plot_metric("rmse", "RMSE ($)", ",.0f")
+plot_metric("rmse", "RMSE ($)")
 ```
 
 ### MAPE
 ```{r}
-plot_metric("mape", "MAPE (%)", ".1f")
+plot_metric("mape", "MAPE (%)")
 ```
 
 :::
@@ -402,17 +342,17 @@ plot_metric("mape", "MAPE (%)", ".1f")
 
 ### Median Ratio
 ```{r}
-plot_vol_metric("median_ratio", "Median Ratio", ".3f")
+plot_vol_metric("median_ratio", "Median Ratio")
 ```
 
 ### RMSE
 ```{r}
-plot_vol_metric("rmse", "RMSE ($)", ",.0f", dollar = TRUE)
+plot_vol_metric("rmse", "RMSE ($)", dollar = TRUE)
 ```
 
 ### MAPE
 ```{r}
-plot_vol_metric("mape", "MAPE (%)", ".1f")
+plot_vol_metric("mape", "MAPE (%)")
 ```
 
 :::

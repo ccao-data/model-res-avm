@@ -152,6 +152,9 @@ if (!exists("assessment_pin")) {
 if (!exists("test_card")) {
   test_card <- read_parquet(paths$output$test_card$local)
 }
+if (!exists("train_card")) {
+  train_card <- read_parquet(paths$output$train_card$local)
+}
 if (!exists("model_performance_test")) {
   model_performance_test <-
     arrow::read_parquet(paths$output$performance_test$local)
