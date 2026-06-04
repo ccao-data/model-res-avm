@@ -44,6 +44,26 @@ split_data <- initial_time_split(
 test <- testing(split_data)
 train <- training(split_data)
 
+# Add a stratified test set which is only included if the value is not set to 0
+# This will take a random selection of sales grouped by township,
+# month, and year and add them to `test`.
+if (params$cv$stratified_prop != 0) {
+  strat_split <- train %>%
+    mutate(.strat = interaction(
+      meta_township_code, time_sale_year, time_sale_month_of_year,
+      drop = TRUE
+    )) %>%
+    initial_split(
+      prop = 1 - params$cv$stratified_prop,
+      strata = .strat
+    ) %>%
+    select(-.strat)
+
+  train <- training(strat_split)
+  stratified_sample <- testing(strat_split)
+  test <- bind_rows(test, stratified_sample)
+}
+
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
