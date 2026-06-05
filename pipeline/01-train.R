@@ -43,6 +43,18 @@ if (log_transform_enable) {
     )
 }
 
+# The linear baseline always fits/predicts in log space, regardless of the
+# `log_transform_enable` toggle: when on, `meta_sale_price` is already logged;
+# when off, log it here. (For prediction the outcome is unused, so this is a
+# no-op there, but applying it everywhere keeps the call sites uniform.)
+as_lin_target <- function(data) {
+  if (log_transform_enable) {
+    data
+  } else {
+    data %>% mutate(meta_sale_price = log(meta_sale_price))
+  }
+}
+
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
@@ -71,14 +83,9 @@ train_recipe <- model_main_recipe(
 message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
-# and feature interactions. Linear baseline always fits on log(price);
-# apply here if global transform is off
+# and feature interactions. The linear baseline always fits on log(price)
 lin_recipe <- model_lin_recipe(
-  data = if (log_transform_enable) {
-    training_data_full
-  } else {
-    training_data_full %>% mutate(meta_sale_price = log(meta_sale_price))
-  },
+  data = as_lin_target(training_data_full),
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -95,13 +102,9 @@ lin_wflow <- workflow() %>%
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
-# Fit linear baseline; apply log transform to train if global transform is off
+# Fit linear baseline (always in log space; see `as_lin_target`)
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = if (log_transform_enable) {
-    train
-  } else {
-    train %>% mutate(meta_sale_price = log(meta_sale_price))
-  })
+  fit(data = as_lin_target(train))
 
 
 
@@ -414,14 +417,9 @@ walk2(
     preds <- data %>%
       mutate(
         pred_card_initial_fmv = predict(lgbm_wflow_final_fit, data)$.pred,
-        pred_card_initial_fmv_lin = exp(predict(
-          lin_wflow_final_fit,
-          if (log_transform_enable) {
-            data
-          } else {
-            data %>% mutate(meta_sale_price = log(meta_sale_price))
-          }
-        )$.pred)
+        pred_card_initial_fmv_lin = exp(
+          predict(lin_wflow_final_fit, as_lin_target(data))$.pred
+        )
       )
 
     if (log_transform_enable) {
