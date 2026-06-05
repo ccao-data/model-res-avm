@@ -531,7 +531,7 @@ assessment_data_clean <- assessment_data %>%
         #
         # Given our goal of including the current sale in the training count
         # while grouping together parcels with 0 and 1 recent sale in the
-        # assessment count, we can choose bewteen two approaches:
+        # assessment count, we can choose between two approaches:
         #
         # 1. Include the current observation in the training count, exclude it
         #    from the assessment count, and coalesce 0 to 1 in the assessment
