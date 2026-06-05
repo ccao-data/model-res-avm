@@ -342,7 +342,16 @@ training_data_clean <- training_data_w_hie %>%
       relationship = "many-to-many"
     ) %>%
       # as.duration(1) excludes the same sale from being identified as within
-      # 3 years of itself
+      # 3 years of itself.
+      #
+      # We actually _do_ want the model to know about the current sale when it
+      # considers this feature in the training set, because this feature is
+      # intended to help tease out otherwise-unobservable differences between
+      # sold and unsold parcels, and the fact that a training observation is a
+      # real-world sale is relevant info in that context. But including the
+      # current sale in the count would make it harder to compare this feature
+      # to the assessment set. For a detailed explanation, see the comment on
+      # the corresponding feature in the assessment set
       mutate(within_n_years = between(
         meta_sale_date.x - meta_sale_date.y,
         as.duration(1),
@@ -487,46 +496,57 @@ assessment_data_clean <- assessment_data %>%
       # Distinct is necessary because of multicard sales
       distinct() %>%
       summarise(
-        # Subtract 1 from the count of prior sales. The reasoning here is
-        # difficult, but basically: We include this feature in the model because
-        # we believe there are unobservable differences between parcels that
-        # have recently sold multiple times compared to parcels that have _not_
-        # recently sold multiple times, insofar as multiple recent sales is a
-        # sign of recent renovation. As a result, we want the model to know
-        # about multiple recent sales, because then it can learn to approximate
-        # these unobservable differences.
+        # Subtract 1 from the count of prior sales, so that it is comparable to
+        # the version of this feature implemented on the training set. The
+        # reasoning behind this choice is complicated, so read on for a
+        # detailed explanation.
         #
-        # However, there is a key theoretical difference between the training
-        # data and the assessment set: Observations in the training data
-        # represent real-world sales, while observations in the assessment set
-        # represent _hypothetical_ sales. If we assume there are unobservable
-        # differences between parcels with multiple recent sales and parcels
-        # with one or no recent sales, then the naive (unadjusted) version of
-        # this recent sale count will incorrectly associate parcels in the
-        # assessment set that have not recently sold multiple times with
-        # observations in the training set that _have_ sold multiple times.
+        # The goal of this feature is to help capture the unobservable quality
+        # differences between parcels that have recently sold (possible flips)
+        # and parcels that have not sold. We construct it as a count of recent
+        # sales rather than a binary indicator because we think the number of
+        # recent sales correlates with unobservable quality differences.
         #
-        # This effect is easiest to see in the case of parcels with one recent
-        # sale: If a training observation has one recent sale, then the parcel
-        # has actually recently sold _twice_, including the training observation
-        # itself, and the sale price will likely capture the unobservable
-        # difference that is correlated with two recent sales. An assessment
-        # observation with one recent sale, on the other hand, has actually
-        # only sold once, so it should not exhibit the same price behavior as
-        # parcels that have recently sold twice. This effect extends to
-        # increasing numbers of sales, under the assumption that there is
-        # information contained in each additional sale within the window of
-        # time.
+        # When we construct this feature in the training data, we want to
+        # include the current sale in the count of recent sales, because it adds
+        # valuable information: If, say, the parcel sold a year ago, and it is
+        # selling again today, then today's sale is likely to represent a flip,
+        # and we want the model to know there have been two recent sales when it
+        # learns from today's sale price. When we construct the feature in the
+        # assessment set, however, we _don't_ want to include the current "sale"
+        # in the count because it is purely hypothetical, used for the purposes
+        # of assessment and not corresponding to a real event in the world. As
+        # a result, the assessment count must be one less than the training
+        # count for an observation with otherwise identical sale history.
         #
-        # An alternative way of accounting for this difference between the
-        # training data and the assessment set might be to count the training
-        # observation as a recent sale when we construct the feature in the
-        # training data. Then we could perform a naive count over the
-        # assessment set and the two data sets would have comparable values for
-        # this feature. However, doing it this way would cause the training data
-        # to contain no observations with zero recent sales. So we adjust the
-        # assessment set instead, even though it's a confusing intuitive way of
-        # resolving the issue
+        # There's a problem that complicates the idea of including the current
+        # observation in the count of recent sales for the training data,
+        # however: If we do that, there will be no training observations with
+        # zero recent sales, which is the most common value in the assessment
+        # set. In other words, the training data can never give us any info
+        # about parcels that have no recent sales. So when we construct this
+        # feature for the assessment set, we group together parcels with
+        # no recent sales and parcels with one recent sale to reflect
+        # the fact that the model can't distinguish between them.
+        #
+        # Given our goal of including the current sale in the training count
+        # while grouping together parcels with 0 and 1 recent sale in the
+        # assessment count, we can choose bewteen two approaches:
+        #
+        # 1. Include the current observation in the training count, exclude it
+        #    from the assessment count, and coalesce 0 to 1 in the assessment
+        #    count
+        #
+        # 2. Exclude the current observation from both the training and
+        #    assessment counts, decrement assessment counts by 1 to exclude the
+        #    current artificial "sale", and coalesce -1 to 0 in the assessment
+        #    count
+        #
+        # These approaches are equivalent in terms of the information they
+        # provide the model; in essence, they correspond to a choice between
+        # using 0 or 1 as the index for the count. We use approach 2, i.e. a
+        # count index of 0, for no principled reason other than that it's the
+        # way we have always done it
         meta_sale_count_past_n_years = as.numeric(
           pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
