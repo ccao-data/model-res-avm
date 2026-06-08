@@ -15,7 +15,7 @@ price ranges.
 source("../_setup.R")
 ```
 
-```{r}
+```{r _train_test_pull_stats}
 test_stats <- model_performance_test %>%
   filter(
     geography_type == "triad_code",
@@ -44,7 +44,7 @@ train_test_comparison_tbl <- dplyr::bind_rows(list(
 ```
 
 
-```{r}
+```{r _train_test_construct_table}
 train_test_comparison_tbl %>%
   select(
     split, rmse, mdape, mae,
@@ -67,7 +67,7 @@ train_test_comparison_tbl %>%
   )
 ```
 
-```{r}
+```{r _train_test_actual_price_distributions}
 train_test_comparison_tbl %>%
   select(
     split,
@@ -82,7 +82,7 @@ train_test_comparison_tbl %>%
   )
 ```
 
-```{r}
+```{r _train_test_estimated_distributions}
 train_test_comparison_tbl %>%
   select(
     split,
