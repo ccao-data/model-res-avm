@@ -44,7 +44,7 @@ split_data <- initial_time_split(
 test <- testing(split_data)
 train <- training(split_data)
 
-# Add a stratified test set which is only included if the value is not set to 0
+# Add a stratified test set if the value of `stratified_prop` is greater than 0.
 # This will take a random selection of sales grouped by township,
 # month, and year and add them to `test`.
 if (params$cv$stratified_prop != 0) {
