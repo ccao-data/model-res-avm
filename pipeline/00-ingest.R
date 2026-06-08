@@ -501,9 +501,9 @@ assessment_data_clean <- assessment_data %>%
         # reasoning behind this choice is complicated, so read on for a
         # detailed explanation.
         #
-        # The goal of this feature is to help capture the unobservable quality
-        # differences between parcels that have recently sold (possible flips)
-        # and parcels that have not sold. We construct it as a count of recent
+        # The goal of this feature is to help capture the likely but unobservable quality
+        # differences between parcels that have recently sold more than once (possible flips)
+        # and parcels that have not. We construct it as a count of recent
         # sales rather than a binary indicator because we think the number of
         # recent sales correlates with unobservable quality differences.
         #
@@ -514,7 +514,7 @@ assessment_data_clean <- assessment_data %>%
         # and we want the model to know there have been two recent sales when it
         # learns from today's sale price. When we construct the feature in the
         # assessment set, however, we _don't_ want to include the current "sale"
-        # in the count because it is purely hypothetical, used for the purposes
+        # in the count because it is purely synthetic, used for the purposes
         # of assessment and not corresponding to a real event in the world. As
         # a result, the assessment count must be one less than the training
         # count for an observation with otherwise identical sale history.
@@ -539,14 +539,14 @@ assessment_data_clean <- assessment_data %>%
         #
         # 2. Exclude the current observation from both the training and
         #    assessment counts, decrement assessment counts by 1 to exclude the
-        #    current artificial "sale", and coalesce -1 to 0 in the assessment
+        #    artificial lien date "sale", and coalesce -1 to 0 in the assessment
         #    count
         #
         # These approaches are equivalent in terms of the information they
         # provide the model; in essence, they correspond to a choice between
         # using 0 or 1 as the index for the count. We use approach 2, i.e. a
         # count index of 0, for no principled reason other than that it's the
-        # way we have always done it
+        # way we have always done it.
         meta_sale_count_past_n_years = as.numeric(
           pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
