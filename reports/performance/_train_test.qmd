@@ -1,0 +1,99 @@
+# Triad-Level Machine Learning Metrics
+
+This section compares model performance metrics at the triad level between the
+**training set** (the data the model learned from) and the **test set** (a
+held-out sample the model never saw during training). Large gaps between train
+and test metrics — particularly for RMSE, MDAPE, or MAE — may indicate
+overfitting, where the model has memorized the training data rather than
+learning generalizable patterns. The sale price and prediction distributions
+are included to confirm that both splits are drawn from similar underlying
+price ranges.
+
+**Note**: Consistent with the rest of this report, while the model was trained on county-wide data, we report these splits at the triad level since that is where we are most concerned with overfitting.
+
+```{r _train_test_setup_script}
+source("../_setup.R")
+```
+
+```{r _train_test_pull_stats}
+test_stats <- model_performance_test %>%
+  filter(
+    geography_type == "triad_code",
+    triad_code == run_triad_code,
+    by_class == FALSE
+  ) %>%
+  select(
+    rmse, mdape, mae, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  )
+
+train_stats <- model_performance_train %>%
+  filter(
+    geography_type == "triad_code",
+    triad_code == run_triad_code,
+    by_class == FALSE
+  ) %>%
+  select(
+    rmse, mdape, mae, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  )
+
+train_test_comparison_tbl <- dplyr::bind_rows(list(
+  "train" = train_stats, "test" = test_stats
+), .id = "split")
+```
+
+
+```{r _train_test_construct_table}
+train_test_comparison_tbl %>%
+  select(
+    split, rmse, mdape, mae,
+    sale_fmv_mean, sale_fmv_sd,
+    estimate_fmv_mean, estimate_fmv_sd
+  ) %>%
+  mutate(across(c(
+    rmse, starts_with("sale_fmv_"),
+    starts_with("estimate_fmv_")
+  ), scales::dollar)) %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Train vs. Test Set Performance Metrics",
+    col.names = c(
+      "Split", "RMSE", "MdAPE", "MAE",
+      "Mean Sale Price", "SD Sale Price",
+      "Mean Estimate", "SD Estimate"
+    )
+  )
+```
+
+```{r _train_test_actual_price_distributions}
+train_test_comparison_tbl %>%
+  select(
+    split,
+    sale_fmv_min, sale_fmv_q25, sale_fmv_median, sale_fmv_q75, sale_fmv_max
+  ) %>%
+  mutate(across(starts_with("sale_fmv_"), scales::dollar)) %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Actual Sale Price Distributions",
+    col.names = c("Split", "Min", "Q1", "Median", "Q3", "Max")
+  )
+```
+
+```{r _train_test_estimated_distributions}
+train_test_comparison_tbl %>%
+  select(
+    split,
+    estimate_fmv_min, estimate_fmv_q25, estimate_fmv_median,
+    estimate_fmv_q75, estimate_fmv_max
+  ) %>%
+  mutate(across(starts_with("estimate_fmv_"), scales::dollar)) %>%
+  kable(
+    digits = 3,
+    format.args = list(big.mark = ","),
+    caption = "Predicted Sale Price Distributions",
+    col.names = c("Split", "Min", "Q1", "Median", "Q3", "Max")
+  )
+```
