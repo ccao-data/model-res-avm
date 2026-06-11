@@ -113,24 +113,21 @@ for (town in towns) {
   writeData(wb, dsht, dict, startCol = 1, startRow = 2, colNames = FALSE)
   mappings <- tribble(
     ~col, ~dict,
-    "S", c(2, 3),
-    "T", c(4, 9),
-    "U", c(10, 12),
-    "V", c(13, 15),
-    "X", c(16, 19),
-    "Y", c(20, 22),
-    "Z", c(23, 26),
-    "AA", c(27, 28),
-    "AB", c(29, 30),
-    "AC", c(31, 34),
-    "AD", c(35, 42),
-    "AF", c(43, 46),
-    "AG", c(47, 49),
-    "AI", c(50, 55),
-    "AK", c(56, 57),
-    "AL", c(58, 59),
-    "AM", c(60, 65),
-    "Q", c(66, 70)
+    "R", c(2, 3),
+    "S", c(4, 9),
+    "T", c(10, 12),
+    "U", c(13, 15),
+    "W", c(16, 19),
+    "X", c(20, 22),
+    "Y", c(23, 26),
+    "Z", c(27, 28),
+    "AA", c(29, 32),
+    "AB", c(33, 40),
+    "AD", c(41, 44),
+    "AF", c(45, 47),
+    "AG", c(48, 53),
+    "AI", c(54, 55),
+    "AJ", c(56, 61)
   )
 
   pwalk(mappings, function(col, dict) {
