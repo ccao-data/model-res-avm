@@ -9,7 +9,9 @@ learning generalizable patterns. The sale price and prediction distributions
 are included to confirm that both splits are drawn from similar underlying
 price ranges.
 
-**Note**: Consistent with the rest of this report, while the model was trained on county-wide data, we report these splits at the triad level since that is where we are most concerned with overfitting.
+**Note**: Consistent with the rest of this report, while the model was trained
+on county-wide data, we report these splits at the triad level since that is
+where we are most concerned with overfitting.
 
 ```{r _train_test_setup_script}
 source("../_setup.R")
@@ -99,18 +101,25 @@ train_test_comparison_tbl %>%
 ```
 
 ```{r _train_test_metrics}
+# This provides the count of PINs in each township for the modeling year.
+# We want to see if the stats differ for the test set when there are
+# a low percentage of the housing stock being sold.
 housing_stock <- assessment_pin %>%
+  # Filter to modeling triad
+  filter(meta_triad_code == run_triad_code) %>%
   group_by(meta_township_code) %>%
   summarise(total_units = n_distinct(meta_pin), .groups = "drop") %>%
   mutate(meta_township_code = as.character(meta_township_code))
 
-# Single metrics function; pass group_vars = NULL for an overall total
-compute_metrics <- function(df, pred_col, group_vars = NULL) {
+# Function to produce one metric for individual townships in the test
+# set and aggregate metrics for the test and training set.
+calc_metrics <- function(df, pred_col, group_vars = NULL) {
   group_vars <- group_vars %||% c(
     "month_year", "township", "meta_township_code", "total_units"
   )
 
   df <- df %>%
+    filter(meta_triad_code == run_triad_code) %>%
     mutate(
       meta_township_code = as.character(meta_township_code),
       township           = ccao::town_convert(meta_township_code),
@@ -147,15 +156,20 @@ compute_metrics <- function(df, pred_col, group_vars = NULL) {
     )
 }
 
-metrics_test <- compute_metrics(
+# The chart becomes cluttered with training metrics for each
+# township so we just produce an overarching train metric
+# and then test metrics for each township if anyone wants
+# a deeper dive.
+
+metrics_test <- calc_metrics(
   test_card,
   "pred_card_initial_fmv"
 )
-total_test <- compute_metrics(test_card,
+total_test <- calc_metrics(test_card,
   "pred_card_initial_fmv",
   group_vars = "month_year"
 )
-total_train <- compute_metrics(
+total_train <- calc_metrics(
   train_card, "pred_card_initial_fmv",
   group_vars = "month_year"
 )
@@ -240,12 +254,17 @@ plot_metric <- function(metric_col, y_label) {
   }
 
   p %>% plotly::layout(
-    title     = list(text = y_label, font = list(size = 14)),
-    xaxis     = list(title = "Sale date", tickformat = "%b %Y"),
-    yaxis     = list(title = y_label, tickformat = y_format),
+    title = list(
+      text = paste0(
+        y_label, "<br><sup>Township traces show test-set data only</sup>"
+      ),
+      font = list(size = 14)
+    ),
+    xaxis = list(title = "Sale date", tickformat = "%b %Y"),
+    yaxis = list(title = y_label, tickformat = y_format),
     hovermode = "x unified",
-    legend    = list(orientation = "v", x = 1.02, y = 1),
-    shapes    = shapes
+    legend = list(orientation = "v", x = 1.02, y = 1),
+    shapes = shapes
   )
 }
 
@@ -302,7 +321,9 @@ plot_vol_metric <- function(
     ) %>%
     plotly::layout(
       title = list(
-        text = paste0("Sales volume vs ", y_label, " by township-month"),
+        text = paste0(
+          "Sales volume vs ", y_label, " by township-month (Test Set)"
+        ),
         font = list(size = 14)
       ),
       xaxis = list(
