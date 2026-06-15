@@ -114,7 +114,7 @@ cv:
   # already included in the time-split test set, grouped by township, year, and
   # month to add to the test set. If this is set to 0, it has no impact on the
   # pipeline.
-  stratified_prop: 0.00
+  stratified_prop: 0.05
 
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
