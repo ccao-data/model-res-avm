@@ -96,7 +96,7 @@ input:
   # by year, township, and class to maintain representation across categories
   subset:
     # Whether to use a subset of the training data instead of the full dataset
-    enable: true
+    enable: false
 
     # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
@@ -114,7 +114,7 @@ cv:
   # already included in the time-split test set, grouped by township, year, and
   # month to add to the test set. If this is set to 0, it has no impact on the
   # pipeline.
-  stratified_prop: 0.05
+  stratified_prop: 0.00
 
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
