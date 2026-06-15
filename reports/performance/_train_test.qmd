@@ -9,9 +9,7 @@ learning generalizable patterns. The sale price and prediction distributions
 are included to confirm that both splits are drawn from similar underlying
 price ranges.
 
-**Note**: Consistent with the rest of this report, while the model was trained
-on county-wide data, we report these splits at the triad level since that is
-where we are most concerned with overfitting.
+**Note**: Consistent with the rest of this report, while the model was trained on county-wide data, we report these splits at the triad level since that is where we are most concerned with overfitting.
 
 ```{r _train_test_setup_script}
 source("../_setup.R")
@@ -337,6 +335,9 @@ plot_vol_metric <- function(
 
 
 ## Metrics Over Time
+
+These charts track each accuracy metric month by month across the training and test splits. We use them to confirm that the test set behaves consistently with the training set over time. Individual township traces are available in the legend for a more granular view.
+
 ::: {.panel-tabset}
 
 ### Median Ratio
@@ -357,6 +358,9 @@ plot_metric("mape", "MAPE (%)")
 :::
 
 ## Volume vs. Metric
+
+These charts examine there are trends based on low sales volume for a particular township. We identify township PINs based on the number of PINs in the year of modeling, and calculate the proportion of sales. This is usually less than 1%.
+
 ::: {.panel-tabset}
 
 ### Median Ratio
