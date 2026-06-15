@@ -99,6 +99,11 @@ train_test_comparison_tbl %>%
 ```
 
 ```{r _train_test_metrics}
+housing_stock <- assessment_pin %>%
+  group_by(meta_township_code) %>%
+  summarise(total_units = n_distinct(meta_pin), .groups = "drop") %>%
+  mutate(meta_township_code = as.character(meta_township_code))
+
 # Single metrics function; pass group_vars = NULL for an overall total
 compute_metrics <- function(df, pred_col, group_vars = NULL) {
   group_vars <- group_vars %||% c(
