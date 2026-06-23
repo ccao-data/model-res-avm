@@ -326,7 +326,7 @@ model:
     # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
     # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
     # strongly
-    mse_cov_rho: 1
+    mse_cov_rho: 3
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
@@ -339,26 +339,26 @@ model:
       # for setting this parameter is to discover a good fixed value using CV,
       # then manually set that value for non-CV runs (which don't use
       # early stopping by default)
-      num_iterations: 2460
-      learning_rate: 0.012
+      num_iterations: 1367
+      learning_rate: 0.021597222411388343
 
       # Maximum number of bins for discretizing continuous features. Lower uses
       # less memory and speeds up training
-      max_bin: 326
+      max_bin: 175
 
       # See docs for details on each of the remaining parameters:
       # https://lightgbm.readthedocs.io/en/latest/Parameters.html
-      num_leaves: 235
-      add_to_linked_depth: 2
-      feature_fraction: 0.31
-      min_gain_to_split: 0.045
-      min_data_in_leaf: 8
-      max_cat_threshold: 170
-      min_data_per_group: 29
-      cat_smooth: 21.7
-      cat_l2: 20.88
-      lambda_l1: 0.349
-      lambda_l2: 0.038
+      num_leaves: 1074
+      add_to_linked_depth: 1
+      feature_fraction: 0.41689947099890556
+      min_gain_to_split: 0.0024529694431990206
+      min_data_in_leaf: 7
+      max_cat_threshold: 166
+      min_data_per_group: 156
+      cat_smooth: 128.26640736439731
+      cat_l2: 0.15423908957992624
+      lambda_l1: 13.170966428396124
+      lambda_l2: 0.0044052225671896393
 
     # Range of possible hyperparameter values for tuning to explore
     range:
