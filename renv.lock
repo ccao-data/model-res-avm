@@ -1,11 +1,7 @@
 {
   "R": {
-    "Version": "4.5.2",
+    "Version": "4.5.1",
     "Repositories": [
-      {
-        "Name": "PPM",
-        "URL": "https://packagemanager.posit.co/cran/latest"
-      },
       {
         "Name": "CRAN",
         "URL": "https://cran.rstudio.com"
