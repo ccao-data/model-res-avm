@@ -44,13 +44,43 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars,
   # Log-transform the outcome inside the recipe when enabled. skip = TRUE so the
   # step runs during prep()/fit() (the model trains on log price) but is skipped
   # at bake()/predict() time, where new data has no sale price. Predictions
-  # therefore come back on the log scale -- see to_dollars() for the inverse
+  # therefore come back on the log scale -- see model_main_tailor() for the
+  # inverse transform
   if (log_outcome) {
     main_recipe <- main_recipe %>%
       step_log(meta_sale_price, skip = TRUE)
   }
 
   main_recipe
+}
+
+
+#' Create the main model post-processing tailor
+#'
+#' @description Post-processing counterpart to model_main_recipe(). When the
+#' log transform is enabled, the tailor exponentiates predictions, undoing the
+#' step_log() applied to the outcome during training. When disabled, it leaves
+#' predictions unchanged. A tailor is always created (even as a passthrough) so
+#' that every consumer of the saved model can apply it unconditionally.
+#'
+#' Attaching the tailor to the workflow before tuning means tune applies it to
+#' assessment set predictions before computing CV metrics. Since step_log() is
+#' skipped at bake() time, the truth column stays in raw dollars, so metrics
+#' compare dollars to dollars. The custom adjustment requires no estimation, so
+#' no training data is sacrificed to an internal calibration split.
+#'
+#' @param log_outcome Logical. If TRUE, exponentiate predictions to convert
+#'   them from log dollars back to raw dollars.
+#'
+#' @return A tailor object that can be added to a workflow with add_tailor().
+#'
+model_main_tailor <- function(log_outcome = FALSE) {
+  post <- tailor::tailor()
+  if (log_outcome) {
+    post <- post %>%
+      tailor::adjust_predictions_custom(.pred = exp(.pred))
+  }
+  post
 }
 
 

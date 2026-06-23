@@ -55,6 +55,12 @@ train_recipe <- model_main_recipe(
   log_outcome = log_transform_enable
 )
 
+# Create a post-processing tailor which converts predictions from the log scale
+# back to raw dollars when the log transform is enabled (a passthrough
+# otherwise). Attaching it to the workflow means CV metrics are computed on
+# dollar-scale predictions. See R/recipes.R for details
+train_tailor <- model_main_tailor(log_outcome = log_transform_enable)
+
 
 
 
@@ -198,14 +204,16 @@ if (cv_enable && early_stopping_enable) {
     set_args(trees = params$model$hyperparameter$default$num_iterations)
 }
 
-# Initialize lightgbm workflow, which contains both the model spec AND the
-# pre-processing steps/recipe needed to prepare the raw data
+# Initialize lightgbm workflow, which contains the model spec, the
+# pre-processing steps/recipe needed to prepare the raw data, AND the
+# post-processing tailor applied to predictions
 lgbm_wflow <- workflow() %>%
   add_model(lgbm_model) %>%
   add_recipe(
     recipe = train_recipe,
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
-  )
+  ) %>%
+  add_tailor(train_tailor)
 
 
 ## 4.2. Cross-Validation -------------------------------------------------------
@@ -275,7 +283,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mape, mae),
+    metrics = metric_set(rmse_log, rmse, mape, mae),
     control = control_bayes(
       verbose = TRUE,
       verbose_iter = TRUE,
@@ -396,15 +404,14 @@ walk2(
   list(test, train),
   list(paths$output$test_card$local, paths$output$train_card$local),
   \(data, path) {
-    # The LightGBM recipe log-transforms the outcome when enabled and the linear
-    # baseline always does, so both predictions come back on the log scale and
-    # are converted to dollars here. meta_sale_price is no longer transformed in
-    # place, so it stays in raw dollars and needs no fixup
+    # The LightGBM workflow's tailor already converts predictions back to raw
+    # dollars when the log transform is enabled. The linear baseline always
+    # fits on log(price) and has no tailor, so its predictions are exp()-ed
+    # manually. meta_sale_price is never transformed in place, so it stays in
+    # raw dollars and needs no fixup
     preds <- data %>%
       mutate(
-        pred_card_initial_fmv = to_dollars(
-          predict(lgbm_wflow_final_fit, data)$.pred
-        ),
+        pred_card_initial_fmv = predict(lgbm_wflow_final_fit, data)$.pred,
         pred_card_initial_fmv_lin = exp(
           predict(lin_wflow_final_fit, data)$.pred
         )
@@ -446,6 +453,14 @@ lgbm_wflow_final_full_fit %>%
   workflows::extract_recipe() %>%
   lightsnip::axe_recipe() %>%
   saveRDS(paths$output$workflow_recipe$local)
+
+# Save the fitted post-processing tailor object to file so that predictions
+# made elsewhere (e.g. in the assess stage) receive the same back-transform
+# (log dollars to raw dollars) applied by the workflow. This is a passthrough
+# when the log transform is disabled, so it should always be applied
+lgbm_wflow_final_full_fit %>%
+  workflows::extract_postprocessor() %>%
+  saveRDS(paths$output$workflow_post$local)
 
 # End the stage timer and write the time elapsed to a temporary file
 tictoc::toc(log = TRUE)

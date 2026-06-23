@@ -134,8 +134,10 @@ cv:
   uncertain: 8
 
   # Metric used to select the "best" set of parameters from CV iterations. Must
-  # be manually included the metric_set() passed to tune_bayes()
-  best_metric: "rmse"
+  # be manually included the metric_set() passed to tune_bayes(). "rmse_log"
+  # selects on log-scale error (pairs with model.log_sale_price); use "rmse" to
+  # select on dollar-scale error
+  best_metric: "rmse_log"
 
 
 # Model (Hyper)parameters ------------------------------------------------------

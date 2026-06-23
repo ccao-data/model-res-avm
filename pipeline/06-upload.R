@@ -46,6 +46,12 @@ if (upload_enable) {
     paths$output$workflow_recipe$s3
   )
 
+  # Upload Tidymodels post-processing tailor
+  aws.s3::put_object(
+    paths$output$workflow_post$local,
+    paths$output$workflow_post$s3
+  )
+
   # Upload finalized run parameters
   read_parquet(paths$output$parameter_final$local) %>%
     mutate(run_id = !!run_id) %>%
@@ -118,7 +124,9 @@ if (upload_enable) {
         tidyr::unnest(cols = .extracts) %>%
         dplyr::select(num_iterations = .extracts)
     ) %>%
-      dplyr::select(-any_of(c("estimator", "trees")), -extracts) %>%
+      # tune >= 2.0 adds a backtrace `trace` column to .notes; drop it since
+      # it isn't tabular and shouldn't land in the Athena table
+      dplyr::select(-any_of(c("estimator", "trees", "trace")), -extracts) %>%
       write_parquet(paths$output$parameter_search$s3)
   }
 

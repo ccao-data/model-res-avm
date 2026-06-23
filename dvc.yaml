@@ -55,6 +55,8 @@ stages:
         cache: false
     - output/workflow/recipe/model_workflow_recipe.rds:
         cache: false
+    - output/workflow/post/model_workflow_post.rds:
+        cache: false
 
   assess:
     cmd: Rscript pipeline/02-assess.R
@@ -70,6 +72,7 @@ stages:
     - input/land_nbhd_rate_data.parquet
     - output/workflow/fit/model_workflow_fit.zip
     - output/workflow/recipe/model_workflow_recipe.rds
+    - output/workflow/post/model_workflow_post.rds
     params:
     - assessment
     - pv
@@ -191,6 +194,7 @@ stages:
     - output/parameter_search/model_parameter_search.parquet
     - output/workflow/fit/model_workflow_fit.zip
     - output/workflow/recipe/model_workflow_recipe.rds
+    - output/workflow/post/model_workflow_post.rds
     - output/test_card/model_test_card.parquet
     - output/train_card/model_train_card.parquet
     - output/assessment_card/model_assessment_card.parquet

@@ -422,10 +422,44 @@ mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
   out
 }
 
-# Convert model predictions from the log-dollar scale back to raw dollars when
-# the global log-sale-price transform is enabled; a no-op otherwise
-to_dollars <- function(x, log_enabled = log_transform_enable) {
-  if (log_enabled) exp(x) else x
+# Log-scale RMSE: RMSE of log(truth) vs log(estimate). The model trains on
+# log(price) and the tailor exponentiates predictions back to dollars, so both
+# truth and estimate arrive here in raw dollars. Logging them again moves CV
+# hyperparameter selection onto the log scale (matching training) rather than
+# dollar-scale error. The tailor's exp() and this log() cancel, so it equals
+# RMSE on the model's log output. Natural log() matches step_log()'s default
+rmse_log_vec <- function(truth, estimate, na_rm = TRUE, case_weights = NULL,
+                         ...) {
+  yardstick::check_numeric_metric(truth, estimate, case_weights)
+
+  if (na_rm) {
+    result <- yardstick::yardstick_remove_missing(truth, estimate, case_weights)
+
+    truth <- result$truth
+    estimate <- result$estimate
+  } else if (yardstick::yardstick_any_missing(truth, estimate, case_weights)) {
+    return(NA_real_)
+  }
+
+  yardstick::rmse_vec(log(truth), log(estimate), case_weights = case_weights)
+}
+
+rmse_log <- function(data, ...) {
+  UseMethod("rmse_log")
+}
+rmse_log <- yardstick::new_numeric_metric(rmse_log, direction = "minimize")
+
+rmse_log.data.frame <- function(data, truth, estimate, na_rm = TRUE,
+                                case_weights = NULL, ...) {
+  yardstick::numeric_metric_summarizer(
+    name = "rmse_log",
+    fn = rmse_log_vec,
+    data = data,
+    truth = !!rlang::enquo(truth),
+    estimate = !!rlang::enquo(estimate),
+    na_rm = na_rm,
+    case_weights = !!rlang::enquo(case_weights)
+  )
 }
 
 # Modified rolling origin forecast split function. Splits the training data into

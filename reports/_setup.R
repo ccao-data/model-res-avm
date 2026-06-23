@@ -138,9 +138,16 @@ run_triad_code <- ccao::town_dict %>%
   distinct(triad_code) %>%
   pull(triad_code)
 
-# Load model object and recipe
+# Load model object, recipe, and post-processing tailor. Runs from before the
+# tailor artifact was introduced won't have one; they were never
+# log-transformed, so NULL (no post-processing) is correct for them
 model_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 model_recipe <- readRDS(paths$output$workflow_recipe$local)
+model_post <- if (file.exists(paths$output$workflow_post$local)) {
+  readRDS(paths$output$workflow_post$local)
+} else {
+  NULL
+}
 
 # Load model-generated output data sets
 if (!exists("assessment_card")) {

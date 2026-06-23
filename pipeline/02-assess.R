@@ -34,9 +34,12 @@ land_nbhd_rate <- read_parquet(
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Predicting off-market values with trained model")
 
-# Load the final lightgbm model object and recipe from file
+# Load the final lightgbm model object, recipe, and post-processing tailor
+# from file. The tailor converts predictions back to raw dollars when the log
+# transform is enabled and is a passthrough otherwise
 lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
+lgbm_final_full_post <- readRDS(paths$output$workflow_post$local)
 
 # Load the data for assessment. This is the universe of CARDs (not
 # PINs) that needs values. Use the trained lightgbm model to estimate a single
@@ -56,21 +59,22 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
     .by = meta_pin
   ) %>%
   mutate(
+    # The saved tailor applies the same post-processing as the training
+    # workflow i.e. predictions come back in raw dollars, not log dollars
     pred_card_initial_fmv = predict(
-      lgbm_final_full_fit,
-      new_data = bake(
-        lgbm_final_full_recipe,
-        new_data = .,
-        all_predictors()
+      lgbm_final_full_post,
+      predict(
+        lgbm_final_full_fit,
+        new_data = bake(
+          lgbm_final_full_recipe,
+          new_data = .,
+          all_predictors()
+        )
       )
     )$.pred,
     char_bldg_sf = og_char_bldg_sf
   ) %>%
   select(-og_char_bldg_sf)
-
-# Convert predictions back to raw dollars (a no-op when the log transform is off)
-assessment_card_data_pred <- assessment_card_data_pred %>%
-  mutate(pred_card_initial_fmv = to_dollars(pred_card_initial_fmv))
 
 
 

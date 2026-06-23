@@ -29,6 +29,7 @@ Depends:
     rlang,
     rsample,
     stringr,
+    tailor,
     tictoc,
     tidyr,
     tune,
