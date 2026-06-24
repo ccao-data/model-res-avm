@@ -35,11 +35,8 @@ land_nbhd_rate <- read_parquet(
 message("Predicting off-market values with trained model")
 
 # Load the final lightgbm model object, recipe, and post-processing tailor
-# from file. The tailor applies whatever post-processing was attached to the
-# workflow at train time (e.g. back-transforming predictions to raw dollars
-# when the log transform is enabled) and is a passthrough when none is needed.
-# Runs from before the tailor artifact was introduced won't have one, so NULL
-# (no post-processing) reproduces their original predictions
+# from file. The tailor back-transforms predictions when needed (a passthrough
+# otherwise); older runs predating the tailor artifact have none, so use NULL
 lgbm_final_full_fit <- lightsnip::lgbm_load(paths$output$workflow_fit$local)
 lgbm_final_full_recipe <- readRDS(paths$output$workflow_recipe$local)
 lgbm_final_full_post <- if (file.exists(paths$output$workflow_post$local)) {
