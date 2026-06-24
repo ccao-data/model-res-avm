@@ -124,8 +124,6 @@ if (upload_enable) {
         tidyr::unnest(cols = .extracts) %>%
         dplyr::select(num_iterations = .extracts)
     ) %>%
-      # tune >= 2.0 adds a backtrace `trace` column to .notes; drop it since
-      # it isn't tabular and shouldn't land in the Athena table
       dplyr::select(-any_of(c("estimator", "trees", "trace")), -extracts) %>%
       write_parquet(paths$output$parameter_search$s3)
   }
