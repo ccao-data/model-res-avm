@@ -71,6 +71,7 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
     # transform), so the result is in dollars regardless of how the outcome
     # was modeled
     pred_card_initial_fmv = predict_main_model(
+      # Grab the entire current data frame and hand it to this function
       pick(everything()),
       lgbm_final_full_recipe,
       lgbm_final_full_fit,
