@@ -63,10 +63,6 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
     .by = meta_pin
   ) %>%
   mutate(
-    # Run the saved pipeline (recipe -> model -> tailor) by hand. The tailor
-    # back-transforms predictions to raw dollars (e.g. undoing a log
-    # transform), so the result is in dollars regardless of how the outcome
-    # was modeled
     pred_card_initial_fmv = predict_main_model(
       # Grab the entire current data frame and hand it to this function
       pick(everything()),
