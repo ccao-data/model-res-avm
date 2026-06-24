@@ -55,10 +55,9 @@ train_recipe <- model_main_recipe(
   log_outcome = log_transform_enable
 )
 
-# Create a post-processing tailor which converts predictions from the log scale
-# back to raw dollars when the log transform is enabled (a passthrough
-# otherwise). Attaching it to the workflow means CV metrics are computed on
-# dollar-scale predictions. See R/recipes.R for details
+# Create a post-processing tailor that converts predictions from the log scale
+# back to raw dollars when enabled (a passthrough otherwise). See R/recipes.R
+# for details
 train_tailor <- model_main_tailor(log_outcome = log_transform_enable)
 
 
