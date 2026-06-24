@@ -587,3 +587,20 @@ create_rolling_origin_splits <- function(data,
   )
   return(rset)
 }
+
+# Apply the saved model pipeline (recipe -> model fit -> tailor) by hand,
+# reproducing what predict() on a fitted workflow does, but from the
+# separately-saved artifacts. The tailor back-transforms predictions to raw
+# dollars, inverting whatever transform was applied to the outcome during
+# training (e.g. exp() to undo a log transform). Returns a numeric vector
+# aligned to `data`'s rows. `post` may be NULL when a run has no post-processor
+# (trained directly in raw dollars, or predating the tailor artifact), so
+# predictions already arrive in dollars
+predict_main_model <- function(data, recipe, fit, post = NULL) {
+  baked <- recipes::bake(recipe, new_data = data, recipes::all_predictors())
+  pred <- predict(fit, new_data = baked)
+  if (!is.null(post)) {
+    pred <- predict(post, pred)
+  }
+  pred$.pred
+}

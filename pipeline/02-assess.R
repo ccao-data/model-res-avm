@@ -59,19 +59,16 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
     .by = meta_pin
   ) %>%
   mutate(
-    # The saved tailor applies the same post-processing as the training
-    # workflow i.e. predictions come back in raw dollars, not log dollars
-    pred_card_initial_fmv = predict(
-      lgbm_final_full_post,
-      predict(
-        lgbm_final_full_fit,
-        new_data = bake(
-          lgbm_final_full_recipe,
-          new_data = .,
-          all_predictors()
-        )
-      )
-    )$.pred,
+    # Run the saved pipeline (recipe -> model -> tailor) by hand. The tailor
+    # back-transforms predictions to raw dollars (e.g. undoing a log
+    # transform), so the result is in dollars regardless of how the outcome
+    # was modeled
+    pred_card_initial_fmv = predict_main_model(
+      pick(everything()),
+      lgbm_final_full_recipe,
+      lgbm_final_full_fit,
+      lgbm_final_full_post
+    ),
     char_bldg_sf = og_char_bldg_sf
   ) %>%
   select(-og_char_bldg_sf)
