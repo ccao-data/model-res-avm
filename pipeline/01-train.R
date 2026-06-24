@@ -204,7 +204,7 @@ if (cv_enable && early_stopping_enable) {
 }
 
 # Initialize lightgbm workflow, which contains the model spec, the
-# pre-processing steps/recipe needed to prepare the raw data, AND the
+# pre-processing steps/recipe needed to prepare the raw data, and  the
 # post-processing tailor applied to predictions
 lgbm_wflow <- workflow() %>%
   add_model(lgbm_model) %>%
