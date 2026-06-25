@@ -7,7 +7,7 @@
 # We don't publish the staging URL in public code because we often deploy
 # provisional values to staging, and we don't want users to find the staging
 # app and assume the values are final
-HOMEVAL_STAGING_BASE_URL <- "example.com"
+HOMEVAL_STAGING_BASE_URL <- "https://modval-stage.cookcountyassessoril.gov/"
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
