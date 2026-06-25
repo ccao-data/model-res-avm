@@ -77,8 +77,10 @@ jobs:
         id: set
         shell: bash
         run: |
-          if [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
-            echo "command=dvc unfreeze ingest && dvc repro && dvc push && aws s3 cp dvc.lock s3://z-dev-ccao-data-dvc-us-east-1/model-res-avm/dvc-lockfiles/$GITHUB_RUN_ID/dvc.lock" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.repro_ingest }}" == "true" && "${{ inputs.upload_enable }}" == "true" ]]; then
+            echo "command=dvc unfreeze && dvc repro && dvc push && Rscript misc/push-dvc-lock.R" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
+            echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
           else
             echo "command=" >> $GITHUB_OUTPUT
           fi
