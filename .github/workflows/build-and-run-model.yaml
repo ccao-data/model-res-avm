@@ -61,9 +61,7 @@ on:
         description: >-
           Run ingest stage before running model. Pushes updated DVC-tracked
           input files to S3 remote and uploads the updated dvc.lock after the
-          run. Retrieve the lockfile locally with: aws s3 cp
-          s3://ccao-data-dvc-us-east-1/model-res-avm/dvc-lockfiles/<run-id>/dvc.lock
-          ./dvc.lock, where <run-id> is the GitHub Actions run ID.
+          run.
         default: false
         required: true
   push:
@@ -80,7 +78,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
-            echo "command=dvc unfreeze ingest && dvc repro && dvc push && aws s3 cp dvc.lock s3://ccao-data-dvc-us-east-1/model-res-avm/dvc-lockfiles/$GITHUB_RUN_ID/dvc.lock" >> $GITHUB_OUTPUT
+            echo "command=dvc unfreeze ingest && dvc repro && dvc push && aws s3 cp dvc.lock s3://z-dev-ccao-data-dvc-us-east-1/model-res-avm/dvc-lockfiles/$GITHUB_RUN_ID/dvc.lock" >> $GITHUB_OUTPUT
           else
             echo "command=" >> $GITHUB_OUTPUT
           fi
