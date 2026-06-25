@@ -244,8 +244,7 @@ message("Pulling model data from Athena")
 
 # Pull the PIN-level assessment data, which contains all the fields needed to
 # create the review spreadsheets
-# Sale columns are pulled from a separate run whose linked/de-duped sale data
-# is more current than the main export run
+# Sale columns are pulled from a separate run with the missing sales
 MISSING_SALES_RUN_ID <- "2026-06-16-charming-claire"
 
 assessment_pin <- dbGetQuery(
