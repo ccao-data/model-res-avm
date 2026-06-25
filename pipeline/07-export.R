@@ -7,7 +7,7 @@
 # We don't publish the staging URL in public code because we often deploy
 # provisional values to staging, and we don't want users to find the staging
 # app and assume the values are final
-HOMEVAL_STAGING_BASE_URL <- "https://example.com"
+HOMEVAL_STAGING_BASE_URL <- "example.com"
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
@@ -244,6 +244,10 @@ message("Pulling model data from Athena")
 
 # Pull the PIN-level assessment data, which contains all the fields needed to
 # create the review spreadsheets
+# Sale columns are pulled from a separate run whose linked/de-duped sale data
+# is more current than the main export run
+MISSING_SALES_RUN_ID <- "2026-06-16-charming-claire"
+
 assessment_pin <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA, glue("
   SELECT *
@@ -252,6 +256,37 @@ assessment_pin <- dbGetQuery(
   AND meta_triad_code = '{params$export$triad_code}'
   ")
 )
+
+assessment_pin_sales <- dbGetQuery(
+  conn = AWS_ATHENA_CONN_NOCTUA, glue("
+  SELECT
+      meta_pin,
+      sale_recent_1_date,
+      sale_recent_1_price,
+      sale_recent_1_outlier_reason,
+      sale_recent_1_document_num,
+      sale_recent_1_is_outlier,
+      sale_recent_2_date,
+      sale_recent_2_price,
+      sale_recent_2_outlier_reason,
+      sale_recent_2_document_num,
+      sale_recent_2_is_outlier
+  FROM model.assessment_pin
+  WHERE run_id = '{MISSING_SALES_RUN_ID}'
+  AND meta_triad_code = '{params$export$triad_code}'
+  ")
+)
+
+assessment_pin <- assessment_pin %>%
+  select(-c(
+    sale_recent_1_date, sale_recent_1_price,
+    sale_recent_1_outlier_reason, sale_recent_1_document_num,
+    sale_recent_1_is_outlier,
+    sale_recent_2_date, sale_recent_2_price,
+    sale_recent_2_outlier_reason, sale_recent_2_document_num,
+    sale_recent_2_is_outlier
+  )) %>%
+  left_join(assessment_pin_sales, by = "meta_pin")
 
 # Pull card-level data only for all PINs. Needed for upload, since values are
 # tracked by card, even though they're presented by PIN
@@ -740,7 +775,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   workbook_name <- glue(
     params$assessment$year,
     str_replace(town_convert(town), " ", "_"),
-    "Initial_Model_Values.xlsx",
+    "Initial_Model_Values_Updated_Sales.xlsx",
     .sep = "_"
   )
   saveWorkbook(
