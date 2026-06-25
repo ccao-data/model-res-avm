@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ inputs.repro_ingest }}" == "true" && "${{ inputs.upload_enable }}" == "true" ]]; then
-            echo "command=dvc unfreeze && dvc repro && dvc push && Rscript misc/push-dvc-lock.R" >> $GITHUB_OUTPUT
+            echo "command=dvc unfreeze ingest && dvc repro && dvc push && Rscript misc/push-dvc-lock.R" >> $GITHUB_OUTPUT
           elif [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
             echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
           else
