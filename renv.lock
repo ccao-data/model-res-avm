@@ -40,7 +40,7 @@
       "Package": "GauPro",
       "Version": "0.2.17",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R6",
         "Rcpp",
@@ -157,7 +157,7 @@
       "Package": "RcppArmadillo",
       "Version": "14.2.0-1",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "Rcpp",
@@ -354,7 +354,7 @@
       "Package": "bslib",
       "Version": "0.8.0",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "base64enc",
@@ -547,7 +547,7 @@
       "Package": "dials",
       "Version": "1.4.4",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "DiceDesign",
         "R",
@@ -693,7 +693,7 @@
       "Package": "fs",
       "Version": "1.6.5",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "methods"
@@ -760,7 +760,7 @@
       "Package": "ggplot2",
       "Version": "4.0.2",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
       "Requirements": [
         "R",
         "S7",
@@ -876,7 +876,7 @@
       "Package": "htmltools",
       "Version": "0.5.8.1",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "base64enc",
@@ -1074,7 +1074,7 @@
       "Package": "lbfgs",
       "Version": "1.2.1.2",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "Rcpp",
         "methods"
@@ -1209,7 +1209,7 @@
       "Package": "mixopt",
       "Version": "0.1.3",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "dplyr",
         "ggplot2",
@@ -1308,7 +1308,7 @@
       "Package": "paws.analytics",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
@@ -1318,7 +1318,7 @@
       "Package": "paws.application.integration",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "https://paws-r-builds.s3.amazonaws.com/packages/0.10.0",
       "Requirements": [
         "paws.common"
       ],
@@ -1451,7 +1451,7 @@
       "Package": "recipes",
       "Version": "1.3.3",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "Matrix",
         "R",
@@ -1573,7 +1573,7 @@
       "Package": "rsample",
       "Version": "1.3.2",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
@@ -1598,7 +1598,7 @@
       "Package": "sass",
       "Version": "0.4.9",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R6",
         "fs",
@@ -1612,7 +1612,7 @@
       "Package": "scales",
       "Version": "1.4.0",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
       "Requirements": [
         "R",
         "R6",
@@ -1695,7 +1695,7 @@
       "Package": "splitfngr",
       "Version": "0.1.2",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "lbfgs"
       ],
@@ -1758,7 +1758,7 @@
       "Package": "tailor",
       "Version": "0.1.0",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
@@ -1871,7 +1871,7 @@
       "Package": "tinytex",
       "Version": "0.54",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "xfun"
       ],
@@ -1881,7 +1881,7 @@
       "Package": "tune",
       "Version": "2.1.0",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "GauPro",
         "R",
@@ -1999,7 +1999,7 @@
       "Package": "workflows",
       "Version": "1.3.0",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
@@ -2055,7 +2055,7 @@
       "Package": "yardstick",
       "Version": "1.4.0",
       "Source": "Repository",
-      "Repository": "PPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
