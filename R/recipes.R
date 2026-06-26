@@ -66,8 +66,8 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars,
 #' Attaching the tailor to the workflow before tuning means tune applies it to
 #' assessment set predictions before computing CV metrics. Since step_log() is
 #' skipped at bake() time, the truth column stays in raw dollars, so metrics
-#' compare dollars to dollars. The custom adjustment requires no estimation, so
-#' no training data is sacrificed to an internal calibration split.
+#' compare dollars to dollars. In some cases we may want CV metrics to use the
+#' scale that the tailor reversed - see rmse_log_vec in R/helpers.R
 #'
 #' @param log_outcome Logical. If TRUE, exponentiate predictions to convert
 #'   them from log dollars back to raw dollars.
