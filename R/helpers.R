@@ -422,12 +422,11 @@ mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
   out
 }
 
-# Log-scale RMSE: RMSE of log(truth) vs log(estimate). The model trains on
-# log(price) and the tailor exponentiates predictions back to dollars, so both
-# truth and estimate arrive here in raw dollars. Logging them again moves CV
-# hyperparameter selection onto the log scale (matching training) rather than
-# dollar-scale error. The tailor's exp() and this log() cancel, so it equals
-# RMSE on the model's log output. Natural log() matches step_log()'s default
+# Log-scale RMSE: RMSE of log(truth) vs log(estimate). truth and estimate
+# arrive here in raw dollars: step_log() is skipped at bake() time, and
+# when log training is enabled the tailor exponentiates predictions back to
+# dollars. So logging both moves CV hyperparameter selection onto the log scale
+# rather than dollar-scale error.
 rmse_log_vec <- function(truth, estimate, na_rm = TRUE, case_weights = NULL,
                          ...) {
   yardstick::check_numeric_metric(truth, estimate, case_weights)
