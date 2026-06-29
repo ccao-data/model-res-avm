@@ -427,6 +427,7 @@ mdape_vec <- function(truth, estimate, case_weights = NULL, na_rm = TRUE) {
 # when log training is enabled the tailor exponentiates predictions back to
 # dollars. So logging both moves CV hyperparameter selection onto the log scale
 # rather than dollar-scale error.
+# Template taken from: https://github.com/tidymodels/yardstick/blob/main/R/num-rmse.R
 rmse_log_vec <- function(truth, estimate, na_rm = TRUE, case_weights = NULL,
                          ...) {
   yardstick::check_numeric_metric(truth, estimate, case_weights)
