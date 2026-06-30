@@ -68,9 +68,11 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   ) %>%
   select(-og_char_bldg_sf)
 
-# Convert predictions back to raw dollars (a no-op when the log transform is off)
-assessment_card_data_pred <- assessment_card_data_pred %>%
-  mutate(pred_card_initial_fmv = to_dollars(pred_card_initial_fmv))
+# Exponentiate predictions back to raw dollar scale
+if (log_transform_enable) {
+  assessment_card_data_pred <- assessment_card_data_pred %>%
+    mutate(pred_card_initial_fmv = exp(pred_card_initial_fmv))
+}
 
 
 

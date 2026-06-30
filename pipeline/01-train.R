@@ -34,6 +34,15 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
+# Log-transform sale prices for LightGBM; stash originals for evaluation
+if (log_transform_enable) {
+  training_data_full <- training_data_full %>%
+    mutate(
+      meta_sale_price_original = meta_sale_price,
+      meta_sale_price = log(meta_sale_price)
+    )
+}
+
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
@@ -44,15 +53,13 @@ split_data <- initial_time_split(
 test <- testing(split_data)
 train <- training(split_data)
 
-# Create a recipe for the training data which removes non-predictor columns,
-# preps categorical data, and (when enabled) log-transforms the outcome. See
-# R/recipes.R for details
+# Create a recipe for the training data which removes non-predictor columns and
+# preps categorical data, see R/recipes.R for details
 train_recipe <- model_main_recipe(
   data = training_data_full,
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
-  id_vars = params$model$predictor$id,
-  log_outcome = log_transform_enable
+  id_vars = params$model$predictor$id
 )
 
 
@@ -64,10 +71,14 @@ train_recipe <- model_main_recipe(
 message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
-# and feature interactions. The linear baseline always fits on log(price),
-# which the recipe applies internally (see R/recipes.R)
+# and feature interactions. Linear baseline always fits on log(price);
+# apply here if global transform is off
 lin_recipe <- model_lin_recipe(
-  data = training_data_full,
+  data = if (log_transform_enable) {
+    training_data_full
+  } else {
+    training_data_full %>% mutate(meta_sale_price = log(meta_sale_price))
+  },
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -84,9 +95,13 @@ lin_wflow <- workflow() %>%
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
-# Fit linear baseline. The recipe log-transforms the outcome internally
+# Fit linear baseline; apply log transform to train if global transform is off
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train)
+  fit(data = if (log_transform_enable) {
+    train
+  } else {
+    train %>% mutate(meta_sale_price = log(meta_sale_price))
+  })
 
 
 
@@ -396,19 +411,26 @@ walk2(
   list(test, train),
   list(paths$output$test_card$local, paths$output$train_card$local),
   \(data, path) {
-    # The LightGBM recipe log-transforms the outcome when enabled and the linear
-    # baseline always does, so both predictions come back on the log scale and
-    # are converted to dollars here. meta_sale_price is no longer transformed in
-    # place, so it stays in raw dollars and needs no fixup
     preds <- data %>%
       mutate(
-        pred_card_initial_fmv = to_dollars(
-          predict(lgbm_wflow_final_fit, data)$.pred
-        ),
-        pred_card_initial_fmv_lin = exp(
-          predict(lin_wflow_final_fit, data)$.pred
-        )
+        pred_card_initial_fmv = predict(lgbm_wflow_final_fit, data)$.pred,
+        pred_card_initial_fmv_lin = exp(predict(
+          lin_wflow_final_fit,
+          if (log_transform_enable) {
+            data
+          } else {
+            data %>% mutate(meta_sale_price = log(meta_sale_price))
+          }
+        )$.pred)
       )
+
+    if (log_transform_enable) {
+      preds <- preds %>%
+        mutate(
+          pred_card_initial_fmv = exp(pred_card_initial_fmv),
+          meta_sale_price = meta_sale_price_original
+        )
+    }
 
     preds %>%
       select(
