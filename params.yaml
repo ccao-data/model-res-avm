@@ -134,8 +134,11 @@ cv:
   uncertain: 8
 
   # Metric used to select the "best" set of parameters from CV iterations. Must
-  # be manually included the metric_set() passed to tune_bayes()
-  best_metric: "rmse"
+  # be manually included the metric_set() passed to tune_bayes(). Use
+  # "rmse_log" (log-scale RMSE, see R/helpers.R) when model.log_sale_price is
+  # true, and "rmse" otherwise; "rmse_log" is only added to the metric set
+  # when the log transform is enabled
+  best_metric: "rmse_log"
 
 
 # Model (Hyper)parameters ------------------------------------------------------
@@ -153,8 +156,13 @@ model:
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
   objective: "mse_cov"
 
-  # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
-  # exp()-scaled back to dollars. The linear baseline always uses log(price).
+  # Train LightGBM on log(meta_sale_price) instead of raw dollars. Passed to
+  # lightsnip as the `log_target` engine argument: lightsnip logs the outcome
+  # before fitting and exp()s predictions back to dollars, so all data and
+  # predictions outside the model itself stay in dollar space (including for
+  # downstream consumers like api-res-avm). When enabled, set cv.best_metric
+  # to "rmse_log" so CV selection happens on the same scale as the training
+  # objective. The linear baseline always uses log(price) regardless.
   log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force

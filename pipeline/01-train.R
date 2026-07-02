@@ -34,15 +34,6 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
-# Log-transform sale prices for LightGBM; stash originals for evaluation
-if (log_transform_enable) {
-  training_data_full <- training_data_full %>%
-    mutate(
-      meta_sale_price_original = meta_sale_price,
-      meta_sale_price = log(meta_sale_price)
-    )
-}
-
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
@@ -71,14 +62,10 @@ train_recipe <- model_main_recipe(
 message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
-# and feature interactions. Linear baseline always fits on log(price);
-# apply here if global transform is off
+# and feature interactions
 lin_recipe <- model_lin_recipe(
-  data = if (log_transform_enable) {
-    training_data_full
-  } else {
-    training_data_full %>% mutate(meta_sale_price = log(meta_sale_price))
-  },
+  data = training_data_full %>%
+    mutate(meta_sale_price = log(meta_sale_price)),
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -95,13 +82,9 @@ lin_wflow <- workflow() %>%
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
-# Fit linear baseline; apply log transform to train if global transform is off
+# Fit the linear model on the training data
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = if (log_transform_enable) {
-    train
-  } else {
-    train %>% mutate(meta_sale_price = log(meta_sale_price))
-  })
+  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
 
 
 
@@ -149,6 +132,12 @@ lgbm_model <- parsnip::boost_tree(
     # standard LightGBM objectives the rho value is silently ignored.
     objective = params$model$objective,
     mse_cov_rho = params$model$parameter$mse_cov_rho,
+
+    # Train on log(meta_sale_price) instead of raw dollars. The log/exp round
+    # trip lives entirely inside lightsnip: it logs the outcome before fitting
+    # and exp()s predictions back to dollars, so training data, predictions,
+    # and all downstream artifacts stay in dollar space
+    log_target = log_transform_enable,
 
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
@@ -282,6 +271,19 @@ if (cv_enable) {
       update(trees = dials::trees(lgbm_range$num_iterations))
   }
 
+  # Metrics used to evaluate each set of candidate hyperparameters. Since
+  # lightsnip returns dollar-scale predictions even when the model is trained
+  # in log space, all metrics here compare dollars to dollars regardless of
+  # model.log_sale_price. When training in log space, prepend a log-scale RMSE
+  # (see rmse_log in R/helpers.R) so that Bayesian optimization targets the
+  # same scale as the LightGBM objective. NOTE: tune_bayes() optimizes the
+  # FIRST metric in the set, and cv.best_metric should typically match it
+  if (log_transform_enable) {
+    cv_metrics <- metric_set(rmse_log, rmse, mape, mae)
+  } else {
+    cv_metrics <- metric_set(rmse, mape, mae)
+  }
+
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
   # quite a long time, depending on the compute resources available
   lgbm_search <- tune_bayes(
@@ -290,7 +292,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mape, mae),
+    metrics = cv_metrics,
     control = control_bayes(
       verbose = TRUE,
       verbose_iter = TRUE,
@@ -411,28 +413,14 @@ walk2(
   list(test, train),
   list(paths$output$test_card$local, paths$output$train_card$local),
   \(data, path) {
-    preds <- data %>%
+    data %>%
       mutate(
         pred_card_initial_fmv = predict(lgbm_wflow_final_fit, data)$.pred,
         pred_card_initial_fmv_lin = exp(predict(
           lin_wflow_final_fit,
-          if (log_transform_enable) {
-            data
-          } else {
-            data %>% mutate(meta_sale_price = log(meta_sale_price))
-          }
+          data %>% mutate(meta_sale_price = log(meta_sale_price))
         )$.pred)
-      )
-
-    if (log_transform_enable) {
-      preds <- preds %>%
-        mutate(
-          pred_card_initial_fmv = exp(pred_card_initial_fmv),
-          meta_sale_price = meta_sale_price_original
-        )
-    }
-
-    preds %>%
+      ) %>%
       select(
         meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
         all_of(params$ratio_study$geographies), char_bldg_sf,
@@ -453,6 +441,7 @@ walk2(
       write_parquet(path)
   }
 )
+
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since

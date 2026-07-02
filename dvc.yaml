@@ -75,7 +75,6 @@ stages:
     - pv
     - ratio_study
     - model.predictor.all
-    - model.log_sale_price
     outs:
     - output/assessment_card/model_assessment_card.parquet:
         cache: false
@@ -136,6 +135,7 @@ stages:
     - toggle.shap_enable
     - toggle.comp_enable
     - model.predictor.all
+    - model.log_sale_price
     outs:
     - output/shap/model_shap.parquet:
         cache: false
