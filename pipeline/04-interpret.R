@@ -259,14 +259,23 @@ if (comp_enable) {
   ) %>%
     as_tibble()
 
+  # The model's trees are fit in log space when log_sale_price is enabled, so
+  # the outcome and initial score used for tree weights must also be logged
+  # to match the scale of the leaf values
+  comp_outcome <- if (log_transform_enable) {
+    log(training_data$meta_sale_price)
+  } else {
+    training_data$meta_sale_price
+  }
+
   # Create row-wise weights for each observation in the training data
   # with columns representing each tree in the model.
   tree_weights <- extract_tree_weights(
     model      = lgbm_final_full_fit$fit,
     leaf_idx   = as.matrix(training_leaf_nodes),
-    init_score = mean(training_data$meta_sale_price, na.rm = TRUE),
+    init_score = mean(comp_outcome, na.rm = TRUE),
     algorithm  = params$comp$algorithm,
-    outcome    = training_data$meta_sale_price
+    outcome    = comp_outcome
   )
 
   if (length(tree_weights) == 0) {

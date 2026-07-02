@@ -30,6 +30,7 @@ stages:
     - cv
     - model.engine
     - model.hyperparameter
+    - model.log_sale_price
     - model.objective
     - model.parameter
     - model.predictor
@@ -134,6 +135,7 @@ stages:
     - toggle.shap_enable
     - toggle.comp_enable
     - model.predictor.all
+    - model.log_sale_price
     outs:
     - output/shap/model_shap.parquet:
         cache: false

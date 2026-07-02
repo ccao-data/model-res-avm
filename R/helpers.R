@@ -184,6 +184,39 @@ extract_num_iterations <- function(x) {
   length(evals)
 }
 
+# Custom yardstick metric: RMSE computed on the natural log of the truth and
+# estimate. Equivalent to RMSLE without the +1 shift, since sale prices are
+# always positive. Used during CV when model.log_sale_price is enabled so that
+# hyperparameter selection happens on the same scale as the LightGBM training
+# objective, while the standard dollar-scale metrics remain comparable across
+# runs. See https://www.tidymodels.org/learn/develop/metrics/
+rmse_log_vec <- function(truth, estimate, na_rm = TRUE, case_weights = NULL) {
+  yardstick::rmse_vec(
+    truth = log(truth),
+    estimate = log(estimate),
+    na_rm = na_rm,
+    case_weights = case_weights
+  )
+}
+
+rmse_log <- function(data, ...) {
+  UseMethod("rmse_log")
+}
+rmse_log <- yardstick::new_numeric_metric(rmse_log, direction = "minimize")
+
+rmse_log.data.frame <- function(data, truth, estimate,
+                                na_rm = TRUE, case_weights = NULL, ...) {
+  yardstick::numeric_metric_summarizer(
+    name = "rmse_log",
+    fn = rmse_log_vec,
+    data = data,
+    truth = !!rlang::enquo(truth),
+    estimate = !!rlang::enquo(estimate),
+    na_rm = na_rm,
+    case_weights = !!rlang::enquo(case_weights)
+  )
+}
+
 # Helper function to return weights for comps
 
 # The `extract_tree_weights` function allows the user to return weights

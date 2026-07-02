@@ -11,11 +11,11 @@
 
 # Model tag used to identify the purpose of the run. Must be one of:
 # "junk", "rejected", "test", "baseline", "candidate", "final", or "comps"
-run_type: "baseline"
+run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Potential residential baseline with SHAP values, revert DVC path
+run_note: Test cov term    
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -96,7 +96,7 @@ input:
   # by year, township, and class to maintain representation across categories
   subset:
     # Whether to use a subset of the training data instead of the full dataset
-    enable: false
+    enable: true
 
     # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
@@ -140,8 +140,11 @@ cv:
   uncertain: 8
 
   # Metric used to select the "best" set of parameters from CV iterations. Must
-  # be manually included the metric_set() passed to tune_bayes()
-  best_metric: "rmse"
+  # be manually included the metric_set() passed to tune_bayes(). Use
+  # "rmse_log" (log-scale RMSE, see R/helpers.R) when model.log_sale_price is
+  # true, and "rmse" otherwise; "rmse_log" is only added to the metric set
+  # when the log transform is enabled
+  best_metric: "rmse_log"
 
 
 # Model (Hyper)parameters ------------------------------------------------------
@@ -151,9 +154,22 @@ cv:
 model:
   engine: "lightgbm"
 
-  # Objective/loss function minimized by LightGBM. See website for possible
-  # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "rmse"
+  # Objective/loss function minimized by LightGBM. Standard LightGBM names
+  # like "rmse" / "regression" / "regression_l1" pass straight through. The
+  # special value "mse_cov" selects lightsnip's custom MSE + rho * Cov(r, y)^2
+  # objective (a soft vertical-equity penalty); when used, set
+  # `model.parameter.mse_cov_rho` below to control the penalty weight.
+  # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
+  objective: "mse_cov"
+
+  # Train LightGBM on log(meta_sale_price) instead of raw dollars. Passed to
+  # lightsnip as the `log_target` engine argument: lightsnip logs the outcome
+  # before fitting and exp()s predictions back to dollars, so all data and
+  # predictions outside the model itself stay in dollar space (including for
+  # downstream consumers like api-res-avm). When enabled, set cv.best_metric
+  # to "rmse_log" so CV selection happens on the same scale as the training
+  # objective. The linear baseline always uses log(price) regardless.
+  log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
@@ -317,6 +333,12 @@ model:
     # During CV, the number of iterations to go without improvement before
     # stopping training. Early stopping is deactivated when NULL
     stop_iter: 50
+
+    # Penalty weight (rho) for the lightsnip "mse_cov" custom objective.
+    # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
+    # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
+    # strongly
+    mse_cov_rho: 1
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled

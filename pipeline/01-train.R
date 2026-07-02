@@ -145,8 +145,18 @@ lgbm_model <- parsnip::boost_tree(
     num_threads = num_threads,
     verbose = params$model$verbose,
 
-    # Set the objective function. This is what lightgbm will try to minimize
+    # Set the objective function. This is what lightgbm will try to minimize.
+    # When set to "mse_cov", lightsnip swaps in a custom MSE + rho*Cov(r,y)^2
+    # objective and uses `mse_cov_rho` (below) as the penalty weight. For
+    # standard LightGBM objectives the rho value is silently ignored.
     objective = params$model$objective,
+    mse_cov_rho = params$model$parameter$mse_cov_rho,
+
+    # Train on log(meta_sale_price) instead of raw dollars. The log/exp round
+    # trip lives entirely inside lightsnip: it logs the outcome before fitting
+    # and exp()s predictions back to dollars, so training data, predictions,
+    # and all downstream artifacts stay in dollar space
+    log_target = log_transform_enable,
 
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
@@ -280,6 +290,19 @@ if (cv_enable) {
       update(trees = dials::trees(lgbm_range$num_iterations))
   }
 
+  # Metrics used to evaluate each set of candidate hyperparameters. Since
+  # lightsnip returns dollar-scale predictions even when the model is trained
+  # in log space, all metrics here compare dollars to dollars regardless of
+  # model.log_sale_price. When training in log space, prepend a log-scale RMSE
+  # (see rmse_log in R/helpers.R) so that Bayesian optimization targets the
+  # same scale as the LightGBM objective. NOTE: tune_bayes() optimizes the
+  # FIRST metric in the set, and cv.best_metric should typically match it
+  if (log_transform_enable) {
+    cv_metrics <- metric_set(rmse_log, rmse, mape, mae)
+  } else {
+    cv_metrics <- metric_set(rmse, mape, mae)
+  }
+
   # Use Bayesian tuning to find best performing hyperparameters. This part takes
   # quite a long time, depending on the compute resources available
   lgbm_search <- tune_bayes(
@@ -288,7 +311,7 @@ if (cv_enable) {
     initial = params$cv$initial_set,
     iter = params$cv$max_iterations,
     param_info = lgbm_params,
-    metrics = metric_set(rmse, mape, mae),
+    metrics = cv_metrics,
     control = control_bayes(
       verbose = TRUE,
       verbose_iter = TRUE,

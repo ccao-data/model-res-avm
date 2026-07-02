@@ -116,6 +116,12 @@ if (!run_type %in% possible_run_types) {
 }
 rm(possible_run_types)
 
+# Whether to log-transform the sale price target before fitting. Defines model
+# structure (see `model.log_sale_price` in params.yaml), not a pipeline toggle
+log_transform_enable <- as.logical(
+  get(params_obj_name)$model$log_sale_price
+)
+
 # Check to see if LightGBM early stopping is enabled based on engine parameters
 early_stopping_enable <-
   get(params_obj_name)$model$parameter$validation_prop > 0 &&
