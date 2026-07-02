@@ -16,7 +16,9 @@ suppressPackageStartupMessages({
 # Initialize a dictionary of file paths. See misc/file_dict.csv for details
 run_id <- params$export$run_id
 year <- substr(run_id, 1, 4)
-paths <- model_file_dict(run_id, year)
+paths <- model_file_dict(run_id, year,
+  use_dev_s3_paths = model_run_is_junk(run_id, year)
+)
 
 
 

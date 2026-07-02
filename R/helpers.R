@@ -1,6 +1,8 @@
 # Function to generate a dictionary list of file names, local paths,
 # and mirrored S3 location URIs from file_dict.csv
-model_file_dict <- function(run_id = NULL, year = NULL) {
+model_file_dict <- function(
+    run_id = NULL,
+    year = NULL, use_dev_s3_paths = FALSE) {
   env <- environment()
   wd <- here::here()
   suppressPackageStartupMessages(library(magrittr))
@@ -32,6 +34,11 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
     na.strings = ""
   ) %>%
     dplyr::mutate(
+      s3_bucket = ifelse(
+        use_dev_s3_paths & s3_bucket == "ccao-model-results-us-east-1",
+        "z-dev-ccao-model-results-us-east-1",
+        s3_bucket
+      ),
       s3 = as.character(purrr::map_if(
         path_s3, ~ !is.na(.x), glue::glue,
         .envir = env, .na = NULL, .null = NA_character_
@@ -50,10 +57,32 @@ model_file_dict <- function(run_id = NULL, year = NULL) {
   return(dict)
 }
 
+# Query model.metadata via Athena to check whether a run has run_type == "junk"
+model_run_is_junk <- function(run_id, year) {
+  conn <- DBI::dbConnect(
+    noctua::athena(),
+    s3_staging_dir = "s3://ccao-athena-results-us-east-1/",
+    region_name = "us-east-1",
+    rstudio_conn_tab = FALSE
+  )
+  on.exit(DBI::dbDisconnect(conn))
+  result <- DBI::dbGetQuery(
+    conn,
+    glue::glue(
+      "SELECT run_type FROM model.metadata ",
+      "WHERE run_id = '{run_id}' AND year = '{year}' LIMIT 1"
+    )
+  )
+  nrow(result) > 0 && identical(result$run_type[1], "junk")
+}
+
 # Get a vector of S3 paths to the output artifacts for a given model run
 model_get_s3_artifacts_for_run <- function(run_id, year) {
   # Get paths of all run objects based on the file dictionary
-  paths <- model_file_dict(run_id, year)
+  paths <- model_file_dict(run_id, year,
+    use_dev_s3_paths =
+      model_run_is_junk(run_id, year)
+  )
   s3_objs <- grep("s3://", unlist(paths$output), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
@@ -109,9 +138,15 @@ model_delete_run <- function(run_id, year) {
 
 # Used to tag existing runs by updating the metadata `run_type` field
 model_tag_run <- function(run_id, year, run_type) {
-  paths <- model_file_dict(run_id, year)
+  is_junk <- model_run_is_junk(run_id, year)
+  if (is_junk) {
+    stop(
+      "Cannot retag run as junk since the run is junk and
+      stored temporarily in a different s3 folder."
+    )
+  }
   possible_run_types <- c(
-    "junk", "rejected", "test",
+    "rejected", "test",
     "baseline", "candidate", "final",
     "comps"
   )
@@ -121,6 +156,7 @@ model_tag_run <- function(run_id, year, run_type) {
       paste0(possible_run_types, collapse = ", ")
     )
   }
+  paths <- model_file_dict(run_id, year, use_dev_s3_paths = FALSE)
   arrow::read_parquet(paths$output$metadata$s3) %>%
     dplyr::mutate(run_type = {{ run_type }}) %>%
     arrow::write_parquet(paths$output$metadata$s3)
@@ -132,7 +168,7 @@ model_tag_run <- function(run_id, year, run_type) {
 model_fetch_run <- function(run_id, year) {
   tictoc::tic(paste0("Fetched run: ", run_id))
 
-  paths <- model_file_dict(run_id, year)
+  paths <- model_file_dict(run_id, year, use_dev_s3_paths = model_run_is_junk(run_id, year))
   s3_objs <- grep("s3://", unlist(paths$output), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 

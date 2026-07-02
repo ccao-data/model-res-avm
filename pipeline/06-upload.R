@@ -28,7 +28,8 @@ if (upload_enable) {
   # Initialize a dictionary of paths AND S3 URIs specific to the run ID and year
   paths <- model_file_dict(
     run_id = run_id,
-    year = params$assessment$working_year
+    year = params$assessment$working_year,
+    use_dev_s3_paths = metadata$run_type == "junk"
   )
 
 
