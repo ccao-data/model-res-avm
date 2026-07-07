@@ -33,11 +33,13 @@ model_file_dict <- function(
     colClasses = c("character", "character", "numeric", rep("character", 9)),
     na.strings = ""
   ) %>%
-    dplyr::mutate(
-      s3_bucket = ifelse(
-        use_dev_s3_paths & s3_bucket == "ccao-model-results-us-east-1",
-        "z-dev-ccao-model-results-us-east-1",
-        s3_bucket
+    mutate(
+      s3_bucket = case_when(
+        use_dev_s3_paths & s3_bucket == "ccao-model-results-us-east-1" ~
+          "z-dev-ccao-model-results-us-east-1",
+        use_dev_s3_paths & s3_bucket == "ccao-data-dvc-us-east-1" ~
+          "z-dev-ccao-data-dvc-us-east-1",
+        .default = s3_bucket
       ),
       s3 = as.character(purrr::map_if(
         path_s3, ~ !is.na(.x), glue::glue,
