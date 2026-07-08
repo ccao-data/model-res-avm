@@ -69,7 +69,7 @@ model_run_is_junk <- function(run_id, year) {
   result <- DBI::dbGetQuery(
     conn,
     glue::glue(
-      "SELECT run_type FROM model.metadata ",
+      "SELECT run_type FROM model.vw_metadata",
       "WHERE run_id = '{run_id}' AND year = '{year}' LIMIT 1"
     )
   )
