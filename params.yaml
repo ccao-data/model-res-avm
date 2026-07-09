@@ -15,7 +15,7 @@ run_type: "test"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Test cov term    
+run_note: Potential residential baseline with SHAP values, revert DVC path
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -96,7 +96,7 @@ input:
   # by year, township, and class to maintain representation across categories
   subset:
     # Whether to use a subset of the training data instead of the full dataset
-    enable: true
+    enable: false
 
     # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
@@ -151,11 +151,11 @@ model:
   # objective (a soft vertical-equity penalty); when used, set
   # `model.parameter.mse_cov_rho` below to control the penalty weight.
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "mse_cov"
+  objective: "rmse"
 
   # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
   # exp()-scaled back to dollars. The linear baseline always uses log(price).
-  log_sale_price: true
+  log_sale_price: false
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
