@@ -122,6 +122,19 @@ log_transform_enable <- as.logical(
   get(params_obj_name)$model$log_sale_price
 )
 
+# The "mse_cov" objective is only built for logged sale prices. An un-logged
+# configuration exists in the reference Python implementation (the "div"
+# ratio mode) but is not built into our codebase; if there is interest, see
+# the author's repo or working paper:
+# https://github.com/nicacevedo/soft-vertical-equity-constrained-mass-appraissal
+if (identical(get(params_obj_name)$model$objective, "mse_cov") &&
+  !log_transform_enable) { # nolint
+  stop(
+    "model.objective = 'mse_cov' requires model.log_sale_price = true, ",
+    "since the objective is only built for logged sale prices"
+  )
+}
+
 # Check to see if LightGBM early stopping is enabled based on engine parameters
 early_stopping_enable <-
   get(params_obj_name)$model$parameter$validation_prop > 0 &&
