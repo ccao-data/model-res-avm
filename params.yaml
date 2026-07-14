@@ -151,7 +151,7 @@ model:
   # objective (a soft vertical-equity penalty); when used, set
   # `model.parameter.mse_cov_rho` below to control the penalty weight.
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "rmse"
+  objective: "mse_cov"
 
   # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
   # exp()-scaled back to dollars. The linear baseline always uses log(price).
