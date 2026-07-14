@@ -161,7 +161,7 @@ model:
 
   # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
   # exp()-scaled back to dollars. The linear baseline always uses log(price).
-  log_sale_price: false
+  log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
