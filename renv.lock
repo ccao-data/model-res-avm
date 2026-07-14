@@ -1062,13 +1062,13 @@
     },
     "lightsnip": {
       "Package": "lightsnip",
-      "Version": "0.0.6",
+      "Version": "0.0.7",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "test-new-obj-function",
-      "RemoteSha": "55cc69169850123240fba82df9a58fdbd7bc5ebd",
+      "RemoteRef": "master",
+      "RemoteSha": "855d3641dffb95e03b88d7d8f5f9828486fe981f",
       "RemoteHost": "api.github.com",
       "Requirements": [
         "butcher",
@@ -1082,7 +1082,7 @@
         "tibble",
         "zip"
       ],
-      "Hash": "c3e596514cefa9e44744f6ae355d249d"
+      "Hash": "5c9cb6c2ca452f669afd0ed45edf8cd7"
     },
     "listenv": {
       "Package": "listenv",
