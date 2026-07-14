@@ -26,7 +26,7 @@ The following document describes performance for ```r metadata$run_id```, a ```r
   - Spanned from ```r m_test_min_date``` to ```r m_test_max_date```
   - Contained ```r m_test_n_sales``` total sales, of which ```r m_test_n_sales_triad``` (```r m_test_n_sales_prop```) were in the ```r metadata$assessment_triad``` triad
   - Had a median sale price of ```r m_test_med_sp```
-  - Included the last ```r m_test_split_prop``` of all training data sales
+  - Included the most recent ```r m_test_split_prop``` of all training data sales`r if (isTRUE(m_test_split_stratified_prop != "0.00%")) { paste0(", and a stratified <code>", m_test_split_stratified_prop, "</code> sample of all remaining sales grouped by township, month, and year") }`
 - **Training Set**: Full data used to train to model for final prediction (prediction on the assessment set, not the test set). This _includes_ the test set, which is removed during model cross-validation and tuning. For this run, the training set:
   - Spanned from ```r m_train_min_date``` to ```r m_train_max_date```
   - Contained ```r m_train_n_sales``` total sales, of which ```r m_train_n_sales_triad``` (```r m_train_n_sales_prop```) were in the ```r metadata$assessment_triad``` triad
