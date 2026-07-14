@@ -106,6 +106,7 @@ metadata <- tibble::tibble(
   cv_initial_set = params$cv$initial_set,
   cv_max_iterations = params$cv$max_iterations,
   cv_no_improve = params$cv$no_improve,
+  cv_stratified_prop = params$cv$stratified_prop,
   cv_split_prop = params$cv$split_prop,
   cv_best_metric = params$cv$best_metric,
   pv_land_pct_of_total_cap = params$pv$land_pct_of_total_cap,
