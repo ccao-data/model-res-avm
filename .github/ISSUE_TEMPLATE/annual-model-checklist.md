@@ -111,7 +111,7 @@ High priority tasks must be completed before the model deadlines.
 
 ### Res model
 
-- [ ] Make sure we have completed a model run with cross-validation (CV) enabled and used the hyperparameters it discovered for any final run
+- [ ] Make sure we have completed a model run with cross-validation (CV) enabled and used the hyperparameters it discovered for any final model run
 - [ ] Make sure the final model has SHAPs and comps. If it doesn't, run one more model with SHAPs and comps enabled
 - [ ] Tag the final model as `final` using the [`tag-model-runs` workflow](https://github.com/ccao-data/model-res-avm/actions/workflows/tag-model-runs.yaml)
 - [ ] Export desk review workbooks for the [res model](https://github.com/ccao-data/model-res-avm/) using the `export` pipeline stage and upload them to OneDrive
@@ -124,7 +124,7 @@ High priority tasks must be completed before the model deadlines.
 
 ### Condo model
 
-- [ ] Make sure we have completed a model run with cross-validation (CV) enabled and used the hyperparameters it discovered for any final run
+- [ ] Make sure we have completed a model run with cross-validation (CV) enabled and used the hyperparameters it discovered for any final model run
 - [ ] Make sure the final model has SHAPs. If it doesn't, run one more model with them enabled
 - [ ] Tag the final model as `final` using the [`tag-model-runs` workflow](https://github.com/ccao-data/model-res-avm/actions/workflows/tag-model-runs.yaml)
 - [ ] Export desk review workbooks for [the condo model](https://github.com/ccao-data/model-condo-avm/) and upload them to OneDrive
