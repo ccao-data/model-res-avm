@@ -44,7 +44,7 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 - [ ] Meet with stakeholders and agree on delivery dates for any data that we need (sales, reviewed sales, land rates) and our key deliverable (the model output and associated email) as well as any intermittent deliverables (sales for review). – **November**
 - [ ] Check in with Res-Val to see if there are any requested changes to the desk review workbook. – **November**
 - [ ] IasWorld Sales – Director of Special Valuations – **January**
-- [ ] Sale Review– Valuations Sale Review manager – **December** 
+- [ ] Sale Review– Valuations Sale Review manager – **December**
 - [ ] Land Rates – Chief Management Officer – **January**
 
 ### Condo specific data requests
@@ -58,7 +58,7 @@ September condo chars update:
 ## Res Model
 
 - [ ] Create a milestone which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-res-avm/milestone/2?closed=1).
-- [ ] Update `Params.yaml` in the following locations:
+- [ ] Update `params.yaml` in the following locations:
   - **Assessment**
     - `year`
     - `date`
@@ -81,7 +81,7 @@ September condo chars update:
 ## Condo Model
 
 - [ ] Create a milestone which groups together priorities for the upcoming modeling season. An example is [here](https://github.com/ccao-data/model-condo-avm/milestone/1).
-- [ ] Update `Params.yaml` in the following locations:
+- [ ] Update `params.yaml` in the following locations:
   - **Assessment**
     - `year`
     - `date`
@@ -111,6 +111,7 @@ High priority tasks must be completed before the model deadlines.
 
 ### Res model
 
+- [ ] Make sure we have completed a model run with cross-validation (CV) enabled and used the hyperparameters it discovered for any final run
 - [ ] Make sure the final model has SHAPs and comps. If it doesn't, run one more model with SHAPs and comps enabled
 - [ ] Tag the final model as `final` using the [`tag-model-runs` workflow](https://github.com/ccao-data/model-res-avm/actions/workflows/tag-model-runs.yaml)
 - [ ] Export desk review workbooks for the [res model](https://github.com/ccao-data/model-res-avm/) using the `export` pipeline stage and upload them to OneDrive
@@ -123,6 +124,7 @@ High priority tasks must be completed before the model deadlines.
 
 ### Condo model
 
+- [ ] Make sure we have completed a model run with cross-validation (CV) enabled and used the hyperparameters it discovered for any final run
 - [ ] Make sure the final model has SHAPs. If it doesn't, run one more model with them enabled
 - [ ] Tag the final model as `final` using the [`tag-model-runs` workflow](https://github.com/ccao-data/model-res-avm/actions/workflows/tag-model-runs.yaml)
 - [ ] Export desk review workbooks for [the condo model](https://github.com/ccao-data/model-condo-avm/) and upload them to OneDrive
@@ -135,6 +137,7 @@ High priority tasks must be completed before the model deadlines.
 Low priority tasks must be complete eventually, but are not time-sensitive:
 
 - [ ] Update the `model.final_model` seed in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to include metadata for the res and condo models
+- [ ] Update `params.yaml` with the hyperparameters discovered by the CV run for both models
 - [ ] Make sure the `vars_dict` data in [`ccao`](https://github.com/ccao-data/ccao/) is up-to-date for new features
   - If you add any features to this dictionary that are used in either model, make sure to re-knit the README for models that use the feature
 - [ ] Make sure [any new features are up on the open data portal](https://github.com/ccao-data/wiki/blob/master/How-To/Add-columns-to-an-existing-open-data-asset.md)
