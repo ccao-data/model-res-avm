@@ -57,7 +57,8 @@ model_file_dict <- function(
   return(dict)
 }
 
-# Query model.metadata via Athena to check whether a run has run_type == "junk"
+# Query model.vw_model_run_type via Athena to check
+# whether a run has run_type == "junk"
 model_run_is_junk <- function(run_id, year) {
   conn <- DBI::dbConnect(
     noctua::athena(),
@@ -69,7 +70,7 @@ model_run_is_junk <- function(run_id, year) {
   result <- DBI::dbGetQuery(
     conn,
     glue::glue(
-      "SELECT run_type FROM model.vw_metadata ",
+      "SELECT run_type FROM model.vw_model_run_type ",
       "WHERE run_id = '{run_id}' AND year = '{year}' LIMIT 1"
     )
   )
