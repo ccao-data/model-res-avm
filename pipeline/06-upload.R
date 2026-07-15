@@ -293,8 +293,13 @@ if (upload_enable) {
   glue_srv <- paws.analytics::glue(
     config = list(region = Sys.getenv("AWS_REGION"))
   )
+  crawler_name <- ifelse(
+    metadata$run_type == "junk",
+    "z-dev-ccao-model-results-crawler",
+    "ccao-model-results-crawler"
+  )
   tryCatch(
-    glue_srv$start_crawler("ccao-model-results-crawler"),
+    glue_srv$start_crawler(crawler_name),
     error = function(e) message(e),
     warning = function(w) message(e)
   )
