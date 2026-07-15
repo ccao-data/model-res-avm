@@ -44,7 +44,7 @@ The following [readme](https://github.com/ccao-data/data-architecture/blob/maste
 - [ ] Meet with stakeholders and agree on delivery dates for any data that we need (sales, reviewed sales, land rates) and our key deliverable (the model output and associated email) as well as any intermittent deliverables (sales for review). – **November**
 - [ ] Check in with Res-Val to see if there are any requested changes to the desk review workbook. – **November**
 - [ ] IasWorld Sales – Director of Special Valuations – **January**
-- [ ] Sale Review– Valuations Sale Review manager – **December**
+- [ ] Sale Review – Valuations Sale Review manager – **December**
 - [ ] Land Rates – Chief Management Officer – **January**
 
 ### Condo specific data requests
