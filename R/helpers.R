@@ -107,6 +107,57 @@ model_delete_run <- function(run_id, year) {
     purrr::walk(aws.s3::delete_object)
 }
 
+# Used to delete all junk runs for a given year. Defaults to the current year.
+# Set dry_run = FALSE to actually delete. When TRUE (default), only prints the
+# run IDs that would be deleted
+model_delete_junk_runs <- function(year = NULL, dry_run = TRUE) {
+  if (is.null(year)) {
+    year <- format(Sys.Date(), "%Y")
+  }
+  conn <- DBI::dbConnect(
+    noctua::athena(),
+    s3_staging_dir = "s3://ccao-athena-results-us-east-1/",
+    region_name = "us-east-1",
+    rstudio_conn_tab = FALSE
+  )
+  on.exit(DBI::dbDisconnect(conn))
+  result <- DBI::dbGetQuery(
+    conn,
+    glue::glue(
+      "SELECT run_id FROM model.metadata",
+      "WHERE run_type = 'junk' AND year = '{year}'"
+    )
+  )
+  run_ids <- result$run_id
+  if (length(run_ids) == 0) {
+    message("No junk runs found for year ", year)
+    return(invisible(character(0)))
+  }
+  if (dry_run) {
+    message(
+      "Dry run -- ", length(run_ids), " junk run(s) would be deleted ",
+      "for year ", year, ":\n",
+      paste(run_ids, collapse = "\n")
+    )
+    return(invisible(run_ids))
+  }
+  if (interactive()) {
+    answer <- readline(
+      prompt = paste0(
+        "About to delete ", length(run_ids), " junk run(s) for year ", year,
+        ". Type 'yes' to confirm: "
+      )
+    )
+    if (!identical(answer, "yes")) {
+      message("Deletion cancelled")
+      return(invisible(run_ids))
+    }
+  }
+  message("Deleting ", length(run_ids), " junk run(s) for year ", year)
+  purrr::walk(run_ids, model_delete_run, year = year)
+  invisible(run_ids)
+}
+
 # Used to tag existing runs by updating the metadata `run_type` field
 model_tag_run <- function(run_id, year, run_type) {
   paths <- model_file_dict(run_id, year)
