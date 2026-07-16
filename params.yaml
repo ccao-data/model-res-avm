@@ -59,7 +59,7 @@ assessment:
 
   # Year used to partition data on S3. Working year in this case means
   # the year the Data Department is currently creating models for
-  working_year: "2026"
+  working_year: "2027"
 
 # Parameters used to define the input/training data
 input:
