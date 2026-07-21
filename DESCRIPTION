@@ -4,7 +4,6 @@ Depends:
     arrow,
     assessr,
     aws.s3,
-    aws.ec2metadata,
     butcher,
     ccao,
     conflicted,
