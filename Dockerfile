@@ -17,7 +17,7 @@ RUN apt-get update && \
         libudunits2-dev python3-dev python3-pip python3-venv libgdal-dev \
         libgeos-dev libproj-dev libfontconfig1-dev libharfbuzz-dev \
         libfribidi-dev pandoc curl gdebi-core \
-        libglpk-dev libglpk40 && \
+        libglpk-dev libglpk40 libuv1-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Quarto
