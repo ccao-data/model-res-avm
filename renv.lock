@@ -308,14 +308,16 @@
     },
     "aws.signature": {
       "Package": "aws.signature",
-      "Version": "0.6.0",
+      "Version": "0.6.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "base64enc",
-        "digest"
+        "curl",
+        "digest",
+        "jsonlite"
       ],
-      "Hash": "0006bcef272aad12f78dd5a85fc7f4fc"
+      "Hash": "4977981107fb5c1a64e7a68b9fe82586"
     },
     "base64enc": {
       "Package": "base64enc",
@@ -1238,8 +1240,13 @@
     "noctua": {
       "Package": "noctua",
       "Version": "2.6.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "DyfanJones",
+      "RemoteRepo": "noctua",
+      "RemoteRef": "master",
+      "RemoteSha": "fdb0b87acf4dc3c59a61cadfd4a11d71b3a93615",
       "Requirements": [
         "DBI",
         "R",
@@ -1250,7 +1257,7 @@
         "utils",
         "uuid"
       ],
-      "Hash": "15471c0eaafcb7f2a4dabc983ea71112"
+      "Hash": "557d2e369b9562eb20e0b1bc238e077f"
     },
     "numDeriv": {
       "Package": "numDeriv",
