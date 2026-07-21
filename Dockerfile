@@ -17,7 +17,7 @@ RUN apt-get update && \
         libudunits2-dev python3-dev python3-pip python3-venv libgdal-dev \
         libgeos-dev libproj-dev libfontconfig1-dev libharfbuzz-dev \
         libfribidi-dev pandoc curl gdebi-core \
-        libglpk-dev libglpk40 libuv1-dev && \
+        libglpk-dev libglpk40 libuv1-dev libicu-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Quarto
@@ -35,9 +35,16 @@ COPY renv/profiles/reporting/renv.lock reporting-renv.lock
 COPY renv/profiles/dev/renv.lock dev-renv.lock
 COPY renv/ renv/
 
-# Install R dependencies. Restoring renv first ensures that it's
-# using the same version as recorded in the lockfile
-RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
+# Restore renv separately to ensure that it's using the same version as
+# recorded in the lockfile
+RUN Rscript -e 'renv::restore(packages = "renv")'
+
+# Install stringi from source because its binary is linked to an incompatible
+# version of ICU
+RUN Rscript -e 'renv::install("stringi@1.8.7", type = "source", repos = c(CRAN = "https://cran.rstudio.com"), rebuild = TRUE)'
+
+# Restore R dependencies from lockfiles
+RUN Rscript -e 'renv::restore()'
 RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 RUN Rscript -e 'renv::restore(lockfile = "dev-renv.lock")'
 
