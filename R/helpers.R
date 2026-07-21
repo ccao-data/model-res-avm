@@ -123,9 +123,10 @@ model_delete_junk_runs <- function(year = NULL, dry_run = TRUE) {
   on.exit(DBI::dbDisconnect(conn))
   result <- DBI::dbGetQuery(
     conn,
-    glue::glue(
-      "SELECT run_id FROM model.metadata",
-      "WHERE run_type = 'junk' AND year = '{year}'"
+    glue::glue_sql(
+      "SELECT run_id FROM model.metadata
+      WHERE run_type = 'junk' AND year = {year}",
+      .con = conn
     )
   )
   run_ids <- result$run_id
@@ -142,12 +143,11 @@ model_delete_junk_runs <- function(year = NULL, dry_run = TRUE) {
     return(invisible(run_ids))
   }
   if (interactive()) {
-    answer <- readline(
-      prompt = paste0(
-        "About to delete ", length(run_ids), " junk run(s) for year ", year,
-        ". Type 'yes' to confirm: "
-      )
+    message(
+      "About to delete ", length(run_ids), " junk run(s) for year ", year, ":\n",
+      paste0("- ", run_ids, collapse = "\n")
     )
+    answer <- readline(prompt = "Type 'yes' to confirm: ")
     if (!identical(answer, "yes")) {
       message("Deletion cancelled")
       return(invisible(run_ids))
