@@ -4,7 +4,8 @@ FROM rocker/r-ver:4.6.1
 # root since otherwise renv will try to scan every subdirectory
 WORKDIR /setup
 
-# Disable renv sandbox for faster builds
+# Use PPM for binary installs
+ENV RENV_CONFIG_REPOS_OVERRIDE="https://packagemanager.posit.co/cran/__linux__/jammy/latest"
 ENV RENV_CONFIG_SANDBOX_ENABLED=FALSE
 ENV RENV_PATHS_LIBRARY=renv/library
 ENV RENV_PATHS_CACHE=/setup/cache
