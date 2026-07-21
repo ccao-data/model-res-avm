@@ -7,7 +7,7 @@
 # We don't publish the staging URL in public code because we often deploy
 # provisional values to staging, and we don't want users to find the staging
 # app and assume the values are final
-HOMEVAL_STAGING_BASE_URL <- "https://example.com"
+HOMEVAL_STAGING_BASE_URL <- "https://website.com"
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
@@ -460,6 +460,140 @@ assessment_card_prepped <- assessment_card %>%
 # 5. Export Desk Review --------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# Helper to find a column's 1-based position in a schema list by name
+col_pos <- function(schema, col_name) {
+  which(names(schema) == col_name)
+}
+
+# Indices of all schema columns whose `style` field equals `style_name`
+cols_with_style <- function(schema, style_name) {
+  which(vapply(schema, function(x) identical(x$style, style_name), logical(1)))
+}
+
+# Indices of all schema columns whose `cond` field equals `cond_name`
+cols_with_cond <- function(schema, cond_name) {
+  which(vapply(schema, function(x) identical(x$cond, cond_name), logical(1)))
+}
+
+# Indices of all schema columns marked hidden = TRUE
+cols_hidden <- function(schema) {
+  which(vapply(schema, function(x) isTRUE(x$hidden), logical(1)))
+}
+
+# Schema for the PIN Detail sheet. Each entry is a column written to the
+# sheet in order; column positions are derived via col_pos() at runtime,
+# so adding or removing a column only requires updating this list — all
+# formatting and formula references below are driven by it.
+pin_detail_schema <- list(
+  meta_pin = list(formula = TRUE),
+  meta_class = list(),
+  meta_nbhd_code = list(),
+  property_full_address = list(),
+  loc_cook_municipality_name = list(),
+  meta_complex_id = list(),
+  meta_pin_num_cards = list(),
+  meta_tieback_key_pin = list(),
+  meta_tieback_proration_rate = list(style = "pct"),
+  prior_near_land = list(style = "price"),
+  prior_near_bldg = list(style = "price"),
+  prior_near_tot = list(style = "price"),
+  prior_near_land_rate = list(style = "2digit_price"),
+  prior_near_bldg_rate = list(style = "2digit_price"),
+  prior_near_land_pct_total = list(style = "pct"),
+  pred_pin_final_fmv = list(style = "price"),
+  pred_pin_final_fmv_land = list(style = "price"),
+  pred_pin_final_fmv_bldg = list(style = "price"),
+  pred_pin_final_fmv_round = list(style = "price_highlight"),
+  land_rate_per_sqft = list(style = "2digit_price"),
+  pred_pin_land_rate_effective = list(style = "2digit_price"),
+  pred_pin_bldg_rate_effective = list(style = "2digit_price"),
+  pred_pin_land_pct_total = list(style = "pct"),
+  prior_near_yoy_change_nom = list(style = "price"),
+  prior_near_yoy_change_pct = list(style = "pct", cond = "color_scale"),
+  sale_ratio = list(formula = TRUE, style = "2digit_num"),
+  valuations_note = list(),
+  sale_recent_1_date = list(cond = "sale_outlier_1"),
+  sale_recent_1_price = list(style = "price", cond = "sale_outlier_1"),
+  sale_recent_1_outlier_reason = list(cond = "sale_outlier_1"),
+  sale_recent_1_document_num = list(cond = "sale_outlier_1"),
+  sale_recent_2_date = list(cond = "sale_outlier_2"),
+  sale_recent_2_price = list(style = "price", cond = "sale_outlier_2"),
+  sale_recent_2_outlier_reason = list(cond = "sale_outlier_2"),
+  sale_recent_2_document_num = list(cond = "sale_outlier_2"),
+  char_yrblt = list(),
+  char_beds = list(style = "right_align"),
+  char_ext_wall = list(),
+  char_bsmt = list(),
+  char_bsmt_fin = list(),
+  char_air = list(),
+  char_heat = list(),
+  char_total_bldg_sf = list(style = "comma"),
+  char_type_resd = list(),
+  char_land_sf = list(style = "comma"),
+  char_apts = list(style = "right_align"),
+  char_ncu = list(style = "right_align"),
+  homeval_report = list(formula = TRUE),
+  flag_pin_is_prorated = list(),
+  flag_proration_sum_not_1 = list(),
+  flag_proration_tieback_cycle = list(),
+  flag_pin_is_multicard = list(),
+  flag_pin_is_multiland = list(),
+  flag_land_gte_95_percentile = list(),
+  flag_bldg_gte_95_percentile = list(),
+  flag_land_value_capped = list(),
+  flag_prior_near_to_pred_unchanged = list(),
+  flag_pred_initial_to_final_changed = list(),
+  flag_prior_near_yoy_inc_gt_50_pct = list(),
+  flag_prior_near_yoy_dec_gt_5_pct = list(),
+  flag_char_missing_critical_value = list(),
+  flag_has_recent_assessable_permit = list(),
+  total_mv = list(formula = TRUE, style = "price", hidden = TRUE),
+  mv_difference = list(formula = TRUE, style = "price", hidden = TRUE)
+)
+
+# Schema for the Card Detail sheet.
+card_detail_schema <- list(
+  meta_pin                = list(formula = TRUE),
+  meta_card_num           = list(),
+  char_class              = list(),
+  meta_nbhd_code          = list(),
+  meta_card_pct_total_fmv = list(style = "pct"),
+  pred_card_initial_fmv   = list(style = "price"),
+  pred_card_final_fmv     = list(style = "price"),
+  char_yrblt              = list(),
+  char_beds               = list(),
+  char_ext_wall           = list(),
+  char_bsmt               = list(),
+  char_bsmt_fin           = list(),
+  char_air                = list(),
+  char_heat               = list(),
+  char_bldg_sf            = list(style = "comma"),
+  char_type_resd          = list(),
+  char_land_sf            = list(style = "comma"),
+  char_apts               = list(style = "right_align"),
+  char_ncu                = list(style = "right_align")
+)
+
+# Formatting styles — defined once outside the per-town loop
+style_price <- createStyle(numFmt = "$#,##0")
+style_2digit_price <- createStyle(numFmt = "$#,##0.00")
+style_2digit_num <- createStyle(numFmt = "0.00")
+style_pct <- createStyle(numFmt = "PERCENTAGE")
+style_comma <- createStyle(numFmt = "COMMA")
+style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
+style_right_align <- createStyle(halign = "right")
+
+# Named map from schema style tags to style objects
+wb_styles <- list(
+  price           = style_price,
+  price_highlight = createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0"),
+  `2digit_price`  = style_2digit_price,
+  `2digit_num`    = style_2digit_num,
+  pct             = style_pct,
+  comma           = style_comma,
+  right_align     = style_right_align
+)
+
 # Write raw data to sheets for parcel details
 for (town in unique(assessment_pin_prepped$township_code)) {
   message("Now processing: ", town_convert(town))
@@ -472,15 +606,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
 
-  # Create formatting styles
-  style_price <- createStyle(numFmt = "$#,##0")
-  style_2digit_price <- createStyle(numFmt = "$#,##0.00")
-  style_2digit_num <- createStyle(numFmt = "0.00")
-  style_pct <- createStyle(numFmt = "PERCENTAGE")
-  style_comma <- createStyle(numFmt = "COMMA")
-  style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
-  style_right_align <- createStyle(halign = "right")
-
 
   # 5.1. PIN-Level -------------------------------------------------------------
 
@@ -488,7 +613,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:64 # Don't forget the two hidden rows at the end
+  pin_col_range <- seq_along(pin_detail_schema)
+
+  # Pre-compute column letters for formula strings and conditional formatting
+  # rules — derived from the schema so they update automatically when columns
+  # are added or removed
+  fmv_round_letter <- int2col(
+    col_pos(pin_detail_schema, "pred_pin_final_fmv_round")
+  )
+  prior_tot_letter <- int2col(col_pos(pin_detail_schema, "prior_near_tot"))
+  sale_1_price_letter <- int2col(
+    col_pos(pin_detail_schema, "sale_recent_1_price")
+  )
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -498,18 +634,22 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # in the neighborhood breakouts pivot table
   assessment_pin_mvs <- assessment_pin_w_row_ids %>%
     mutate(
-      total_mv = glue::glue("=S{row_id}"),
-      mv_difference = glue::glue("=(S{row_id}) - (L{row_id})")
+      total_mv = glue("={fmv_round_letter}{row_id}"),
+      mv_difference = glue(
+        "=({fmv_round_letter}{row_id})",
+        " - ({prior_tot_letter}{row_id})"
+      )
     ) %>%
     select(total_mv, mv_difference)
-
 
   # Calculate sales ratios, and use a formula so that they update dynamically
   # if the spreadsheet user updates the FMV
   assessment_pin_sale_ratios <- assessment_pin_w_row_ids %>%
     mutate(
-      sale_ratio = glue::glue(
-        '=IF(ISBLANK(AC{row_id}), "", S{row_id} / AC{row_id})'
+      sale_ratio = glue(
+        '=IF(ISBLANK({sale_1_price_letter}{row_id}), "",',
+        " {fmv_round_letter}{row_id}",
+        " / {sale_1_price_letter}{row_id})"
       )
     )
 
@@ -542,74 +682,44 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     class(assessment_pin_filtered$meta_pin), "formula"
   )
 
-  # Add styles to PIN sheet
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_price,
-    rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 63, 64), gridExpand = TRUE
-  )
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_2digit_price,
-    rows = pin_row_range, cols = c(13:14, 20:22), gridExpand = TRUE
-  )
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_2digit_num,
-    rows = pin_row_range, cols = c(26), gridExpand = TRUE
-  )
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_pct,
-    rows = pin_row_range, cols = c(9, 15, 23, 25), gridExpand = TRUE
-  )
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_comma,
-    rows = pin_row_range, cols = c(43, 45), gridExpand = TRUE
-  )
-  addStyle(
-    wb, pin_sheet_name,
-    style = createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0"),
-    rows = pin_row_range, cols = c(19), gridExpand = TRUE
-  )
-  addStyle(
-    wb, pin_sheet_name,
-    style = style_right_align,
-    rows = pin_row_range, cols = c(37, 46, 47), gridExpand = TRUE
-  )
+  # Apply cell styles driven by the schema — one addStyle call per style group
+  for (style_name in names(wb_styles)) {
+    style_cols <- cols_with_style(pin_detail_schema, style_name)
+    if (length(style_cols) == 0) next
+    addStyle(wb, pin_sheet_name,
+      style = wb_styles[[style_name]],
+      rows = pin_row_range, cols = style_cols, gridExpand = TRUE
+    )
+  }
   addFilter(wb, pin_sheet_name, 6, pin_col_range)
 
   # Format YoY % change column with a range of colors from low to high
   conditionalFormatting(
     wb, pin_sheet_name,
-    cols = c(25),
+    cols = col_pos(pin_detail_schema, "prior_near_yoy_change_pct"),
     rows = pin_row_range,
     style = c("#F8696B", "#FFFFFF", "#00B0F0"),
     rule = c(-1, 0, 1),
     type = "colourScale"
   )
-  # Format sale columns such that they are red if the sale has an outlier flag
-  conditionalFormatting(
-    wb, pin_sheet_name,
-    cols = 28:31,
-    rows = pin_row_range,
-    style = createStyle(bgFill = "#FF9999"),
-    rule = '$AD7!=""',
-    type = "expression"
-  )
-  # For some reason vector cols don't work with expressions, so we have
-  # to duplicate the conditional formatting for the sale outlier flag above
-  # to apply it to the second range of columns
-  conditionalFormatting(
-    wb, pin_sheet_name,
-    cols = 32:35,
-    rows = pin_row_range,
-    style = createStyle(bgFill = "#FF9999"),
-    rule = '$AH7!=""',
-    type = "expression"
-  )
+  # Format sale columns red when an outlier flag is present. Applied once per
+  # sale group, with the anchor cell derived from the schema.
+  for (sale_num in 1:2) {
+    reason_col <- col_pos(
+      pin_detail_schema,
+      paste0("sale_recent_", sale_num, "_outlier_reason")
+    )
+    outlier_rule <- paste0("$", int2col(reason_col), num_head + 1, '!=""')
+    conditionalFormatting(wb, pin_sheet_name,
+      cols = cols_with_cond(
+        pin_detail_schema, paste0("sale_outlier_", sale_num)
+      ),
+      rows = pin_row_range,
+      style = createStyle(bgFill = "#FF9999"),
+      rule = outlier_rule,
+      type = "expression"
+    )
+  }
 
   # Write PIN-level data to workbook
   writeData(
@@ -626,12 +736,12 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     x = assessment_pin_filtered$homeval_report,
-    startCol = 48, startRow = 7
+    startCol = col_pos(pin_detail_schema, "homeval_report"), startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_sale_ratios$sale_ratio,
-    startCol = 26, startRow = 7
+    startCol = col_pos(pin_detail_schema, "sale_ratio"), startRow = 7
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
@@ -643,31 +753,35 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   writeData(
     wb, pin_sheet_name, tibble(comp_header),
-    startCol = 10, startRow = 5, colNames = FALSE
+    startCol = col_pos(pin_detail_schema, "prior_near_land"),
+    startRow = 5, colNames = FALSE
   )
   writeData(
     wb, pin_sheet_name, tibble(model_header),
-    startCol = 16, startRow = 5, colNames = FALSE
+    startCol = col_pos(pin_detail_schema, "pred_pin_final_fmv"),
+    startRow = 5, colNames = FALSE
   )
 
   # Write hidden formulas
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_mvs$total_mv,
-    startCol = 63,
+    startCol = col_pos(pin_detail_schema, "total_mv"),
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_mvs$mv_difference,
-    startCol = 64,
+    startCol = col_pos(pin_detail_schema, "mv_difference"),
     startRow = 7
   )
+  hidden_cols <- cols_hidden(pin_detail_schema)
   setColWidths(
     wb, pin_sheet_name,
-    c(63, 64),
-    widths = 1,
-    hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
+    hidden_cols,
+    widths = rep(1, length(hidden_cols)),
+    hidden = rep(TRUE, length(hidden_cols)),
+    ignoreMergedCells = FALSE
   )
 
   # Add a named range for the PIN-level data, which the template will use
@@ -693,29 +807,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 
   # Get range of rows in the card data + number of header rows
   card_row_range <- 5:(nrow(assessment_card_filtered) + 6)
+  card_col_range <- seq_along(card_detail_schema)
 
-  # Add styles to card sheet
-  addStyle(
-    wb, card_sheet_name,
-    style = style_price,
-    rows = card_row_range, cols = c(6:7), gridExpand = TRUE
-  )
-  addStyle(
-    wb, card_sheet_name,
-    style = style_pct,
-    rows = card_row_range, cols = c(5), gridExpand = TRUE
-  )
-  addStyle(
-    wb, card_sheet_name,
-    style = style_comma,
-    rows = card_row_range, cols = c(15, 17), gridExpand = TRUE
-  )
-  addStyle(
-    wb, card_sheet_name,
-    style = style_right_align,
-    rows = card_row_range, cols = c(18, 19), gridExpand = TRUE
-  )
-  addFilter(wb, card_sheet_name, 4, 1:19)
+  # Apply cell styles driven by the schema
+  for (style_name in names(wb_styles)) {
+    style_cols <- cols_with_style(card_detail_schema, style_name)
+    if (length(style_cols) == 0) next
+    addStyle(wb, card_sheet_name,
+      style = wb_styles[[style_name]],
+      rows = card_row_range, cols = style_cols, gridExpand = TRUE
+    )
+  }
+  addFilter(wb, card_sheet_name, 4, card_col_range)
 
   # Write card-level data to workbook
   writeData(
@@ -731,7 +834,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
   writeData(
     wb, card_sheet_name, tibble(model_header),
-    startCol = 5, startRow = 3, colNames = FALSE
+    startCol = col_pos(card_detail_schema, "meta_card_pct_total_fmv"),
+    startRow = 3, colNames = FALSE
   )
 
   # 5.3. Save output -----------------------------------------------------------
@@ -763,8 +867,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 #    then manually update the formatting by selecting
 #    PivotTable Fields > Values > {fieldname} > Value Field Settings... >
 #    Number Format.
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
