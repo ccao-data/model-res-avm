@@ -144,7 +144,7 @@ model_delete_junk_runs <- function(year = NULL, dry_run = TRUE) {
   }
   if (interactive()) {
     message(
-      "About to delete ", length(run_ids), " junk run(s) for year ", year, ":\n",
+      "About to delete ", length(run_ids), " junk run(s) for ", year, ":\n",
       paste0("- ", run_ids, collapse = "\n")
     )
     answer <- readline(prompt = "Type 'yes' to confirm: ")
