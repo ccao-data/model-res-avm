@@ -1,4 +1,4 @@
-FROM rocker/r-ver:4.4.1
+FROM rocker/r-ver:4.6.1
 
 # Set the working directory to setup. Uses a dedicated directory instead of
 # root since otherwise renv will try to scan every subdirectory
