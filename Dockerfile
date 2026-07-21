@@ -25,8 +25,9 @@ RUN curl -o quarto-linux-amd64.deb -L \
     https://github.com/quarto-dev/quarto-cli/releases/download/v1.6.39/quarto-1.6.39-linux-amd64.deb
 RUN gdebi -n quarto-linux-amd64.deb
 
-# Install pipeline Python dependencies globally
-RUN pip install --no-cache-dir dvc[s3]
+# Install pipeline Python dependencies globally.
+# Allow breaking system packages to support global installation
+RUN pip install --no-cache-dir --break-system-packages dvc[s3]
 
 # Copy R bootstrap files into the image
 COPY renv.lock .Rprofile DESCRIPTION ./
