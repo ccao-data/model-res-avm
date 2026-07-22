@@ -1,4 +1,4 @@
-FROM rocker/r-ver:4.4.1
+FROM rocker/r-ver:4.6.1
 
 # Set the working directory to setup. Uses a dedicated directory instead of
 # root since otherwise renv will try to scan every subdirectory
@@ -17,7 +17,7 @@ RUN apt-get update && \
         libudunits2-dev python3-dev python3-pip python3-venv libgdal-dev \
         libgeos-dev libproj-dev libfontconfig1-dev libharfbuzz-dev \
         libfribidi-dev pandoc curl gdebi-core \
-        libglpk-dev libglpk40 && \
+        libglpk-dev libglpk40 libuv1-dev libicu-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Quarto
@@ -25,8 +25,9 @@ RUN curl -o quarto-linux-amd64.deb -L \
     https://github.com/quarto-dev/quarto-cli/releases/download/v1.6.39/quarto-1.6.39-linux-amd64.deb
 RUN gdebi -n quarto-linux-amd64.deb
 
-# Install pipeline Python dependencies globally
-RUN pip install --no-cache-dir dvc[s3]
+# Install pipeline Python dependencies globally.
+# Allow breaking system packages to support global installation
+RUN pip install --no-cache-dir --break-system-packages dvc[s3]
 
 # Copy R bootstrap files into the image
 COPY renv.lock .Rprofile DESCRIPTION ./
@@ -34,9 +35,16 @@ COPY renv/profiles/reporting/renv.lock reporting-renv.lock
 COPY renv/profiles/dev/renv.lock dev-renv.lock
 COPY renv/ renv/
 
-# Install R dependencies. Restoring renv first ensures that it's
-# using the same version as recorded in the lockfile
-RUN Rscript -e 'renv::restore(packages = "renv"); renv::restore()'
+# Restore renv separately to ensure that it's using the same version as
+# recorded in the lockfile
+RUN Rscript -e 'renv::restore(packages = "renv")'
+
+# Install stringi from source because its binary is linked to an incompatible
+# version of ICU
+RUN Rscript -e 'renv::install("stringi@1.8.7", type = "source", repos = c(CRAN = "https://cran.rstudio.com"), rebuild = TRUE)'
+
+# Restore R dependencies from lockfiles
+RUN Rscript -e 'renv::restore()'
 RUN Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 RUN Rscript -e 'renv::restore(lockfile = "dev-renv.lock")'
 
