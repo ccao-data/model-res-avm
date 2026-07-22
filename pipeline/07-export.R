@@ -410,7 +410,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
-    flag_land_value_capped,
+    flag_land_value_capped, flag_hie_num_expired,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
     flag_char_missing_critical_value, flag_has_recent_assessable_permit
@@ -485,93 +485,227 @@ cols_hidden <- function(schema) {
 # so adding or removing a column only requires updating this list — all
 # formatting and formula references below are driven by it.
 pin_detail_schema <- list(
-  meta_pin = list(formula = TRUE),
-  meta_class = list(),
-  meta_nbhd_code = list(),
-  property_full_address = list(),
-  loc_cook_municipality_name = list(),
-  meta_complex_id = list(),
-  meta_pin_num_cards = list(),
-  meta_tieback_key_pin = list(),
-  meta_tieback_proration_rate = list(style = "pct"),
-  prior_near_land = list(style = "price"),
-  prior_near_bldg = list(style = "price"),
-  prior_near_tot = list(style = "price"),
-  prior_near_land_rate = list(style = "2digit_price"),
-  prior_near_bldg_rate = list(style = "2digit_price"),
-  prior_near_land_pct_total = list(style = "pct"),
-  pred_pin_final_fmv = list(style = "price"),
-  pred_pin_final_fmv_land = list(style = "price"),
-  pred_pin_final_fmv_bldg = list(style = "price"),
-  pred_pin_final_fmv_round = list(style = "price_highlight"),
-  land_rate_per_sqft = list(style = "2digit_price"),
-  pred_pin_land_rate_effective = list(style = "2digit_price"),
-  pred_pin_bldg_rate_effective = list(style = "2digit_price"),
-  pred_pin_land_pct_total = list(style = "pct"),
-  prior_near_yoy_change_nom = list(style = "price"),
-  prior_near_yoy_change_pct = list(style = "pct", cond = "color_scale"),
-  sale_ratio = list(formula = TRUE, style = "2digit_num"),
-  valuations_note = list(),
-  sale_recent_1_date = list(cond = "sale_outlier_1"),
-  sale_recent_1_price = list(style = "price", cond = "sale_outlier_1"),
-  sale_recent_1_outlier_reason = list(cond = "sale_outlier_1"),
-  sale_recent_1_document_num = list(cond = "sale_outlier_1"),
-  sale_recent_2_date = list(cond = "sale_outlier_2"),
-  sale_recent_2_price = list(style = "price", cond = "sale_outlier_2"),
-  sale_recent_2_outlier_reason = list(cond = "sale_outlier_2"),
-  sale_recent_2_document_num = list(cond = "sale_outlier_2"),
-  char_yrblt = list(),
-  char_beds = list(style = "right_align"),
-  char_ext_wall = list(),
-  char_bsmt = list(),
-  char_bsmt_fin = list(),
-  char_air = list(),
-  char_heat = list(),
-  char_total_bldg_sf = list(style = "comma"),
-  char_type_resd = list(),
-  char_land_sf = list(style = "comma"),
-  char_apts = list(style = "right_align"),
-  char_ncu = list(style = "right_align"),
-  homeval_report = list(formula = TRUE),
-  flag_pin_is_prorated = list(),
-  flag_proration_sum_not_1 = list(),
-  flag_proration_tieback_cycle = list(),
-  flag_pin_is_multicard = list(),
-  flag_pin_is_multiland = list(),
-  flag_land_gte_95_percentile = list(),
-  flag_bldg_gte_95_percentile = list(),
-  flag_land_value_capped = list(),
-  flag_prior_near_to_pred_unchanged = list(),
-  flag_pred_initial_to_final_changed = list(),
-  flag_prior_near_yoy_inc_gt_50_pct = list(),
-  flag_prior_near_yoy_dec_gt_5_pct = list(),
-  flag_char_missing_critical_value = list(),
-  flag_has_recent_assessable_permit = list(),
-  total_mv = list(formula = TRUE, style = "price", hidden = TRUE),
-  mv_difference = list(formula = TRUE, style = "price", hidden = TRUE)
+  meta_pin = list(formula = TRUE, display_name = "PIN"),
+  meta_class = list(display_name = "Class"),
+  meta_nbhd_code = list(display_name = "Nbhd."),
+  property_full_address = list(display_name = "Street Address"),
+  loc_cook_municipality_name = list(display_name = "Municipality"),
+  meta_complex_id = list(display_name = "Townhome Complex ID"),
+  meta_pin_num_cards = list(display_name = "PIN Num. Cards"),
+  meta_tieback_key_pin = list(display_name = "Tieback Key PIN"),
+  meta_tieback_proration_rate = list(
+    style = "pct", display_name = "Tieback (Proration) Rate"
+  ),
+  prior_near_land = list(style = "price", display_name = "Land"),
+  prior_near_bldg = list(style = "price", display_name = "Building"),
+  prior_near_tot = list(style = "price", display_name = "Total"),
+  prior_near_land_rate = list(
+    style = "2digit_price", display_name = "Lnd. Rate S. F."
+  ),
+  prior_near_bldg_rate = list(
+    style = "2digit_price", display_name = "Bld. Rate S. F."
+  ),
+  prior_near_land_pct_total = list(
+    style = "pct", display_name = "Lnd. % of Total"
+  ),
+  pred_pin_final_fmv = list(
+    style = "price", display_name = "Before Rounding"
+  ),
+  pred_pin_final_fmv_land = list(style = "price", display_name = "Land"),
+  pred_pin_final_fmv_bldg = list(style = "price", display_name = "Building"),
+  pred_pin_final_fmv_round = list(
+    style = "price_highlight", display_name = "Total"
+  ),
+  land_rate_per_sqft = list(
+    style = "2digit_price", display_name = "Lnd. Rate Original"
+  ),
+  pred_pin_land_rate_effective = list(
+    style = "2digit_price", display_name = "Lnd. Rate Effective"
+  ),
+  pred_pin_bldg_rate_effective = list(
+    style = "2digit_price", display_name = "Bld. Rate S. F."
+  ),
+  pred_pin_land_pct_total = list(
+    style = "pct", display_name = "Lnd. % of Tot."
+  ),
+  prior_near_yoy_change_nom = list(
+    style = "price", display_name = "YoY Δ $"
+  ),
+  prior_near_yoy_change_pct = list(
+    style = "pct", cond = "color_scale", display_name = "YoY Δ %"
+  ),
+  sale_ratio = list(
+    formula = TRUE, style = "2digit_num", display_name = "Sale Ratio"
+  ),
+  valuations_note = list(display_name = "Valuations Notes"),
+  sale_recent_1_date = list(
+    cond = "sale_outlier_1", display_name = "Sale Date 1"
+  ),
+  sale_recent_1_price = list(
+    style = "price", cond = "sale_outlier_1", display_name = "Sale Amount 1"
+  ),
+  sale_recent_1_outlier_reason = list(
+    cond = "sale_outlier_1",
+    display_name = "Non-Arm's-Length Sale Flag 1"
+  ),
+  sale_recent_1_document_num = list(
+    cond = "sale_outlier_1", display_name = "Sale Doc. 1"
+  ),
+  sale_recent_2_date = list(
+    cond = "sale_outlier_2", display_name = "Sale Date 2"
+  ),
+  sale_recent_2_price = list(
+    style = "price", cond = "sale_outlier_2", display_name = "Sale Amount 2"
+  ),
+  sale_recent_2_outlier_reason = list(
+    cond = "sale_outlier_2",
+    display_name = "Non-Arm's-Length Sale Flag 2"
+  ),
+  sale_recent_2_document_num = list(
+    cond = "sale_outlier_2", display_name = "Sale Doc. 2"
+  ),
+  char_yrblt = list(display_name = "Year Built"),
+  char_beds = list(style = "right_align", display_name = "# Beds"),
+  char_ext_wall = list(display_name = "Ext. Wall"),
+  char_bsmt = list(display_name = "Bsmt. Type"),
+  char_bsmt_fin = list(display_name = "Bsmt. Finish"),
+  char_air = list(display_name = "Central Air"),
+  char_heat = list(display_name = "Heat"),
+  char_total_bldg_sf = list(
+    style = "comma", display_name = "Total Bld. S. F."
+  ),
+  char_type_resd = list(display_name = "Stories"),
+  char_land_sf = list(style = "comma", display_name = "Lnd. S. F."),
+  char_apts = list(style = "right_align", display_name = "# Res. Units"),
+  char_ncu = list(style = "right_align", display_name = "# Comm. Units"),
+  homeval_report = list(formula = TRUE, display_name = "Link"),
+  flag_pin_is_prorated = list(display_name = "Is Prorated"),
+  flag_proration_sum_not_1 = list(
+    display_name = "Proration Rates Don't Sum to 100%"
+  ),
+  flag_proration_tieback_cycle = list(
+    display_name = "Proration Tieback Cycle"
+  ),
+  flag_pin_is_multicard = list(display_name = "Multi-Card"),
+  flag_pin_is_multiland = list(display_name = "Multi-Land"),
+  flag_land_gte_95_percentile = list(display_name = "Lnd. >= 95% in Town"),
+  flag_bldg_gte_95_percentile = list(display_name = "Bld. >= 95% in Town"),
+  flag_land_value_capped = list(display_name = "Land Value Capped"),
+  flag_hie_num_expired = list(display_name = "# Expired 288s"),
+  flag_prior_near_to_pred_unchanged = list(
+    display_name = "Value Unchanged"
+  ),
+  flag_pred_initial_to_final_changed = list(
+    display_name = "Post-Modeling Change"
+  ),
+  flag_prior_near_yoy_inc_gt_50_pct = list(
+    display_name = "YoY Change >= 50%"
+  ),
+  flag_prior_near_yoy_dec_gt_5_pct = list(
+    display_name = "YoY Change <= -5%"
+  ),
+  flag_char_missing_critical_value = list(
+    display_name = "Critical Char. Missing"
+  ),
+  flag_has_recent_assessable_permit = list(
+    display_name = "Recent Assessable Permit"
+  ),
+  total_mv = list(
+    formula = TRUE, style = "price", hidden = TRUE, display_name = "Total MV"
+  ),
+  mv_difference = list(
+    formula = TRUE, style = "price", hidden = TRUE,
+    display_name = "MV Difference"
+  )
 )
 
 # Schema for the Card Detail sheet.
 card_detail_schema <- list(
-  meta_pin                = list(formula = TRUE),
-  meta_card_num           = list(),
-  char_class              = list(),
-  meta_nbhd_code          = list(),
-  meta_card_pct_total_fmv = list(style = "pct"),
-  pred_card_initial_fmv   = list(style = "price"),
-  pred_card_final_fmv     = list(style = "price"),
-  char_yrblt              = list(),
-  char_beds               = list(),
-  char_ext_wall           = list(),
-  char_bsmt               = list(),
-  char_bsmt_fin           = list(),
-  char_air                = list(),
-  char_heat               = list(),
-  char_bldg_sf            = list(style = "comma"),
-  char_type_resd          = list(),
-  char_land_sf            = list(style = "comma"),
-  char_apts               = list(style = "right_align"),
-  char_ncu                = list(style = "right_align")
+  meta_pin = list(formula = TRUE, display_name = "PIN"),
+  meta_card_num = list(display_name = "Card"),
+  char_class = list(display_name = "Class"),
+  meta_nbhd_code = list(display_name = "Nbhd."),
+  meta_card_pct_total_fmv = list(
+    style = "pct", display_name = "Card % Total (By Sqft)"
+  ),
+  pred_card_initial_fmv = list(
+    style = "price", display_name = "Card Initial FMV"
+  ),
+  pred_card_final_fmv = list(
+    style = "price", display_name = "Card Final FMV"
+  ),
+  char_yrblt = list(display_name = "Year Built"),
+  char_beds = list(display_name = "# Beds"),
+  char_ext_wall = list(display_name = "Ext. Wall"),
+  char_bsmt = list(display_name = "Bsmt. Type"),
+  char_bsmt_fin = list(display_name = "Bsmt. Finish"),
+  char_air = list(display_name = "Central Air"),
+  char_heat = list(display_name = "Heat"),
+  char_bldg_sf = list(
+    style = "comma", display_name = "Bld. S. F."
+  ),
+  char_type_resd = list(display_name = "Stories"),
+  char_land_sf = list(
+    style = "comma", display_name = "Lnd. S. F."
+  ),
+  char_apts = list(
+    style = "right_align", display_name = "# Res. Units"
+  ),
+  char_ncu = list(
+    style = "right_align", display_name = "# Comm. Units"
+  )
+)
+
+# Validate that each schema's display_name fields match the column headers in
+# the template workbook. Catches drift between the schema and the template
+# (e.g. a column added to one but not the other). Normalizes whitespace so
+# minor spacing differences in the xlsx don't cause false failures.
+validate_schema_vs_template <- function(
+  schema, template_path, sheet_name, header_row
+) {
+  normalize <- function(x) gsub("\\s+", " ", trimws(x))
+  wb_tmpl <- loadWorkbook(template_path)
+  tmpl_df <- readWorkbook(
+    wb_tmpl,
+    sheet = sheet_name,
+    colNames = FALSE,
+    skipEmptyRows = FALSE
+  )
+  tmpl_headers <- normalize(as.character(unlist(tmpl_df[header_row, ])))
+  schema_names <- normalize(
+    vapply(schema, function(x) x$display_name, character(1))
+  )
+  n_schema <- length(schema_names)
+  n_tmpl <- length(tmpl_headers)
+  if (n_schema != n_tmpl) {
+    stop(glue(
+      "Schema has {n_schema} columns but '{sheet_name}' template has ",
+      "{n_tmpl}. Update the schema or template so they match."
+    ))
+  }
+  mismatches <- which(schema_names != tmpl_headers)
+  if (length(mismatches) > 0) {
+    mismatch_msg <- paste(vapply(mismatches, function(i) {
+      glue(
+        "  Col {i}: schema='{schema_names[i]}'",
+        " vs template='{tmpl_headers[i]}'"
+      )
+    }, character(1)), collapse = "\n")
+    stop(glue(
+      "Column display name mismatches in '{sheet_name}':\n{mismatch_msg}"
+    ))
+  }
+  invisible(NULL)
+}
+
+template_path <- here("misc", "desk_review_template.xlsx")
+validate_schema_vs_template(
+  pin_detail_schema, template_path, "PIN Detail",
+  header_row = 4
+)
+validate_schema_vs_template(
+  card_detail_schema, template_path, "Card Detail",
+  header_row = 4
 )
 
 # Formatting styles — defined once outside the per-town loop
