@@ -235,8 +235,6 @@ vacant_land_merged <- vacant_land_trans %>%
   )
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Pull Model Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -279,8 +277,6 @@ flag_assessable_permits <- dbGetQuery(
   WHERE year = '{params$assessment$data_year}'
   ")
 )
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -452,8 +448,6 @@ assessment_card_prepped <- assessment_card %>%
     char_ncu = ifelse(char_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -765,8 +759,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 #    Number Format.
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 6. Prep iasWorld Upload ------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -810,8 +802,6 @@ upload_data <- assessment_pin %>%
     CARD = meta_card_num,
     MV = pred_card_final_fmv_no_prorate
   )
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
