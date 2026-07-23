@@ -5,3 +5,6 @@ linters: linters_with_defaults(
     return_linter = NULL
   )
 encoding: "UTF-8"
+exclusions: list(
+    "pipeline/07-export.R" = list(pipe_consistency_linter = Inf)
+  )
