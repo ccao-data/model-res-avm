@@ -1370,16 +1370,6 @@
       ],
       "Hash": "4425ad9e28b8e3351184ca2739995b87"
     },
-    "renv": {
-      "Package": "renv",
-      "Version": "1.2.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "utils"
-      ],
-      "Hash": "1bd9f58e1cfe27ce035933937c6f03de"
-    },
     "repr": {
       "Package": "repr",
       "Version": "1.1.7",
@@ -1484,25 +1474,8 @@
     },
     "sf": {
       "Package": "sf",
-      "Version": "1.1-1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "DBI",
-        "R",
-        "Rcpp",
-        "classInt",
-        "grDevices",
-        "graphics",
-        "grid",
-        "methods",
-        "s2",
-        "stats",
-        "tools",
-        "units",
-        "utils"
-      ],
-      "Hash": "a996fd0e5636fe2b58ac0f266efbb760"
+      "Version": "1.1-2",
+      "Source": "Repository"
     },
     "shades": {
       "Package": "shades",
@@ -1700,15 +1673,8 @@
     },
     "terra": {
       "Package": "terra",
-      "Version": "1.9-27",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "Rcpp",
-        "methods"
-      ],
-      "Hash": "ecb5397cd782c15351e6d84783f4878b"
+      "Version": "1.9-34",
+      "Source": "Repository"
     },
     "textshaping": {
       "Package": "textshaping",
