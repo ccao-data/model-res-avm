@@ -111,6 +111,7 @@ stats_county_logit <- stats_logit_fit %>%
     )
   ) %>%
   kable(
+    "html",
     caption = paste0(
       "Sample size: ",
       format(stats_logit_sample_size, big.mark = ","),
