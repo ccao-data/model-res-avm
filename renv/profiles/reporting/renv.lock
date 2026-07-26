@@ -36,17 +36,6 @@
       ],
       "Hash": "a9d00f59f9c7e613dd4c3e0d27135a03"
     },
-    "KernSmooth": {
-      "Package": "KernSmooth",
-      "Version": "2.23-26",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "stats"
-      ],
-      "Hash": "2fb39782c07b5ad422b0448ae83f64c4"
-    },
     "MASS": {
       "Package": "MASS",
       "Version": "7.3-65",
@@ -281,22 +270,6 @@
         "utils"
       ],
       "Hash": "d0cb9cc838c3b43560bd958fc4317fdc"
-    },
-    "classInt": {
-      "Package": "classInt",
-      "Version": "0.4-11",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "KernSmooth",
-        "R",
-        "class",
-        "e1071",
-        "grDevices",
-        "graphics",
-        "stats"
-      ],
-      "Hash": "f2af70314a63d7f025ae668f08bd933a"
     },
     "cli": {
       "Package": "cli",
@@ -1484,14 +1457,17 @@
     },
     "sf": {
       "Package": "sf",
-      "Version": "1.1-1",
-      "Source": "Repository",
-      "Repository": "CRAN",
+      "Version": "1.1-2",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "sf",
+      "RemoteUsername": "r-spatial",
+      "RemoteSha": "0a0a76fbc5a2049cf957bc914388d7917d93b259",
       "Requirements": [
         "DBI",
         "R",
         "Rcpp",
-        "classInt",
         "grDevices",
         "graphics",
         "grid",
@@ -1502,7 +1478,7 @@
         "units",
         "utils"
       ],
-      "Hash": "a996fd0e5636fe2b58ac0f266efbb760"
+      "Hash": "3819575df1afe05bbcf44138442c70c2"
     },
     "shades": {
       "Package": "shades",
