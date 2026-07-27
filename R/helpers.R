@@ -5,12 +5,17 @@ model_push_dvc_lock <- function() {
     here::here("output", "metadata", "model_metadata.parquet")
   )
   run_id <- metadata$run_id
-  bucket <- "z-dev-ccao-data-dvc-us-east-1"
+  bucket <- "ccao-data-dvc-us-east-1"
   key <- paste0("model-res-avm/dvc-lockfiles/", run_id, "/dvc.lock")
   message("Pushing dvc.lock for run: ", run_id)
   aws.s3::put_object(
     file = here::here("dvc.lock"),
     object = key,
+    bucket = bucket
+  )
+  aws.s3::put_object(
+    file = here::here("dvc.lock"),
+    object = "model-res-avm/dvc-lockfiles/latest/dvc.lock",
     bucket = bucket
   )
 }

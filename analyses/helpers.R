@@ -1,5 +1,6 @@
 model_fetch_run_subset <- function(
-    run_id, year, analyses_paths, append_run_id = FALSE) {
+  run_id, year, analyses_paths, append_run_id = FALSE
+) {
   s3_objs <- grep("s3://", unlist(analyses_paths$output), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
@@ -85,7 +86,7 @@ clean_column_values <- function(df, column_name) {
 s3_data_download <- function(dvc_md5_assessment_data) {
   # Define the S3 path for assessment data
   s3_path <- paste0(
-    "s3://z-dev-ccao-data-dvc-us-east-1/files/md5/",
+    "s3://ccao-data-dvc-us-east-1/files/md5/",
     substr(dvc_md5_assessment_data, 1, 2), "/",
     substr(dvc_md5_assessment_data, 3, nchar(dvc_md5_assessment_data))
   )
