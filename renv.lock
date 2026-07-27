@@ -291,19 +291,14 @@
     },
     "aws.ec2metadata": {
       "Package": "aws.ec2metadata",
-      "Version": "0.2.1",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "cloudyr",
-      "RemoteRepo": "aws.ec2metadata",
-      "RemoteRef": "465fa5781e96123782140b65d079901910b6db4d",
-      "RemoteSha": "465fa5781e96123782140b65d079901910b6db4d",
+      "Version": "0.2.0",
+      "Source": "Repository",
+      "Repository": "http://cloudyr.github.io/drat",
       "Requirements": [
         "curl",
         "jsonlite"
       ],
-      "Hash": "7eebbaf518f877eb982d6abbacd8f02b"
+      "Hash": "2e630add89f47540d9da2240710e2702"
     },
     "aws.s3": {
       "Package": "aws.s3",
