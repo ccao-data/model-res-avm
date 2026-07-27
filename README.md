@@ -1257,9 +1257,8 @@ docker build .
 **Warning**: Since renv must install some packages from GitHub, Docker
 builds often run into GitHub rate limits, which can cause the build to
 fail. To get around the rate limit, mount a GitHub Personal Access Token
-as a [build
-secret](https://docs.docker.com/reference/cli/docker/buildx/build/). For
-example, if you follow the common pattern of storing a token in the
+as a [build secret](https://docs.docker.com/build/building/secrets/).
+For example, if you follow the common pattern of storing a token in the
 `~/.Renviron` config file, then the following command will mount that
 token into the build context:
 
