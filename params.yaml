@@ -151,9 +151,17 @@ cv:
 model:
   engine: "lightgbm"
 
-  # Objective/loss function minimized by LightGBM. See website for possible
-  # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "rmse"
+  # Objective/loss function minimized by LightGBM. Standard LightGBM names
+  # like "rmse" / "regression" / "regression_l1" pass straight through. The
+  # special value "mse_cov" selects lightsnip's custom MSE + rho * Cov(r, y)^2
+  # objective (a soft vertical-equity penalty); when used, set
+  # `model.parameter.mse_cov_rho` below to control the penalty weight.
+  # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
+  objective: "mse_cov"
+
+  # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
+  # exp()-scaled back to dollars. The linear baseline always uses log(price).
+  log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
@@ -317,6 +325,12 @@ model:
     # During CV, the number of iterations to go without improvement before
     # stopping training. Early stopping is deactivated when NULL
     stop_iter: 50
+
+    # Penalty weight (rho) for the lightsnip "mse_cov" custom objective.
+    # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
+    # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
+    # strongly
+    mse_cov_rho: 1
 
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
