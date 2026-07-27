@@ -289,6 +289,22 @@
       ],
       "Hash": "e533ff8176cf00d0fec973ae645098a4"
     },
+    "aws.ec2metadata": {
+      "Package": "aws.ec2metadata",
+      "Version": "0.2.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "cloudyr",
+      "RemoteRepo": "aws.ec2metadata",
+      "RemoteRef": "465fa5781e96123782140b65d079901910b6db4d",
+      "RemoteSha": "465fa5781e96123782140b65d079901910b6db4d",
+      "Requirements": [
+        "curl",
+        "jsonlite"
+      ],
+      "Hash": "7eebbaf518f877eb982d6abbacd8f02b"
+    },
     "aws.s3": {
       "Package": "aws.s3",
       "Version": "0.3.22",
