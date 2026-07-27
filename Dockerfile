@@ -53,7 +53,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_PAT \
 # Restore R dependencies from lockfiles
 RUN --mount=type=secret,id=github_token,env=GITHUB_PAT Rscript -e 'renv::restore()'
 RUN --mount=type=secret,id=github_token,env=GITHUB_PAT Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
-RUN --mount=type=secret,id=github_pat,env=GITHUB_PAT Rscript -e 'renv::restore(lockfile = "dev-renv.lock")'
+RUN --mount=type=secret,id=github_token,env=GITHUB_PAT Rscript -e 'renv::restore(lockfile = "dev-renv.lock")'
 
 # Set the working directory to the model directory
 WORKDIR /model-res-avm/
