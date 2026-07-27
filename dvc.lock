@@ -1055,24 +1055,24 @@ stages:
     outs:
     - path: output/intermediate/timing/model_timing_finalize.parquet
       hash: md5
-      md5: 984767fd1e50b909bffc2f47a51f79b0
+      md5: 6a73887f414a40198b1eaa2575a6de89
       size: 2648
     - path: output/metadata/model_metadata.parquet
       hash: md5
-      md5: c15b92391142f6e9007bcad5775842ad
-      size: 24741
+      md5: c9e791cf46156fa2295a1e3a8b82c0ec
+      size: 24673
     - path: output/timing/model_timing.parquet
       hash: md5
-      md5: 4c77978b47571b8418454709595ec710
-      size: 5348
+      md5: deaddd5301c8fe67900211372eba2f94
+      size: 5318
     - path: reports/model_features/model_features.html
       hash: md5
       md5: 74643eb2c3127e4781b26cf501c8e2f8
       size: 58
     - path: reports/performance/performance.html
       hash: md5
-      md5: 97974aabc977c8042a89f1573766332b
-      size: 41377439
+      md5: ffaf38f42529306c3f8412f3f8e948f3
+      size: 41377440
   export:
     cmd: Rscript pipeline/07-export.R
     deps:
