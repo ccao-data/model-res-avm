@@ -59,9 +59,8 @@ on:
       repro_ingest:
         type: boolean
         description: >-
-          Run ingest stage before running model. Pushes updated DVC-tracked
-          input files to S3 remote and uploads the updated dvc.lock after the
-          run.
+          Run ingest stage before running model. Pushes DVC-tracked
+          files if upload_enable = TRUE.
         default: false
         required: true
   push:
