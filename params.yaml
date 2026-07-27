@@ -11,11 +11,11 @@
 
 # Model tag used to identify the purpose of the run. Must be one of:
 # "junk", "rejected", "test", "baseline", "candidate", "final", or "comps"
-run_type: "baseline"
+run_type: "junk"
 
 # Note included with each run. Use this to summarize what changed about the run
 # or add context
-run_note: Potential residential baseline with SHAP values, revert DVC path
+run_note: Testing dependencies for R v4.6
 
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
@@ -157,7 +157,7 @@ model:
   # objective (a soft vertical-equity penalty); when used, set
   # `model.parameter.mse_cov_rho` below to control the penalty weight.
   # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "mse_cov"
+  objective: "rmse"
 
   # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
   # exp()-scaled back to dollars. The linear baseline always uses log(price).
