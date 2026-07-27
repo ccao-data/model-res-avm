@@ -43,19 +43,19 @@ COPY renv/ renv/
 # limiting from the GitHub API, since our renv lockfiles contain GitHub sources
 # and renv pings them on every call
 RUN --mount=type=secret,id=github_token,env=GITHUB_PAT \
-    Rscript -e 'renv::install("stringi@1.8.7", type = "source")'
+    Rscript -e 'renv::install("stringi@1.8.7", type = "source", repos = c(CRAN = "https://cloud.r-project.org"))'
 
 # Install sf from source because its binary is linked to an incompatible
 # version of PROJ
 RUN --mount=type=secret,id=github_token,env=GITHUB_PAT \
-    Rscript -e 'renv::install("sf@1.1-2", type = "source")'
+    Rscript -e 'renv::install("sf@1.1-2", type = "source", repos = c(CRAN = "https://cloud.r-project.org"))'
 
 # Restore R dependencies from lockfiles
 RUN --mount=type=secret,id=github_token,env=GITHUB_PAT Rscript -e 'renv::restore()'
 RUN --mount=type=secret,id=github_token,env=GITHUB_PAT Rscript -e 'renv::restore(lockfile = "reporting-renv.lock")'
 RUN --mount=type=secret,id=github_pat,env=GITHUB_PAT Rscript -e 'renv::restore(lockfile = "dev-renv.lock")'
 
-# # Set the working directory to the model directory
+# Set the working directory to the model directory
 WORKDIR /model-res-avm/
 
 # Copy the directory into the container
