@@ -1,5 +1,6 @@
-# Push dvc.lock to S3 keyed by the model run_id from the metadata output file.
-# Called after `dvc repro` when repro_ingest and upload_enable are both true
+# Push dvc.lock to S3 keyed by the model run_id from the metadata output file,
+# then commit it to GitHub. Called after `dvc repro` when repro_ingest and
+# upload_enable are both true.
 model_push_dvc_lock <- function() {
   metadata <- arrow::read_parquet(
     here::here("output", "metadata", "model_metadata.parquet")
@@ -18,6 +19,48 @@ model_push_dvc_lock <- function() {
     object = "model-res-avm/dvc-lockfiles/latest/dvc.lock",
     bucket = bucket
   )
+
+  token <- Sys.getenv("GITHUB_TOKEN")
+  repo <- Sys.getenv("GITHUB_REPOSITORY")
+  branch <- Sys.getenv("GITHUB_REF_NAME")
+  if (!nzchar(token) || !nzchar(repo) || !nzchar(branch)) {
+    message(
+      "Skipping GitHub commit: GITHUB_TOKEN, GITHUB_REPOSITORY, ",
+      "or GITHUB_REF_NAME not set"
+    )
+    return(invisible(NULL))
+  }
+
+  lockfile <- here::here("dvc.lock")
+  content_b64 <- base64enc::base64encode(lockfile)
+  api_url <- paste0(
+    "https://api.github.com/repos/", repo, "/contents/dvc.lock"
+  )
+  auth_header <- c(
+    Authorization = paste("Bearer", token),
+    `X-GitHub-Api-Version` = "2022-11-28"
+  )
+
+  current_sha <- httr2::request(api_url) |>
+    httr2::req_headers(!!!auth_header) |>
+    httr2::req_url_query(ref = branch) |>
+    httr2::req_perform() |>
+    httr2::resp_body_json() |>
+    purrr::pluck("sha")
+
+  message("Committing dvc.lock to GitHub on branch: ", branch)
+  httr2::request(api_url) |>
+    httr2::req_headers(!!!auth_header) |>
+    httr2::req_method("PUT") |>
+    httr2::req_body_json(list(
+      message = "Update dvc.lock after ingest [skip ci]",
+      content = content_b64,
+      sha = current_sha,
+      branch = branch
+    )) |>
+    httr2::req_perform()
+
+  invisible(NULL)
 }
 
 # Function to generate a dictionary list of file names, local paths,

@@ -86,9 +86,9 @@ jobs:
   build-and-run-model:
     needs: parse-command
     permissions:
-      # contents:read and id-token:write permissions are needed to interact
-      # with GitHub's OIDC Token endpoint so that we can authenticate with AWS
-      contents: read
+      # contents:write is needed so the GITHUB_TOKEN passed to the container
+      # can commit the updated dvc.lock via the GitHub API
+      contents: write
       id-token: write
       # While packages:write is usually not required for workflows, it is
       # required in order to allow the reusable called workflow to push to
@@ -116,6 +116,8 @@ jobs:
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
         FEATURE_REPORT_ENABLE_OVERRIDE=${{ inputs.feature_report_enable }}
         GITHUB_RUN_ID=${{ github.run_id }}
+        GITHUB_REPOSITORY=${{ github.repository }}
+        GITHUB_REF_NAME=${{ github.ref_name }}
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
@@ -123,36 +125,4 @@ jobs:
       # Actions logs
       CONTAINER_ENV_VARS: |
         AWS_SNS_ARN_MODEL_STATUS=${{ secrets.AWS_SNS_ARN_MODEL_STATUS }}
-
-  update-dvc-lock:
-    needs: [parse-command, build-and-run-model]
-    if: ${{ contains(needs.parse-command.outputs.command, 'push-dvc-lock') }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6.1.1
-        with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
-          aws-region: us-east-1
-
-      - name: Download updated dvc.lock from S3
-        run: |
-          aws s3 cp \
-            s3://ccao-data-dvc-us-east-1/model-res-avm/dvc-lockfiles/latest/dvc.lock \
-            dvc.lock
-
-      - name: Commit and push updated dvc.lock
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dvc.lock
-          git diff --staged --quiet || git commit -m "Update dvc.lock after ingest [skip ci]"
-          git push
+        GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
