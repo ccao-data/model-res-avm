@@ -135,6 +135,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.ref }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.1
