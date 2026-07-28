@@ -138,7 +138,7 @@ model_delete_junk_runs <- function(year = NULL, dry_run = TRUE) {
     message(
       "Dry run -- ", length(run_ids), " junk run(s) would be deleted ",
       "for year ", year, ":\n",
-      paste(run_ids, collapse = "\n")
+      paste0("- ", run_ids, collapse = "\n")
     )
     return(invisible(run_ids))
   }
