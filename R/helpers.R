@@ -154,7 +154,13 @@ model_delete_junk_runs <- function(year = NULL, dry_run = TRUE) {
     }
   }
   message("Deleting ", length(run_ids), " junk run(s) for year ", year)
-  purrr::walk(run_ids, model_delete_run, year = year)
+  purrr::iwalk(
+    run_ids,
+    function(run_id, idx) {
+      message("Deleting run ", idx, "/", length(run_ids), ": ", run_id)
+      model_delete_run(run_id = run_id, year = year)
+    }
+  )
   invisible(run_ids)
 }
 
