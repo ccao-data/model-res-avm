@@ -68,6 +68,12 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   ) %>%
   select(-og_char_bldg_sf)
 
+# Exponentiate predictions back to raw dollar scale
+if (log_transform_enable) {
+  assessment_card_data_pred <- assessment_card_data_pred %>%
+    mutate(pred_card_initial_fmv = exp(pred_card_initial_fmv))
+}
+
 
 
 
@@ -453,9 +459,6 @@ assessment_pin_data_base <- assessment_card_data_merged %>%
       "prior_", "ind_"
     )),
 
-    # Keep HIE flag
-    hie_num_expired,
-
     # Keep PIN-level predicted values and land rates
     land_rate_per_sqft,
     pred_pin_initial_fmv,
@@ -582,10 +585,7 @@ assessment_pin_data_final <- assessment_pin_data_sale %>%
   group_by(meta_township_code) %>%
   mutate(flag_prior_near_fmv_top_decile = ntile(prior_near_tot, 10) == 10) %>%
   ungroup() %>%
-  # Flags for HIEs / 288s (placeholder until 288 data is integrated)
-  rename(flag_hie_num_expired = hie_num_expired) %>%
   mutate(
-    flag_hie_num_expired = tidyr::replace_na(flag_hie_num_expired, 0),
     meta_pin_num_landlines = tidyr::replace_na(meta_pin_num_landlines, 1),
     flag_pin_is_multiland = tidyr::replace_na(flag_pin_is_multiland, FALSE)
   )
@@ -603,7 +603,6 @@ assessment_pin_data_final %>%
   # Coerce columns to their expected Athena output type
   mutate(
     meta_complex_id = as.numeric(meta_complex_id),
-    flag_hie_num_expired = as.numeric(flag_hie_num_expired)
   ) %>%
   # Reorder columns into groups by prefix
   select(

@@ -34,6 +34,15 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard, !sv_is_outlier) %>%
   arrange(meta_sale_date)
 
+# Log-transform sale prices for LightGBM; stash originals for evaluation
+if (log_transform_enable) {
+  training_data_full <- training_data_full %>%
+    mutate(
+      meta_sale_price_original = meta_sale_price,
+      meta_sale_price = log(meta_sale_price)
+    )
+}
+
 # Create train/test split by time, with most recent observations in the test set
 # We want our best model(s) to be predictive of the future, since properties are
 # assessed on the basis of past sales
@@ -43,6 +52,25 @@ split_data <- initial_time_split(
 )
 test <- testing(split_data)
 train <- training(split_data)
+
+# Add a stratified test set if the value of `stratified_prop` is greater than 0.
+# This will take a random selection of sales grouped by township,
+# month, and year and add them to `test`.
+if (params$cv$stratified_prop != 0) {
+  strat_split <- train %>%
+    mutate(.strat = interaction(
+      meta_township_code, time_sale_year, time_sale_month_of_year,
+      drop = TRUE
+    )) %>%
+    initial_split(
+      prop = 1 - params$cv$stratified_prop,
+      strata = .strat
+    )
+
+  train <- training(strat_split) %>% select(-.strat)
+  stratified_sample <- testing(strat_split) %>% select(-.strat)
+  test <- bind_rows(test, stratified_sample)
+}
 
 # Create a recipe for the training data which removes non-predictor columns and
 # preps categorical data, see R/recipes.R for details
@@ -62,10 +90,14 @@ train_recipe <- model_main_recipe(
 message("Creating and fitting linear baseline model")
 
 # Create a linear model recipe with additional imputation, transformations,
-# and feature interactions
+# and feature interactions. Linear baseline always fits on log(price);
+# apply here if global transform is off
 lin_recipe <- model_lin_recipe(
-  data = training_data_full %>%
-    mutate(meta_sale_price = log(meta_sale_price)),
+  data = if (log_transform_enable) {
+    training_data_full
+  } else {
+    training_data_full %>% mutate(meta_sale_price = log(meta_sale_price))
+  },
   pred_vars = params$model$predictor$all,
   cat_vars = params$model$predictor$categorical,
   id_vars = params$model$predictor$id
@@ -82,9 +114,13 @@ lin_wflow <- workflow() %>%
     blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE)
   )
 
-# Fit the linear model on the training data
+# Fit linear baseline; apply log transform to train if global transform is off
 lin_wflow_final_fit <- lin_wflow %>%
-  fit(data = train %>% mutate(meta_sale_price = log(meta_sale_price)))
+  fit(data = if (log_transform_enable) {
+    train
+  } else {
+    train %>% mutate(meta_sale_price = log(meta_sale_price))
+  })
 
 
 
@@ -126,8 +162,12 @@ lgbm_model <- parsnip::boost_tree(
     num_threads = num_threads,
     verbose = params$model$verbose,
 
-    # Set the objective function. This is what lightgbm will try to minimize
+    # Set the objective function. This is what lightgbm will try to minimize.
+    # When set to "mse_cov", lightsnip swaps in a custom MSE + rho*Cov(r,y)^2
+    # objective and uses `mse_cov_rho` (below) as the penalty weight. For
+    # standard LightGBM objectives the rho value is silently ignored.
     objective = params$model$objective,
+    mse_cov_rho = params$model$parameter$mse_cov_rho,
 
     # Names of integer-encoded categorical columns. This is CRITICAL or else
     # lightgbm will treat these columns as numeric
@@ -382,34 +422,56 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 message("Finalizing and saving trained model")
 
-# Get predictions on the test set using the training data model. These
-# predictions are used to evaluate model performance on the unseen test set.
-# Keep only the variables necessary for evaluation
-test %>%
-  mutate(
-    pred_card_initial_fmv = predict(lgbm_wflow_final_fit, test)$.pred,
-    pred_card_initial_fmv_lin = exp(predict(
-      lin_wflow_final_fit,
-      test %>% mutate(meta_sale_price = log(meta_sale_price))
-    )$.pred)
-  ) %>%
-  select(
-    meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
-    all_of(params$ratio_study$geographies), char_bldg_sf,
-    all_of(c(
-      "prior_far_tot" = params$ratio_study$far_column,
-      "prior_near_tot" = params$ratio_study$near_column
-    )),
-    pred_card_initial_fmv, pred_card_initial_fmv_lin,
-    meta_sale_price, meta_sale_date, meta_sale_document_num
-  ) %>%
-  # Prior year values are AV, not FMV. Multiply by 10 to get FMV for residential
-  mutate(
-    prior_far_tot = prior_far_tot * 10,
-    prior_near_tot = prior_near_tot * 10
-  ) %>%
-  as_tibble() %>%
-  write_parquet(paths$output$test_card$local)
+# Get predictions on both the test and training set using the training data
+# model. These predictions are used to evaluate model performance on the unseen
+# test set and to evaluate overfitting. Keep only the variables necessary for
+# evaluation
+walk2(
+  list(test, train),
+  list(paths$output$test_card$local, paths$output$train_card$local),
+  \(data, path) {
+    preds <- data %>%
+      mutate(
+        pred_card_initial_fmv = predict(lgbm_wflow_final_fit, data)$.pred,
+        pred_card_initial_fmv_lin = exp(predict(
+          lin_wflow_final_fit,
+          if (log_transform_enable) {
+            data
+          } else {
+            data %>% mutate(meta_sale_price = log(meta_sale_price))
+          }
+        )$.pred)
+      )
+
+    if (log_transform_enable) {
+      preds <- preds %>%
+        mutate(
+          pred_card_initial_fmv = exp(pred_card_initial_fmv),
+          meta_sale_price = meta_sale_price_original
+        )
+    }
+
+    preds %>%
+      select(
+        meta_year, meta_pin, meta_class, meta_card_num, meta_triad_code,
+        all_of(params$ratio_study$geographies), char_bldg_sf,
+        all_of(c(
+          "prior_far_tot" = params$ratio_study$far_column,
+          "prior_near_tot" = params$ratio_study$near_column
+        )),
+        pred_card_initial_fmv, pred_card_initial_fmv_lin,
+        meta_sale_price, meta_sale_date, meta_sale_document_num
+      ) %>%
+      # Prior year values are AV, not FMV.
+      # Multiply by 10 to get FMV for residential
+      mutate(
+        prior_far_tot = prior_far_tot * 10,
+        prior_near_tot = prior_near_tot * 10
+      ) %>%
+      as_tibble() %>%
+      write_parquet(path)
+  }
+)
 
 # Save the finalized model object to file so it can be used elsewhere. Note the
 # lgbm_save() function, which uses lgb.save() rather than saveRDS(), since

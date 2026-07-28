@@ -562,6 +562,55 @@ of modeling, but are typically valued later by hand. Other residential
 properties, such as condominiums (class 299 and 399) are valued [using a
 different model](https://github.com/ccao-data/model-condo-avm).
 
+#### Types of Sales Excluded
+
+The key objective of the model is to fairly estimate what a home could
+sell for in a fair, arm’s-length, open-market transaction. It’s
+important to train the model on high-quality sales that are
+representative of the market, and to exclude sales that are not
+representative. For example, a sale price of \$3M for an 800 square foot
+(S.F.) home, in a community where homes of this size tend to sell
+between \$200k - \$400k, is not a representative sale. (This may
+indicate a flip.) If this sale was used to train the model, then the
+model could learn that *all* 800 S.F. homes in this region are worth
+around \$3M, and should be assessed and taxed accordingly. (More
+realistically, the inclusion of this single outlier could increase the
+*average* estimated sale of 800 S.F. homes in this community by an
+undetermined amount.)
+
+We accomplish these exclusions in multiple ways:
+
+- **Excluding sales with prices that are statistical outliers.** A
+  “statistical outlier” is a sale price that is statistically higher or
+  lower than sale prices of other similar homes, such as our
+  hypothetical \$3M example above. Often, these price outliers tend to
+  indicate substantial characteristics errors. This outlier aproach was
+  developed in partnership with the [Mansueto
+  Institute](https://miurban.uchicago.edu/). See the sales validation
+  code at
+  [ccao-data/model-sales-val](https://github.com/ccao-data/model-sales-val).
+
+- **Excluding sales based on other transaction data.** In addition to
+  removing sales because they have sale prices that are statistically
+  high or low, other transaction features are useful for identifying
+  sales that should be removed from the model. They are:
+
+| Transaction feature | How transaction feature is used |
+|----|----|
+| Sale price | The model is trained only on sale prices \> \$10k. Many sale prices below this amount are, for example, deeded parking spots rather than houses. |
+| Year of sale | Only sales from the last 9 years are used to train the model. This provides a sufficient amount of transaction data for accurate training and prediction, without including price information that is extremely out-of-date. |
+| Back-to-back sales | We currently remove any back-to-back sales (sales of the same PIN within the same year) that sell for the same price in both sales (as this likely indicates something awry) - we are investigating whether or not to include back-to-back sales of differing prices, but currently include them. |
+| Number of PINs in the sale | The model is trained using only single-PIN sales. When one sale price is attributed to a sale of two PINs, it’s not clear how much each PIN’s value individually contributed to the sale price, so multi-PIN sales are excluded. |
+| Number of buildings | The model is trained using only single-building PINs. When one sale price is attributed to a sale with two buildings, it’s not clear how much each building’s value individually contributed to the sale price, so multi-building sales are excluded. |
+| Deed Type | The model is trained using Warranty Deeds, Trustee Deeds, and Other deed types. Quit Claim, Executor, and Beneficial Institution may represent non-arm’s-length transactions, and are excluded from the model training. |
+| Buyer-seller attributes | The model is trained on sales between non-corporate unrelated buyers and sellers. We exclude sales between corporate affiliates, related individuals, Bank REO (Real Estate Owned), sales involving a financial institution or government agency, and sales in lieu of foreclosure. |
+
+**Analyst review.** Finally, CCAO residential analysts can manually
+review sales and inform us of sales that we should not use to train the
+model. Currently, the only sales we exclude due to analyst review are
+sales of homes for which an analyst finds that the square footage or age
+are significantly incorrect in our data.
+
 ##### Using `training_data`
 
 Models need data in order to be trained and measured for accuracy.
@@ -635,8 +684,8 @@ actually used by the model itself. They include:
   that allows slightly dissimilar characteristics.
 - [`hie_data`](#getting-data) - Home improvement exemption data used to
   evaluate whether the pipeline correctly updates card-level
-  characteristics triggered by the expiration of home improvement
-  exemptions.
+  characteristics triggered by the expiration of [home improvement
+  exemptions](https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md).
 - [`land_site_rate_data`](#getting-data) - Fixed, PIN-level land values
   for class 210 and 295 units. Provided by the Valuations department.
   Not always used, so may be unavailable or 0 rows for certain years.
@@ -1342,11 +1391,12 @@ Uploaded Parquet files are converted into the following Athena tables:
 | parameter_final | model run | year, run_id | Chosen set of hyperparameters for each run |
 | parameter_range | parameter | year, run_id, parameter_name | Range of hyperparameters searched during CV tuning |
 | parameter_search | model cv fold | year, run_id, configuration, fold_id | Tidymodels tuning output from cross-validation |
-| performance | geography \[by class\] | year, run_id, stage, geography_type, geography_id, by_class, class | Peformance metrics (optionally) broken out by class for different levels of geography |
+| performance | geography \[by class\] | year, run_id, stage, geography_type, geography_id, by_class, class | Performance metrics (optionally) broken out by class for different levels of geography |
 | performance_quantile | geography \[by class\] by quantile | year, run_id, stage, geography_type, geography_id, by_class, class, quantile | Performance metrics by quantile within class and geography |
 | shap | card | year, run_id, township_code, meta_pin, meta_card_num | SHAP values for each feature for each card in the assessment data |
 | test_card | card | year, meta_pin, meta_card_num | Test set predictions at the card level |
 | timing | model run | year, run_id | Finalized time elapsed for each stage of the run |
+| train_card | card | year, meta_pin, meta_card_num | Training set predictions at the card level |
 
 ## Getting Data
 

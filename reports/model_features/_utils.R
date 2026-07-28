@@ -1,15 +1,20 @@
 library(arrow)
+library(ccao)
 library(data.table)
 library(dplyr)
 library(DT)
 library(ggplot2)
 library(glue)
+library(here)
 library(kableExtra)
 library(knitr)
 library(leaflet)
 library(noctua)
 library(stringr)
 library(tidyr)
+library(yaml)
+
+conflicted::conflicts_prefer(glue::glue, dplyr::filter)
 
 # We want sub-reports to be able to be run on their own. This ensures
 # that if `model_features.qmd` isn't the report run and no param is created,
@@ -42,6 +47,25 @@ if (!exists("params")) {
   )
 }
 
+# list of file names, local paths,
+# and mirrored S3 location URIs from file_dict.csv
+source(here::here("R", "helpers.R"))
+
+# TODO: Catch for weird Arrow bug with SIGPIPE. Need to permanently fix later
+# https://github.com/apache/arrow/issues/32026
+cpp11::cpp_source(code = "
+#include <csignal>
+#include <cpp11.hpp>
+
+[[cpp11::register]] void ignore_sigpipes() {
+  signal(SIGPIPE, SIG_IGN);
+}
+")
+
+ignore_sigpipes()
+
+paths <- model_file_dict()
+
 # Text sizes for small multiples
 axis_title_size <- 6
 strip_text_size <- 4
@@ -53,10 +77,26 @@ ncol_violin <- 3
 ncol_line <- 6
 
 # Function to plot a set of small multiple histograms of char values
-plot_small_multiple_histograms <- function(df, stat = "bin") {
-  df %>%
-    ggplot(aes(x = value)) +
-    geom_histogram(fill = "steelblue", stat = stat) +
+plot_small_multiple_histograms <- function(new, old = NULL, stat = "bin") {
+  # Add grouping labels
+  new <- new %>% mutate(data = "new")
+  if (!is.null(old)) {
+    old <- old %>% mutate(data = "old")
+    df_all <- bind_rows(old, new)
+    alpha_val <- 0.5
+  } else {
+    df_all <- new
+    alpha_val <- 1
+  }
+
+  # Plot
+  df_all %>%
+    ggplot(aes(x = value, fill = data)) +
+    geom_histogram(
+      stat = stat,
+      position = "identity",
+      alpha = alpha_val
+    ) +
     facet_wrap(
       ~predictor,
       scales = "free",
@@ -73,14 +113,22 @@ plot_small_multiple_histograms <- function(df, stat = "bin") {
 
 # Base function for plotting small multiple violins and lines
 plot_small_multiple_base <- function(
-    df,
+    new_df,
+    old_df = NULL,
     y,
     ncol,
     y_axis_label = "FMV",
     range = NULL) {
-  df %>%
-    ggplot(aes(x = value, y = .data[[y]])) +
-    geom_violin(fill = "steelblue", alpha = 0.3) +
+  new_df$data <- "new"
+  if (!is.null(old_df)) {
+    old_df$data <- "old"
+    df <- dplyr::bind_rows(old_df, new_df)
+    alpha_val <- 0.3
+  } else {
+    df <- new_df
+    alpha_val <- 1
+  }
+  ggplot(df, aes(x = value, y = .data[[y]], fill = data)) +
     facet_wrap(
       ~predictor,
       scales = "free",
@@ -100,23 +148,40 @@ plot_small_multiple_base <- function(
     )
 }
 
-plot_small_multiple_violins <- function(
-    df,
+plot_small_multiple_violins <- function(new_df,
+                                        old_df = NULL,
+                                        y,
+                                        y_axis_label = "FMV",
+                                        range = NULL) {
+  alpha_val <- if (is.null(old_df)) 1 else 0.3
+
+  plot_small_multiple_base(
+    new_df,
+    old_df,
     y,
-    y_axis_label = "FMV",
-    range = NULL) {
-  plot_small_multiple_base(df, y, ncol_violin, y_axis_label, range) +
-    geom_violin(fill = "steelblue", alpha = 0.3)
+    ncol_violin,
+    y_axis_label,
+    range
+  ) +
+    geom_violin(alpha = alpha_val, position = "identity") +
+    guides(color = "none")
 }
 
-# Same as above, but produce smoothed regression lines
-plot_small_multiple_lines <- function(
-    df,
+plot_small_multiple_lines <- function(new_df,
+                                      old_df = NULL,
+                                      y,
+                                      y_axis_label = "FMV",
+                                      range = NULL) {
+  plot_small_multiple_base(
+    new_df,
+    old_df,
     y,
-    y_axis_label = "FMV",
-    range = NULL) {
-  plot_small_multiple_base(df, y, ncol_line, y_axis_label, range) +
-    geom_smooth(fill = "steelblue", linewidth = 0.5)
+    ncol_line,
+    y_axis_label,
+    range
+  ) +
+    geom_smooth(linewidth = 0.5, se = TRUE, aes(color = data), fill = NA) +
+    guides(fill = "none")
 }
 
 # Function to compute figure height for a code chunk that is using a dataframe

@@ -69,6 +69,12 @@ if (upload_enable) {
     relocate(run_id) %>%
     write_parquet(paths$output$test_card$s3)
 
+  # Upload the training set predictions
+  read_parquet(paths$output$train_card$local) %>%
+    mutate(run_id = !!run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$train_card$s3)
+
   # Upload the parameter search objects if CV was enabled. Requires some
   # cleaning since the Tidymodels output is stored as a nested data frame
   if (cv_enable) {
@@ -167,6 +173,27 @@ if (upload_enable) {
     relocate(run_id) %>%
     write_parquet(paths$output$performance_quantile_test_linear$s3)
 
+  # Upload train performance
+  message("Uploading training set evaluation")
+  read_parquet(paths$output$performance_train$local) %>%
+    mutate(run_id = !!run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_train$s3)
+  read_parquet(paths$output$performance_quantile_train$local) %>%
+    mutate(run_id = !!run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_quantile_train$s3)
+
+  message("Uploading training linear baseline")
+  read_parquet(paths$output$performance_train_linear$local) %>%
+    mutate(run_id = !!run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_train_linear$s3)
+  read_parquet(paths$output$performance_quantile_train_linear$local) %>%
+    mutate(run_id = !!run_id) %>%
+    relocate(run_id) %>%
+    write_parquet(paths$output$performance_quantile_train_linear$s3)
+
   # Upload assessment set performance
   message("Uploading assessment set evaluation")
   read_parquet(paths$output$performance_assessment$local) %>%
@@ -239,8 +266,16 @@ if (upload_enable) {
     paths$output$report_performance$local,
     paths$output$report_performance$s3
   )
-}
 
+  # Upload feature report
+  if (feature_report_enable) {
+    message("Uploading feature report")
+    aws.s3::put_object(
+      paths$output$report_model_features$local,
+      paths$output$report_model_features$s3
+    )
+  }
+}
 
 
 

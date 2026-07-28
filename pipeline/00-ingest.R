@@ -229,14 +229,12 @@ rm(AWS_ATHENA_CONN_NOCTUA)
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Home Improvement Exemptions -----------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-message("Adding HIE data to training and assessment sets")
+message("Adding HIE data to training set")
 
 # HIEs need to be combined with the training data such that the training data
 # uses the characteristics at the time of sale, rather than the un-updated
 # characteristics used for assessment. See GitHub wiki for more information:
 # https://github.com/ccao-data/wiki/blob/master/Residential/Home-Improvement-Exemptions.md # nolint
-
-## 4.1. Training Data ----------------------------------------------------------
 
 # Convert legacy data to sparse representation with 1 active row per HIE year.
 # NOTE: ONLY join to non-multicard PINs, since HIEs cannot be matched when there
@@ -277,50 +275,6 @@ training_data_w_hie <- training_data %>%
     char_porch = recode(char_porch, "3" = "0")
   ) %>%
   relocate(hie_num_active, .before = meta_cdu)
-
-
-## 4.2. Assessment Data --------------------------------------------------------
-
-# For assessment data, we want to include ONLY the HIEs that expire in the
-# assessment year
-hie_data_assessment_sparse <- hie_data %>%
-  filter(hie_last_year_active == as.numeric(params$assessment$year) - 1) %>%
-  ccao::chars_sparsify(
-    pin_col = pin,
-    year_col = year,
-    town_col = qu_town,
-    upload_date_col = qu_upload_date,
-    additive_source = any_of(chars_cols$add$source),
-    replacement_source = any_of(chars_cols$replace$source)
-  ) %>%
-  mutate(
-    ind_pin_is_multicard = FALSE,
-    year = as.character(year)
-  )
-
-# Update assessment data with any expiring HIEs. Add a field for the number
-# of HIEs expired for each PIN
-assessment_data_w_hie <- assessment_data %>%
-  mutate(across(
-    all_of(ccao::chars_cols$add$target),
-    ~ recode_column_type(.x, cur_column())
-  )) %>%
-  left_join(
-    hie_data_assessment_sparse,
-    by = c("meta_pin" = "pin", "year", "ind_pin_is_multicard")
-  ) %>%
-  mutate(qu_class = ifelse(qu_class != "288", qu_class, meta_class)) %>%
-  ccao::chars_update(
-    additive_target = any_of(chars_cols$add$target),
-    replacement_target = any_of(chars_cols$replace$target)
-  ) %>%
-  select(-starts_with("qu_")) %>%
-  mutate(
-    hie_num_active = replace_na(hie_num_active, 0),
-    char_porch = recode(char_porch, "3" = "0")
-  ) %>%
-  rename(hie_num_expired = hie_num_active) %>%
-  relocate(hie_num_expired, .before = meta_cdu)
 
 
 
@@ -388,7 +342,16 @@ training_data_clean <- training_data_w_hie %>%
       relationship = "many-to-many"
     ) %>%
       # as.duration(1) excludes the same sale from being identified as within
-      # 3 years of itself
+      # 3 years of itself.
+      #
+      # We actually _do_ want the model to know about the current sale when it
+      # considers this feature in the training set, because this feature is
+      # intended to help tease out otherwise-unobservable differences between
+      # sold and unsold parcels, and the fact that a training observation is a
+      # real-world sale is relevant info in that context. But including the
+      # current sale in the count would make it harder to compare this feature
+      # to the assessment set. For a detailed explanation, see the comment on
+      # the corresponding feature in the assessment set
       mutate(within_n_years = between(
         meta_sale_date.x - meta_sale_date.y,
         as.duration(1),
@@ -452,13 +415,31 @@ training_data_clean <- training_data_w_hie %>%
   as_tibble() %>%
   write_parquet(paths$input$training$local)
 
+# Reproducible via the model seed and the subset fraction params tracked by DVC
+if (params$input$subset$enable) {
+  set.seed(params$model$seed)
+
+  message(
+    "Creating stratified training data subset ",
+    "(fraction: ", params$input$subset$fraction, ")"
+  )
+
+  training_data_clean %>%
+    group_by(time_sale_year, meta_township_code, meta_class) %>%
+    group_modify(~ {
+      n_sample <- max(1L, ceiling(nrow(.x) * params$input$subset$fraction))
+      slice_sample(.x, n = n_sample)
+    }) %>%
+    ungroup() %>%
+    write_parquet(paths$input$training$local)
+}
 
 ## 5.2. Assessment Data --------------------------------------------------------
 
 # Clean the assessment data. This is the target data that the trained model is
 # used on. The cleaning steps are the same as above, with the exception of the
 # time variables and identifying complexes
-assessment_data_clean <- assessment_data_w_hie %>%
+assessment_data_clean <- assessment_data %>%
   ccao::vars_recode(cols = starts_with("char_"), code_type = "code") %>%
   ccao::vars_recode(
     cols = all_of("char_apts"),
@@ -515,12 +496,58 @@ assessment_data_clean <- assessment_data_w_hie %>%
       # Distinct is necessary because of multicard sales
       distinct() %>%
       summarise(
-        # Subtract 1 from the count of prior sales. The reasoning here is
-        # difficult, but basically: in the training data, this feature only has
-        # a count > 0 conditional on multiple sales. In the assessment data, if
-        # we count the lien date as a sale, the "multiple sales" conditional
-        # isn't technically true. Therefore, we subtract 1 from the count to
-        # make the feature consistent between the training and assessment data
+        # Subtract 1 from the count of prior sales, so that it is comparable to
+        # the version of this feature implemented on the training set. The
+        # reasoning behind this choice is complicated, so read on for a
+        # detailed explanation.
+        #
+        # The goal of this feature is to help capture the likely but
+        # unobservable quality differences between parcels that have recently
+        # sold more than once (possible flips) and parcels that have not. We
+        # construct it as a count of recent sales rather than a binary indicator
+        # because we think the number of recent sales correlates with
+        # unobservable quality differences.
+        #
+        # When we construct this feature in the training data, we want to
+        # include the current sale in the count of recent sales, because it adds
+        # valuable information: If, say, the parcel sold a year ago, and it is
+        # selling again today, then today's sale is likely to represent a flip,
+        # and we want the model to know there have been two recent sales when it
+        # learns from today's sale price. When we construct the feature in the
+        # assessment set, however, we _don't_ want to include the current "sale"
+        # in the count because it is purely synthetic, used solely for
+        # assessment and not corresponding to a real event in the world. As
+        # a result, the assessment count must be one less than the training
+        # count for an observation with otherwise identical sale history.
+        #
+        # There's a problem that complicates the idea of including the current
+        # observation in the count of recent sales for the training data,
+        # however: If we do that, there will be no training observations with
+        # zero recent sales, which is the most common value in the assessment
+        # set. In other words, the training data can never give us any info
+        # about parcels that have no recent sales. So when we construct this
+        # feature for the assessment set, we group together parcels with
+        # no recent sales and parcels with one recent sale to reflect
+        # the fact that the model can't distinguish between them.
+        #
+        # Given our goal of including the current sale in the training count
+        # while grouping together parcels with 0 and 1 recent sale in the
+        # assessment count, we can choose between two approaches:
+        #
+        # 1. Include the current observation in the training count, exclude it
+        #    from the assessment count, and coalesce 0 to 1 in the assessment
+        #    count
+        #
+        # 2. Exclude the current observation from both the training and
+        #    assessment counts, decrement assessment counts by 1 to exclude the
+        #    synthetic "sale" on the lien date, and coalesce -1 to 0 in the
+        #    assessment count
+        #
+        # These approaches are equivalent in terms of the information they
+        # provide the model; in essence, they correspond to a choice between
+        # using 0 or 1 as the index for the count. We use approach 2, i.e. a
+        # count index of 0, for no principled reason other than that it's the
+        # way we have always done it.
         meta_sale_count_past_n_years = as.numeric(
           pmax(sum(within_n_years, na.rm = TRUE) - 1, 0)
         ),
@@ -550,7 +577,7 @@ assessment_data_clean <- assessment_data_w_hie %>%
   select(-any_of(c("time_interval"))) %>%
   relocate(starts_with("sv_"), .after = everything()) %>%
   relocate("year", .after = everything()) %>%
-  relocate(starts_with("meta_sale_"), .after = hie_num_expired) %>%
+  relocate(starts_with("meta_sale_"), .before = meta_cdu) %>%
   as_tibble() %>%
   write_parquet(paths$input$assessment$local)
 

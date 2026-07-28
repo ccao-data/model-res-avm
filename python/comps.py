@@ -224,6 +224,8 @@ def insert_at_idx_and_shift(
 ) -> np.ndarray:
     """Helper function to insert an element `elem` into a sorted numpy array `arr`
     at a given index `idx` and shift the subsequent elements down one index."""
+    if len(arr) == 0 or idx >= len(arr):
+        raise IndexError("idx is out of bounds for arr")
     arr[idx + 1 :] = arr[idx:-1]
     arr[idx] = elem
     return arr

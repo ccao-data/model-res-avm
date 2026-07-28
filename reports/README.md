@@ -6,7 +6,7 @@ This directory contains Quarto diagnostic documents for the residential model. T
 
 1. `performance.qmd` - Overall look at model performance containing ratio statistics, diagnostic visualizations, debugging/quality control tables, etc.
 2. `challenge_groups.qmd` - Report on specific, hard-to-model properties such as prorated PINs, multi-card properties, etc.
-3. `model_features.qmd` - Report that looks at model inputs. It has three sections: 1) feature changes between the previous and current model, 2) distributions of SHAP and feature values, and 3) feature missingness. We run this report annually during model prep once all characteristics have been updated, so a model run won't generate it automatically, unlike the other reports in this directory.
+3. `model_features.qmd` - Report that looks at model inputs. It has three sections: 1) feature changes between the previous and current model, 2) distributions of SHAP and feature values, and 3) feature missingness. This report only runs if the `toggle.feature_report_enable` flag is set to `true` in `params.yaml`, or if the "Run feature report" box is checked on the `build-and-run-model` GitHub workflow, since it is computationally intensive and only necessary if input features change.
 
 ## Structure
 

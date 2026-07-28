@@ -410,7 +410,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
-    flag_land_value_capped, flag_hie_num_expired,
+    flag_land_value_capped,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
     flag_char_missing_critical_value, flag_has_recent_assessable_permit
@@ -488,7 +488,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   num_head <- 6 # Number of header rows
   pin_row_range <- (num_head + 1):(nrow(assessment_pin_filtered) + num_head)
   pin_row_range_w_header <- c(num_head, pin_row_range)
-  pin_col_range <- 1:65 # Don't forget the two hidden rows at the end
+  pin_col_range <- 1:64 # Don't forget the two hidden rows at the end
 
   assessment_pin_w_row_ids <- assessment_pin_filtered %>%
     tibble::rowid_to_column("row_id") %>%
@@ -547,7 +547,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     style = style_price,
     rows = pin_row_range,
-    cols = c(10:12, 16:18, 24, 29, 33, 64, 65), gridExpand = TRUE
+    cols = c(10:12, 16:18, 24, 29, 33, 63, 64), gridExpand = TRUE
   )
   addStyle(
     wb, pin_sheet_name,
@@ -654,18 +654,18 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_mvs$total_mv,
-    startCol = 64,
+    startCol = 63,
     startRow = 7
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_mvs$mv_difference,
-    startCol = 65,
+    startCol = 64,
     startRow = 7
   )
   setColWidths(
     wb, pin_sheet_name,
-    c(64, 65),
+    c(63, 64),
     widths = 1,
     hidden = c(TRUE, TRUE), ignoreMergedCells = FALSE
   )
