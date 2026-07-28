@@ -55,5 +55,3 @@ if (comp_exists) {
 ```
 
 {{< include _stats.qmd >}}
-
-{{< include _train_test.qmd >}}

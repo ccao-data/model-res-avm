@@ -88,11 +88,6 @@ upload_enable <- as.logical(Sys.getenv(
   unset = get(params_obj_name)$toggle$upload_enable
 ))
 
-feature_report_enable <- as.logical(Sys.getenv(
-  "FEATURE_REPORT_ENABLE_OVERRIDE",
-  unset = get(params_obj_name)$toggle$feature_report_enable
-))
-
 # If in a CI context, use the run params passed to the workflow. Otherwise, use
 # the note included in params.yaml
 run_note <- as.character(
@@ -115,27 +110,6 @@ if (!run_type %in% possible_run_types) {
   )
 }
 rm(possible_run_types)
-
-# Whether to log-transform the sale price target before fitting. Defines model
-# structure (see `model.log_sale_price` in params.yaml), not a pipeline toggle
-log_transform_enable <- as.logical(
-  get(params_obj_name)$model$log_sale_price
-)
-
-# The "mse_cov" objective is only built for logged sale prices. An un-logged
-# configuration exists in the reference Python implementation (the "div"
-# ratio mode) but is not built into our codebase; if there is interest, see
-# the author's repo or working paper:
-# https://github.com/nicacevedo/soft-vertical-equity-constrained-mass-appraissal
-if (
-  identical(get(params_obj_name)$model$objective, "mse_cov") &&
-    !log_transform_enable
-) {
-  stop(
-    "model.objective = 'mse_cov' requires model.log_sale_price = true, ",
-    "since the objective is only built for logged sale prices"
-  )
-}
 
 # Check to see if LightGBM early stopping is enabled based on engine parameters
 early_stopping_enable <-

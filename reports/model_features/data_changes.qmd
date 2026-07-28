@@ -13,12 +13,12 @@ source("_baseline_query_data.R")
 
 ```{r changed_values_processing}
 # Build card_data with dataset label
-common_cols <- intersect(names(assessment_data_old), names(assessment_data_new))
+common_cols <- intersect(names(comp_chars), names(baseline_assessment_data))
 
 card_data <- bind_rows(
-  old = assessment_data_old %>% select(all_of(common_cols)),
-  new = assessment_data_new %>% select(all_of(common_cols)),
-  .id = "dataset" # "new" or "old"
+  comp = comp_chars %>% select(all_of(common_cols)),
+  baseline = baseline_assessment_data %>% select(all_of(common_cols)),
+  .id = "dataset" # "comp" or "baseline"
 ) %>%
   group_by(meta_pin, meta_card_num) %>%
   # keep only PIN-card combos appearing in both datasets
@@ -170,7 +170,6 @@ unmatched_values_long <-
       value.name = "value"
     )
   ][
-
     # inner join to keep only failed combinations
     card_matches_long[is_match == FALSE, .(meta_pin, meta_card_num, column)][
       , column := as.character(column)
@@ -183,14 +182,15 @@ unmatched_values_long <-
 
 changes_summary <- unmatched_values_long %>%
   as_tibble() %>%
+  # Rename comp and baseline to new and old for readability
   group_by(column, meta_pin, meta_card_num) %>%
   summarise(
-    value_old = value[dataset == "old"][1],
-    value_new = value[dataset == "new"][1],
+    old_value = value[dataset == "comp"][1],
+    new_value = value[dataset == "baseline"][1],
     .groups = "drop"
   ) %>%
   # Count specific old -> new change occurrences
-  group_by(column, value_old, value_new) %>%
+  group_by(column, old_value, new_value) %>%
   summarise(
     n = n(),
     .groups = "drop"
@@ -198,7 +198,7 @@ changes_summary <- unmatched_values_long %>%
   # Number of unique changes for that column
   group_by(column) %>%
   mutate(
-    N_unique_changes = n_distinct(paste0(value_old, "->", value_new))
+    N_unique_changes = n_distinct(paste0(old_value, "->", new_value))
   ) %>%
   ungroup()
 
@@ -226,8 +226,8 @@ make_card_comp_chart <- function(col_name) {
 
   # Tag rows as old/new based on dataset:
   chart_data_long[, tag := fcase(
-    dataset == "old", "old",
-    dataset == "new", "new"
+    dataset == "comp", "old",
+    dataset == "baseline", "new"
   )]
 
   # Pivot to wide: one row per PIN/Card with old/new values
@@ -244,27 +244,37 @@ make_card_comp_chart <- function(col_name) {
     new = c(paste0(col_name, "_new"), paste0(col_name, "_old"))
   )
 
-  # Names for old/new cols
-  nm_old <- paste0(col_name, "_old")
-  nm_new <- paste0(col_name, "_new")
+  # Names for  old/new cols
+  old_nm <- paste0(col_name, "_old")
+  new_nm <- paste0(col_name, "_new")
 
-  # Count each distinct old/new pair and keep one example PIN/card per pair
+  # Count how many times each old/new pair occurs
   pair_counts <- chart_data_wide[
     ,
-    .(n = .N, meta_pin = meta_pin[1], meta_card_num = meta_card_num[1]),
-    by = c(nm_old, nm_new)
+    .(n = .N),
+    by = c(old_nm, new_nm)
   ]
 
-  # Reorder columns for readability
-  order <- c("meta_pin", "meta_card_num", nm_old, nm_new, "n")
-  present <- intersect(order, names(pair_counts))
-  data.table::setcolorder(pair_counts, present)
+  # Join counts back to the detailed table
+  chart_data_wide <- merge(
+    chart_data_wide,
+    pair_counts,
+    by = c(old_nm, new_nm),
+    all.x = TRUE
+  )
+
+  order <- c("meta_pin", "meta_card_num", old_nm, new_nm, "n")
+  present <- intersect(order, names(chart_data_wide))
+  data.table::setcolorder(chart_data_wide, present)
+
   # Cap at 1,000 rows for readability with sample
-  if (nrow(pair_counts) > 1000L) {
-    pair_counts <- pair_counts[sample(.N, 1000L)]
+  if (nrow(chart_data_wide) > 1000L) {
+    chart_data_wide <- chart_data_wide[sample(.N, 1000L)]
   }
-  pair_counts[]
+
+  chart_data_wide[]
 }
+
 
 unmatched_tables <- unique(unmatched_values_long$column) %>%
   lapply(make_card_comp_chart) %>%
@@ -272,9 +282,12 @@ unmatched_tables <- unique(unmatched_values_long$column) %>%
   (\(x) x[!vapply(x, is.null, logical(1))])()
 
 unmatched_charts <- list()
+
 vars <- sort(names(unmatched_tables))
+
 for (var in vars) {
   tbl <- unmatched_tables[[var]]
+
   unmatched_charts[[var]] <- knitr::kable(
     tbl,
     format = "html",

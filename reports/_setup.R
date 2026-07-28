@@ -156,10 +156,6 @@ if (!exists("model_performance_test")) {
   model_performance_test <-
     arrow::read_parquet(paths$output$performance_test$local)
 }
-if (!exists("model_performance_train")) {
-  model_performance_train <-
-    arrow::read_parquet(paths$output$performance_train$local)
-}
 if (!exists("model_performance_test_linear")) {
   model_performance_test_linear <-
     arrow::read_parquet(paths$output$performance_test_linear$local)
@@ -239,10 +235,7 @@ m_test_split_prop <- scales::percent(
   1 - metadata$cv_split_prop,
   accuracy = 0.01
 )
-m_test_split_stratified_prop <- scales::percent(
-  as.numeric(metadata$cv_stratified_prop),
-  accuracy = 0.01
-)
+
 m_train_min_date <- min(training_data$meta_sale_date)
 m_train_max_date <- max(training_data$meta_sale_date)
 m_train_n_sales <- training_data %>%

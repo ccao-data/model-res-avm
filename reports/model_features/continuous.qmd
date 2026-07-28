@@ -16,15 +16,7 @@ source("_baseline_query_data.R")
 ### Assessment set
 
 ```{r feature_dist_assess_cont_transform}
-cont_chars_assess_long_new <- assessment_data_new %>%
-  select(all_of(continuous_preds)) %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = "predictor",
-    values_to = "value"
-  )
-
-cont_chars_assess_long_old <- assessment_data_old %>%
+baseline_cont_chars_assess_long <- baseline_assessment_data %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -35,33 +27,22 @@ cont_chars_assess_long_old <- assessment_data_old %>%
 
 ```{r feature_dist_assess_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(cont_chars_assess_long_new)
+#| fig-height: !expr fig_height(baseline_cont_chars_assess_long)
 
-plot_small_multiple_histograms(cont_chars_assess_long_old,
-  cont_chars_assess_long_new,
-  stat = "bin"
-)
+plot_small_multiple_histograms(baseline_cont_chars_assess_long, stat = "bin")
 ```
 
 ```{r feature_dist_assess_cont_cleanup}
 #| output: false
 
-rm(cont_chars_assess_long_old, cont_chars_assess_long_new)
+rm(baseline_cont_chars_assess_long)
 gc()
 ```
 
 ### Training set
 
 ```{r feature_dist_train_cont_transform}
-cont_chars_train_long_old <- training_data_old %>%
-  select(all_of(continuous_preds)) %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = "predictor",
-    values_to = "value"
-  )
-
-cont_chars_train_long_new <- training_data_new %>%
+baseline_cont_chars_train_long <- baseline_training_data %>%
   select(all_of(continuous_preds)) %>%
   pivot_longer(
     cols = everything(),
@@ -72,18 +53,15 @@ cont_chars_train_long_new <- training_data_new %>%
 
 ```{r feature_dist_train_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height(cont_chars_train_long_new)
+#| fig-height: !expr fig_height(baseline_cont_chars_train_long)
 
-plot_small_multiple_histograms(cont_chars_train_long_old,
-  cont_chars_train_long_new,
-  stat = "bin"
-)
+plot_small_multiple_histograms(baseline_cont_chars_train_long, stat = "bin")
 ```
 
 ```{r feature_dist_train_cont_cleanup}
 #| output: false
 
-rm(cont_chars_train_long_new)
+rm(baseline_cont_chars_train_long)
 gc()
 ```
 
@@ -92,60 +70,40 @@ gc()
 # Distribution of SHAPs (Continuous)
 
 ```{r shap_dist_cont_transform}
-if (shap_exists) {
-  cont_shap_long_new <- shaps_new %>%
-    select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
-    pivot_longer(
-      cols = all_of(continuous_preds),
-      names_to = "predictor",
-      values_to = "value"
-    ) %>%
-    left_join(
-      shaps_new %>%
-        select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
-        pivot_longer(
-          cols = all_of(continuous_shaps),
-          names_to = "shap_name",
-          values_to = "shap_value"
-        ) %>%
-        mutate(shap_name = str_replace(shap_name, "_shap$", "")),
-      by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
-    )
-}
-```
-
-
-```{r create_fig_height_shap_cont}
-fig_height_shap <- if (exists("cont_shap_long_new")) {
-  fig_height(cont_shap_long_new, ncol = ncol_line)
-} else {
-  4
-}
-
-if (!shap_exists) {
-  print("SHAP data does not exist for this run. Skipping SHAP plots.")
-}
+baseline_cont_shap_long <- baseline_shaps %>%
+  select(meta_pin, meta_card_num, all_of(continuous_preds)) %>%
+  pivot_longer(
+    cols = all_of(continuous_preds),
+    names_to = "predictor",
+    values_to = "value"
+  ) %>%
+  left_join(
+    baseline_shaps %>%
+      select(meta_pin, meta_card_num, all_of(continuous_shaps)) %>%
+      pivot_longer(
+        cols = all_of(continuous_shaps),
+        names_to = "shap_name",
+        values_to = "shap_value"
+      ) %>%
+      mutate(shap_name = str_replace(shap_name, "_shap$", "")),
+    by = c("meta_pin", "meta_card_num", "predictor" = "shap_name")
+  )
 ```
 
 ```{r shap_dist_cont_plot}
 #| column: screen-inset
-#| fig-height: !expr fig_height_shap
+#| fig-height: !expr fig_height(baseline_cont_shap_long, ncol = ncol_line)
 
-if (shap_exists) {
-  plot_small_multiple_lines(
-    cont_shap_long_new,
-    NULL,
-    "shap_value",
-    y_axis_label = "SHAP Value"
-  )
-}
+plot_small_multiple_lines(
+  baseline_cont_shap_long,
+  "shap_value",
+  y_axis_label = "SHAP Value"
+)
 ```
 
 ```{r shap_dist_cont_cleanup}
 #| output: false
 
-if (exists("cont_shap_long_new")) {
-  rm(cont_shap_long_new)
-}
+rm(baseline_cont_shap_long)
 gc()
 ```

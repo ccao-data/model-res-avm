@@ -28,9 +28,6 @@ message("Saving run metadata")
 # identifier for in perpetuity. See ?ccao_generate_id for details
 run_id <- ccao::ccao_generate_id()
 
-# Print run_id so that we can find it in aws logs
-message(paste("run_id =", run_id))
-
 # Get the current timestamp for when the run ended
 run_end_timestamp <- lubridate::now()
 
@@ -70,8 +67,6 @@ metadata <- tibble::tibble(
   input_min_sale_year = params$input$min_sale_year,
   input_max_sale_year = params$input$max_sale_year,
   input_n_years_prior = params$input$n_years_prior,
-  input_subset_enable = params$input$subset$enable,
-  input_subset_fraction = params$input$subset$fraction,
   input_complex_match_exact = list(params$input$complex$match_exact),
   input_complex_match_fuzzy_name = list(
     names(params$input$complex$match_fuzzy)
@@ -100,13 +95,11 @@ metadata <- tibble::tibble(
   comp_enable = comp_enable,
   comp_num_comps = params$comp$num_comps,
   cv_enable = cv_enable,
-  log_transform_enable = log_transform_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,
   cv_initial_set = params$cv$initial_set,
   cv_max_iterations = params$cv$max_iterations,
   cv_no_improve = params$cv$no_improve,
-  cv_stratified_prop = params$cv$stratified_prop,
   cv_split_prop = params$cv$split_prop,
   cv_best_metric = params$cv$best_metric,
   pv_land_pct_of_total_cap = params$pv$land_pct_of_total_cap,
@@ -137,7 +130,7 @@ metadata <- tibble::tibble(
 
 ## 3.1. Performance Report -----------------------------------------------------
 
-# Wrap these blocks in an error handler so that the pipeline continues execution
+# Wrap this block in an error handler so that the pipeline continues execution
 # even if report generation fails. This is important because the report file is
 # defined separately, so this script can't be sure that it is error-free
 tryCatch(
@@ -169,41 +162,6 @@ tryCatch(
     sink()
   }
 )
-
-## 3.2. Model Features Report --------------------------------------------------
-# Don't run the model feature report if it is not enabled
-if (!isTRUE(feature_report_enable)) {
-  message("feature_report_enable is FALSE — skipping report generation")
-  sink(paths$output$report_model_features$local)
-  cat("Report generation skipped: feature_report_enable is FALSE\n")
-  sink()
-} else {
-  tryCatch(
-    {
-      suppressPackageStartupMessages({
-        library(quarto)
-      })
-      message("Generating model_feature report")
-      here("reports", "model_features", "model_features.qmd") %>%
-        quarto_render(
-          execute_params = list(
-            run_id = run_id
-          )
-        )
-    },
-    error = function(func) {
-      message("Encountered error during report generation:")
-      message(conditionMessage(func))
-      # Save an empty report so that this pipeline step produces the required
-      # output even in cases of failure
-      message("Saving an empty report file in order to continue execution")
-      sink(paths$output$report_model_features$local)
-      cat("Encountered error in report generation:\n\n")
-      cat(conditionMessage(func))
-      sink()
-    }
-  )
-}
 
 
 

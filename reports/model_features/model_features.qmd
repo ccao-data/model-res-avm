@@ -1,6 +1,7 @@
 ---
 title: "Model QC"
-subtitle: "Run ID: `r params$run_id`"
+subtitle: |
+  `r params$baseline_run_id` <-> `r params$comp_run_id`
 date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 execute:
   echo: false
@@ -9,7 +10,10 @@ format:
   html:
     embed-resources: true
 params:
-  run_id: "2026-02-11-recursing-rob"
+  # The run ID for last year's model (usually the final res model)
+  comp_run_id: "2025-02-11-charming-eric"
+  # The run ID for the new model run that we want to compare to last year's model
+  baseline_run_id: "2026-02-11-recursing-rob"
 ---
 
 {{< include data_changes.qmd >}}
