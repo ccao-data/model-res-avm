@@ -17,8 +17,6 @@ message("Run note: ", run_note)
 message("Run type: ", run_type)
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Prepare Data --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -82,8 +80,6 @@ train_recipe <- model_main_recipe(
 )
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Linear Model --------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -121,8 +117,6 @@ lin_wflow_final_fit <- lin_wflow %>%
   } else {
     train %>% mutate(meta_sale_price = log(meta_sale_price))
   })
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -413,8 +407,6 @@ lgbm_wflow_final_full_fit <- lgbm_wflow %>%
   update_model(lgbm_model_final) %>%
   finalize_workflow(lgbm_final_params) %>%
   fit(data = training_data_full)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

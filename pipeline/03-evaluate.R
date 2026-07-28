@@ -37,8 +37,6 @@ run_triad_code <- ccao::town_dict %>%
   pull(triad_code)
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Load Data -----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -79,8 +77,6 @@ add_triad_code <- \(data) {
   }
   return(data)
 }
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -156,7 +152,6 @@ gen_agg_stats <- function(data, truth, estimate, bldg_sqft,
     # Aggregate including class
     group_by({{ triad }}, {{ geography }}, {{ class }}) %>%
     summarize(
-
       # Basic summary stats, counts, proportions, etc
       num_pin = n(),
       num_sale = sum(!is.na({{ truth }})),
@@ -317,8 +312,6 @@ gen_agg_stats_quantile <- function(data, truth, estimate,
     )) %>%
     add_triad_code()
 }
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

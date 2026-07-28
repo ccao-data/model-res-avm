@@ -1,5 +1,6 @@
 model_fetch_run_subset <- function(
-    run_id, year, analyses_paths, append_run_id = FALSE) {
+  run_id, year, analyses_paths, append_run_id = FALSE
+) {
   s3_objs <- grep("s3://", unlist(analyses_paths$output), value = TRUE)
   bucket <- strsplit(s3_objs[1], "/")[[1]][3]
 
