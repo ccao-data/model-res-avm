@@ -80,7 +80,7 @@ vacant_land <- dbGetQuery(
       uni.pin AS meta_pin,
       uni.class AS meta_class,
       uni.nbhd_code AS meta_nbhd_code,
-      uni.tax_municipality_name AS loc_cook_municipality_name,
+      uni.tax_municipality_name AS loc_tax_municipality_name,
       addr.prop_address_full AS loc_property_address,
       addr.prop_address_city_name As loc_property_city,
       addr.prop_address_state AS loc_property_state,
@@ -393,7 +393,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
   # Select fields for output to workbook
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
-    property_full_address, loc_cook_municipality_name, meta_complex_id,
+    property_full_address, loc_tax_municipality_name, meta_complex_id,
     meta_pin_num_cards, meta_tieback_key_pin, meta_tieback_proration_rate,
     prior_near_land, prior_near_bldg, prior_near_tot,
     prior_near_land_rate, prior_near_bldg_rate, prior_near_land_pct_total,
@@ -763,8 +763,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 #    then manually update the formatting by selecting
 #    PivotTable Fields > Values > {fieldname} > Value Field Settings... >
 #    Number Format.
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
