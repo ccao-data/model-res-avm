@@ -410,7 +410,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
-    flag_land_value_capped, flag_hie_num_expired,
+    flag_land_value_capped,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
     flag_char_missing_critical_value, flag_has_recent_assessable_permit
@@ -654,48 +654,6 @@ card_detail_schema <- list(
     style = "right_align", display_name = "# Comm. Units"
   )
 )
-
-# Validate that each schema's display_name fields match the column headers in
-# the template workbook. Catches drift between the schema and the template
-# (e.g. a column added to one but not the other). Normalizes whitespace so
-# minor spacing differences in the xlsx don't cause false failures.
-validate_schema_vs_template <- function(
-  schema, template_path, sheet_name, header_row
-) {
-  normalize <- function(x) gsub("\\s+", " ", trimws(x))
-  wb_tmpl <- loadWorkbook(template_path)
-  tmpl_df <- readWorkbook(
-    wb_tmpl,
-    sheet = sheet_name,
-    colNames = FALSE,
-    skipEmptyRows = FALSE
-  )
-  tmpl_headers <- normalize(as.character(unlist(tmpl_df[header_row, ])))
-  schema_names <- normalize(
-    vapply(schema, function(x) x$display_name, character(1))
-  )
-  n_schema <- length(schema_names)
-  n_tmpl <- length(tmpl_headers)
-  if (n_schema != n_tmpl) {
-    stop(glue(
-      "Schema has {n_schema} columns but '{sheet_name}' template has ",
-      "{n_tmpl}. Update the schema or template so they match."
-    ))
-  }
-  mismatches <- which(schema_names != tmpl_headers)
-  if (length(mismatches) > 0) {
-    mismatch_msg <- paste(vapply(mismatches, function(i) {
-      glue(
-        "  Col {i}: schema='{schema_names[i]}'",
-        " vs template='{tmpl_headers[i]}'"
-      )
-    }, character(1)), collapse = "\n")
-    stop(glue(
-      "Column display name mismatches in '{sheet_name}':\n{mismatch_msg}"
-    ))
-  }
-  invisible(NULL)
-}
 
 template_path <- here("misc", "desk_review_template.xlsx")
 validate_schema_vs_template(
