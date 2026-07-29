@@ -31,8 +31,6 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(
 )
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Define Functions ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -74,8 +72,6 @@ process_array_column <- function(x) {
     }
   })
 }
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -224,8 +220,6 @@ dbDisconnect(AWS_ATHENA_CONN_NOCTUA)
 rm(AWS_ATHENA_CONN_NOCTUA)
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Home Improvement Exemptions -----------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -275,8 +269,6 @@ training_data_w_hie <- training_data %>%
     char_porch = recode(char_porch, "3" = "0")
   ) %>%
   relocate(hie_num_active, .before = meta_cdu)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

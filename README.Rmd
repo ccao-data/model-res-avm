@@ -734,6 +734,20 @@ We also publish a Docker image containing the model code and all of the dependen
 
 For installation issues, particularly related to package installation and dependencies, see [Managing R dependencies](#managing-r-dependencies) and [Troubleshooting](#troubleshooting).
 
+#### Installation Using Docker
+
+You can build a Docker image to run the model using the Dockerfile in the root of this repo:
+
+```bash
+docker build .
+```
+
+**Warning**: Since renv must install some packages from GitHub, Docker builds often run into GitHub rate limits, which can cause the build to fail. To get around the rate limit, mount a GitHub Personal Access Token as a [build secret](https://docs.docker.com/build/building/secrets/). For example, if you follow the common pattern of storing a token in the `~/.Renviron` config file, then the following command will mount that token into the build context:
+
+```bash
+GITHUB_PAT=$(grep '^GITHUB_PAT=' ~/.Renviron | cut -d '=' -f2-) docker build --secret id=github_token,env=GITHUB_PAT .
+```
+
 ### Running
 
 #### Manually
@@ -950,6 +964,64 @@ The process for updating *dependencies for other lockfiles** is more complex, si
 3. Run `renv::install("<dependency_name>")` to add or update the dependency as necessary
 4. Run `renv::snapshot()` to update the reporting lockfile with the dependencies defined in the `DESCRIPTION` file
 5. Run `renv::activate(profile = "default")` if you would like to switch back to the default renv profile
+
+### Upgrading All Dependencies
+
+Every so often, we need to upgrade all of our renv dependencies at once. This is common when upgrading to a new R major version, which often introduces breaking changes with old package versions.
+
+To **update all dependencies**, perform the following steps for each profile (`default`, `reporting`, and `dev`):
+
+1. Remove the existing renv library and staging folders for the profile to clear out old package versions
+2. Open an `R` shell and activate the renv profile
+    1. To ensure complete activation, this requires closing the R shell and reopening it after calling `renv::activate()`
+3. Install packages based on the profile dependencies listed in the `DESCRIPTION` file
+4. Snapshot the packages to update the renv lockfile for the profile
+5. Run a model to confirm that everything works with the new package versions
+
+The following sections provide commands to perform steps 1-4 for each profile. These commands are intended to run in a terminal session. Commands prefixed with a dollar sign (`$`) indicate bash commands that should run in a bash interpreter, which is the default interpreter when you open a terminal session. Commands prefixed with a greater-than sign (`>`) indicate commands that should run in an R interpreter, which you open by running the command `R` in a bash interpreter.
+
+#### Default profile
+
+```
+$ rm -rf renv/library renv/staging
+$ R
+> renv::activate()
+> q()
+$ R
+> renv::install()
+> renv::snapshot()
+```
+
+#### Reporting profile
+
+```
+$ rm -rf renv/profiles/reporting/renv/library renv/profiles/reporting/renv/staging
+$ R
+> renv::activate(profile = "reporting")
+> q()
+$ R
+> renv::install()
+> renv::snapshot()
+```
+
+#### Dev profile
+
+```
+$ rm -rf renv/profiles/dev/renv/library renv/profiles/dev/renv/staging
+$ R
+> renv::activate(profile = "dev")
+> q()
+$ R
+> renv::install()
+> renv::snapshot()
+```
+
+Make sure to open a new R session and re-activate the default profile after you're done updating dependencies.
+
+```
+$ R
+renv::activate(profile = "default")
+```
 
 ## Troubleshooting
 
