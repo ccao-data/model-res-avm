@@ -7,7 +7,7 @@
 # We don't publish the staging URL in public code because we often deploy
 # provisional values to staging, and we don't want users to find the staging
 # app and assume the values are final
-HOMEVAL_STAGING_BASE_URL <- "https://website.com"
+HOMEVAL_STAGING_BASE_URL <- "https://websitea.com"
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
@@ -80,7 +80,7 @@ vacant_land <- dbGetQuery(
       uni.pin AS meta_pin,
       uni.class AS meta_class,
       uni.nbhd_code AS meta_nbhd_code,
-      uni.tax_municipality_name AS loc_cook_municipality_name,
+      uni.tax_municipality_name AS loc_tax_municipality_name,
       addr.prop_address_full AS loc_property_address,
       addr.prop_address_city_name As loc_property_city,
       addr.prop_address_state AS loc_property_state,
@@ -393,7 +393,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
   # Select fields for output to workbook
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
-    property_full_address, loc_cook_municipality_name, meta_complex_id,
+    property_full_address, loc_tax_municipality_name, meta_complex_id,
     meta_pin_num_cards, meta_tieback_key_pin, meta_tieback_proration_rate,
     prior_near_land, prior_near_bldg, prior_near_tot,
     prior_near_land_rate, prior_near_bldg_rate, prior_near_land_pct_total,
@@ -489,7 +489,7 @@ pin_detail_schema <- list(
   meta_class = list(display_name = "Class"),
   meta_nbhd_code = list(display_name = "Nbhd."),
   property_full_address = list(display_name = "Street Address"),
-  loc_cook_municipality_name = list(display_name = "Municipality"),
+  loc_tax_municipality_name = list(display_name = "Municipality"),
   meta_complex_id = list(display_name = "Townhome Complex ID"),
   meta_pin_num_cards = list(display_name = "PIN Num. Cards"),
   meta_tieback_key_pin = list(display_name = "Tieback Key PIN"),
@@ -529,10 +529,10 @@ pin_detail_schema <- list(
     style = "pct", display_name = "Lnd. % of Tot."
   ),
   prior_near_yoy_change_nom = list(
-    style = "price", display_name = "YoY Δ $"
+    style = "price", display_name = "YoY ∆ $"
   ),
   prior_near_yoy_change_pct = list(
-    style = "pct", cond = "color_scale", display_name = "YoY Δ %"
+    style = "pct", cond = "color_scale", display_name = "YoY ∆ %"
   ),
   sale_ratio = list(
     formula = TRUE, style = "2digit_num", display_name = "Sale Ratio"
@@ -591,7 +591,6 @@ pin_detail_schema <- list(
   flag_land_gte_95_percentile = list(display_name = "Lnd. >= 95% in Town"),
   flag_bldg_gte_95_percentile = list(display_name = "Bld. >= 95% in Town"),
   flag_land_value_capped = list(display_name = "Land Value Capped"),
-  flag_hie_num_expired = list(display_name = "# Expired 288s"),
   flag_prior_near_to_pred_unchanged = list(
     display_name = "Value Unchanged"
   ),
