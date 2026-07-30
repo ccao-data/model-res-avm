@@ -1036,14 +1036,14 @@ stages:
     deps:
     - path: pipeline/07-export.R
       hash: md5
-      md5: bd72f9ee143a584446c2c3d3bc28d35b
-      size: 35506
+      md5: 5fc27341590c80fcee1b1089328d1821
+      size: 28351
     params:
       params.yaml:
         assessment.year: '2026'
         export:
           triad_code: '3'
-          run_id: 2026-02-03-compassionate-bowen
+          run_id: 2026-07-30-ecstatic-carly
         input.max_sale_year: '2025'
         input.min_sale_year: '2017'
         ratio_study:
