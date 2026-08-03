@@ -16,6 +16,8 @@ metadata <- read_parquet(paths$output$metadata$local)
 run_id <- metadata$run_id
 
 
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Upload --------------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -34,14 +36,14 @@ if (upload_enable) {
 
   # Upload lightgbm fit
   aws.s3::put_object(
-    file = paths$output$workflow_fit$local,
-    object = paths$output$workflow_fit$s3
+    paths$output$workflow_fit$local,
+    paths$output$workflow_fit$s3
   )
 
   # Upload Tidymodels recipe
   aws.s3::put_object(
-    file = paths$output$workflow_recipe$local,
-    object = paths$output$workflow_recipe$s3
+    paths$output$workflow_recipe$local,
+    paths$output$workflow_recipe$s3
   )
 
   # Upload finalized run parameters
@@ -80,8 +82,8 @@ if (upload_enable) {
 
     # Upload the raw parameters object to S3 in case we need to use it later
     aws.s3::put_object(
-      file = paths$output$parameter_raw$local,
-      object = paths$output$parameter_raw$s3
+      paths$output$parameter_raw$local,
+      paths$output$parameter_raw$s3
     )
 
     # Upload the parameter ranges used for CV
@@ -145,6 +147,7 @@ if (upload_enable) {
       hive_style = TRUE,
       compression = "snappy"
     )
+
 
 
   # 2.3. Evaluate --------------------------------------------------------------
@@ -248,31 +251,32 @@ if (upload_enable) {
 
   # Upload metadata
   aws.s3::put_object(
-    file = paths$output$metadata$local,
-    object = paths$output$metadata$s3
+    paths$output$metadata$local,
+    paths$output$metadata$s3
   )
 
   # Upload finalized timings
   aws.s3::put_object(
-    file = paths$output$timing$local,
-    object = paths$output$timing$s3
+    paths$output$timing$local,
+    paths$output$timing$s3
   )
 
   # Upload performance report
   aws.s3::put_object(
-    file = paths$output$report_performance$local,
-    object = paths$output$report_performance$s3
+    paths$output$report_performance$local,
+    paths$output$report_performance$s3
   )
 
   # Upload feature report
   if (feature_report_enable) {
     message("Uploading feature report")
     aws.s3::put_object(
-      file = paths$output$report_model_features$local,
-      object = paths$output$report_model_features$s3
+      paths$output$report_model_features$local,
+      paths$output$report_model_features$s3
     )
   }
 }
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -318,7 +322,7 @@ if (upload_enable) {
       ) %>%
       mutate(township_name = town_convert(geography_id)) %>%
       select(cod, township_name) %>%
-      mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
+      mutate(across(where(is.numeric), round, 2)) %>%
       arrange(cod) %>%
       knitr::kable(format = "rst") %>%
       as.character() %>%

@@ -26,15 +26,13 @@ model_main_recipe <- function(data, pred_vars, cat_vars, id_vars) {
     # Remove any variables not an outcome var or in the pred_vars vector
     step_rm(any_of("time_split")) %>%
     step_rm(-all_outcomes(), -all_predictors(), -has_role("ID")) %>%
-    # Replace novel levels with "new". Inject cat_vars with !! so the selector
-    # holds a plain character vector, since tune_args() evaluates step selectors
-    # outside of a selecting context, where all_of() is deprecated
-    step_novel(!!cat_vars, -has_role("ID")) %>%
+    # Replace novel levels with "new"
+    step_novel(all_of(cat_vars), -has_role("ID")) %>%
     # Replace NA in factors with "unknown"
-    step_unknown(!!cat_vars, -has_role("ID")) %>%
+    step_unknown(all_of(cat_vars), -has_role("ID")) %>%
     # Convert factors to 0-indexed integers
     step_integer(
-      !!cat_vars, -has_role("ID"),
+      all_of(cat_vars), -has_role("ID"),
       strict = TRUE, zero_based = TRUE
     )
 }

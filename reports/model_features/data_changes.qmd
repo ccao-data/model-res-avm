@@ -170,6 +170,7 @@ unmatched_values_long <-
       value.name = "value"
     )
   ][
+
     # inner join to keep only failed combinations
     card_matches_long[is_match == FALSE, .(meta_pin, meta_card_num, column)][
       , column := as.character(column)

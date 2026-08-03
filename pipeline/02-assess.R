@@ -27,6 +27,8 @@ land_nbhd_rate <- read_parquet(
 )
 
 
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Predict Values ------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -71,6 +73,8 @@ if (log_transform_enable) {
   assessment_card_data_pred <- assessment_card_data_pred %>%
     mutate(pred_card_initial_fmv = exp(pred_card_initial_fmv))
 }
+
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -159,6 +163,8 @@ assessment_card_data_round <- assessment_card_data_cid %>%
   )
 
 
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 4. Value Land ----------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -203,6 +209,8 @@ assessment_pin_data_w_land <- assessment_card_data_round %>%
     # Keep the uncapped value for display in desk review
     pred_pin_uncapped_fmv_land = ceiling(char_land_sf * land_rate_per_sqft)
   )
+
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -310,6 +318,8 @@ assessment_card_data_merged <- assessment_pin_data_prorated %>%
 # 16071280240000 17223100350000 30201160060000 16071280240000 25293010470000
 
 
+
+
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 6. Card-Level Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -337,6 +347,8 @@ assessment_card_data_merged %>%
     as_factor = FALSE
   ) %>%
   write_parquet(paths$output$assessment_card$local)
+
+
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
