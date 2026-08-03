@@ -33,6 +33,10 @@ toggle:
   # to false if you are not a CCAO employee
   upload_enable: true
 
+  # Should the feature report be run, which compares the inputs to the previous
+  # year's model inputs?
+  feature_report_enable: false
+
 
 # Data/Ingest ------------------------------------------------------------------
 
@@ -87,6 +91,16 @@ input:
       yrblt: 4
       dist_ft: 250
 
+  # Parameters for running the pipeline with a stratified subset of training
+  # data. Useful for faster development iterations. The subset is stratified
+  # by year, township, and class to maintain representation across categories
+  subset:
+    # Whether to use a subset of the training data instead of the full dataset
+    enable: false
+
+    # Fraction of the training data to keep (between 0 and 1)
+    fraction: 0.25
+
 
 # Cross-validation -------------------------------------------------------------
 
@@ -95,6 +109,12 @@ cv:
   # Proportion of the training data to use for training vs test, split by time.
   # 0.9 means the most recent 10% of sales are used as a test set
   split_prop: 0.9
+
+  # A stratified test set selects a random percentage of sales from those not
+  # already included in the time-split test set, grouped by township, year, and
+  # month to add to the test set. If this is set to 0, it has no impact on the
+  # pipeline.
+  stratified_prop: 0.00
 
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
@@ -131,9 +151,17 @@ cv:
 model:
   engine: "lightgbm"
 
-  # Objective/loss function minimized by LightGBM. See website for possible
-  # options: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
-  objective: "rmse"
+  # Objective/loss function minimized by LightGBM. Standard LightGBM names
+  # like "rmse" / "regression" / "regression_l1" pass straight through. The
+  # special value "mse_cov" selects lightsnip's custom MSE + rho * Cov(r, y)^2
+  # objective (a soft vertical-equity penalty); when used, set
+  # `model.parameter.mse_cov_rho` below to control the penalty weight.
+  # See: https://lightgbm.readthedocs.io/en/latest/Parameters.html#objective
+  objective: "mse_cov"
+
+  # Log-transform `meta_sale_price` before fitting LightGBM; predictions are
+  # exp()-scaled back to dollars. The linear baseline always uses log(price).
+  log_sale_price: true
 
   # Parameters related to model determinism. Current settings should force
   # the same output every time if the same hyperparameters are used
@@ -298,6 +326,12 @@ model:
     # stopping training. Early stopping is deactivated when NULL
     stop_iter: 50
 
+    # Penalty weight (rho) for the lightsnip "mse_cov" custom objective.
+    # Only used when `model.objective` is set to "mse_cov"; ignored otherwise.
+    # 0 recovers plain MSE; larger values penalize Cov(residual, y) more
+    # strongly
+    mse_cov_rho: 1
+
   hyperparameter:
     # Default set of hyperparameters to use if CV is not enabled
     default:
@@ -431,4 +465,4 @@ comp:
 # upload
 export:
   triad_code: "3"
-  run_id: "2026-07-30-ecstatic-carly"
+  run_id: "2026-02-11-recursing-rob"
