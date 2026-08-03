@@ -16,7 +16,6 @@ purrr::walk(list.files("R/", "\\.R$", full.names = TRUE), source)
 set.seed(NULL)
 
 
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Save Metadata -------------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -100,6 +99,7 @@ metadata <- tibble::tibble(
   comp_enable = comp_enable,
   comp_num_comps = params$comp$num_comps,
   cv_enable = cv_enable,
+  log_transform_enable = log_transform_enable,
   cv_num_folds = params$cv$num_folds,
   cv_fold_overlap = params$cv$fold_overlap,
   cv_initial_set = params$cv$initial_set,
@@ -126,8 +126,6 @@ metadata <- tibble::tibble(
     .after = "input_complex_match_fuzzy_value"
   ) %>%
   arrow::write_parquet(paths$output$metadata$local)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -203,8 +201,6 @@ if (!isTRUE(feature_report_enable)) {
     }
   )
 }
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

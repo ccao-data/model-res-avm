@@ -111,6 +111,7 @@ stats_county_logit <- stats_logit_fit %>%
     )
   ) %>%
   kable(
+    "html",
     caption = paste0(
       "Sample size: ",
       format(stats_logit_sample_size, big.mark = ","),
@@ -141,14 +142,16 @@ stats_county_logit <- stats_logit_fit %>%
   pack_rows("Garage 1 Ext. Wall Material", 38, 41) %>%
   pack_rows("Attic Type", 42, 44) %>%
   pack_rows("Basement Type", 45, 48) %>%
-  pack_rows("Exterior Wall Material", 49, 51) %>%
-  pack_rows("Central Heating", 52, 55) %>%
-  pack_rows("Basement Finish", 56, 58) %>%
-  pack_rows("Roof Material", 59, 64) %>%
-  pack_rows("Porch", 65, 66) %>%
-  pack_rows("Central Air Conditioning", 67, 68) %>%
-  pack_rows("Design Plan", 69, 70) %>%
-  pack_rows("Recent Renovation", 71, 71)
+  pack_rows("Exterior Wall Material", 49, 52) %>%
+  pack_rows("Central Heating", 53, 56) %>%
+  pack_rows("Basement Finish", 57, 59) %>%
+  pack_rows("Roof Material", 60, 65) %>%
+  pack_rows("Class", 66, 81) %>%
+  pack_rows("Porch", 82, 83) %>%
+  pack_rows("Central Air Conditioning", 84, 85) %>%
+  pack_rows("Design Plan", 86, 87) %>%
+  pack_rows("Recent Renovation", 88, 88) %>%
+  pack_rows("ACS5", 89, 94)
 ```
 
 ```{r _stats_county_regression}

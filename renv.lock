@@ -292,10 +292,8 @@
     "aws.ec2metadata": {
       "Package": "aws.ec2metadata",
       "Version": "0.2.0",
-      "Source": "URL",
-      "Repository": "CRAN",
-      "RemoteType": "url",
-      "RemoteUrl": "https://cran.r-project.org/src/contrib/Archive/aws.ec2metadata/aws.ec2metadata_0.2.0.tar.gz",
+      "Source": "Repository",
+      "Repository": "http://cloudyr.github.io/drat",
       "Requirements": [
         "curl",
         "jsonlite"
@@ -321,14 +319,16 @@
     },
     "aws.signature": {
       "Package": "aws.signature",
-      "Version": "0.6.0",
+      "Version": "0.6.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "base64enc",
-        "digest"
+        "curl",
+        "digest",
+        "jsonlite"
       ],
-      "Hash": "0006bcef272aad12f78dd5a85fc7f4fc"
+      "Hash": "4977981107fb5c1a64e7a68b9fe82586"
     },
     "base64enc": {
       "Package": "base64enc",
@@ -720,7 +720,7 @@
     },
     "future": {
       "Package": "future",
-      "Version": "1.70.0",
+      "Version": "1.75.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -733,7 +733,7 @@
         "tools",
         "utils"
       ],
-      "Hash": "b6e82bb76281ac612788232b3cdfa3d9"
+      "Hash": "4de585b60e8ae1881bd1e541363214c4"
     },
     "future.apply": {
       "Package": "future.apply",
@@ -784,7 +784,7 @@
     },
     "git2r": {
       "Package": "git2r",
-      "Version": "0.36.2",
+      "Version": "0.33.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -792,7 +792,7 @@
         "graphics",
         "utils"
       ],
-      "Hash": "3e1959a7caa0af97272c04f8313cdf84"
+      "Hash": "cdec9964efeda730d1b2cd3d5dd27747"
     },
     "globals": {
       "Package": "globals",
@@ -1101,7 +1101,7 @@
     },
     "lightgbm": {
       "Package": "lightgbm",
-      "Version": "4.6.0",
+      "Version": "4.7.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1115,7 +1115,7 @@
         "parallel",
         "utils"
       ],
-      "Hash": "d8ea37a9e9e62673f9c26390747d294d"
+      "Hash": "39cff78ee8102fe658a3531d4b2403e4"
     },
     "lightsnip": {
       "Package": "lightsnip",
@@ -1251,8 +1251,13 @@
     "noctua": {
       "Package": "noctua",
       "Version": "2.6.3",
-      "Source": "Repository",
-      "Repository": "CRAN",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "DyfanJones",
+      "RemoteRepo": "noctua",
+      "RemoteRef": "master",
+      "RemoteSha": "fdb0b87acf4dc3c59a61cadfd4a11d71b3a93615",
       "Requirements": [
         "DBI",
         "R",
@@ -1263,7 +1268,7 @@
         "utils",
         "uuid"
       ],
-      "Hash": "15471c0eaafcb7f2a4dabc983ea71112"
+      "Hash": "557d2e369b9562eb20e0b1bc238e077f"
     },
     "numDeriv": {
       "Package": "numDeriv",
@@ -1639,13 +1644,13 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.1.5",
+      "Version": "1.1.6",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "utils"
       ],
-      "Hash": "770fcbc2c4616e8fbcb187cccd46a6b1"
+      "Hash": "3036c4b273d882c56e8cdd660ebaf6f0"
     },
     "reticulate": {
       "Package": "reticulate",
