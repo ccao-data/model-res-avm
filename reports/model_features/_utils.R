@@ -113,12 +113,13 @@ plot_small_multiple_histograms <- function(new, old = NULL, stat = "bin") {
 
 # Base function for plotting small multiple violins and lines
 plot_small_multiple_base <- function(
-    new_df,
-    old_df = NULL,
-    y,
-    ncol,
-    y_axis_label = "FMV",
-    range = NULL) {
+  new_df,
+  old_df = NULL,
+  y,
+  ncol,
+  y_axis_label = "FMV",
+  range = NULL
+) {
   new_df$data <- "new"
   if (!is.null(old_df)) {
     old_df$data <- "old"
