@@ -773,7 +773,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       rows = pin_row_range, cols = style_cols, gridExpand = TRUE
     )
   }
-  addFilter(wb, pin_sheet_name, 6, pin_col_range)
+  addFilter(wb, pin_sheet_name, num_head, pin_col_range)
 
   # Format YoY % change column with a range of colors from low to high
   conditionalFormatting(
