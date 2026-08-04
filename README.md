@@ -1515,7 +1515,7 @@ was re-run, so there are *two* final 2026 models.
 | 2026-07-30-ecstatic-carly | Bloom, Calumet, Lemont, Orland, Proviso, Rich, Thornton, Worth | 405,195 |
 
 The two models perform almost identically, but the CCAO decided that
-even such a minor iprovement was worth re-running the model.
+even such a minor improvement was worth re-running the model.
 
 ##### 2026-02-11-recursing-rob
 
