@@ -1511,8 +1511,8 @@ was re-run, so there are *two* final 2026 models.
 
 | Model Run | Relevant Townships | Number of Sales for Training |
 |----|----|----|
-| 2026-02-11-recursing-rob | Berwyn, Bremen, Cicero, Lyons, Oak Park, Palos, River Forest, Riverside, Stickney | 396480 |
-| 2026-07-30-ecstatic-carly | Bloom, Calumet, Lemont, Orland, Proviso, Rich, Thornton, Worth | 405195 |
+| 2026-02-11-recursing-rob | Berwyn, Bremen, Cicero, Lyons, Oak Park, Palos, River Forest, Riverside, Stickney | 396,480 |
+| 2026-07-30-ecstatic-carly | Bloom, Calumet, Lemont, Orland, Proviso, Rich, Thornton, Worth | 405,195 |
 
 The two models perform almost identically, but the CCAO decided that
 even such a minor iprovement was worth re-running the model.
