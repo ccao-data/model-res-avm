@@ -1504,12 +1504,36 @@ transactions in the training set as possible.
 
 #### 2026
 
-- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/assessment_data.parquet)
-- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/char_data.parquet)
-- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/complex_id_data.parquet)
-- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/hie_data.parquet)
-- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/land_nbhd_rate_data.parquet)
-- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/training_data.parquet)
+After the initial 2026 model run the CCAO was informed by the Illinois
+Department of Revenue that some relevant home sales from 2025 were
+missing from our database. After ingesting these new sales, the model
+was re-run, so there are *two* final 2026 models.
+
+| Model Run | Relevant Townships | Number of Sales for Training |
+|----|----|----|
+| 2026-02-11-recursing-rob | Berwyn, Bremen, Cicero, Lyons, Oak Park, Palos, River Forest, Riverside, Stickney | 396480 |
+| 2026-07-30-ecstatic-carly | Bloom, Calumet, Lemont, Orland, Proviso, Rich, Thornton, Worth | 405195 |
+
+The two models perform almost identically, but the CCAO decided that
+even such a minor iprovement was worth re-running the model.
+
+##### 2026-02-11-recursing-rob
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/training_data.parquet)
+
+##### 2026-07-30-ecstatic-carly (final)
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/).
