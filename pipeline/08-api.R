@@ -78,16 +78,6 @@ card_data <- arrow::open_dataset(
 # 3. Export API Workbooks ------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Helper to find a column's 1-based position in a schema list by name
-col_pos <- function(schema, col_name) {
-  which(names(schema) == col_name)
-}
-
-# Indices of all schema columns whose `style` field equals `style_name`
-cols_with_style <- function(schema, style_name) {
-  which(vapply(schema, function(x) identical(x$style, style_name), logical(1)))
-}
-
 # Schema for all columns in the Cards sheet. display_name must match the
 # corresponding header in row 4 of model_api_template.xlsm exactly (whitespace
 # is normalized). Adding or removing a column requires updating both this list

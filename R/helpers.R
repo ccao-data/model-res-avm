@@ -589,3 +589,15 @@ validate_schema_vs_template <- function(
   }
   invisible(NULL)
 }
+
+# Find a column's 1-based position in a schema list by name
+col_pos <- function(schema, col_name) {
+  pos <- which(names(schema) == col_name)
+  if (length(pos) == 0L) stop("Column '", col_name, "' not found in schema")
+  pos
+}
+
+# Indices of all schema columns whose `style` field equals `style_name`
+cols_with_style <- function(schema, style_name) {
+  which(vapply(schema, function(x) identical(x$style, style_name), logical(1)))
+}

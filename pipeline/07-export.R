@@ -451,16 +451,6 @@ assessment_card_prepped <- assessment_card %>%
 # 5. Export Desk Review --------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Helper to find a column's 1-based position in a schema list by name
-col_pos <- function(schema, col_name) {
-  which(names(schema) == col_name)
-}
-
-# Indices of all schema columns whose `style` field equals `style_name`
-cols_with_style <- function(schema, style_name) {
-  which(vapply(schema, function(x) identical(x$style, style_name), logical(1)))
-}
-
 # Indices of all schema columns whose `cond` field equals `cond_name`
 cols_with_cond <- function(schema, cond_name) {
   which(vapply(schema, function(x) identical(x$cond, cond_name), logical(1)))
@@ -664,17 +654,90 @@ style_pct <- createStyle(numFmt = "PERCENTAGE")
 style_comma <- createStyle(numFmt = "COMMA")
 style_link <- createStyle(fontColour = "blue", textDecoration = "underline")
 style_right_align <- createStyle(halign = "right")
+style_price_highlight <- createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0")
 
 # Named map from schema style tags to style objects
 wb_styles <- list(
   price           = style_price,
-  price_highlight = createStyle(fgFill = "#FFFFCC", numFmt = "$#,##0"),
+  price_highlight = style_price_highlight,
   `2digit_price`  = style_2digit_price,
   `2digit_num`    = style_2digit_num,
   pct             = style_pct,
   comma           = style_comma,
   right_align     = style_right_align
 )
+
+# Parse the Neighborhood Breakouts pivot table XML from the template and
+# cross-reference it against pin_detail_schema.This should catch both
+# issues in the workbook itself and drift within the R files which upload
+# to it.
+local({
+  con <- unz(template_path, "xl/pivotTables/pivotTable1.xml")
+  xml_raw <- paste(readLines(con, warn = FALSE), collapse = "")
+  close(con)
+
+  # Extract the 0-based field indices from each XML section via regex
+  section_indices <- function(tag, attr) {
+    section <- regmatches(
+      xml_raw,
+      regexpr(sprintf("<%s[^/].*?</%s>", tag, tag), xml_raw, perl = TRUE)
+    )
+    as.integer(regmatches(
+      section,
+      gregexpr(sprintf('(?<=%s=")[0-9]+', attr), section, perl = TRUE)
+    )[[1]])
+  }
+  row_indices <- section_indices("rowFields", "x")
+  data_indices <- unique(section_indices("dataFields", "fld"))
+
+  # For a 0-based field index, return the schema column name and display_name
+  col_at <- function(idx) {
+    name <- names(pin_detail_schema)[idx + 1L]
+    list(name = name, display_name = pin_detail_schema[[name]]$display_name)
+  }
+
+  # Verify a column appears at the expected field index in both the XML and
+  # the schema, with the expected display_name (pivot table field label)
+  check <- function(
+    col_name, expected_display_name, expected_idx, xml_indices
+  ) {
+    if (!expected_idx %in% xml_indices) {
+      stop(sprintf(
+        "Pivot field '%s' (index %d) not found in template XML",
+        col_name, expected_idx
+      ))
+    }
+    xml_col <- col_at(expected_idx)
+    if (!identical(xml_col$name, col_name)) {
+      stop(sprintf(
+        "Template index %d points to '%s', expected '%s'",
+        expected_idx, xml_col$name, col_name
+      ))
+    }
+    if (!identical(xml_col$display_name, expected_display_name)) {
+      stop(sprintf(
+        "Display name for '%s' is '%s', expected '%s'",
+        col_name, xml_col$display_name, expected_display_name
+      ))
+    }
+    schema_idx <- col_pos(pin_detail_schema, col_name) - 1L
+    if (!identical(schema_idx, expected_idx)) {
+      stop(sprintf(
+        "Schema position for '%s' is index %d, expected %d",
+        col_name, schema_idx, expected_idx
+      ))
+    }
+  }
+
+  # Row grouping fields — pivot table groups rows by Class, then by Nbhd.
+  check("meta_class", "Class", 1L, row_indices)
+  check("meta_nbhd_code", "Nbhd.", 2L, row_indices)
+
+  # Data value fields
+  check("prior_near_yoy_change_pct", "YoY ∆ %", 24L, data_indices)
+  check("total_mv", "Total MV", 62L, data_indices)
+  check("mv_difference", "MV Difference", 63L, data_indices)
+})
 
 # Write raw data to sheets for parcel details
 for (town in unique(assessment_pin_prepped$township_code)) {
@@ -888,7 +951,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   )
 
   # Get range of rows in the card data + number of header rows
-  card_row_range <- 5:(nrow(assessment_card_filtered) + 6)
+  card_num_head <- 4
+  card_row_range <-
+    (card_num_head + 1):(nrow(assessment_card_filtered) + card_num_head)
   card_col_range <- seq_along(card_detail_schema)
 
   # Apply cell styles driven by the schema
@@ -900,24 +965,24 @@ for (town in unique(assessment_pin_prepped$township_code)) {
       rows = card_row_range, cols = style_cols, gridExpand = TRUE
     )
   }
-  addFilter(wb, card_sheet_name, 4, card_col_range)
+  addFilter(wb, card_sheet_name, card_num_head, card_col_range)
 
   # Write card-level data to workbook
   writeData(
     wb, card_sheet_name, assessment_card_filtered,
-    startCol = 1, startRow = 5, colNames = FALSE
+    startCol = 1, startRow = card_num_head + 1, colNames = FALSE
   )
 
   # Write formulas and headers to workbook
   writeFormula(
     wb, card_sheet_name,
     assessment_card_filtered$meta_pin,
-    startRow = 5
+    startRow = card_num_head + 1
   )
   writeData(
     wb, card_sheet_name, tibble(model_header),
     startCol = col_pos(card_detail_schema, "meta_card_pct_total_fmv"),
-    startRow = 3, colNames = FALSE
+    startRow = card_num_head - 1, colNames = FALSE
   )
 
   # 5.3. Save output -----------------------------------------------------------
