@@ -697,7 +697,7 @@ local({
   }
 
   # Verify a column appears at the expected field index in both the XML and
-  # the schema, with the expected display_name (pivot table field label)
+  # the schema, with the expected display_name
   check <- function(
     col_name, expected_display_name, expected_idx, xml_indices
   ) {
