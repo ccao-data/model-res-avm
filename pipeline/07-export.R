@@ -797,24 +797,26 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Write PIN-level data to workbook
   writeData(
     wb, pin_sheet_name, assessment_pin_filtered,
-    startCol = 1, startRow = 7, colNames = FALSE
+    startCol = 1, startRow = num_head + 1, colNames = FALSE
   )
 
   # Write formulas and headers to workbook
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_filtered$meta_pin,
-    startRow = 7
+    startRow = num_head + 1
   )
   writeFormula(
     wb, pin_sheet_name,
     x = assessment_pin_filtered$homeval_report,
-    startCol = col_pos(pin_detail_schema, "homeval_report"), startRow = 7
+    startCol = col_pos(pin_detail_schema, "homeval_report"),
+    startRow = num_head + 1
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_sale_ratios$sale_ratio,
-    startCol = col_pos(pin_detail_schema, "sale_ratio"), startRow = 7
+    startCol = col_pos(pin_detail_schema, "sale_ratio"),
+    startRow = num_head + 1
   )
   writeData(
     wb, pin_sheet_name, tibble(sheet_header),
@@ -840,13 +842,13 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     wb, pin_sheet_name,
     assessment_pin_mvs$total_mv,
     startCol = col_pos(pin_detail_schema, "total_mv"),
-    startRow = 7
+    startRow = num_head + 1
   )
   writeFormula(
     wb, pin_sheet_name,
     assessment_pin_mvs$mv_difference,
     startCol = col_pos(pin_detail_schema, "mv_difference"),
-    startRow = 7
+    startRow = num_head + 1
   )
   hidden_cols <- cols_hidden(pin_detail_schema)
   setColWidths(
