@@ -2,6 +2,8 @@
 
 The Data Department has implemented and tested numerous improvements to the model-res-avm repository across modeling, infrastructure, reporting, and feature engineering. Not all tests and experiments have been incorporated into the final model. This document serves as a historical record of what has been explored, what was adopted, and what was set aside.
 
+Some entries originate from the [Enterprise Intelligence repository](https://github.com/ccao-data/enterprise-intelligence). This repository is private, so a summary is provided here for public reference.
+
 ## Themes
 
 | Theme | Description |
