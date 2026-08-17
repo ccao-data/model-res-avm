@@ -19,7 +19,7 @@ current_year <- current_date %>% format("%Y")
 #
 #   * From September to December (post assessment), `year` = next year
 #   * From January to August (during assessment), `year` = current year
-year <- if (current_month < "09") {
+year <- if (current_month < "08") {
   current_year
 } else {
   as.character(as.numeric(current_year) + 1)
