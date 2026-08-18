@@ -137,6 +137,8 @@ High priority tasks must be completed before the model deadlines.
 Low priority tasks must be complete eventually, but are not time-sensitive:
 
 - [ ] Update the `model.final_model` seed in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to include metadata for the res and condo models
+- [ ] Update the `vars.data_test_model_current_assessment_year` variable in the `dbt_project.yml` config file in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to increment the assessment year
+    - Before incrementing this value, make sure that the weekly `test-dbt-models` data integrity test workflow in `data-architecture` has run at least once since this year's final models ran, since otherwise it's possible that the final model artifacts may be untested   
 - [ ] Update `params.yaml` with the hyperparameters discovered by the CV run for both models
 - [ ] Make sure the `vars_dict` data in [`ccao`](https://github.com/ccao-data/ccao/) is up-to-date for new features
   - If you add any features to this dictionary that are used in either model, make sure to re-knit the README for models that use the feature
