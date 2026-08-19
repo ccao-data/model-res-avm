@@ -81,8 +81,7 @@ card_data <- arrow::open_dataset(
 # Schema for all columns in the Cards sheet. display_name must match the
 # corresponding header in row 4 of model_api_template.xlsm exactly (whitespace
 # is normalized). Adding or removing a column requires updating both this list
-# and the template. top_predictors columns (cols 7-16) are model-specific and
-# must also be kept in sync with the template when predictors change.
+# and the template.
 api_cards_schema <- list(
   meta_pin = list(display_name = "PIN"),
   meta_card_num = list(display_name = "Card"),
