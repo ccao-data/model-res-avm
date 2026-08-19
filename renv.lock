@@ -299,7 +299,7 @@
         "jsonlite"
       ],
       "Hash": "2e630add89f47540d9da2240710e2702"
-},
+    },
     "aws.s3": {
       "Package": "aws.s3",
       "Version": "0.3.22",
