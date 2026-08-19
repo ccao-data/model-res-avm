@@ -298,8 +298,8 @@
         "curl",
         "jsonlite"
       ],
-      "Hash": "eaf84d403a7590e90c5b8aa2abbd64e4"
-    },
+      "Hash": "2e630add89f47540d9da2240710e2702"
+},
     "aws.s3": {
       "Package": "aws.s3",
       "Version": "0.3.22",
