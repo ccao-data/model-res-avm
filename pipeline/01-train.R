@@ -315,11 +315,11 @@ if (cv_enable) {
   )
 
   # Save tuning results to file. This is a data.frame where each row is one
-  # CV iteration. tune >= 2.0 adds a `trace` column (rlang call stack objects)
-  # to each nested .notes tibble, which arrow cannot serialize, so drop it
-  # before writing
+  # CV iteration
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
+    # Tune added a trace column (rlang stack objects) to each nested .notes
+    # tibble which arrow cannot serialize
     mutate(.notes = purrr::map(.notes, ~ dplyr::select(.x, -trace))) %>%
     arrow::write_parquet(paths$output$parameter_raw$local)
 
