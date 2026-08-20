@@ -137,6 +137,8 @@ High priority tasks must be completed before the model deadlines.
 Low priority tasks must be complete eventually, but are not time-sensitive:
 
 - [ ] Update the `model.final_model` seed in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to include metadata for the res and condo models
+- [ ] Update the `vars.data_test_model_current_assessment_year` variable in the `dbt_project.yml` config file in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to increment the assessment year
+    - Before incrementing this value, make sure that the weekly `test-dbt-models` data integrity test workflow in `data-architecture` has run at least once since this year's final models ran, since otherwise it's possible that the final model artifacts may be untested   
 - [ ] Update `params.yaml` with the hyperparameters discovered by the CV run for both models
 - [ ] Make sure the `vars_dict` data in [`ccao`](https://github.com/ccao-data/ccao/) is up-to-date for new features
   - If you add any features to this dictionary that are used in either model, make sure to re-knit the README for models that use the feature
@@ -154,11 +156,83 @@ Low priority tasks must be complete eventually, but are not time-sensitive:
     - [ ] Upload the data to the CCAO's public S3 bucket
     - [ ] Make each file in the S3 bucket public using an ACL
     - [ ] Create a link for each file under the appropriate year in the README
-    - [ ] Update the [`model.training_data`](https://github.com/ccao-data/data-architecture/blob/master/dbt/models/model/model.training_data.py) incremental model by running `dbt run --select model.training_data`
+    - [ ] Update the [`model.training_data`](https://github.com/ccao-data/data-architecture/blob/master/dbt/models/model/model.training_data.py) incremental model by running the [`build-and-test-dbt` github workflow](https://github.com/ccao-data/data-architecture/actions/workflows/build_and_test_dbt.yaml) and specifying `model.training_data`
 - [ ] Take a pass through the condo model README to make sure it's up to date
   - [ ] Double-check that the "Features Used" table includes all features and has no missing descriptions
   - [ ] Make sure the "Prior Models" section has a pointer to last year's model
   - [ ] Fetch the final data used to train the model using DVC (same sub-steps as res)
-- [ ] Merge the annual feature branch for the res model into main, then [tag the commit](https://github.com/ccao-data/model-res-avm/tags)
+- [ ] Merge the annual feature branch for the res model into main, then [tag the commit](https://git-scm.com/book/en/v2/Git-Basics-Tagging) so that it shows up on [the tags page for the res model](https://github.com/ccao-data/model-res-avm/tags)
+  - See the docs below for instructions on [tagging a final model commit](#tagging-a-final-model-commit)
 - [ ] Once the annual res model feature branch is merged into main, re-knit the README for the condo model so that the column identifying features that are unique to the condo model in the "Features Used" table is correct
 - [ ] Merge the annual condo model feature branch into main, then tag the commit to match the res model
+
+# Appendix
+
+This section contains some documentation that may be helpful for accomplishing the tasks described above. Click on a section title to expand the docs for that section.
+
+<details>
+<summary><h2>Tagging a final model commit</h2></summary>
+
+There are a few different approaches to tagging a final model commit. The right approach for your situation will depend on whether you are tagging the year's final model for the first time or re-tagging an existing year; it will also depend on whether you are tagging the main branch or a feature branch.
+
+### Tagging the main branch for the first time in an assessment year
+
+If you are tagging a model commit for the first time in an assessment year, you can tag the latest commit on the main branch and push it to the remote:
+
+```bash
+# Make sure you've checked out the latest commit on the main branch
+git checkout main
+git pull origin main
+
+# Tag the commit (replace <YEAR> with the current assessment year in this command)
+git tag -a "<YEAR>-assessment-year" -m "Final model for <YEAR>"
+
+# Push the tag to the remote (also replace <YEAR> here)
+git push origin "<YEAR>-assessment-year"
+```
+
+### Re-tagging an assessment year using the main branch
+
+If a tag already exists for a given assessment year, but you need to update that tag to point to a new commit on the main branch due to changes in the model for that year, you can use [the `--force` option](https://git-scm.com/docs/git-tag#Documentation/git-tag.txt--f) to update the existing tag:
+
+```bash
+# Make sure you've checked out the latest commit on the main branch
+git checkout main
+git pull origin main
+
+# Re-tag the year to point to a new commit (replace <YEAR> with the current assessment year)
+git tag --force -a "<YEAR>-assessment-year" -m "Updated final model for <YEAR>"
+
+# Force-push the new tag to the remote (also replace <YEAR> here)
+git push --force origin "<YEAR>-assessment-year"
+```
+
+### Re-tagging an assessment year using a feature branch
+
+Sometimes we need to tag a new model commit for an assessment year that already has a tag, but the new commit can't be on the main branch, because the main branch has already incorporated changes that we don't want to backport to the existing assessment year. This has happened to us in the past when we noticed partway through the year that we missed some sales for that year's model, but we had already merged some breaking changes into the main branch that weren't appropriate for the prior assessment year.
+
+In situations like this, you can create a long-lived feature branch off of the existing model tag, then selectively make changes to that branch to reflect the necessary changes for the assessment year:
+
+```bash
+# Check out the existing tag (replace <YEAR> with the current assessment year)
+git checkout "<YEAR>-assessment-year"
+
+# Branch off of the tag to create a long-lived feature branch (also replace <YEAR> here)
+git checkout -b "<YEAR>-assessment-year-update"
+```
+
+Commit any necessary changes to the new feature branch, then tag it and push the tag:
+
+```bash
+# Make sure your long-lived feature branch is pushed to the remote (replace <YEAR> here)
+git push origin "<YEAR>-assessment-year-update"
+
+# Tag the new branch (also replace <YEAR> here)
+git tag --force -a "<YEAR>-assessment-year" -m "Updated final model for <YEAR>"
+
+# Force-push the new tag to the remote (also replace <YEAR> here)
+git push --force origin "<YEAR>-assessment-year"
+```
+
+You should also [create a branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule#creating-a-branch-protection-rule) for the long-lived feature branch to make sure we don't accidentally delete it. Select "Restrict deletions" and "Block force pushes" for this rule, and point it at your new branch. For an example, see the branch protection rule for the `2026-assessment-year-update` branch in the [condo model rulesets](https://github.com/ccao-data/model-condo-avm/settings/rules). If you don't have permissions to create a branch protection rule, ask a repository owner to create the rule.
+</details>

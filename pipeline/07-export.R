@@ -31,9 +31,6 @@ suppressPackageStartupMessages({
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
 
-
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 2. Pull Vacant Land ----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -80,7 +77,7 @@ vacant_land <- dbGetQuery(
       uni.pin AS meta_pin,
       uni.class AS meta_class,
       uni.nbhd_code AS meta_nbhd_code,
-      uni.tax_municipality_name AS loc_cook_municipality_name,
+      uni.tax_municipality_name AS loc_tax_municipality_name,
       addr.prop_address_full AS loc_property_address,
       addr.prop_address_city_name As loc_property_city,
       addr.prop_address_state AS loc_property_state,
@@ -235,8 +232,6 @@ vacant_land_merged <- vacant_land_trans %>%
   )
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 3. Pull Model Data -----------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -279,8 +274,6 @@ flag_assessable_permits <- dbGetQuery(
   WHERE year = '{params$assessment$data_year}'
   ")
 )
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -393,7 +386,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
   # Select fields for output to workbook
   select(
     township_code, meta_pin, meta_class, meta_nbhd_code,
-    property_full_address, loc_cook_municipality_name, meta_complex_id,
+    property_full_address, loc_tax_municipality_name, meta_complex_id,
     meta_pin_num_cards, meta_tieback_key_pin, meta_tieback_proration_rate,
     prior_near_land, prior_near_bldg, prior_near_tot,
     prior_near_land_rate, prior_near_bldg_rate, prior_near_land_pct_total,
@@ -452,8 +445,6 @@ assessment_card_prepped <- assessment_card %>%
     char_ncu = ifelse(char_class != "212", NA, char_ncu)
   ) %>%
   arrange(township_code, meta_pin, meta_card_num)
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -765,8 +756,6 @@ for (town in unique(assessment_pin_prepped$township_code)) {
 #    Number Format.
 
 
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 6. Prep iasWorld Upload ------------------------------------------------------
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -810,8 +799,6 @@ upload_data <- assessment_pin %>%
     CARD = meta_card_num,
     MV = pred_card_final_fmv_no_prorate
   )
-
-
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -41,6 +41,7 @@ Table of Contents
     - [Using Lockfiles for Local
       Development](#using-lockfiles-for-local-development)
     - [Updating Lockfiles](#updating-lockfiles)
+    - [Upgrading All Dependencies](#upgrading-all-dependencies)
   - [Troubleshooting](#troubleshooting)
 - [License](#license)
 - [Contributing](#contributing)
@@ -1244,6 +1245,27 @@ and dependencies, see [Managing R
 dependencies](#managing-r-dependencies) and
 [Troubleshooting](#troubleshooting).
 
+#### Installation Using Docker
+
+You can build a Docker image to run the model using the Dockerfile in
+the root of this repo:
+
+``` bash
+docker build .
+```
+
+**Warning**: Since renv must install some packages from GitHub, Docker
+builds often run into GitHub rate limits, which can cause the build to
+fail. To get around the rate limit, mount a GitHub Personal Access Token
+as a [build secret](https://docs.docker.com/build/building/secrets/).
+For example, if you follow the common pattern of storing a token in the
+`~/.Renviron` config file, then the following command will mount that
+token into the build context:
+
+``` bash
+GITHUB_PAT=$(grep '^GITHUB_PAT=' ~/.Renviron | cut -d '=' -f2-) docker build --secret id=github_token,env=GITHUB_PAT .
+```
+
 ### Running
 
 #### Manually
@@ -1482,12 +1504,36 @@ transactions in the training set as possible.
 
 #### 2026
 
-- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/assessment_data.parquet)
-- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/char_data.parquet)
-- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/complex_id_data.parquet)
-- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/hie_data.parquet)
-- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/land_nbhd_rate_data.parquet)
-- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/training_data.parquet)
+After the initial 2026 model run the CCAO was informed by the Illinois
+Department of Revenue that some relevant home sales from 2025 were
+missing from our database. After ingesting these new sales, the model
+was re-run, so there are *two* final 2026 models.
+
+| Model Run | Relevant Townships | Number of Sales for Training |
+|----|----|----|
+| 2026-02-11-recursing-rob | Berwyn, Bremen, Cicero, Lyons, Oak Park, Palos, River Forest, Riverside, Stickney | 396,480 |
+| 2026-07-30-ecstatic-carly | Bloom, Calumet, Lemont, Orland, Proviso, Rich, Thornton, Worth | 405,195 |
+
+The two models perform almost identically, but the CCAO decided that
+even such a minor improvement was worth re-running the model.
+
+##### 2026-02-11-recursing-rob
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-02-11-recursing-rob/training_data.parquet)
+
+##### 2026-07-30-ecstatic-carly (final)
+
+- [assessment_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/assessment_data.parquet)
+- [char_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/char_data.parquet)
+- [complex_id_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/complex_id_data.parquet)
+- [hie_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/hie_data.parquet)
+- [land_nbhd_rate_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/land_nbhd_rate_data.parquet)
+- [training_data.parquet](https://ccao-data-public-us-east-1.s3.amazonaws.com/models/inputs/res/2026/run_id=2026-07-30-ecstatic-carly/training_data.parquet)
 
 For other data from the CCAO, please visit the [Cook County Data
 Portal](https://datacatalog.cookcountyil.gov/).
@@ -1595,6 +1641,70 @@ commands:
     dependencies defined in the `DESCRIPTION` file
 5.  Run `renv::activate(profile = "default")` if you would like to
     switch back to the default renv profile
+
+### Upgrading All Dependencies
+
+Every so often, we need to upgrade all of our renv dependencies at once.
+This is common when upgrading to a new R major version, which often
+introduces breaking changes with old package versions.
+
+To **update all dependencies**, perform the following steps for each
+profile (`default`, `reporting`, and `dev`):
+
+1.  Remove the existing renv library and staging folders for the profile
+    to clear out old package versions
+2.  Open an `R` shell and activate the renv profile
+    1.  To ensure complete activation, this requires closing the R shell
+        and reopening it after calling `renv::activate()`
+3.  Install packages based on the profile dependencies listed in the
+    `DESCRIPTION` file
+4.  Snapshot the packages to update the renv lockfile for the profile
+5.  Run a model to confirm that everything works with the new package
+    versions
+
+The following sections provide commands to perform steps 1-4 for each
+profile. These commands are intended to run in a terminal session.
+Commands prefixed with a dollar sign (`$`) indicate bash commands that
+should run in a bash interpreter, which is the default interpreter when
+you open a terminal session. Commands prefixed with a greater-than sign
+(`>`) indicate commands that should run in an R interpreter, which you
+open by running the command `R` in a bash interpreter.
+
+#### Default profile
+
+    $ rm -rf renv/library renv/staging
+    $ R
+    > renv::activate()
+    > q()
+    $ R
+    > renv::install()
+    > renv::snapshot()
+
+#### Reporting profile
+
+    $ rm -rf renv/profiles/reporting/renv/library renv/profiles/reporting/renv/staging
+    $ R
+    > renv::activate(profile = "reporting")
+    > q()
+    $ R
+    > renv::install()
+    > renv::snapshot()
+
+#### Dev profile
+
+    $ rm -rf renv/profiles/dev/renv/library renv/profiles/dev/renv/staging
+    $ R
+    > renv::activate(profile = "dev")
+    > q()
+    $ R
+    > renv::install()
+    > renv::snapshot()
+
+Make sure to open a new R session and re-activate the default profile
+after you’re done updating dependencies.
+
+    $ R
+    renv::activate(profile = "default")
 
 ## Troubleshooting
 
