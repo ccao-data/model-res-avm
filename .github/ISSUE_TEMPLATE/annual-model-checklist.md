@@ -24,6 +24,7 @@ If valuations has capacity for our ongoing sale review collaboration:
   - [ ] Ingest sale review labels into our data lake
 - [ ] Make sure sales are as up to date as soon possible — ultimately will need sales through the end of the year. The final necessary sales typically arrive by mid January. If we don't get sales by this date, we will have trouble delivering the model on time.
   - Stakeholder/point of contact: Valuations Sale Review manager
+  - Skim PRs that have been merged after the last final model to get a sense of what changed in the pipeline. Be sure to check that these changes are reflected in reports, Desk Review and API Workbooks
 
 ### Data Ingest / Refresh
 
@@ -115,10 +116,12 @@ High priority tasks must be completed before the model deadlines.
 - [ ] Make sure the final model has SHAPs and comps. If it doesn't, run one more model with SHAPs and comps enabled
 - [ ] Tag the final model as `final` using the [`tag-model-runs` workflow](https://github.com/ccao-data/model-res-avm/actions/workflows/tag-model-runs.yaml)
 - [ ] Export desk review workbooks for the [res model](https://github.com/ccao-data/model-res-avm/) using the `export` pipeline stage and upload them to OneDrive
+  - [ ] Have _everyone_ on the team take a few minutes to look through the workbooks to confirm they work and are formatted as expected, including the pivot tables
 - [ ] Export iasWorld upload files for the res model using the `export` pipeline stage and upload them to OneDrive
 - [ ] Follow the instructions in the [model API README](https://github.com/ccao-data/api-res-avm/) to add the new final res model and set it as the default
 - [ ] Export API workbooks for the res model using the `api` pipeline stage and upload them to OneDrive
   - This often requires adding or removing features from the workbook template to match the request format for the annual model, so get started on it a few days ahead of time
+  - [ ] Have _everyone_ on the team take a few minutes to look through the workbooks to confirm they work and are formatted as expected - data validation for columns should match with the expected values of the column's associated feature. Confirm the workbooks call the expected model.
 - [ ] Upload the performance report for the final res model to OneDrive
 - [ ] Send the res model email with the subject line `$YEAR Initial Model Values (Residential)`
 
@@ -128,6 +131,7 @@ High priority tasks must be completed before the model deadlines.
 - [ ] Make sure the final model has SHAPs. If it doesn't, run one more model with them enabled
 - [ ] Tag the final model as `final` using the [`tag-model-runs` workflow](https://github.com/ccao-data/model-res-avm/actions/workflows/tag-model-runs.yaml)
 - [ ] Export desk review workbooks for [the condo model](https://github.com/ccao-data/model-condo-avm/) and upload them to OneDrive
+  - [ ] Have _everyone_ on the team take a few minutes to look through the workbooks to confirm they work and are formatted as expected, including the pivot tables
 - [ ] Export iasWorld upload files for the condo model and upload them to OneDrive
 - [ ] Upload performance report for the final condo model to OneDrive
 - [ ] Send condo model email with the subject line `$YEAR Initial Model Values (Condos)`
@@ -138,7 +142,7 @@ Low priority tasks must be complete eventually, but are not time-sensitive:
 
 - [ ] Update the `model.final_model` seed in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to include metadata for the res and condo models
 - [ ] Update the `vars.data_test_model_current_assessment_year` variable in the `dbt_project.yml` config file in [`data-architecture`](https://github.com/ccao-data/data-architecture/) to increment the assessment year
-    - Before incrementing this value, make sure that the weekly `test-dbt-models` data integrity test workflow in `data-architecture` has run at least once since this year's final models ran, since otherwise it's possible that the final model artifacts may be untested   
+    - Before incrementing this value, make sure that the weekly `test-dbt-models` data integrity test workflow in `data-architecture` has run at least once since this year's final models ran, since otherwise it's possible that the final model artifacts may be untested
 - [ ] Update `params.yaml` with the hyperparameters discovered by the CV run for both models
 - [ ] Make sure the `vars_dict` data in [`ccao`](https://github.com/ccao-data/ccao/) is up-to-date for new features
   - If you add any features to this dictionary that are used in either model, make sure to re-knit the README for models that use the feature
