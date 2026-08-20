@@ -134,7 +134,7 @@ High priority tasks must be completed before the model deadlines.
   - [ ] Have everyone on the team take a few minutes to look through the workbooks to confirm they work and are formatted as expected, including the pivot tables
 - [ ] Export iasWorld upload files for the condo model and upload them to OneDrive
 - [ ] Upload performance report for the final condo model to OneDrive
-- [ ] Make sure the attached deliverables have been thoroughly reviewed and send condo model email with the subject line `$YEAR Initial Model Values (Condos)`
+- [ ] Make sure the attached deliverables have been thoroughly reviewed and the send condo model email with the subject line `$YEAR Initial Model Values (Condos)`
 
 
 ## Low priority
