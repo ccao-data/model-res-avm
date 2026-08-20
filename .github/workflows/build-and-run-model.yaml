@@ -59,8 +59,8 @@ on:
       repro_ingest:
         type: boolean
         description: >-
-          Run ingest stage before running model. Pushes DVC-tracked
-          files if upload_enable = TRUE.
+          Run ingest stage before running model. Runs dvc push
+          if upload_enable = TRUE.
         default: false
         required: true
   push:
@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ inputs.repro_ingest }}" == "true" && "${{ inputs.upload_enable }}" == "true" ]]; then
-            echo "command=dvc unfreeze ingest && dvc repro && dvc push input/ && Rscript -e 'source(here::here(\"R\", \"helpers.R\")); model_push_dvc_lock()'" >> $GITHUB_OUTPUT
+            echo "command=dvc unfreeze ingest && dvc repro ingest && dvc push" >> $GITHUB_OUTPUT
           elif [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
             echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
           else

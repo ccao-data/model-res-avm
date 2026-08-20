@@ -92,6 +92,10 @@ feature_report_enable <- as.logical(Sys.getenv(
   "FEATURE_REPORT_ENABLE_OVERRIDE",
   unset = get(params_obj_name)$toggle$feature_report_enable
 ))
+repro_ingest <- as.logical(Sys.getenv(
+  "REPRO_INGEST_OVERRIDE",
+  unset = get(params_obj_name)$toggle$repro_ingest
+))
 
 # If in a CI context, use the run params passed to the workflow. Otherwise, use
 # the note included in params.yaml

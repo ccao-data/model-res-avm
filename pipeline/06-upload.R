@@ -355,3 +355,5 @@ if (upload_enable) {
     )
   }
 }
+
+if (upload_enable && repro_ingest) model_push_dvc_lock()
