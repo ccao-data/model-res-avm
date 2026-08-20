@@ -129,7 +129,6 @@ model_delete_run <- function(run_id, year) {
     purrr::walk(aws.s3::delete_object)
 }
 
-
 # Used to delete all junk runs for a given year. Defaults to the current year.
 # Set dry_run = FALSE to actually delete. When TRUE (default), only prints the
 # run IDs that would be deleted
