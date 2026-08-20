@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ inputs.repro_ingest }}" == "true" && "${{ inputs.upload_enable }}" == "true" ]]; then
-            echo "command=dvc unfreeze ingest && dvc repro ingest && dvc push" >> $GITHUB_OUTPUT
+            echo "command=dvc unfreeze ingest && dvc repro ingest && dvc push && dvc freeze ingest && dvc repro" >> $GITHUB_OUTPUT
           elif [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
             echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
           else
