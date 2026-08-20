@@ -1,25 +1,3 @@
-# Push dvc.lock to S3 keyed by the model run_id from the metadata output file.
-# Called after `dvc repro` when repro_ingest and upload_enable are both true
-model_push_dvc_lock <- function() {
-  metadata <- arrow::read_parquet(
-    here::here("output", "metadata", "model_metadata.parquet")
-  )
-  run_id <- metadata$run_id
-  bucket <- "ccao-data-dvc-us-east-1"
-  key <- paste0("model-res-avm/dvc-lockfiles/", run_id, "/dvc.lock")
-  message("Pushing dvc.lock for run: ", run_id)
-  aws.s3::put_object(
-    file = here::here("dvc.lock"),
-    object = key,
-    bucket = bucket
-  )
-  aws.s3::put_object(
-    file = here::here("dvc.lock"),
-    object = "model-res-avm/dvc-lockfiles/latest/dvc.lock",
-    bucket = bucket
-  )
-}
-
 # Function to generate a dictionary list of file names, local paths,
 # and mirrored S3 location URIs from file_dict.csv
 model_file_dict <- function(run_id = NULL, year = NULL) {

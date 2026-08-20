@@ -356,4 +356,14 @@ if (upload_enable) {
   }
 }
 
-if (upload_enable && repro_ingest) model_push_dvc_lock()
+if (upload_enable && repro_ingest) {
+  bucket <- "ccao-data-dvc-us-east-1"
+  key <- paste0("model-res-avm/dvc-lockfiles/", run_id, "/dvc.lock")
+  message("Pushing dvc.lock for run: ", run_id)
+  message("Location: s3://", bucket, "/", key)
+  aws.s3::put_object(
+    file = here::here("dvc.lock"),
+    object = key,
+    bucket = bucket
+  )
+}
