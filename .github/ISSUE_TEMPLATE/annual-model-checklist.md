@@ -24,7 +24,7 @@ If valuations has capacity for our ongoing sale review collaboration:
   - [ ] Ingest sale review labels into our data lake
 - [ ] Make sure sales are as up to date as soon possible — ultimately will need sales through the end of the year. The final necessary sales typically arrive by mid January. If we don't get sales by this date, we will have trouble delivering the model on time.
   - Stakeholder/point of contact: Valuations Sale Review manager
-- [ ] Skim PRs that have been merged after the last final model to get a sense of what changed in the pipeline. Be sure to check that these changes are reflected in reports, Desk Review and API Workbooks
+- [ ] Skim PRs that have been merged after the last final model to get a sense of what changed in the pipeline. Be sure to check that these changes are reflected in reports, Desk Review and API Workbooks.
 
 ### Data Ingest / Refresh
 
