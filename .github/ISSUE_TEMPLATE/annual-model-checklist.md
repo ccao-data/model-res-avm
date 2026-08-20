@@ -123,9 +123,9 @@ High priority tasks must be completed before the model deadlines.
   - This often requires adding or removing features from the workbook template to match the request format for the annual model, so get started on it a few days ahead of time
   - [ ] Have _everyone_ on the team take a few minutes to look through the workbooks to confirm they work and are formatted as expected - data validation for columns should match with the expected values of the column's associated feature. Confirm the workbooks call the expected model.
 - [ ] Upload the performance report for the final res model to OneDrive
-- [ ] Send the res model email with the subject line `$YEAR Initial Model Values (Residential)`
 > [!IMPORTANT]
-> Make sure the deliverables attached to the email have been thoroughly reviewed before sending
+> Make sure the attached deliverables have been thoroughly reviewed before sending
+> - [ ] Send the res model email with the subject line `$YEAR Initial Model Values (Residential)`
 
 ### Condo model
 
@@ -137,7 +137,7 @@ High priority tasks must be completed before the model deadlines.
 - [ ] Export iasWorld upload files for the condo model and upload them to OneDrive
 - [ ] Upload performance report for the final condo model to OneDrive
 > [!IMPORTANT]
-> Make sure the deliverables attached to the email have been thoroughly reviewed before sending
+> Make sure the attached deliverables have been thoroughly reviewed before sending
 > - [ ] Send condo model email with the subject line `$YEAR Initial Model Values (Condos)`
 
 
