@@ -20,7 +20,7 @@ run_note: Potential residential baseline with SHAP values, revert DVC path
 toggle:
   # Should the train stage run full cross-validation? Otherwise, the model
   # will be trained with the default hyperparameters specified below
-  cv_enable: true
+  cv_enable: false
 
   # Should SHAP values be calculated for this run in the interpret stage? Can be
   # desirable to save time when testing many models
@@ -31,7 +31,7 @@ toggle:
 
   # Upload all modeling artifacts and results to S3 in the upload stage. Set
   # to false if you are not a CCAO employee
-  upload_enable: false
+  upload_enable: true
 
   # Should the feature report be run, which compares the inputs to the previous
   # year's model inputs?
@@ -96,7 +96,7 @@ input:
   # by year, township, and class to maintain representation across categories
   subset:
     # Whether to use a subset of the training data instead of the full dataset
-    enable: true
+    enable: false
 
     # Fraction of the training data to keep (between 0 and 1)
     fraction: 0.25
@@ -119,7 +119,7 @@ cv:
   # Number of folds to use for cross-validation. For v-fold CV, the data will be
   # randomly split. For rolling-origin, the data will be split into V chunks by
   # time, with each chunk/period calculated automatically
-  num_folds: 2
+  num_folds: 10
 
   # The number of months time-based folds should overlap each other. Only
   # applicable to rolling-origin CV. See https://www.tmwr.org/resampling#rolling
@@ -130,7 +130,7 @@ cv:
   initial_set: 20
 
   # Max number of total search iterations
-  max_iterations: 1
+  max_iterations: 50
 
   # Max number of search iterations without improvement before stopping search
   no_improve: 15
