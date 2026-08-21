@@ -318,6 +318,9 @@ if (cv_enable) {
   # CV iteration
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
+    # Tune added a trace column (rlang stack objects) to each nested .notes
+    # tibble which arrow cannot serialize
+    mutate(.notes = purrr::map(.notes, ~ dplyr::select(.x, -trace))) %>%
     arrow::write_parquet(paths$output$parameter_raw$local)
 
   # Save the parameter ranges searched while tuning
