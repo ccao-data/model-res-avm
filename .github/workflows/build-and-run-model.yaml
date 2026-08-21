@@ -58,7 +58,9 @@ on:
         required: true
       repro_ingest:
         type: boolean
-        description: Run ingest stage before running model
+        description: >-
+          Run ingest stage before running model. Runs dvc push
+          if upload_enable = TRUE.
         default: false
         required: true
   push:
@@ -74,7 +76,9 @@ jobs:
         id: set
         shell: bash
         run: |
-          if [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
+          if [[ "${{ inputs.repro_ingest }}" == "true" && "${{ inputs.upload_enable }}" == "true" ]]; then
+            echo "command=dvc unfreeze ingest && dvc repro ingest && dvc push && dvc freeze ingest && dvc repro" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.repro_ingest }}" == "true" ]]; then
             echo "command=dvc unfreeze ingest && dvc repro" >> $GITHUB_OUTPUT
           else
             echo "command=" >> $GITHUB_OUTPUT

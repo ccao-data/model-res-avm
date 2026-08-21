@@ -355,3 +355,23 @@ if (upload_enable) {
     )
   }
 }
+
+if (upload_enable && repro_ingest) {
+  bucket <- "ccao-data-dvc-us-east-1"
+  key <- paste0(
+    "model-res-avm/lockfiles/",
+    params$assessment$working_year, "/", run_id, ".lock"
+  )
+
+  if (!aws.s3::bucket_exists(bucket, region = "us-east-1")) {
+    aws.s3::put_bucket(bucket, region = "us-east-1")
+  }
+
+  message("Pushing dvc.lock for run: ", run_id)
+  message("Location: s3://", bucket, "/", key)
+  aws.s3::put_object(
+    file = here::here("dvc.lock"),
+    object = key,
+    bucket = bucket
+  )
+}
