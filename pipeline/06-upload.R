@@ -272,6 +272,23 @@ if (upload_enable) {
       object = paths$output$report_model_features$s3
     )
   }
+
+
+  # 2.6. DVC lock file ---------------------------------------------------------
+
+  if (repro_ingest) {
+    bucket <- "ccao-data-dvc-us-east-1"
+    if (!aws.s3::bucket_exists(bucket, region = "us-east-1")) {
+      aws.s3::put_bucket(bucket, region = "us-east-1")
+    }
+
+    message("Pushing dvc.lock for run: ", run_id)
+    message("Location: ", paths$output$dvc_lock$s3)
+    aws.s3::put_object(
+      file = paths$output$dvc_lock$local,
+      object = paths$output$dvc_lock$s3
+    )
+  }
 }
 
 
@@ -354,24 +371,4 @@ if (upload_enable) {
       TopicArn = Sys.getenv("AWS_SNS_ARN_MODEL_STATUS")
     )
   }
-}
-
-if (upload_enable && repro_ingest) {
-  bucket <- "ccao-data-dvc-us-east-1"
-  key <- paste0(
-    "model-res-avm/lockfiles/",
-    params$assessment$working_year, "/", run_id, ".lock"
-  )
-
-  if (!aws.s3::bucket_exists(bucket, region = "us-east-1")) {
-    aws.s3::put_bucket(bucket, region = "us-east-1")
-  }
-
-  message("Pushing dvc.lock for run: ", run_id)
-  message("Location: s3://", bucket, "/", key)
-  aws.s3::put_object(
-    file = here::here("dvc.lock"),
-    object = key,
-    bucket = bucket
-  )
 }
