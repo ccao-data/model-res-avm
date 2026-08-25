@@ -93,21 +93,25 @@ if (upload_enable) {
     # Clean and unnest the raw parameters data, then write the results to S3
     parameter_raw <- read_parquet(paths$output$parameter_raw$local)
 
-    # Collapse the nested notes to one row per (fold, iteration) before
-    # joining them onto the metrics. A single key can hold many notes (e.g.
-    # one warning per candidate model in the initial grid), and joining those
-    # directly would fan out the metrics rows, double-counting them in any
-    # downstream aggregation. Identical messages/traces are deduplicated
-    # before pasting; n_notes preserves the raw count
+    # One (fold, iteration) key can hold many notes. The initial grid logs
+    # every candidate model under iteration 0, so one warning per candidate
+    # becomes dozens of notes on that key. Later iterations can also log more
+    # than one warning. Joining notes onto the metrics directly would repeat
+    # each metric row once per note. So first collapse the notes to one row
+    # per key. Each message keeps its location prefix, so a warning can
+    # still be traced back to the candidate model that threw it. Duplicate
+    # messages are dropped, and n_notes records the original count
     notes_collapsed <- parameter_raw %>%
       select(id, .iter, .notes) %>%
       tidyr::unnest(cols = .notes) %>%
       group_by(id, .iter) %>%
       summarize(
         n_notes = n(),
+        # notes must be built before location is overwritten below, since
+        # summarize() makes each new column visible to the expressions after it
+        notes = paste(unique(paste0(location, ": ", note)), collapse = "\n---\n"),
         location = paste(unique(location), collapse = "; "),
         type = paste(sort(unique(type)), collapse = "; "),
-        notes = paste(unique(note), collapse = "\n---\n"),
         trace = paste(unique(trace[!is.na(trace)]), collapse = "\n=====\n"),
         .groups = "drop"
       )
