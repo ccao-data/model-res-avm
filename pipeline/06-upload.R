@@ -275,7 +275,7 @@ if (upload_enable) {
 
 
   # 2.6. DVC lock file ---------------------------------------------------------
-
+  print(repro_ingest)
   if (repro_ingest) {
     bucket <- "ccao-data-dvc-us-east-1"
     if (!aws.s3::bucket_exists(bucket, region = "us-east-1")) {
