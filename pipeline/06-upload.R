@@ -90,27 +90,25 @@ if (upload_enable) {
       relocate(run_id) %>%
       write_parquet(paths$output$parameter_range$s3)
 
-    # Clean and unnest the raw parameters data, then write the results to S3
-    parameter_raw <- read_parquet(paths$output$parameter_raw$local)
-
     # A single (fold, iteration) can hold many notes; iteration 0 alone
     # logs one per initial candidate model. Collapse them to one row per
     # key so the join below can't duplicate metric rows, which would fail
     # the bind_cols against the extracts (mismatched row counts)
-    notes_collapsed <- parameter_raw %>%
+    notes_collapsed <- read_parquet(paths$output$parameter_raw$local) %>%
       select(id, .iter, .notes) %>%
       tidyr::unnest(cols = .notes) %>%
       group_by(id, .iter) %>%
       summarize(
         notes = paste(unique(note), collapse = "\n---\n"),
         location = paste(unique(location), collapse = "; "),
-        type = paste(sort(unique(type)), collapse = "; "),
+        type = paste(unique(type), collapse = "; "),
         trace = paste(unique(trace[!is.na(trace)]), collapse = "\n=====\n"),
         .groups = "drop"
       )
 
+    # Clean and unnest the raw parameters data, then write the results to S3
     bind_cols(
-      parameter_raw %>%
+      read_parquet(paths$output$parameter_raw$local) %>%
         tidyr::unnest(cols = .metrics) %>%
         mutate(run_id = !!run_id) %>%
         left_join(notes_collapsed, by = c("id", ".iter")) %>%
@@ -128,7 +126,7 @@ if (upload_enable) {
           c(location, type, notes, trace),
           .after = everything()
         ),
-      parameter_raw %>%
+      read_parquet(paths$output$parameter_raw$local) %>%
         tidyr::unnest(cols = .extracts) %>%
         tidyr::unnest(cols = .extracts) %>%
         dplyr::select(num_iterations = .extracts)
