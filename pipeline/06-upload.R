@@ -100,13 +100,12 @@ if (upload_enable) {
     # each metric row once per note. So first collapse the notes to one row
     # per key. Each message keeps its location prefix, so a warning can
     # still be traced back to the candidate model that threw it. Duplicate
-    # messages are dropped, and n_notes records the original count
+    # messages are dropped
     notes_collapsed <- parameter_raw %>%
       select(id, .iter, .notes) %>%
       tidyr::unnest(cols = .notes) %>%
       group_by(id, .iter) %>%
       summarize(
-        n_notes = n(),
         # notes must be built before location is overwritten below, since
         # summarize() makes each new column visible to the expressions after it
         notes = paste(unique(paste0(location, ": ", note)), collapse = "\n---\n"),
@@ -132,7 +131,7 @@ if (upload_enable) {
           ))
         ) %>%
         relocate(
-          c(n_notes, location, type, notes, trace),
+          c(location, type, notes, trace),
           .after = everything()
         ),
       parameter_raw %>%
