@@ -319,8 +319,15 @@ if (cv_enable) {
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
     # Tune added a trace column (rlang stack objects) to each nested .notes
-    # tibble which arrow cannot serialize
-    mutate(.notes = purrr::map(.notes, ~ dplyr::select(.x, -trace))) %>%
+    # tibble which arrow cannot serialize. Flatten each trace to plain text so
+    # the diagnostic content survives into the parquet (a few KB as text, vs
+    # gigabytes of captured environments if left as rlang objects)
+    mutate(.notes = purrr::map(
+      .notes,
+      ~ dplyr::mutate(.x, trace = purrr::map_chr(trace, function(tr) {
+        if (is.null(tr)) NA_character_ else paste(format(tr), collapse = "\n")
+      }))
+    )) %>%
     arrow::write_parquet(paths$output$parameter_raw$local)
 
   # Save the parameter ranges searched while tuning

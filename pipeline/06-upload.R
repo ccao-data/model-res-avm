@@ -91,15 +91,32 @@ if (upload_enable) {
       write_parquet(paths$output$parameter_range$s3)
 
     # Clean and unnest the raw parameters data, then write the results to S3
+    parameter_raw <- read_parquet(paths$output$parameter_raw$local)
+
+    # Collapse the nested notes to one row per (fold, iteration) before
+    # joining them onto the metrics. A single key can hold many notes (e.g.
+    # one warning per candidate model in the initial grid), and joining those
+    # directly would fan out the metrics rows, double-counting them in any
+    # downstream aggregation. Identical messages/traces are deduplicated
+    # before pasting; n_notes preserves the raw count
+    notes_collapsed <- parameter_raw %>%
+      select(id, .iter, .notes) %>%
+      tidyr::unnest(cols = .notes) %>%
+      group_by(id, .iter) %>%
+      summarize(
+        n_notes = n(),
+        location = paste(unique(location), collapse = "; "),
+        type = paste(sort(unique(type)), collapse = "; "),
+        notes = paste(unique(note), collapse = "\n---\n"),
+        trace = paste(unique(trace[!is.na(trace)]), collapse = "\n=====\n"),
+        .groups = "drop"
+      )
+
     bind_cols(
-      read_parquet(paths$output$parameter_raw$local) %>%
+      parameter_raw %>%
         tidyr::unnest(cols = .metrics) %>%
         mutate(run_id = !!run_id) %>%
-        left_join(
-          rename(., notes = .notes) %>%
-            tidyr::unnest(cols = notes) %>%
-            rename(notes = note)
-        ) %>%
+        left_join(notes_collapsed, by = c("id", ".iter")) %>%
         select(-.notes) %>%
         rename_with(~ gsub("^\\.", "", .x)) %>%
         tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
@@ -110,8 +127,11 @@ if (upload_enable) {
             "configuration" = "config", "fold_id" = "id"
           ))
         ) %>%
-        relocate(c(location, type, notes), .after = everything()),
-      read_parquet(paths$output$parameter_raw$local) %>%
+        relocate(
+          c(n_notes, location, type, notes, trace),
+          .after = everything()
+        ),
+      parameter_raw %>%
         tidyr::unnest(cols = .extracts) %>%
         tidyr::unnest(cols = .extracts) %>%
         dplyr::select(num_iterations = .extracts)
