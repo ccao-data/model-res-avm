@@ -1052,6 +1052,7 @@ stages:
           comp_enable: false
           upload_enable: true
           feature_report_enable: false
+          repro_ingest: false
     outs:
     - path: output/intermediate/timing/model_timing_finalize.parquet
       hash: md5
