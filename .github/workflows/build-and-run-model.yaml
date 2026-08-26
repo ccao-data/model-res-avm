@@ -58,8 +58,7 @@ on:
         required: true
       repro_ingest:
         type: boolean
-        description: >-
-          Run ingest stage before running model
+        description: Run ingest stage before running model
         default: false
         required: true
   push:
