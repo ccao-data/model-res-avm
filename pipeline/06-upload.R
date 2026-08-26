@@ -282,8 +282,7 @@ if (upload_enable) {
       aws.s3::put_bucket(bucket, region = "us-east-1")
     }
 
-    message("Pushing dvc.lock for run: ", run_id)
-    message("Location: ", paths$output$dvc_lock$s3)
+    message("Pushing dvc.lock to location: ", paths$output$dvc_lock$s3)
     aws.s3::put_object(
       file = paths$output$dvc_lock$local,
       object = paths$output$dvc_lock$s3
