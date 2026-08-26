@@ -102,7 +102,6 @@ if (upload_enable) {
         notes = paste(unique(note), collapse = "\n---\n"),
         location = paste(unique(location), collapse = "; "),
         type = paste(unique(type), collapse = "; "),
-        trace = paste(unique(trace[!is.na(trace)]), collapse = "\n=====\n"),
         .groups = "drop"
       )
 
@@ -122,10 +121,7 @@ if (upload_enable) {
             "configuration" = "config", "fold_id" = "id"
           ))
         ) %>%
-        relocate(
-          c(location, type, notes, trace),
-          .after = everything()
-        ),
+        relocate(c(location, type, notes), .after = everything()),
       read_parquet(paths$output$parameter_raw$local) %>%
         tidyr::unnest(cols = .extracts) %>%
         tidyr::unnest(cols = .extracts) %>%
