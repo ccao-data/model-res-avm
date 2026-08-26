@@ -277,11 +277,6 @@ if (upload_enable) {
   # 2.6. DVC lock file ---------------------------------------------------------
   # Upload lock file only if ingest is run
   if (repro_ingest) {
-    bucket <- "ccao-data-dvc-us-east-1"
-    if (!aws.s3::bucket_exists(bucket, region = "us-east-1")) {
-      aws.s3::put_bucket(bucket, region = "us-east-1")
-    }
-
     message("Pushing dvc.lock to location: ", paths$output$dvc_lock$s3)
     aws.s3::put_object(
       file = paths$output$dvc_lock$local,
