@@ -59,8 +59,7 @@ on:
       repro_ingest:
         type: boolean
         description: >-
-          Run ingest stage before running model. Runs dvc push
-          if upload_enable = TRUE.
+          Run ingest stage before running model
         default: false
         required: true
   push:
