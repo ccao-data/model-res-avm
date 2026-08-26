@@ -90,27 +90,30 @@ if (upload_enable) {
       relocate(run_id) %>%
       write_parquet(paths$output$parameter_range$s3)
 
-    # A single (fold, iteration) can hold many notes; iteration 0 alone
-    # logs one per initial candidate model. Collapse them to one row per
-    # key so the join below can't duplicate metric rows, which would fail
-    # the bind_cols against the extracts (mismatched row counts)
-    notes_collapsed <- read_parquet(paths$output$parameter_raw$local) %>%
-      select(id, .iter, .notes) %>%
-      tidyr::unnest(cols = .notes) %>%
-      group_by(id, .iter) %>%
-      summarize(
-        notes = paste(unique(note), collapse = "\n---\n"),
-        location = paste(unique(location), collapse = "; "),
-        type = paste(unique(type), collapse = "; "),
-        .groups = "drop"
-      )
-
     # Clean and unnest the raw parameters data, then write the results to S3
     bind_cols(
       read_parquet(paths$output$parameter_raw$local) %>%
         tidyr::unnest(cols = .metrics) %>%
         mutate(run_id = !!run_id) %>%
-        left_join(notes_collapsed, by = c("id", ".iter")) %>%
+        # Each model fit can leave a warning in .notes, but notes don't
+        # record which config produced them. At .iter = 0 each fold holds
+        # all initial configs, so joining the notes unnested would attach
+        # every warning to every metrics row for that fold. Collapse notes
+        # to one row per fold and iteration first so the join can't
+        # multiply rows
+        left_join(
+          read_parquet(paths$output$parameter_raw$local) %>%
+            select(id, .iter, .notes) %>%
+            tidyr::unnest(cols = .notes) %>%
+            group_by(id, .iter) %>%
+            summarize(
+              location = paste(unique(location), collapse = "; "),
+              type = paste(unique(type), collapse = "; "),
+              notes = paste(unique(note), collapse = "; "),
+              .groups = "drop"
+            ),
+          by = c("id", ".iter")
+        ) %>%
         select(-.notes) %>%
         rename_with(~ gsub("^\\.", "", .x)) %>%
         tidyr::pivot_wider(names_from = "metric", values_from = "estimate") %>%
