@@ -66,10 +66,17 @@ assessment_card_data_pred <- read_parquet(paths$input$assessment$local) %>%
   ) %>%
   select(-og_char_bldg_sf)
 
-# Exponentiate predictions back to raw dollar scale
+# Exponentiate predictions back to raw dollar scale, preserving
+# original log scale
 if (log_transform_enable) {
   assessment_card_data_pred <- assessment_card_data_pred %>%
-    mutate(pred_card_initial_fmv = exp(pred_card_initial_fmv))
+    mutate(
+      pred_card_initial_fmv_log = pred_card_initial_fmv,
+      pred_card_initial_fmv = exp(pred_card_initial_fmv)
+    )
+} else {
+  assessment_card_data_pred <- assessment_card_data_pred %>%
+    mutate(pred_card_initial_fmv_log = NA_real_)
 }
 
 
@@ -324,7 +331,8 @@ char_vars <- char_vars[!char_vars %in% c("char_apts", "char_recent_renovation")]
 assessment_card_data_merged %>%
   select(
     meta_year, meta_pin, meta_class, meta_card_num, meta_card_pct_total_fmv,
-    meta_complex_id, pred_card_initial_fmv, pred_card_final_fmv, char_class,
+    meta_complex_id, pred_card_initial_fmv, pred_card_initial_fmv_log,
+    pred_card_final_fmv, char_class,
     all_of(params$model$predictor$all), township_code
   ) %>%
   mutate(
