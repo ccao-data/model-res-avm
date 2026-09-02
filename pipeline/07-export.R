@@ -7,7 +7,7 @@
 # We don't publish the staging URL in public code because we often deploy
 # provisional values to staging, and we don't want users to find the staging
 # app and assume the values are final
-HOMEVAL_STAGING_BASE_URL <- "https://example.com"
+HOMEVAL_STAGING_BASE_URL <- "https://examplea.com"
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
@@ -370,7 +370,9 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
       '=HYPERLINK("{HOMEVAL_STAGING_BASE_URL}/{year}/{meta_pin}.html")'
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
-    sale_ratio = NA # Initialize as NA so we can fill out with a formula later
+    sale_ratio = NA, # Initialize as NA so we can fill out with a formula later
+    total_mv = NA,
+    mv_difference = NA
   ) %>%
   # Add assessable permit flag
   left_join(flag_assessable_permits, by = c("meta_pin" = "pin")) %>%
@@ -406,7 +408,8 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     flag_land_value_capped,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value, flag_has_recent_assessable_permit
+    flag_char_missing_critical_value, flag_has_recent_assessable_permit,
+    total_mv, mv_difference
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
@@ -674,7 +677,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
-    select(-township_code)
+    # This select statement aligns the pin dataframe with the pin detail schema
+    select(all_of(names(pin_detail_schema)))
 
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
@@ -873,7 +877,8 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
     filter(township_code == town) %>%
-    select(-township_code)
+    # This aligns the card dataframe to the card schema
+    select(all_of(names(card_detail_schema)))
 
   card_sheet_name <- "Card Detail"
   class(assessment_card_filtered$meta_pin) <- c(

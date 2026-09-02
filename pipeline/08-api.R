@@ -318,19 +318,6 @@ for (town in towns) {
   card_data_town <- card_data %>%
     filter(meta_township_code == town) %>%
     mutate(api_prediction = NA, api_prediction_rounded = NA) %>%
-    select(
-      meta_pin, meta_card_num, meta_class, pred_card_initial_fmv,
-      api_prediction, api_prediction_rounded,
-      all_of(top_predictors),
-      starts_with("char_"),
-      starts_with("loc_"),
-      starts_with("time"),
-      starts_with("prox_"),
-      starts_with("acs5_"),
-      starts_with("other_"),
-      meta_sale_count_past_n_years,
-      starts_with("shp_")
-    ) %>%
     arrange(meta_pin, meta_card_num) %>%
     mutate(
       across(where(is.numeric), ~ round(.x, 8)),
@@ -343,7 +330,9 @@ for (town in towns) {
       cols = card_data %>%
         select(starts_with("char_") & !char_apts) %>%
         names()
-    )
+    ) %>%
+    # Align column order with the schema
+    select(all_of(names(api_cards_schema)))
 
   # Load workbook and styles
   wb <- loadWorkbook(here("misc", "model_api_template.xlsm"))
