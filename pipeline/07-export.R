@@ -677,7 +677,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
     # This select statement aligns the card dataframe with the card schema
     # total_mv and mv_difference are written separately
     # via writeFormula below to populate the pivot table
-    select(all_of(names(pin_detail_schema)), -total_mv, -mv_difference)
+    select(setdiff(names(pin_detail_schema), c("total_mv", "mv_difference")))
 
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
