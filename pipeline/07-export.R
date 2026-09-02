@@ -675,9 +675,9 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
     # This select statement aligns the card dataframe with the card schema
-    # We do not select the hidden columns so they can be produced using the
-    # formula below to populate the pivot tables
-    select(all_of(names(pin_detail_schema)[-cols_hidden(pin_detail_schema)]))
+    # total_mv and mv_difference are written separately
+    # via writeFormula below to populate the pivot table
+    select(all_of(names(pin_detail_schema)), -total_mv, -mv_difference)
 
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
