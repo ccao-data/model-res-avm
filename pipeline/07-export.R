@@ -370,9 +370,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
       '=HYPERLINK("{HOMEVAL_STAGING_BASE_URL}/{year}/{meta_pin}.html")'
     ),
     valuations_note = NA, # Empty notes field for Valuations to fill out
-    sale_ratio = NA, # Initialize as NA so we can fill out with a formula later
-    total_mv = NA,
-    mv_difference = NA
+    sale_ratio = NA # Initialize as NA so we can fill out with a formula later
   ) %>%
   # Add assessable permit flag
   left_join(flag_assessable_permits, by = c("meta_pin" = "pin")) %>%
@@ -408,8 +406,7 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     flag_land_value_capped,
     flag_prior_near_to_pred_unchanged, flag_pred_initial_to_final_changed,
     flag_prior_near_yoy_inc_gt_50_pct, flag_prior_near_yoy_dec_gt_5_pct,
-    flag_char_missing_critical_value, flag_has_recent_assessable_permit,
-    total_mv, mv_difference
+    flag_char_missing_critical_value, flag_has_recent_assessable_permit
   ) %>%
   arrange(township_code, meta_pin) %>%
   mutate(
@@ -677,8 +674,10 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
-    # This select statement aligns the pin dataframe with the pin schema
-    select(all_of(names(pin_detail_schema)))
+    # This select statement aligns the card dataframe with the card schema
+    # We do not select the hidden columns so they can be produced using the
+    # formula below to populate the pivot tables
+    select(all_of(names(pin_detail_schema)[-cols_hidden(pin_detail_schema)]))
 
   # Load the excel workbook template from file
   wb <- loadWorkbook(here("misc", "desk_review_template.xlsx"))
