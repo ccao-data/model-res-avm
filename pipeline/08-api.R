@@ -331,7 +331,7 @@ for (town in towns) {
         select(starts_with("char_") & !char_apts) %>%
         names()
     ) %>%
-    # Align column order with the schema
+    # This select statement aligns the api dataframe with the api schema
     select(all_of(names(api_cards_schema)))
 
   # Load workbook and styles

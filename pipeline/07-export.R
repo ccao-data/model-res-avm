@@ -7,7 +7,7 @@
 # We don't publish the staging URL in public code because we often deploy
 # provisional values to staging, and we don't want users to find the staging
 # app and assume the values are final
-HOMEVAL_STAGING_BASE_URL <- "https://examplea.com"
+HOMEVAL_STAGING_BASE_URL <- "https://example.com"
 
 # NOTE: See DESCRIPTION for library dependencies and R/setup.R for
 # variables used in each pipeline stage
@@ -677,7 +677,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter overall data to specific township
   assessment_pin_filtered <- assessment_pin_prepped %>%
     filter(township_code == town) %>%
-    # This select statement aligns the pin dataframe with the pin detail schema
+    # This select statement aligns the pin dataframe with the pin schema
     select(all_of(names(pin_detail_schema)))
 
   # Load the excel workbook template from file
@@ -877,7 +877,7 @@ for (town in unique(assessment_pin_prepped$township_code)) {
   # Filter overall data to specific township
   assessment_card_filtered <- assessment_card_prepped %>%
     filter(township_code == town) %>%
-    # This aligns the card dataframe to the card schema
+    # This select statement aligns the card dataframe with the card schema
     select(all_of(names(card_detail_schema)))
 
   card_sheet_name <- "Card Detail"
