@@ -37,10 +37,6 @@ toggle:
   # year's model inputs?
   feature_report_enable: false
 
-  # Was the ingest stage re-run before the model? If true and upload_enable is
-  # also true, pushes the updated dvc.lock to S3 at the end of the upload stage
-  repro_ingest: false
-
 
 # Data/Ingest ------------------------------------------------------------------
 

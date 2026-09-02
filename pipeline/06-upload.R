@@ -275,14 +275,11 @@ if (upload_enable) {
 
 
   # 2.6. DVC lock file ---------------------------------------------------------
-  # Upload lock file only if ingest is run
-  if (repro_ingest) {
-    message("Pushing dvc.lock to location: ", paths$output$dvc_lock$s3)
-    aws.s3::put_object(
-      file = paths$output$dvc_lock$local,
-      object = paths$output$dvc_lock$s3
-    )
-  }
+  message("Pushing dvc.lock to location: ", paths$input$dvc_lock$s3)
+  aws.s3::put_object(
+    file = paths$input$dvc_lock$local,
+    object = paths$input$dvc_lock$s3
+  )
 }
 
 
