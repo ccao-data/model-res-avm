@@ -441,11 +441,22 @@ walk2(
         )$.pred)
       )
 
+    # Preserve the log-scale outcome and prediction alongside their dollar
+    # equivalents. NA when the transform is off, since no log-space model
+    # output exists in that case
     if (log_transform_enable) {
       preds <- preds %>%
         mutate(
+          pred_card_initial_fmv_log = pred_card_initial_fmv,
+          meta_sale_price_log = meta_sale_price,
           pred_card_initial_fmv = exp(pred_card_initial_fmv),
           meta_sale_price = meta_sale_price_original
+        )
+    } else {
+      preds <- preds %>%
+        mutate(
+          pred_card_initial_fmv_log = NA_real_,
+          meta_sale_price_log = NA_real_
         )
     }
 
@@ -457,8 +468,10 @@ walk2(
           "prior_far_tot" = params$ratio_study$far_column,
           "prior_near_tot" = params$ratio_study$near_column
         )),
-        pred_card_initial_fmv, pred_card_initial_fmv_lin,
-        meta_sale_price, meta_sale_date, meta_sale_document_num
+        pred_card_initial_fmv, pred_card_initial_fmv_log,
+        pred_card_initial_fmv_lin,
+        meta_sale_price, meta_sale_price_log,
+        meta_sale_date, meta_sale_document_num
       ) %>%
       # Prior year values are AV, not FMV.
       # Multiply by 10 to get FMV for residential
