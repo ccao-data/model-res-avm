@@ -113,7 +113,6 @@ jobs:
         COMP_ENABLE_OVERRIDE=${{ inputs.comp_enable }}
         SHAP_ENABLE_OVERRIDE=${{ inputs.shap_enable }}
         FEATURE_REPORT_ENABLE_OVERRIDE=${{ inputs.feature_report_enable }}
-        REPRO_INGEST_OVERRIDE=${{ inputs.repro_ingest }}
     secrets:
       AWS_IAM_ROLE_TO_ASSUME_ARN: ${{ secrets.AWS_IAM_ROLE_TO_ASSUME_ARN }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
