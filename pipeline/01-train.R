@@ -314,28 +314,12 @@ if (cv_enable) {
     )
   )
 
-  # Print any tuning notes (warnings/errors) and their backtraces so they're
-  # visible in CloudWatch logs. Deduplicate by message since iteration 0 logs
-  # one note per initial candidate model
-  tune::collect_notes(lgbm_search) %>%
-    dplyr::distinct(location, type, note, .keep_all = TRUE) %>%
-    purrr::pwalk(function(id, .iter, location, type, note, trace, ...) {
-      cat(sprintf(
-        "---- %s | %s | iter %s | %s ----\n",
-        toupper(type), id, .iter, location
-      ))
-      cat(note, "\n")
-      if (!is.null(trace)) cat(paste(format(trace), collapse = "\n"), "\n")
-    })
-
   # Save tuning results to file. This is a data.frame where each row is one
   # CV iteration
   lgbm_search %>%
     lightsnip::axe_tune_data() %>%
     # Drop the trace column tune attaches to each nested .notes tibble: it
-    # holds rlang stack objects that arrow cannot serialize. Traces are
-    # printed above rather than persisted, in part because a fatal error
-    # could take down the pipeline before this file is written or uploaded
+    # holds rlang stack objects that arrow cannot serialize
     mutate(.notes = purrr::map(
       .notes,
       ~ dplyr::select(.x, -dplyr::any_of("trace"))
