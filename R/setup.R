@@ -93,7 +93,6 @@ feature_report_enable <- as.logical(Sys.getenv(
   unset = get(params_obj_name)$toggle$feature_report_enable
 ))
 
-
 # If in a CI context, use the run params passed to the workflow. Otherwise, use
 # the note included in params.yaml
 run_note <- as.character(
