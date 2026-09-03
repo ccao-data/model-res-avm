@@ -102,8 +102,7 @@ if (upload_enable) {
         # to one row per fold and iteration first so the join can't
         # multiply rows
         left_join(
-          read_parquet(paths$output$parameter_raw$local) %>%
-            select(id, .iter, .notes) %>%
+          select(., id, .iter, .notes) %>%
             tidyr::unnest(cols = .notes) %>%
             group_by(id, .iter) %>%
             summarize(
