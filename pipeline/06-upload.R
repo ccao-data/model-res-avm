@@ -275,7 +275,7 @@ if (upload_enable) {
 
 
   # 2.6. DVC lock file ---------------------------------------------------------
-  message("Pushing dvc.lock to location: ", paths$input$dvc_lock$s3)
+  message("Pushing dvc.lock to ", paths$input$dvc_lock$s3)
   aws.s3::put_object(
     file = paths$input$dvc_lock$local,
     object = paths$input$dvc_lock$s3
