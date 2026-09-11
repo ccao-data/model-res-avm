@@ -285,6 +285,14 @@ if (upload_enable) {
       object = paths$output$report_model_features$s3
     )
   }
+
+
+  # 2.6. DVC lock file ---------------------------------------------------------
+  message("Pushing dvc.lock to ", paths$input$dvc_lock$s3)
+  aws.s3::put_object(
+    file = paths$input$dvc_lock$local,
+    object = paths$input$dvc_lock$s3
+  )
 }
 
 
