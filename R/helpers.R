@@ -604,3 +604,57 @@ create_rolling_origin_splits <- function(data,
   )
   return(rset)
 }
+
+# Validate that each schema's display_name fields match the column headers in
+# the template workbook. Catches drift between the schema and the template
+# (e.g. a column added to one but not the other). Normalizes whitespace so
+# minor spacing differences in the xlsx don't cause false failures.
+validate_schema_vs_template <- function(
+  schema, template_path, sheet_name, header_row
+) {
+  normalize <- function(x) gsub("\\s+", " ", trimws(x))
+  wb_tmpl <- loadWorkbook(template_path)
+  tmpl_df <- readWorkbook(
+    wb_tmpl,
+    sheet = sheet_name,
+    colNames = FALSE,
+    skipEmptyRows = FALSE
+  )
+  tmpl_headers <- normalize(as.character(unlist(tmpl_df[header_row, ])))
+  schema_names <- normalize(
+    vapply(schema, function(x) x$display_name, character(1))
+  )
+  n_schema <- length(schema_names)
+  n_tmpl <- length(tmpl_headers)
+  if (n_schema != n_tmpl) {
+    stop(glue(
+      "Schema has {n_schema} columns but '{sheet_name}' template has ",
+      "{n_tmpl}. Update the schema or template so they match."
+    ))
+  }
+  mismatches <- which(schema_names != tmpl_headers)
+  if (length(mismatches) > 0) {
+    mismatch_msg <- paste(vapply(mismatches, function(i) {
+      glue(
+        "  Col {i}: schema='{schema_names[i]}'",
+        " vs template='{tmpl_headers[i]}'"
+      )
+    }, character(1)), collapse = "\n")
+    stop(glue(
+      "Column display name mismatches in '{sheet_name}':\n{mismatch_msg}"
+    ))
+  }
+  invisible(NULL)
+}
+
+# Find a column's 1-based position in a schema list by name
+col_pos <- function(schema, col_name) {
+  pos <- which(names(schema) == col_name)
+  if (length(pos) == 0L) stop("Column '", col_name, "' not found in schema")
+  pos
+}
+
+# Indices of all schema columns whose `style` field equals `style_name`
+cols_with_style <- function(schema, style_name) {
+  which(vapply(schema, function(x) identical(x$style, style_name), logical(1)))
+}

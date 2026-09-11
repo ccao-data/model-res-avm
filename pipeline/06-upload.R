@@ -95,10 +95,23 @@ if (upload_enable) {
       read_parquet(paths$output$parameter_raw$local) %>%
         tidyr::unnest(cols = .metrics) %>%
         mutate(run_id = !!run_id) %>%
+        # Each model fit can leave a warning in .notes, but notes don't
+        # record which config produced them. At .iter = 0 each fold holds
+        # all initial configs, so joining the notes unnested would attach
+        # every warning to every metrics row for that fold. Collapse notes
+        # to one row per fold and iteration first so the join can't
+        # multiply rows
         left_join(
-          rename(., notes = .notes) %>%
-            tidyr::unnest(cols = notes) %>%
-            rename(notes = note)
+          select(., id, .iter, .notes) %>%
+            tidyr::unnest(cols = .notes) %>%
+            group_by(id, .iter) %>%
+            summarize(
+              location = paste(unique(location), collapse = "; "),
+              type = paste(unique(type), collapse = "; "),
+              notes = paste(unique(note), collapse = "; "),
+              .groups = "drop"
+            ),
+          by = c("id", ".iter")
         ) %>%
         select(-.notes) %>%
         rename_with(~ gsub("^\\.", "", .x)) %>%
