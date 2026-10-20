@@ -328,7 +328,6 @@ training_data_clean <- training_data_w_hie %>%
       training_data %>%
         select(meta_pin, meta_sale_document_num, meta_sale_date),
       training_data %>%
-        filter(!sv_is_outlier) %>%
         select(meta_pin, meta_sale_date),
       by = "meta_pin",
       relationship = "many-to-many"
@@ -471,7 +470,6 @@ assessment_data_clean <- assessment_data %>%
     left_join(
       assessment_data %>% select(meta_pin),
       training_data %>%
-        filter(!sv_is_outlier) %>%
         select(meta_pin, meta_sale_date),
       by = "meta_pin",
       relationship = "many-to-many"
