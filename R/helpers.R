@@ -658,3 +658,81 @@ col_pos <- function(schema, col_name) {
 cols_with_style <- function(schema, style_name) {
   which(vapply(schema, function(x) identical(x$style, style_name), logical(1)))
 }
+
+flag_ratio_outliers <- function(data,
+                                model_run_id = "2026-10-20-keen-caroline",
+                                model_year = "2026",
+                                twp_tail = 0.04,
+                                nbhd_max = 0.15,
+                                rolling_window = 12) {
+  bucket <- "ccao-model-results-us-east-1"
+  fit_path <- tempfile(fileext = ".zip")
+  recipe_path <- tempfile(fileext = ".rds")
+  aws.s3::save_object(
+    paste0("workflow/fit/year=", model_year, "/", model_run_id, ".zip"),
+    bucket = bucket, file = fit_path
+  )
+  aws.s3::save_object(
+    paste0("workflow/recipe/year=", model_year, "/", model_run_id, ".rds"),
+    bucket = bucket, file = recipe_path
+  )
+  model_fit <- lightsnip::lgbm_load(fit_path)
+  model_recipe <- readRDS(recipe_path)
+
+  model_log <- arrow::read_parquet(paste0(
+    "s3://", bucket, "/metadata/year=", model_year, "/", model_run_id,
+    ".parquet"
+  ))$log_transform_enable
+
+  sales <- data %>%
+    dplyr::distinct(meta_pin, meta_sale_document_num, .keep_all = TRUE) %>%
+    dplyr::filter(meta_sale_price > 0)
+
+  pred <- stats::predict(
+    model_fit,
+    new_data = recipes::bake(
+      model_recipe,
+      new_data = sales, recipes::all_predictors()
+    )
+  )$.pred
+  if (isTRUE(model_log)) pred <- exp(pred)
+
+  ratios <- sales %>%
+    dplyr::transmute(
+      meta_pin, meta_sale_document_num, meta_township_code, meta_nbhd_code,
+      sale_month = lubridate::year(meta_sale_date) * 12L +
+        lubridate::month(meta_sale_date) - 1L,
+      ratio = pred / meta_sale_price
+    )
+
+  max_month <- max(ratios$sale_month)
+  windowed <- ratios %>%
+    dplyr::cross_join(
+      dplyr::tibble(window_offset = seq_len(rolling_window) - 1L)
+    ) %>%
+    dplyr::mutate(rolling_window = sale_month + window_offset) %>%
+    dplyr::filter(rolling_window <= max_month)
+
+  flags <- windowed %>%
+    dplyr::group_by(meta_township_code, rolling_window) %>%
+    dplyr::mutate(
+      twp_flag = ratio < stats::quantile(ratio, twp_tail) |
+        ratio > stats::quantile(ratio, 1 - twp_tail),
+      extremity = abs(dplyr::percent_rank(ratio) - 0.5)
+    ) %>%
+    dplyr::group_by(meta_nbhd_code, rolling_window) %>%
+    dplyr::mutate(
+      flag_rank = rank(
+        -dplyr::if_else(twp_flag, extremity, NA_real_),
+        ties.method = "first", na.last = "keep"
+      ),
+      sv_outlier = twp_flag & flag_rank <= floor(dplyr::n() * nbhd_max)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(window_offset == 0L) %>%
+    dplyr::select(meta_pin, meta_sale_document_num, sv_outlier)
+
+  data %>%
+    dplyr::left_join(flags, by = c("meta_pin", "meta_sale_document_num")) %>%
+    dplyr::mutate(sv_outlier = dplyr::coalesce(sv_outlier, FALSE))
+}

@@ -32,6 +32,16 @@ training_data_full <- read_parquet(paths$input$training$local) %>%
   filter(!ind_pin_is_multicard) %>%
   arrange(meta_sale_date)
 
+# Replace the sales validation outlier flag with a ratio-based flag using the
+# model from a completed run. See flag_ratio_outliers() in R/helpers.R
+training_data_full <- training_data_full %>%
+  flag_ratio_outliers() %>%
+  mutate(sv_is_outlier = sv_outlier) %>%
+  select(-sv_outlier)
+message("Dropping ", sum(training_data_full$sv_is_outlier), " outlier sales")
+training_data_full <- training_data_full %>%
+  filter(!sv_is_outlier)
+
 # Log-transform sale prices for LightGBM; stash originals for evaluation
 if (log_transform_enable) {
   training_data_full <- training_data_full %>%
