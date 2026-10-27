@@ -10,23 +10,24 @@ ENV RENV_CONFIG_SANDBOX_ENABLED=FALSE
 ENV RENV_PATHS_LIBRARY=renv/library
 ENV RENV_PATHS_CACHE=/setup/cache
 
-# Install some system dependencies using the official rocker scripts pre-built
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        git \
+        curl \
+        ca-certificates \
+        gdebi-core \
+        libglpk40 \
+        cmake && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install some additional dependencies using the official rocker scripts pre-built
 # into the base image
 RUN /rocker_scripts/install_python.sh 3.14
 RUN /rocker_scripts/install_quarto.sh 1.6.39
 RUN /rocker_scripts/install_pandoc.sh 3.1.3
 RUN /rocker_scripts/install_geospatial.sh
 RUN /rocker_scripts/install_tidyverse.sh
-
-# Install additional system dependencies
-RUN apt-get update && \
-    apt-get install --no-install-recommends -y \
-        git \
-        curl \
-        gdebi-core \
-        libglpk40 \
-        cmake && \
-    rm -rf /var/lib/apt/lists/*
 
 # Install pipeline Python dependencies globally.
 # Allow breaking system packages to support global installation
