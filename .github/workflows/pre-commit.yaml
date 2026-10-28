@@ -13,4 +13,4 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Run pre-commit checks
-        uses: ccao-data/actions/pre-commit@main
+        uses: ccao-data/actions/pre-commit@jeancochrane/use-upstream-R-package-sources
