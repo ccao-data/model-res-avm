@@ -326,7 +326,7 @@ summarized_card_chars <- assessment_card %>%
     across(
       all_of(c(
         "char_air", "char_apts", "char_beds", "char_bsmt", "char_bsmt_fin",
-        "char_heat", "char_ncu"
+        "char_attic_type", "char_attic_fnsh", "char_heat", "char_ncu"
       )),
       ~ summarize_char(.x)
     ),
@@ -398,8 +398,8 @@ assessment_pin_prepped <- assessment_pin_w_land %>%
     sale_recent_1_outlier_reason, sale_recent_1_document_num,
     sale_recent_2_date, sale_recent_2_price, sale_recent_2_outlier_reason,
     sale_recent_2_document_num, char_yrblt, char_beds, char_ext_wall, char_bsmt,
-    char_bsmt_fin, char_air, char_heat, char_total_bldg_sf, char_type_resd,
-    char_land_sf, char_apts, char_ncu,
+    char_bsmt_fin, char_attic_type, char_attic_fnsh, char_air, char_heat,
+    char_total_bldg_sf, char_type_resd, char_land_sf, char_apts, char_ncu,
     homeval_report, flag_pin_is_prorated, flag_proration_sum_not_1,
     flag_proration_tieback_cycle, flag_pin_is_multicard, flag_pin_is_multiland,
     flag_land_gte_95_percentile, flag_bldg_gte_95_percentile,
@@ -432,8 +432,9 @@ assessment_card_prepped <- assessment_card %>%
   select(
     township_code, meta_pin, meta_card_num, char_class, meta_nbhd_code,
     meta_card_pct_total_fmv, pred_card_initial_fmv, pred_card_final_fmv,
-    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin, char_air,
-    char_heat, char_bldg_sf, char_type_resd, char_land_sf, char_apts, char_ncu
+    char_yrblt, char_beds, char_ext_wall, char_bsmt, char_bsmt_fin,
+    char_attic_type, char_attic_fnsh, char_air, char_heat, char_bldg_sf,
+    char_type_resd, char_land_sf, char_apts, char_ncu
   ) %>%
   mutate(
     meta_pin = glue(
@@ -550,6 +551,8 @@ pin_detail_schema <- list(
   char_ext_wall = list(display_name = "Ext. Wall"),
   char_bsmt = list(display_name = "Bsmt. Type"),
   char_bsmt_fin = list(display_name = "Bsmt. Finish"),
+  char_attic_type = list(display_name = "Attic Type"),
+  char_attic_fnsh = list(display_name = "Attic Finish"),
   char_air = list(display_name = "Central Air"),
   char_heat = list(display_name = "Heat"),
   char_total_bldg_sf = list(
@@ -619,6 +622,8 @@ card_detail_schema <- list(
   char_ext_wall = list(display_name = "Ext. Wall"),
   char_bsmt = list(display_name = "Bsmt. Type"),
   char_bsmt_fin = list(display_name = "Bsmt. Finish"),
+  char_attic_type = list(display_name = "Attic Type"),
+  char_attic_fnsh = list(display_name = "Attic Finish"),
   char_air = list(display_name = "Central Air"),
   char_heat = list(display_name = "Heat"),
   char_bldg_sf = list(
