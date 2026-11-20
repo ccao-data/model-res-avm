@@ -1119,14 +1119,14 @@
     },
     "lightsnip": {
       "Package": "lightsnip",
-      "Version": "0.0.7",
+      "Version": "0.0.8",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
       "RemoteRef": "master",
-      "RemoteSha": "855d3641dffb95e03b88d7d8f5f9828486fe981f",
+      "RemoteSha": "37d35a27342707029a5e1b74cc9d209f3210d6f7",
       "Requirements": [
         "butcher",
         "dials",
@@ -1139,7 +1139,7 @@
         "tibble",
         "zip"
       ],
-      "Hash": "5c9cb6c2ca452f669afd0ed45edf8cd7"
+      "Hash": "56f9fde355e521ce829ef4af59e21717"
     },
     "listenv": {
       "Package": "listenv",
