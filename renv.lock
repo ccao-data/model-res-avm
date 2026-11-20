@@ -1125,8 +1125,8 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "lightsnip",
-      "RemoteRef": "master",
-      "RemoteSha": "855d3641dffb95e03b88d7d8f5f9828486fe981f",
+      "RemoteRef": "mwagner/route-custom-obj-func-warning",
+      "RemoteSha": "4c04b6d3558f2e9965d6decbd9593c343e40b828",
       "Requirements": [
         "butcher",
         "dials",
